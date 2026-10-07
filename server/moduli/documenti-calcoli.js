@@ -47,6 +47,8 @@ export function totali(linee, { prezziIvati = false, ritenuta = 0, bollo = false
     contributo = { tipo: cassa.tipo, aliquota: num(cassa.aliquota), imponibile: euro(perCassa), importo: euro(importo), aliquotaIva: aliquota, natura, ritenuta: !!cassa.ritenuta };
     gruppo(aliquota, natura).lordo += importo;
     if (cassa.ritenuta) soggetto += importo;
+    // il contributo senza IVA conta per la soglia del bollo (forfettario: 75 € di compenso + 3 € di rivalsa INPS = 78 €, bollo dovuto)
+    if (NATURE_BOLLO.includes(natura)) perBollo += importo;
   }
   const riepilogo = [...gruppi.values()].sort((a, b) => b.aliquota - a.aliquota || String(a.natura).localeCompare(String(b.natura))).map(g => {
     const imponibile = prezziIvati ? intero(g.lordo / (1 + g.aliquota / 100)) : g.lordo;

@@ -222,3 +222,12 @@ test('un gestionale installato col modello vecchio si aggiorna senza perdere nie
   assert.ok(S.leggi(db, 'righe_fattura').campi.some(c => c.id === 'sconto_importo'));
   assert.deepEqual(aggiornaModello(db, S).fatto, [], 'la seconda volta non c\'è niente da fare');
 });
+
+test('bollo: il contributo della cassa senza IVA conta per la soglia di 77,47 € (forfettario con rivalsa INPS)', async () => {
+  const { totali } = await import('../server/moduli/documenti-calcoli.js');
+  const riga = [{ descrizione: 'Consulenza', prezzo: 75, aliquota: 0, natura: 'N2.2' }];
+  assert.equal(totali(riga).serveBollo, false);
+  const t = totali(riga, { cassa: { tipo: 'TC22', aliquota: 4, aliquotaIva: 0, natura: 'N2.2' } });
+  assert.equal(t.cassa.importo, 3); assert.equal(t.serveBollo, true);
+  assert.equal(totali(riga, { cassa: { tipo: 'TC22', aliquota: 4, aliquotaIva: 22 } }).serveBollo, false);
+});

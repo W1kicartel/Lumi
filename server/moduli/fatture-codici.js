@@ -31,8 +31,8 @@ export function tipoIntegrazione({ nazione = 'IT', beni = false, ue = true } = {
   if (!beni) return 'TD17';
   return ue ? 'TD18' : 'TD19';
 }
-// i paesi dell'Unione europea (codici ISO a 2 lettere), per scegliere fra TD18 e TD19
-export const PAESI_UE = ['AT', 'BE', 'BG', 'CY', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI', 'FR', 'GR', 'HR', 'HU', 'IE', 'IT', 'LT', 'LU', 'LV', 'MT', 'NL', 'PL', 'PT', 'RO', 'SE', 'SI', 'SK'];
+// i paesi dell'Unione europea (codici ISO a 2 lettere, più EL con cui la Grecia scrive la partita IVA), per scegliere fra TD18 e TD19
+export const PAESI_UE = ['AT', 'BE', 'BG', 'CY', 'CZ', 'DE', 'DK', 'EE', 'EL', 'ES', 'FI', 'FR', 'GR', 'HR', 'HU', 'IE', 'IT', 'LT', 'LU', 'LV', 'MT', 'NL', 'PL', 'PT', 'RO', 'SE', 'SI', 'SK'];
 
 // l'IVA del contributo della cassa: quella scritta, altrimenti quella della prima riga con l'IVA (o la natura della prima senza)
 export function aliquotaCassa(f) {
