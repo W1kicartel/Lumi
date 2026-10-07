@@ -21,8 +21,8 @@
 .documenti-voce .nota { margin-top: 4px; }
 .documenti-in-riga { display: flex; gap: 12px; align-items: center; } .documenti-in-riga input[type=color] { width: 56px; padding: 2px; height: 36px; }
 .documenti-spunta { display: flex; gap: 8px; align-items: center; font-size: 14px; cursor: pointer; }
-.documenti-colonna { display: grid; grid-template-columns: .8fr 1.6fr auto; gap: 6px; margin-bottom: 6px; align-items: center; }
-.documenti-colonna:has(select) { grid-template-columns: .8fr 1.6fr 96px auto; }
+.documenti-colonna { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) auto; gap: 6px; margin-bottom: 6px; align-items: center; }
+.documenti-colonna:has(select) { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) 92px auto; }
 .documenti-colonna .campo { padding: 6px 8px; font-size: 13.5px; }
 .documenti-mosse { display: flex; }
 .documenti-aiuto { font-size: 13px; color: var(--tenue); border-top: 1px solid var(--linea); padding-top: 12px; }
