@@ -165,6 +165,7 @@ test('backup e ripristino: copia coerente, ripristino con copia di sicurezza, ne
     const altra = new DatabaseSync(join(k.cartella, 'kubo.db'), { readOnly: true });
     assert.equal(altra.prepare('SELECT COUNT(*) n FROM d_clienti').get().n, 2); altra.close();
     const el = (await k.chiama('GET', '/api/backup')).json.elenco; assert.equal(el.filter(b => b.tipo === 'sicurezza').length, 2);
+    const via = await k.chiama('DELETE', `/api/backup/file/${nome}`); assert.equal(via.stato, 200); assert.ok(!via.json.elenco.some(b => b.nome === nome));
   } finally { await k.chiudi(); k.db.close(); }
 });
 

@@ -1,0 +1,32 @@
+/* App desktop, rete e backup: le classi iniziano con «desktop-». */
+.desktop-rete, .desktop-backup { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; max-width: 880px; }
+.desktop-scorri { overflow-x: auto; border-radius: var(--raggio); }
+.desktop-indirizzo { display: flex; gap: 26px; align-items: center; flex-wrap: wrap; }
+.desktop-qr { border-radius: 8px; border: 1px solid var(--linea); flex: none; background: #fff; }
+.desktop-testo { flex: 1; min-width: 240px; }
+.desktop-url { font-size: 24px; letter-spacing: -.02em; font-weight: 550; word-break: break-all; margin-bottom: 10px; }
+.desktop-azioni { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.desktop-codice { color: var(--tenue); font-size: 14px; } .desktop-codice b { color: var(--testo); font-size: 16px; letter-spacing: .06em; }
+.desktop-passi { margin: 16px 0 0; padding-left: 18px; color: var(--tenue); font-size: 14px; display: grid; gap: 6px; } .desktop-passi b { color: var(--testo); font-weight: 550; }
+.desktop-stato { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 24px; }
+.desktop-grande { font-size: 26px; font-weight: 650; letter-spacing: -.03em; line-height: 1.2; }
+.desktop-spiega { grid-column: 1 / -1; margin: 0; }
+.desktop-cartella { background: var(--sopra); border-radius: 8px; padding: 9px 12px; font-size: 13px; word-break: break-all; }
+.desktop-riga { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+.desktop-riga .campo { flex: 1; min-width: 220px; }
+.desktop-riga progress { flex: 1; min-width: 160px; accent-color: var(--accento); }
+.desktop-tabella td.desktop-azioni-riga { text-align: right; overflow: visible; white-space: nowrap; }
+.desktop-tabella .btn.nudo.elimina { color: var(--tenue); } .desktop-tabella .btn.nudo.elimina:hover { color: var(--errore); }
+.desktop-tabella tbody tr { cursor: default; }
+.desktop-capito { display: flex; gap: 8px; align-items: center; margin: 10px 0 4px; cursor: pointer; }
+.desktop-dialogo { border: 1px solid var(--linea-forte); border-radius: 14px; background: var(--pannello); color: var(--testo); padding: 24px; width: min(480px, calc(100vw - 32px)); }
+.desktop-dialogo::backdrop { background: rgb(0 0 0 / .45); }
+.desktop-dialogo h2 { margin: 0 0 10px; font-size: 19px; letter-spacing: -.02em; }
+.desktop-dialogo .desktop-riga { justify-content: flex-end; margin-top: 18px; }
+.btn.pericolo-pieno { background: var(--errore); border-color: var(--errore); color: #fff; }
+.desktop-avviso { position: fixed; right: 18px; bottom: 18px; z-index: 50; display: flex; gap: 12px; align-items: center; background: var(--accento); color: var(--su-accento);
+  padding: 9px 10px 9px 16px; border-radius: 999px; font-size: 14px; box-shadow: 0 6px 24px rgb(0 0 0 / .18); animation: desktop-entra .3s ease-out; }
+.desktop-avviso a { color: inherit; font-weight: 600; } .desktop-avviso .btn { color: inherit; padding: 0 6px; font-size: 18px; line-height: 1; }
+@keyframes desktop-entra { from { transform: translateY(12px); opacity: 0; } }
+@media (max-width: 640px) { .desktop-stato { grid-template-columns: 1fr; } .desktop-url { font-size: 19px; } .desktop-qr { width: 100%; height: auto; max-width: 260px; } }
+@media (prefers-reduced-motion: reduce) { .desktop-avviso { animation: none; } }

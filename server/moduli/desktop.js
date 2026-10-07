@@ -4,7 +4,7 @@
 //   GET  /api/backup                       cartella, elenco, ultimo errore                       (solo il titolare, da qui in giù)
 //   POST /api/backup                       un backup adesso
 //   PUT  /api/backup/cartella { cartella } una cartella esterna ('' = quella accanto ai dati)
-//   GET  /api/backup/file/:nome            scarica un backup
+//   GET  /api/backup/file/:nome            scarica un backup (DELETE: lo elimina)
 //   POST /api/backup/ripristina { nome, conferma: true }
 //   POST /api/backup/carica { nome, dimensione } → { id } · POST /api/backup/carica/:id { da, pezzo }   carica un backup da fuori
 //   GET/PUT /api/aggiornamenti { attivo } · POST /api/aggiornamenti/controlla
@@ -89,6 +89,7 @@ export default function registra({ r, prima, db, P, meta, serve, ErroreHttp, man
     res.writeHead(200, { 'Content-Type': 'application/vnd.sqlite3', 'Content-Length': statSync(f).size, 'Content-Disposition': `attachment; filename="${p.nome}"`, 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
     createReadStream(f).on('error', () => res.destroy()).pipe(res);
   });
+  r('DELETE', '/api/backup/file/:nome', ({ ctx, p }) => { titolare(ctx); occupato(); rmSync(daNome(p.nome), { force: true }); return stato(); });
   r('POST', '/api/backup/ripristina', async ({ ctx, corpo, token }) => {
     titolare(ctx); occupato();
     if (corpo.conferma !== true) throw new ErroreHttp(400, 'Serve la conferma');
