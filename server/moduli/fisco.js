@@ -346,7 +346,7 @@ export function strumentiLumi(k) {
       esegui: async ({ ctx, args = {} }) => {
         const a = Number(args.anno) || annoOggi(), m = Number(args.mese) || Number(oggi().slice(5, 7));
         const f = versamenti(k, ctx, a).f24.filter(x => x.data.startsWith(mese2(a, m)));
-        return { anno: a, mese: m, f24: f.map(g => ({ data: g.data, totale: g.totale, righe: g.voci.map(({ chiave, ...v }) => v), stampa: `#/fisco/f24/${a}/${g.data}` })),
+        return { anno: a, mese: m, f24: f.map(g => ({ data: g.data, totale: g.totale, righe: g.voci.map(({ chiave, ...v }) => v), stampa: `#/fisco/f24/${g.data}` })),
           come: 'Con saldo a debito senza compensazioni paghi dall\'home banking o da F24 web; se compensi crediti usa i servizi dell\'Agenzia delle Entrate.', professionista: avvisiDi(impostazioni(k.db, k.meta).regime) };
       } },
     { nome: 'fisco_scadenze_mese', descrizione: 'Le scadenze fiscali di un mese che riguardano il regime dell\'azienda (IVA, LIPE, imposte, INPS, bollo, ritenute, dichiarazioni), con l\'importo quando Kubo lo conosce.', tipo: 'leggi', permesso: puo,
