@@ -11,6 +11,7 @@ export default {
   impostazioni: [
     { id: 'chiave', nome: 'Chiave segreta (sk_…) o con restrizioni (rk_…)', segreto: true, schema: /^(sk|rk)_(live|test)_\w+$/ },
     { id: 'firma', nome: 'Segreto del webhook (whsec_…)', segreto: true, schema: /^whsec_\w+$/ },
+    { id: 'ritorno', nome: 'Pagina dopo il pagamento (es. il tuo sito)', tipo: 'url', obbligatorio: false },
   ],
   richiede: { vendite: { stato: { tipo: 'stato' }, totale: {}, pagamento: { tipo: 'scelta', facoltativo: true } }, fatture: { stato: { tipo: 'stato', facoltativo: true }, totale: { facoltativo: true }, netto: { facoltativo: true }, pagata_il: { tipo: 'data', facoltativo: true } } },
   permessi: { vendite: { leggi: true, modifica: true }, fatture: { leggi: true, modifica: true } },
@@ -46,17 +47,17 @@ export default {
         const r = await k.http.post(`${k.base}/v1/checkout/sessions`, { bearer: k.segreti.chiave, form: {
           mode: 'payment', 'line_items[0][quantity]': 1, 'line_items[0][price_data][currency]': 'eur', 'line_items[0][price_data][unit_amount]': cent,
           'line_items[0][price_data][product_data][name]': `Vendita ${vendita.numero || vendita.id}`, 'metadata[vendita]': vendita.id, 'payment_intent_data[metadata][vendita]': vendita.id,
-          success_url: 'https://checkout.stripe.com/success' } });
+          success_url: k.imp.ritorno || 'https://checkout.stripe.com/success' } });   // dove torna il cliente dopo aver pagato
         if (!r.ok) throw new Error(r.json?.error?.message || `Stripe ha risposto ${r.stato}`);
         return { url: r.json.url };
       },
     },
   },
   testi: {
-    en: { descrizione: 'Online and in-person payments: sales and invoices get marked paid on their own.', 'imp.chiave': 'Secret key (sk_…) or restricted key (rk_…)', 'imp.firma': 'Webhook secret (whsec_…)', 'az.link_pagamento': 'Payment link' },
-    es: { descrizione: 'Pagos online y TPV: las ventas y facturas se marcan pagadas solas.', 'imp.chiave': 'Clave secreta (sk_…) o restringida (rk_…)', 'imp.firma': 'Secreto del webhook (whsec_…)', 'az.link_pagamento': 'Enlace de pago' },
-    fr: { descrizione: 'Paiements en ligne et TPE : les ventes et factures se marquent payées toutes seules.', 'imp.chiave': 'Clé secrète (sk_…) ou restreinte (rk_…)', 'imp.firma': 'Secret du webhook (whsec_…)', 'az.link_pagamento': 'Lien de paiement' },
-    de: { descrizione: 'Online- und Kartenzahlungen: Verkäufe und Rechnungen werden von selbst als bezahlt markiert.', 'imp.chiave': 'Geheimer Schlüssel (sk_…) oder eingeschränkter (rk_…)', 'imp.firma': 'Webhook-Geheimnis (whsec_…)', 'az.link_pagamento': 'Zahlungslink' },
-    pt: { descrizione: 'Pagamentos online e maquininha: vendas e faturas são marcadas como pagas sozinhas.', 'imp.chiave': 'Chave secreta (sk_…) ou restrita (rk_…)', 'imp.firma': 'Segredo do webhook (whsec_…)', 'az.link_pagamento': 'Link de pagamento' },
+    en: { 'imp.ritorno': 'Page after payment (e.g. your website)', descrizione: 'Online and in-person payments: sales and invoices get marked paid on their own.', 'imp.chiave': 'Secret key (sk_…) or restricted key (rk_…)', 'imp.firma': 'Webhook secret (whsec_…)', 'az.link_pagamento': 'Payment link' },
+    es: { 'imp.ritorno': 'Página tras el pago (p. ej. tu web)', descrizione: 'Pagos online y TPV: las ventas y facturas se marcan pagadas solas.', 'imp.chiave': 'Clave secreta (sk_…) o restringida (rk_…)', 'imp.firma': 'Secreto del webhook (whsec_…)', 'az.link_pagamento': 'Enlace de pago' },
+    fr: { 'imp.ritorno': 'Page après le paiement (ex. votre site)', descrizione: 'Paiements en ligne et TPE : les ventes et factures se marquent payées toutes seules.', 'imp.chiave': 'Clé secrète (sk_…) ou restreinte (rk_…)', 'imp.firma': 'Secret du webhook (whsec_…)', 'az.link_pagamento': 'Lien de paiement' },
+    de: { 'imp.ritorno': 'Seite nach der Zahlung (z. B. deine Website)', descrizione: 'Online- und Kartenzahlungen: Verkäufe und Rechnungen werden von selbst als bezahlt markiert.', 'imp.chiave': 'Geheimer Schlüssel (sk_…) oder eingeschränkter (rk_…)', 'imp.firma': 'Webhook-Geheimnis (whsec_…)', 'az.link_pagamento': 'Zahlungslink' },
+    pt: { 'imp.ritorno': 'Página após o pagamento (ex.: seu site)', descrizione: 'Pagamentos online e maquininha: vendas e faturas são marcadas como pagas sozinhas.', 'imp.chiave': 'Chave secreta (sk_…) ou restrita (rk_…)', 'imp.firma': 'Segredo do webhook (whsec_…)', 'az.link_pagamento': 'Link de pagamento' },
   },
 };
