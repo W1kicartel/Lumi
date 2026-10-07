@@ -27,3 +27,4 @@
 @media (max-width: 640px) { .fatture-velo { padding: 0; } .fatture-finestra { max-height: 100vh; border-radius: 0; } .fatture-tavolo { padding: 8px; } }
 .fatture-scorre { overflow-x: auto; max-width: 100%; } .fatture-scorre .tabella td { white-space: nowrap; }
 .fatture-chiusa .griglia :is(input, select, textarea):disabled { background: var(--sopra); color: var(--tenue); border-color: transparent; }
+.griglia > div:has(table.righe) { min-width: 0; overflow-x: auto; }

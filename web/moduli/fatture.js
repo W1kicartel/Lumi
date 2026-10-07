@@ -166,9 +166,10 @@ export default {
       if (riga.file) out.push(h('button.btn', { testo: t('fatture.vedi'), on: { click: () => vedi(k, riga) } }));
       if (riga.inversione && !riga.integrata) out.push(h('button.btn', { testo: t('fatture.crea-integrazione'), title: t('fatture.integra-nota'), on: { click: ev => integra(k, riga, ev.target) } }));
     }
+    // le righe della fattura hanno molte colonne (sconti, natura, ritenuta): il foglio di stile le fa scorrere dentro la scheda
+    if (def.id === 'fatture') caricaCss();
     // una fattura emessa non si modifica più: lo si dice subito, accanto ai bottoni
     if (def.id === 'fatture' && bloccata(riga)) {
-      caricaCss();
       const segno = h('span.fatture-bloccata', { title: t('fatture.bloccata-nota') }, t('fatture.bloccata'));
       out.unshift(segno);
       // la scheda è disegnata dal motore: appena c'è, si spengono i campi che il server non lascerebbe cambiare e «Archivia»
