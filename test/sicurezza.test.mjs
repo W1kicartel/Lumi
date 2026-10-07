@@ -27,12 +27,12 @@ async function avvia(modelli = ['negozio']) {
       const c = r.headers.get('set-cookie'); if (c) biscotto = c.split(';')[0];
       return { stato: r.status, intestazioni: r.headers, json: await r.json().catch(() => null) };
     };
-    return { chiama, accedi: (email, password) => chiama('POST', '/api/accedi', { email, password }) };
+    return { chiama, accedi: (email, password) => chiama('POST', '/api/accedi', { email, password }), biscotto: () => biscotto };
   };
   const t = browser();
   const c = await t.chiama('POST', '/api/configura', { azienda: 'Prova', nome: 'Titolare', email: 't@prova.it', password: 'password-lunga', modelli });
   assert.equal(c.stato, 200, JSON.stringify(c.json));
-  return { db, srv, base, browser, t: t.chiama, chiudi: () => srv.close() };
+  return { db, srv, base, browser, t: t.chiama, biscotto: t.biscotto, chiudi: () => srv.close() };
 }
 
 test('password: robustezza, anche al primo avvio e per le persone nuove', async () => {
@@ -243,4 +243,37 @@ test('percorso SQL dei calcolati: stessi risultati del motore, filtri e ordiname
     try { assert.deepEqual(veloce.totali, aggrega(db, rich, null).totali); } finally { D.estensioni.sqlCalcolato = salva; }
     assert.ok(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = 'x_vendite__ordine'").get());
   } finally { k.chiudi(); }
+});
+
+test('server robusto: un indirizzo con «%» rotti non lo fa cadere, niente file fuori da web/', async () => {
+  const k = await avvia();
+  try {
+    assert.equal((await fetch(k.base + '/%E0%A4%A')).status, 400);
+    assert.equal((await fetch(k.base + '/api/dati/%E0%A4%A')).status, 400);
+    for (const p of ['/..%2Fserver%2Fapi.js', '/..%2F..%2Fpackage.json', '/%2e%2e/package.json']) assert.ok([403, 404].includes((await fetch(k.base + p)).status), p);
+    assert.equal((await fetch(k.base + '/api/stato')).status, 200);   // ancora acceso
+  } finally { k.chiudi(); }
+});
+
+test('Lumi: i token del flusso si contano per persona e per mese', async () => {
+  const { createServer } = await import('node:http');
+  const sse = evs => evs.map(e => `event: ${e.type}\ndata: ${JSON.stringify(e)}\n\n`).join('');
+  const finto = createServer(async (req, res) => {
+    for await (const _ of req);   // il finto Claude: un messaggio breve con l'uso dei token
+    res.writeHead(200, { 'content-type': 'text/event-stream' });
+    res.end(sse([{ type: 'message_start', message: { id: 'm', type: 'message', role: 'assistant', model: 'claude-opus-5-5', content: [], usage: { input_tokens: 900, output_tokens: 1 } } },
+      { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } }, { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'Fatto.' } },
+      { type: 'content_block_stop', index: 0 }, { type: 'message_delta', delta: { stop_reason: 'end_turn' }, usage: { output_tokens: 12 } }, { type: 'message_stop' }]));
+  });
+  await new Promise(r => finto.listen(0, '127.0.0.1', r)); process.env.ANTHROPIC_BASE_URL = `http://127.0.0.1:${finto.address().port}`;
+  const k = await avvia();
+  try {
+    assert.equal((await k.t('PUT', '/api/lumi/impostazioni', { chiave: 'sk-ant-prova-0123456789abcdef' })).stato, 200);
+    const domanda = { azione: 'chat', messaggi: [{ role: 'user', content: 'Ciao' }] };
+    for (let i = 0; i < 2; i++) { const r = await fetch(k.base + '/api/lumi', { method: 'POST', headers: { 'X-Kubo': '1', 'Content-Type': 'application/json', Cookie: k.biscotto() }, body: JSON.stringify(domanda) }); assert.equal(r.status, 200); await r.text(); }
+    const u = (await k.t('GET', '/api/sicurezza/lumi')).json;
+    assert.equal(u.usati, 2 * 912); assert.equal(u.persone[0].nome, 'Titolare');
+    await k.t('PUT', '/api/sicurezza/impostazioni', { lumiBudget: 1500 });
+    assert.equal((await k.t('POST', '/api/lumi', domanda)).stato, 429);   // oltre il budget del mese
+  } finally { k.chiudi(); finto.close(); delete process.env.ANTHROPIC_BASE_URL; }
 });

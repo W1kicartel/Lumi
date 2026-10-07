@@ -3,7 +3,7 @@
 // «X-Kubo: 1» (una pagina di un altro sito non può aggiungerla). In alternativa «Authorization: Bearer <token>».
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
-import { join, dirname, extname, normalize } from 'node:path';
+import { join, dirname, extname, normalize, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as S from './schema.js';
 import * as D from './dati.js';
@@ -136,8 +136,9 @@ export function creaServer(db) {
   async function statico(req, res, percorso) {
     // il motore delle formule è lo stesso nel server e nel browser
     if (percorso === '/motore/formule.js') { res.writeHead(200, { 'Content-Type': MIME['.js'], 'Cache-Control': 'no-cache' }).end(await readFile(join(WEB, '..', 'server', 'formule.js'))); return; }
-    let f = normalize(join(WEB, decodeURIComponent(percorso === '/' ? '/index.html' : percorso)));
-    if (!f.startsWith(WEB)) { res.writeHead(403).end(); return; }
+    // un indirizzo con «%» rotti non deve far cadere il server; e mai fuori da web/ (neanche in una cartella «web-qualcosa»)
+    let f; try { f = normalize(join(WEB, decodeURIComponent(percorso === '/' ? '/index.html' : percorso))); } catch { res.writeHead(400).end(); return; }
+    if (!f.startsWith(WEB + sep) || f.includes('\0')) { res.writeHead(403).end(); return; }
     try { if ((await stat(f)).isDirectory()) f = join(f, 'index.html'); const b = await readFile(f);
       res.writeHead(200, { 'Content-Type': MIME[extname(f)] || 'application/octet-stream', 'Cache-Control': 'no-cache', 'X-Content-Type-Options': 'nosniff' }).end(b);
     } catch {   // le rotte dell'interfaccia (#…) stanno tutte in index.html
@@ -150,7 +151,7 @@ export function creaServer(db) {
     const url = new URL(req.url, 'http://x'), percorso = url.pathname;
     res.setHeader('X-Frame-Options', 'DENY'); res.setHeader('Referrer-Policy', 'no-referrer');
     for (const [k, v] of Object.entries(INTESTAZIONI)) res.setHeader(k, v);
-    if (!percorso.startsWith('/api/')) return statico(req, res, percorso);
+    if (!percorso.startsWith('/api/')) return statico(req, res, percorso).catch(() => { if (!res.headersSent) res.writeHead(500).end(); else res.end(); });
     let { token, ctx } = ctxDi(req);
     // un controllo può anche togliere l'utente alla richiesta (sessione scaduta per inattività): restituisce { ctx: null }
     const controllaTutti = async corpo => { for (const f of controlli) { const x = await f({ req, res, ctx, token, metodo: req.method, percorso, corpo, ip: req.socket.remoteAddress }); if (x && 'ctx' in x) ctx = x.ctx; } };
@@ -173,7 +174,7 @@ export function creaServer(db) {
       await controllaTutti(corpo);
       const rotta = rotte.find(x => x.metodo === req.method && x.re.test(percorso));
       if (!rotta) throw new ErroreHttp(404, 'Non trovato');
-      const p = Object.fromEntries(Object.entries(percorso.match(rotta.re).groups || {}).map(([k, v]) => [k, decodeURIComponent(v)]));
+      let p; try { p = Object.fromEntries(Object.entries(percorso.match(rotta.re).groups || {}).map(([k, v]) => [k, decodeURIComponent(v)])); } catch { throw new ErroreHttp(400, 'Indirizzo non valido'); }
       const out = await rotta.f({ req, res, ctx, token, p, q: url.searchParams, corpo, risposta, ip: req.socket.remoteAddress });
       if (res.headersSent) return;   // la rotta ha già risposto da sé (streaming di Lumi, file, scaricamenti)
       res.writeHead(200, risposta.intestazioni).end(JSON.stringify(out ?? null));
