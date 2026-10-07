@@ -1,7 +1,7 @@
 // Le viste generiche: lista (tabella o kanban) e scheda. Tutto si genera dallo schema dell'entità.
 import { h, api, get, toast, formatta, destra, chip, ErroreApi } from './ui.js';
 import { editor, titoloDi } from './campi.js';
-import { costruttore, risolvi, apriPop, tipoDi } from './filtri.js';
+import { costruttore, risolvi, apriPop, tipoDi, caricaPersone } from './filtri.js';
 
 const COLONNE_MAX = 7;
 const visibile = c => !c.archiviato && !c.nascosto_in_lista && !['righe', 'testo_lungo', 'immagine', 'file', 'indirizzo'].includes(c.tipo);
@@ -116,12 +116,15 @@ export function lista(def, contenitore, { schema, poteri = {} }) {
       [r, tot] = await Promise.all([get(`/dati/${def.id}?${par}`),
         (somme.length || gruppi) && !archiviati ? api('POST', '/aggregati', { entita: def.id, filtri: fs, cerca: q, per: gruppi ? raggruppa : null, misure: [{ misura: 'conta' }, ...somme.map(c => ({ misura: 'somma', campo: c.id }))] }).catch(() => null) : null]);
     } catch (e) { corpo.replaceChildren(h('div.avviso', e.message)); return; }
+    // i campi «utente» si mostrano con il nome della persona, non con l'id
+    const nomi = cc.some(c => c.tipo === 'utente') ? new Map((await caricaPersone()).map(p => [p.id, p.nome])) : null;
+    const cella = (c, v) => (c.tipo === 'utente' && v ? nomi?.get(v) || v : formatta(c, v));
     if (mio !== giro) return;
     if (!r.totale) { corpo.replaceChildren(h('div.vuoto', q || filtri.length ? 'Nessun risultato.' : archiviati ? 'Niente in archivio.' : `Ancora nessun elemento in ${def.nome.toLowerCase()}.`, def.puo.crea && !q && !filtri.length && !archiviati ? h('div', { stile: { marginTop: '12px' } }, h('a.btn.pieno', { href: `#/e/${def.id}/nuovo`, testo: '+ Crea il primo' })) : null)); return; }
     if (modo === 'kanban' && campoKanban) return kanban(r.righe);
     const th = cc.map(c => h('th', { class: [destra(c) ? 'num' : '', ordina?.campo === c.id ? 'ord' + (ordina.dir === 'asc' ? ' su' : '') : ''].join(' '),
       on: { click: () => { ordina = ordina?.campo === c.id && ordina.dir === 'desc' ? { campo: c.id, dir: 'asc' } : { campo: c.id, dir: 'desc' }; ricorda(); segnaModificata(); ricarica(); } } }, c.nome));
-    const riga = x => h('tr', { on: { click: () => { location.hash = `#/e/${def.id}/${x.id}`; } } }, cc.map(c => h('td', { class: destra(c) ? 'num' : '' }, formatta(c, x[c.id]))));
+    const riga = x => h('tr', { on: { click: () => { location.hash = `#/e/${def.id}/${x.id}`; } } }, cc.map(c => h('td', { class: destra(c) ? 'num' : '' }, cella(c, x[c.id]))));
     // una riga di totali: le somme dal server (su tutte le righe filtrate, non solo questa pagina)
     const totali = (valori, testo, classe) => h('tr', { class: classe }, cc.map((c, i) => {
       const k = somme.indexOf(c);

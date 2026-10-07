@@ -112,6 +112,7 @@ function collegaEventi() {
   eventi.onmessage = m => {
     const ev = JSON.parse(m.data);
     if (ev.tipo === 'avviso') return toast(ev.testo);
+    window.dispatchEvent(new CustomEvent('kubo:evento', { detail: ev }));   // per i moduli (es. calendario e cruscotto)
     if (ev.da === stato.utente.id) return;
     if (vistaAttiva?.entita === ev.entita) vistaAttiva.ricarica();
   };

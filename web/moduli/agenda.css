@@ -84,7 +84,7 @@
 .cr-piede { font-size: 12.5px; color: var(--tenue); }
 .cr-attenzione, .cr-ultime { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .cr-attenzione li { padding: 10px 0; border-top: 1px solid var(--linea); } .cr-attenzione li:first-child { border-top: 0; padding-top: 0; }
-.cr-att-testa { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.cr-att-testa { text-decoration: none; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .cr-conta { background: var(--accento); color: var(--su-accento); border-radius: 999px; font-size: 12px; font-weight: 600; padding: 1px 9px; font-variant-numeric: tabular-nums; }
 .cr-att-righe { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px; font-size: 13.5px; }
 .cr-att-righe a { color: var(--tenue); text-decoration: none; } .cr-att-righe a:hover { color: var(--testo); text-decoration: underline; }
@@ -102,3 +102,4 @@
   .cr-griglia { grid-template-columns: 1fr; }
   .ag-cella { min-height: 72px; } .ag-mese .ag-ev .ag-ora { display: none; }
 }
+.in-modifica .cr-testa { flex-wrap: wrap; } .in-modifica .cr-titolo { flex-basis: 100%; order: 2; } .in-modifica .cr-mod { margin-left: auto; }

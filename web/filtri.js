@@ -72,7 +72,7 @@ export function risolvi(def, filtri) {
 
 // ---------- etichetta del filtro ----------
 let persone = null;
-const caricaPersone = () => (persone ||= get('/agenda-persone').catch(() => []));
+export const caricaPersone = () => (persone ||= get('/agenda-persone').catch(() => []));
 export function etichetta(def, f) {
   const c = campoDi(def, f.campo); if (!c) return f.campo;
   const v = f.valore, data = x => (x ? new Date(x + 'T12:00:00').toLocaleDateString('it-IT') : '…');
@@ -114,7 +114,7 @@ export function costruttore(def, filtri, { cambia, schema }) {
       const el = h('span.filtro', h('span.filtro-t', { testo: etichetta(def, f), title: 'Cambia il filtro', on: { click: () => modifica(el, i) } }),
         h('button', { type: 'button', title: 'Togli', testo: '×', on: { click: () => { attuali.splice(i, 1); aggiorna(); } } }));
       return el;
-    }), piu, attuali.length > 1 ? h('button.btn.piccolo.nudo', { type: 'button', testo: 'Togli tutti', on: { click: () => { attuali = []; aggiorna(); } } }) : null);
+    }), piu, ...(attuali.length > 1 ? [h('button.btn.piccolo.nudo', { type: 'button', testo: 'Togli tutti', on: { click: () => { attuali = []; aggiorna(); } } })] : []));
   }
   function modifica(ancora, i) {
     const f = i == null ? null : attuali[i];

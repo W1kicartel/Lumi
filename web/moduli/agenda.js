@@ -60,7 +60,11 @@ async function calendario(contenuto, k, entita, vistaUrl) {
         h('button.btn.piccolo', { testo: '›', title: 'Dopo', on: { click: () => vai(1) } }), etichettaPeriodo),
       strumenti), corpo));
   const ora9 = g => (dati?.tipoData === 'data' ? g : new Date(giorno(g).setHours(9, 0, 0, 0)));
-  contenuto.addEventListener('keydown', ev => { if (ev.target.closest('input,select,textarea')) return; if (ev.key === 'ArrowLeft') vai(-1); if (ev.key === 'ArrowRight') vai(1); if (ev.key === 't') { centro = oggi(); carica(); } });
+  // frecce ← → per spostarsi, «t» per oggi; e quando un collega cambia qualcosa in questa sezione, si ricarica
+  const tasti = ev => { if (ev.target.closest?.('input,select,textarea') || ev.metaKey || ev.ctrlKey || document.querySelector('.pop')) return; if (ev.key === 'ArrowLeft') vai(-1); if (ev.key === 'ArrowRight') vai(1); if (ev.key === 't') { centro = oggi(); ricorda(); carica(); } };
+  let tRic; const altrui = ev => { if (ev.detail.entita === def.id) { clearTimeout(tRic); tRic = setTimeout(carica, 300); } };
+  window.addEventListener('keydown', tasti); window.addEventListener('kubo:evento', altrui);
+  window.addEventListener('hashchange', () => { window.removeEventListener('keydown', tasti); window.removeEventListener('kubo:evento', altrui); }, { once: true });
 
   function intervallo() {
     if (vista === 'giorno') return [centro, centro];
@@ -231,6 +235,9 @@ async function cruscotto(contenuto, k) {
   contenuto.replaceChildren(
     h('div.testa', h('h1', `${saluto}, ${k.stato.utente.nome.split(' ')[0]}`, h('small.cr-data', new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' }))), azioni),
     h('div.corpo', griglia));
+  // le modifiche dei colleghi aggiornano i numeri (al massimo una volta ogni 2 secondi), finché si resta qui
+  let tRic; const altrui = () => { if (modifica) return; clearTimeout(tRic); tRic = setTimeout(carica, 2000); };
+  window.addEventListener('kubo:evento', altrui); window.addEventListener('hashchange', () => window.removeEventListener('kubo:evento', altrui), { once: true });
   async function carica() {
     try { c = await get('/cruscotto'); } catch (e) { griglia.replaceChildren(h('div.avviso', e.message)); return; }
     disegna();
@@ -260,7 +267,7 @@ async function cruscotto(contenuto, k) {
       const diff = v - prima, pct = prima ? Math.round(diff / Math.abs(prima) * 100) : null;
       conf = h('div.cr-conf', { class: diff > 0 ? 'su' : diff < 0 ? 'giu' : '' }, diff === 0 ? `come ${COME[w.periodo]}` : `${diff > 0 ? '▲' : '▼'} ${pct != null ? Math.abs(pct) + '%' : valore(Math.abs(diff), val)} rispetto ${PRIMA[w.periodo]} (${valore(prima, val)})`);
     }
-    return h('a.cr-numero', { href: `#/e/${w.entita}` }, h('div.cr-valore', valore(v, val)), conf);
+    return h('a.cr-numero', { href: `#/e/${w.entita}`, title: 'Vedi l\'elenco', on: { click: () => apriLista(w.entita, w.filtri, w.periodo && w.periodo !== 'sempre' ? { campo: w.campoData, op: 'periodo', valore: w.periodo } : null) } }, h('div.cr-valore', valore(v, val)), conf);
   }
   carica();
 
@@ -373,8 +380,18 @@ function attenzione(d) {
   const tutto = d.voci.every(v => !v.totale);
   if (tutto) return h('div.cr-tutto-ok', '✓ Tutto in ordine: niente da sistemare.');
   return h('ul.cr-attenzione', d.voci.filter(v => v.totale).map(v => h('li',
-    h('div.cr-att-testa', h('b', v.titolo), h('span.cr-conta', String(v.totale))),
-    h('div.cr-att-righe', v.righe.map(r => h('a', { href: `#/e/${v.entita}/${r.id}`, testo: r.titolo })), v.totale > v.righe.length ? h('a.nota', { href: `#/e/${v.entita}`, testo: `e altri ${v.totale - v.righe.length}` }) : null))));
+    h('a.cr-att-testa', { href: `#/e/${v.entita}`, title: 'Vedi l\'elenco', on: { click: () => apriLista(v.entita, v.filtri) } }, h('b', v.titolo), h('span.cr-conta', String(v.totale))),
+    h('div.cr-att-righe', v.righe.map(r => h('a', { href: `#/e/${v.entita}/${r.id}`, testo: r.titolo })), v.totale > v.righe.length ? h('a.nota', { href: `#/e/${v.entita}`, testo: `e altri ${v.totale - v.righe.length}`, on: { click: () => apriLista(v.entita, v.filtri) } }) : null))));
+}
+// dal cruscotto alla lista con gli stessi filtri: le date relative del server («@oggi-7») diventano «prima del» / «dal»
+function apriLista(entita, filtri = [], periodo = null) {
+  const giornoRel = v => { const m = /^@oggi([+-]\d+)?$/.exec(v); return m ? piu(oggi(), Number(m[1] || 0)) : null; };
+  const l = [...(filtri || []).flatMap(f => {
+    if (typeof f.valore !== 'string' || !f.valore.startsWith('@')) return [f];
+    const g = giornoRel(f.valore); if (!g) return [];
+    return f.op === '<' ? [{ campo: f.campo, op: 'prima', valore: g }] : f.op === '>=' ? [{ campo: f.campo, op: 'dopo', valore: g }] : [];
+  }).map(f => (f.op === '=' && f.valore === true ? { campo: f.campo, op: 'si' } : f.op === '=' && f.valore === false ? { campo: f.campo, op: 'no' } : f)), ...(periodo?.campo ? [periodo] : [])];
+  try { const k = 'kubo.lista.' + entita, s = JSON.parse(localStorage.getItem(k) || '{}'); localStorage.setItem(k, JSON.stringify({ ...s, filtri: l, vista: null, raggruppa: null })); } catch {}
 }
 function ultime(d) {
   if (!d.voci?.length) return h('div.nota', 'Ancora nessuna modifica.');
