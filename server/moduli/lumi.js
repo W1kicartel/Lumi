@@ -79,7 +79,17 @@ export default function registra({ r, db, S, D, P, A, meta, serve, ErroreHttp })
   });
 
   // ---------- «Da vedere»: dallo schema, con i permessi di chi guarda ----------
-  r('GET', '/api/lumi/da-vedere', ({ ctx }) => daVedere(serve(ctx)));
+  // ogni browser lo rilegge ogni minuto e i calcolati costano: per 20 secondi vale la stessa risposta (per persona)
+  const memoria = new Map();
+  r('GET', '/api/lumi/da-vedere', ({ ctx }) => {
+    const id = serve(ctx).utente.id, m = memoria.get(id), ora = Date.now();
+    if (m && ora - m.quando < 2e4 && m.versione === versione()) return m.cose;
+    const cose = daVedere(ctx); memoria.set(id, { quando: ora, versione: versione(), cose });
+    if (memoria.size > 500) memoria.clear();
+    return cose;
+  });
+  // cambia a ogni scrittura: il registro cresce sempre
+  const versione = () => db.prepare('SELECT MAX(id) n FROM _registro').get().n;
   function daVedere(ctx) {
     const oggi = new Date().toISOString().slice(0, 10), settimana = new Date(Date.now() - 7 * GIORNO).toISOString(), out = [];
     const conta = (e, filtri) => { try { return D.elenca(db, e, { filtri, perPagina: 1 }, ctx).totale; } catch { return 0; } };
