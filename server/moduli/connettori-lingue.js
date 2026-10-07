@@ -1,0 +1,66 @@
+// I messaggi del nucleo dei connettori nelle sei lingue. Il nucleo lancia gli errori con una chiave (errore(stato, chiave, p))
+// e li riscrive nella lingua di chi chiede prima che la risposta parta (suErrore in connettori.js): così il catalogo comune
+// del server (server/moduli/lingue/) non cambia. test/connettori.test.mjs controlla che le sei lingue abbiano le stesse chiavi.
+export const TESTI = {
+  it: {
+    sconosciuto: 'Connettore sconosciuto', spento: 'Connettore spento o inesistente', 'giro-sconosciuto': 'Giro pianificato sconosciuto',
+    'azione-sconosciuta': 'Azione sconosciuta', 'solo-titolare': 'Solo il titolare gestisce i connettori, e solo dall\'interfaccia',
+    'impostazione-sconosciuta': 'Impostazione sconosciuta: {nome}', 'mappa-non-valida': 'Abbinamento non valido: {nome}', 'valore-non-valido': 'Valore non valido: {nome}',
+    'indirizzo-non-valido': 'Indirizzo non valido o nella rete interna: {nome}', 'somma-diversa': 'La somma di controllo non corrisponde: il file del connettore è cambiato, ricontrollalo',
+    'oauth-rifiutato': 'Il servizio non ha dato l\'accesso (risposta {stato})', 'oauth-scollegato': 'Account non collegato: collegalo dalla pagina del connettore',
+    'oauth-no': 'Questo connettore non usa questo tipo di collegamento', troppe: 'Troppe richieste: riprova fra un minuto', 'troppo-grande': 'Richiesta troppo grande',
+    'non-configurato': 'Connettore non ancora configurato', firma: 'Firma non valida', corpo: 'Corpo della richiesta non leggibile',
+    'servizio': 'Il servizio non ha completato l\'operazione: {dettaglio}',
+  },
+  en: {
+    sconosciuto: 'Unknown connector', spento: 'Connector off or missing', 'giro-sconosciuto': 'Unknown scheduled run',
+    'azione-sconosciuta': 'Unknown action', 'solo-titolare': 'Only the owner manages connectors, and only from the interface',
+    'impostazione-sconosciuta': 'Unknown setting: {nome}', 'mappa-non-valida': 'Invalid field match: {nome}', 'valore-non-valido': 'Invalid value: {nome}',
+    'indirizzo-non-valido': 'Invalid address, or on the internal network: {nome}', 'somma-diversa': 'The checksum does not match: the connector file changed, check it again',
+    'oauth-rifiutato': 'The service did not grant access (response {stato})', 'oauth-scollegato': 'Account not connected: connect it from the connector page',
+    'oauth-no': 'This connector does not use this kind of connection', troppe: 'Too many requests: try again in a minute', 'troppo-grande': 'Request too large',
+    'non-configurato': 'Connector not configured yet', firma: 'Invalid signature', corpo: 'Unreadable request body',
+    'servizio': 'The service did not complete the operation: {dettaglio}',
+  },
+  es: {
+    sconosciuto: 'Conector desconocido', spento: 'Conector apagado o inexistente', 'giro-sconosciuto': 'Tarea programada desconocida',
+    'azione-sconosciuta': 'Acción desconocida', 'solo-titolare': 'Solo el titular gestiona los conectores, y solo desde la interfaz',
+    'impostazione-sconosciuta': 'Ajuste desconocido: {nome}', 'mappa-non-valida': 'Correspondencia no válida: {nome}', 'valore-non-valido': 'Valor no válido: {nome}',
+    'indirizzo-non-valido': 'Dirección no válida o en la red interna: {nome}', 'somma-diversa': 'La suma de control no coincide: el archivo del conector cambió, revísalo',
+    'oauth-rifiutato': 'El servicio no dio acceso (respuesta {stato})', 'oauth-scollegato': 'Cuenta no conectada: conéctala desde la página del conector',
+    'oauth-no': 'Este conector no usa este tipo de conexión', troppe: 'Demasiadas solicitudes: inténtalo en un minuto', 'troppo-grande': 'Solicitud demasiado grande',
+    'non-configurato': 'Conector aún no configurado', firma: 'Firma no válida', corpo: 'Cuerpo de la solicitud ilegible',
+    'servizio': 'El servicio no completó la operación: {dettaglio}',
+  },
+  fr: {
+    sconosciuto: 'Connecteur inconnu', spento: 'Connecteur éteint ou inexistant', 'giro-sconosciuto': 'Tâche planifiée inconnue',
+    'azione-sconosciuta': 'Action inconnue', 'solo-titolare': 'Seul le titulaire gère les connecteurs, et seulement depuis l\'interface',
+    'impostazione-sconosciuta': 'Réglage inconnu : {nome}', 'mappa-non-valida': 'Correspondance non valide : {nome}', 'valore-non-valido': 'Valeur non valide : {nome}',
+    'indirizzo-non-valido': 'Adresse non valide ou sur le réseau interne : {nome}', 'somma-diversa': 'La somme de contrôle ne correspond pas : le fichier du connecteur a changé, vérifiez-le',
+    'oauth-rifiutato': 'Le service n\'a pas donné l\'accès (réponse {stato})', 'oauth-scollegato': 'Compte non connecté : connectez-le depuis la page du connecteur',
+    'oauth-no': 'Ce connecteur n\'utilise pas ce type de connexion', troppe: 'Trop de requêtes : réessayez dans une minute', 'troppo-grande': 'Requête trop volumineuse',
+    'non-configurato': 'Connecteur pas encore configuré', firma: 'Signature non valide', corpo: 'Corps de la requête illisible',
+    'servizio': 'Le service n\'a pas terminé l\'opération : {dettaglio}',
+  },
+  de: {
+    sconosciuto: 'Unbekannter Connector', spento: 'Connector aus oder nicht vorhanden', 'giro-sconosciuto': 'Unbekannter geplanter Lauf',
+    'azione-sconosciuta': 'Unbekannte Aktion', 'solo-titolare': 'Nur der Inhaber verwaltet Connectoren, und nur über die Oberfläche',
+    'impostazione-sconosciuta': 'Unbekannte Einstellung: {nome}', 'mappa-non-valida': 'Ungültige Zuordnung: {nome}', 'valore-non-valido': 'Ungültiger Wert: {nome}',
+    'indirizzo-non-valido': 'Ungültige Adresse oder im internen Netz: {nome}', 'somma-diversa': 'Die Prüfsumme stimmt nicht: Die Datei des Connectors hat sich geändert, prüfe sie erneut',
+    'oauth-rifiutato': 'Der Dienst hat den Zugriff verweigert (Antwort {stato})', 'oauth-scollegato': 'Konto nicht verbunden: Verbinde es auf der Seite des Connectors',
+    'oauth-no': 'Dieser Connector nutzt diese Verbindungsart nicht', troppe: 'Zu viele Anfragen: Versuche es in einer Minute erneut', 'troppo-grande': 'Anfrage zu groß',
+    'non-configurato': 'Connector noch nicht eingerichtet', firma: 'Ungültige Signatur', corpo: 'Anfrageinhalt nicht lesbar',
+    'servizio': 'Der Dienst hat den Vorgang nicht abgeschlossen: {dettaglio}',
+  },
+  pt: {
+    sconosciuto: 'Conector desconhecido', spento: 'Conector desligado ou inexistente', 'giro-sconosciuto': 'Execução agendada desconhecida',
+    'azione-sconosciuta': 'Ação desconhecida', 'solo-titolare': 'Só o titular gerencia os conectores, e só pela interface',
+    'impostazione-sconosciuta': 'Configuração desconhecida: {nome}', 'mappa-non-valida': 'Correspondência inválida: {nome}', 'valore-non-valido': 'Valor inválido: {nome}',
+    'indirizzo-non-valido': 'Endereço inválido ou na rede interna: {nome}', 'somma-diversa': 'A soma de verificação não confere: o arquivo do conector mudou, verifique-o',
+    'oauth-rifiutato': 'O serviço não deu acesso (resposta {stato})', 'oauth-scollegato': 'Conta não conectada: conecte-a pela página do conector',
+    'oauth-no': 'Este conector não usa este tipo de conexão', troppe: 'Solicitações demais: tente de novo em um minuto', 'troppo-grande': 'Solicitação grande demais',
+    'non-configurato': 'Conector ainda não configurado', firma: 'Assinatura inválida', corpo: 'Corpo da solicitação ilegível',
+    'servizio': 'O serviço não concluiu a operação: {dettaglio}',
+  },
+};
+export const testo = (l, chiave, p = {}) => String(TESTI[l]?.[chiave] ?? TESTI.it[chiave] ?? chiave).replace(/\{(\w+)\}/g, (x, k) => (k in p ? String(p[k]) : x));
