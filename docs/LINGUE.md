@@ -128,7 +128,7 @@ Valgono anche CONTA, VUOTO, ARROTONDA, CONCATENA, MAIUSCOLO, MINUSCOLO, LUNGHEZZ
 
 ## Cosa manca ancora
 
-La pagina **API e integrazioni** (`#/api`, documentazione per sviluppatori: token, esempi curl, webhook) è ancora solo in italiano, tranne il titolo. I loro messaggi d'errore dal server invece sono già tradotti. L'import accetta numeri nei due formati («1.234,50» e «1,234.50»), ma le date solo con il giorno prima («31/12/2026») e il sì/no come «sì», «yes», «1», «x». Restano in italiano anche:
+Tutte le schermate sono tradotte, compresi documenti, import ed export e **API e integrazioni**; gli esempi di codice (curl, verifica della firma) restano come sono. I loro messaggi d'errore dal server invece sono già tradotti. L'import accetta numeri nei due formati («1.234,50» e «1,234.50»), ma le date solo con il giorno prima («31/12/2026») e il sì/no come «sì», «yes», «1», «x». Restano in italiano anche:
 
 - gli avvisi delle automazioni (`ev.testo`);
 - le stampe dei documenti;

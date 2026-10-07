@@ -4,7 +4,7 @@
 // così una vista salvata «questo mese» resta questo mese anche il mese prossimo.
 import { h, get, chip } from './ui.js';
 import { editor } from './campi.js';
-import { t, data as dataLingua, leggiNumero } from './lingua.js';
+import { t, data as dataLingua, leggiNumero, primoGiorno } from './lingua.js';
 
 // il foglio di stile del costruttore e dei popover, una volta sola
 if (!document.querySelector('link[href="/filtri.css"]')) document.head.append(h('link', { rel: 'stylesheet', href: '/filtri.css' }));
@@ -39,7 +39,8 @@ const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')
 const piu = (g, n) => { const [y, m, d] = g.split('-').map(Number); return iso(new Date(y, m - 1, d + n)); };
 const mezzanotte = g => { const [y, m, d] = g.split('-').map(Number); return new Date(y, m - 1, d).toISOString(); };
 export function periodoLocale(nome, oggi = iso(new Date())) {
-  const dow = (new Date(oggi + 'T12:00:00').getDay() + 6) % 7, m = /^ultimi_(\d+)$/.exec(nome);
+  // «questa settimana» comincia dal primo giorno della settimana della lingua (lunedì, o domenica negli Stati Uniti e in Brasile)
+  const dow = (new Date(oggi + 'T12:00:00').getDay() - primoGiorno() % 7 + 7) % 7, m = /^ultimi_(\d+)$/.exec(nome);
   if (m) return [piu(oggi, -(Number(m[1]) - 1)), oggi];
   switch (nome) {
     case 'oggi': return [oggi, oggi];

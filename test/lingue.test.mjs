@@ -66,9 +66,9 @@ test('i testi del motore web passano tutti da t(): niente frasi italiane scritte
   }
 });
 
-test('nei moduli tradotti (agenda, cruscotto, Lumi, lingua) bottoni, titoli e segnaposto passano da t()', () => {
-  const scritto = /\b(testo|title|placeholder|nome): '(?:\+ )?[A-ZÀ-Úa-zà-ú][a-zà-ú]+[ '][^']*'/;
-  for (const f of ['agenda.js', 'lumi.js', 'lingue.js'].map(x => join(RADICE, 'web', 'moduli', x))) {
+test('nei moduli (agenda, cruscotto, Lumi, lingua, import, documenti) bottoni, titoli e segnaposto passano da t()', () => {
+  const scritto = /\b(testo|title|placeholder|nome): '(?:\+ )?[A-ZÀ-Úa-zà-ú][a-zà-ú]+ [^']*'/;   // una frase (con almeno uno spazio)
+  for (const f of ['agenda.js', 'lumi.js', 'lingue.js', 'import.js', 'documenti.js'].map(x => join(RADICE, 'web', 'moduli', x))) {
     readFileSync(f, 'utf8').split('\n').forEach((riga, i) => {
       if (/^\s*\/\//.test(riga)) return;
       assert.ok(!scritto.test(riga), `${f.split('/').pop()}:${i + 1}: ${riga.trim().slice(0, 100)}`);
