@@ -18,7 +18,7 @@ export function h(tag, attr = {}, ...figli) {
   for (const [k, v] of Object.entries(attr)) {
     if (v == null || v === false) continue;
     if (k === 'on') for (const [ev, f] of Object.entries(v)) e.addEventListener(ev, f);
-    else if (k === 'stile') Object.assign(e.style, v);
+    else if (k === 'stile') for (const [p, x] of Object.entries(v)) p.startsWith('--') ? e.style.setProperty(p, x) : (e.style[p] = x);
     else if (k === 'class') { for (const c of String(v).split(/\s+/)) if (c) e.classList.add(c); }
     else if (k === 'testo') e.textContent = v;
     else if (k === 'html') e.innerHTML = v;
