@@ -36,7 +36,9 @@ export const PAESI_UE = ['AT', 'BE', 'BG', 'CY', 'CZ', 'DE', 'DK', 'EE', 'EL', '
 
 // l'IVA del contributo della cassa: quella scritta, altrimenti quella della prima riga con l'IVA (o la natura della prima senza)
 export function aliquotaCassa(f) {
-  if (f.cassa_iva != null && f.cassa_iva !== '') return { aliquotaIva: Number(f.cassa_iva), natura: Number(f.cassa_iva) ? null : f.cassa_natura || null };
-  const r = (f.righe || []).find(x => Number(x.aliquota)) || (f.righe || []).find(x => x.natura && x.natura !== 'N1');
+  // con l'IVA della cassa a 0 (forfettario, prestazioni esenti) la natura è quella delle righe senza IVA: il modello non ha un campo apposta
+  const senza = (f.righe || []).find(x => !Number(x.aliquota) && x.natura && x.natura !== 'N1');
+  if (f.cassa_iva != null && f.cassa_iva !== '') return { aliquotaIva: Number(f.cassa_iva), natura: Number(f.cassa_iva) ? null : f.cassa_natura || senza?.natura || null };
+  const r = (f.righe || []).find(x => Number(x.aliquota)) || senza;
   return r ? { aliquotaIva: Number(r.aliquota) || 0, natura: Number(r.aliquota) ? null : r.natura } : { aliquotaIva: 0, natura: f.cassa_natura || null };
 }

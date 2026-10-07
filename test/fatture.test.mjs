@@ -231,3 +231,11 @@ test('bollo: il contributo della cassa senza IVA conta per la soglia di 77,47 �
   assert.equal(t.cassa.importo, 3); assert.equal(t.serveBollo, true);
   assert.equal(totali(riga, { cassa: { tipo: 'TC22', aliquota: 4, aliquotaIva: 22 } }).serveBollo, false);
 });
+
+test('cassa con IVA a 0: la natura viene dalle righe senza IVA, così la fattura del forfettario si esporta', async () => {
+  const { contiFattura, controlla } = await import('../server/moduli/documenti-xml.js');
+  const f = { stato: 'emessa', numero: '1', data: '2026-10-07', cassa_tipo: 'TC22', cassa: 4, cassa_iva: 0, righe: [{ descrizione: 'Lezione', quantita: 1, prezzo: 75, aliquota: 0, natura: 'N2.2' }] };
+  const c = contiFattura(f); assert.equal(c.cassa.natura, 'N2.2'); assert.equal(c.serveBollo, true);
+  const e = controlla(NOI, f, { nome: 'Rossi', piva: '00743110157', codice_destinatario: 'ABC1234', via: 'Via Verdi 2', cap: '00184', comune: 'Roma' });
+  assert.ok(!e.some(x => /cassa previdenziale è senza IVA/.test(x)), e.join(' | ')); assert.ok(e.some(x => /77,47/.test(x)));
+});
