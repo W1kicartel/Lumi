@@ -55,7 +55,7 @@ h('div.vuoto', t('viste.ancora-nessuno', { nome: minuscole(def.nome) }));
   - `comune`: app, ui e parole condivise;
   - `viste`: lista, scheda, campi e filtri;
   - `gestione`: Personalizza, persone e permessi, lingua e valuta;
-  - `moduli`: agenda, cruscotto e Lumi.
+  - `moduli`: agenda, cruscotto, Lumi e import.
 - **Una chiave nuova** si scrive in tutte e sei le lingue nello stesso commit.
 - **Parametri:** `{nome}`. `t()` non fa l'escape: il testo va negli elementi con `h()` (textContent), mai in `innerHTML`.
 - **Plurali:** `{ one: '…', other: '{n} …' }` con il parametro `n`, scelti con `Intl.PluralRules`. In portoghese del Brasile lo 0 prende `other` («0 itens»).
@@ -127,7 +127,7 @@ Valgono anche CONTA, VUOTO, ARROTONDA, CONCATENA, MAIUSCOLO, MINUSCOLO, LUNGHEZZ
 
 ## Cosa manca ancora
 
-I testi delle schermate dei moduli **Documenti** (`web/moduli/documenti.js`) e **Import ed export** (`web/moduli/import.js`) sono ancora solo in italiano. I loro messaggi d'errore dal server invece sono già tradotti. Restano in italiano anche:
+I testi delle schermate del modulo **Documenti** (`web/moduli/documenti.js`) e della pagina **API e integrazioni** (`#/api`, documentazione per sviluppatori) sono ancora solo in italiano. I loro messaggi d'errore dal server invece sono già tradotti. L'import accetta numeri nei due formati («1.234,50» e «1,234.50»), ma le date solo con il giorno prima («31/12/2026») e il sì/no come «sì», «yes», «1», «x». Restano in italiano anche:
 
 - gli avvisi delle automazioni (`ev.testo`);
 - le stampe dei documenti;

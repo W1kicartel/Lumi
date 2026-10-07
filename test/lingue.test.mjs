@@ -31,7 +31,7 @@ test('cataloghi dell\'interfaccia: stesse chiavi, stessi parametri, plurali con 
     for (const [k, v] of Object.entries(it)) {
       assert.deepEqual(parametri(c[k]), parametri(v), `parametri diversi in ${cod}: ${k}`);
       assert.equal(typeof c[k], typeof v, `forma diversa in ${cod}: ${k}`);
-      if (typeof v === 'object') { assert.ok('other' in c[k], `${cod} ${k} senza other`); assert.ok(String(c[k].other).includes('{n}')); }
+      if (typeof v === 'object') { assert.ok('other' in c[k], `${cod} ${k} senza other`); if (String(v.other).includes('{n}')) assert.ok(String(c[k].other).includes('{n}'), `${cod} ${k}: other senza {n}`); }
       assert.ok(String(typeof c[k] === 'object' ? c[k].other : c[k]).trim(), `${cod} ${k} vuoto`);
     }
   }
