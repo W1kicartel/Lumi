@@ -52,7 +52,7 @@ async function primoAvvio() {
 }
 // la lingua prima dell'accesso: si ricorda in questo browser (lingua.js) e la pagina si ricarica nella lingua scelta
 function sceltaLingua() {
-  return h('select.campo.piccolo', { title: t('comune.lingua'), 'aria-label': t('comune.lingua'), on: { change: ev => { try { localStorage.setItem('kubo.lingua', ev.target.value); } catch { } location.reload(); } } },
+  return h('select.campo.piccolo', { title: t('comune.lingua'), 'aria-label': t('comune.lingua'), stile: { ...STILE_LINGUA, float: 'right', marginBottom: '6px' }, on: { change: ev => { try { localStorage.setItem('kubo.lingua', ev.target.value); } catch { } location.reload(); } } },
     Object.entries(LINGUE).map(([c, l]) => h('option', { value: c, testo: l.nome, selected: c === lingua })));
 }
 
@@ -87,9 +87,11 @@ function disegnaLato() {
   lato.querySelector('.marca svg').replaceWith(logo());
   evidenzia();
 }
+// lo stile dei due selettori della lingua: piccolo e discreto, con i colori del tema (stile.css)
+const STILE_LINGUA = { font: 'inherit', fontSize: '12px', color: 'var(--tenue)', background: 'transparent', border: '1px solid var(--linea)', borderRadius: '6px', padding: '3px 4px', cursor: 'pointer' };
 // il selettore della lingua nel piede: la scelta si salva sul server per questo utente (lingua.js, imposta)
 function linguaUtente() {
-  return h('select.lingua-piede', { title: t('comune.lingua'), 'aria-label': t('comune.lingua'), on: { change: ev => imposta(ev.target.value) } },
+  return h('select.lingua-piede', { title: t('comune.lingua'), 'aria-label': t('comune.lingua'), stile: STILE_LINGUA, on: { change: ev => imposta(ev.target.value) } },
     Object.entries(LINGUE).map(([c]) => h('option', { value: c, testo: c.toUpperCase(), selected: c === lingua })));
 }
 const vociModuli = () => MODULI.flatMap(m => { try { return m.lato?.(contesto()) || []; } catch { return []; } });

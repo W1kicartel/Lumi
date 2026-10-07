@@ -4,6 +4,7 @@
 // così una vista salvata «questo mese» resta questo mese anche il mese prossimo.
 import { h, get, chip } from './ui.js';
 import { editor } from './campi.js';
+import { ALTRI_NOMI } from '/motore/formule.js';
 import { t, data as dataLingua, leggiNumero, primoGiorno } from './lingua.js';
 
 // il foglio di stile del costruttore e dei popover, una volta sola
@@ -17,7 +18,11 @@ const NOMI_OP = { '=': t('viste.op-uguale'), '!=': t('viste.op-diverso'), '>': '
   in: t('viste.op-in'), periodo: '', prima: t('viste.op-prima'), dopo: t('viste.op-dopo'), vero: t('viste.op-vero'), falso: t('viste.op-falso'), si: t('comune.si-min'), no: t('comune.no-min') };
 
 // un calcolato senza formato: è un sì/no se la formula è un confronto (giacenza <= soglia), un numero se fa conti
-const tipoCalcolato = c => c.formato || (/^\s*SE\s*\(/i.test(c.formula || '') ? 'testo' : /(<=|>=|<>|[<>=]|\bE\b|\bO\b|\bNON\b|\bVUOTO\b)/.test(c.formula || '') ? 'si_no' : /[-+*/]|SOMMA|MEDIA|ARROTONDA/i.test(c.formula || '') ? 'numero' : 'testo');
+// …con i nomi delle funzioni in tutte le lingue delle formule (SE, IF, SI, WENN · SOMMA, SUM, SUMA, SOMME, SUMME, SOMA…)
+const nomiDi = (...it) => it.flatMap(n => [n, ...(ALTRI_NOMI[n] || [])]).join('|');
+const RE_SE = new RegExp(`^\\s*(${nomiDi('SE')}|IF)\\s*\\(`, 'i'), RE_VUOTO = new RegExp(`\\b(${nomiDi('VUOTO')}|ISBLANK)\\b`, 'i');
+const RE_CONTI = new RegExp(`[-+*/]|${nomiDi('SOMMA', 'MEDIA', 'ARROTONDA')}|SUM|AVERAGE|ROUND`, 'i');
+const tipoCalcolato = c => c.formato || (RE_SE.test(c.formula || '') ? 'testo' : /(<=|>=|<>|[<>=]|\bE\b|\bO\b|\bNON\b|\bAND\b|\bOR\b|\bNOT\b)/.test(c.formula || '') || RE_VUOTO.test(c.formula || '') ? 'si_no' : RE_CONTI.test(c.formula || '') ? 'numero' : 'testo');
 export const tipoDi = c => (c.tipo === 'calcolato' ? tipoCalcolato(c) : c.tipo);
 export function operatori(c) {
   const tp = tipoDi(c);
