@@ -31,7 +31,9 @@ export function fiscaliCliente(c = {}) {
 // le righe della fattura, come le vogliono i conti («no_ritenuta» esclude la riga dalla ritenuta d'acconto)
 export const lineeFattura = f => (f.righe || []).map(r => ({ descrizione: r.descrizione, quantita: r.quantita, prezzo: r.prezzo, sconto: r.sconto, sconto_importo: r.sconto_importo,
   aliquota: r.aliquota, natura: r.natura, ...(r.no_ritenuta ? { ritenuta: false } : {}) }));
-export const cassaDi = f => (f.cassa_tipo && Number(f.cassa) ? { tipo: f.cassa_tipo, aliquota: f.cassa, ...aliquotaCassa(f), ritenuta: f.cassa_ritenuta ?? f.cassa_tipo === 'TC22' } : null);
+// la ritenuta si applica anche al contributo solo con la rivalsa INPS 4% (TC22), che è parte del compenso; i contributi
+// integrativi delle casse professionali (TC01-TC21) non la scontano (prassi: art. 25 DPR 600/73, istruzioni CU «somme non soggette»)
+export const cassaDi = f => (f.cassa_tipo && Number(f.cassa) ? { tipo: f.cassa_tipo, aliquota: f.cassa, ...aliquotaCassa(f), ritenuta: f.cassa_tipo === 'TC22' } : null);
 export const contiFattura = f => totali(lineeFattura(f), { ritenuta: f.ritenuta, bollo: f.bollo, bolloCliente: !f.bollo_tuo, cassa: cassaDi(f), esigibilita: f.esigibilita || 'I' });
 // la fattura va alla Pubblica Amministrazione (FPA12) se il cliente italiano ha un codice ufficio di 6 caratteri
 export const perPA = (f, cliente) => !AUTOFATTURE.includes(f.tipo) && fiscaliCliente(cliente).nazione === 'IT' && fiscaliCliente(cliente).codice.length === 6;

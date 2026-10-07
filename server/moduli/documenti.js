@@ -296,7 +296,7 @@ export function notaDiCredito(db, { S, D, P, ErroreHttp }, id, ctx) {
   if (f.tipo === 'TD04') throw new ErroreHttp(400, 'È già una nota di credito');
   const valori = { tipo: 'TD04', cliente: f.cliente?.id ?? null, collegata: f.id, riferimento: `Storno della fattura ${f.numero} del ${String(f.data).split('-').reverse().join('/')}`,
     ritenuta: f.ritenuta, ritenuta_tipo: f.ritenuta_tipo, ritenuta_causale: f.ritenuta_causale, bollo: f.bollo, bollo_tuo: f.bollo_tuo, modalita: f.modalita,
-    cassa_tipo: f.cassa_tipo, cassa: f.cassa, cassa_iva: f.cassa_iva, cassa_ritenuta: f.cassa_ritenuta, esigibilita: f.esigibilita,
+    cassa_tipo: f.cassa_tipo, cassa: f.cassa, cassa_iva: f.cassa_iva, esigibilita: f.esigibilita,
     pa_documento: f.pa_documento, pa_documento_id: f.pa_documento_id, pa_documento_data: f.pa_documento_data, cig: f.cig, cup: f.cup,
     righe: (f.righe || []).map(r => ({ descrizione: r.descrizione, quantita: r.quantita, prezzo: r.prezzo, sconto: r.sconto, sconto_importo: r.sconto_importo, aliquota: r.aliquota, natura: r.natura, no_ritenuta: r.no_ritenuta })) };
   for (const k of Object.keys(valori)) if (!S.campo(fdef, k) || S.campo(fdef, k).archiviato) delete valori[k];

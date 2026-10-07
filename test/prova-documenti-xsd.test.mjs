@@ -133,7 +133,7 @@ test('2c. cassa previdenziale: INPS 4% con ritenuta anche sul contributo (TC22),
   assert.ok(forense.v.ok, forense.v.errore); assert.deepEqual(forense.sdi, []);
   assert.equal(forense.conti.ritenuta, 200); assert.ok(!/<DatiCassaPrevidenziale>[\s\S]*<Ritenuta>SI[\s\S]*<\/DatiCassaPrevidenziale>/.test(forense.x));
   // forfettario con la rivalsa INPS: contributo senza IVA, natura N2.2
-  const forf = prova('2c-cassa-forfettario', AZ_FORF, { ...base, cassa: 4, cassa_tipo: 'TC22', cassa_ritenuta: false, righe: [{ descrizione: 'Grafica', prezzo: 1000, aliquota: 0, natura: 'N2.2' }], bollo: true }, ROSSI);
+  const forf = prova('2c-cassa-forfettario', AZ_FORF, { ...base, cassa: 4, cassa_tipo: 'TC22', righe: [{ descrizione: 'Grafica', prezzo: 1000, aliquota: 0, natura: 'N2.2' }], bollo: true }, ROSSI);
   assert.deepEqual(forf.errori, []); assert.ok(forf.v.ok, forf.v.errore); assert.deepEqual(forf.sdi, []);
   assert.match(forf.x, /<AliquotaIVA>0\.00<\/AliquotaIVA>\s*<Natura>N2\.2<\/Natura>\s*<\/DatiCassaPrevidenziale>/);
 });
