@@ -242,7 +242,11 @@ test('«nota di credito della fattura 12»: lo strumento dedicato, uguale al bot
   copione = [usa('fattura_nota_di_credito', { fattura: '13' }), dice('Nota di credito pronta in bozza.')];
   const r = await conversa(k, 'nota di credito della fattura 13');
   assert.match(testoScheda(r.schede[0]), /Totale: 292,80 €/); assert.match(testoScheda(r.schede[0]), /Netto a credito del cliente: 244,80 €/);
-  const nc = await k.api('GET', `/dati/fatture/${r.traccia[0].esito.risultato.id}`), ufficiale = await k.api('POST', `/documenti/nota-di-credito/${f13.id}`);
+  const nc = await k.api('GET', `/dati/fatture/${r.traccia[0].esito.risultato.id}`);
+  // il bottone non fa una seconda nota totale finché c'è quella di Lumi: tolta la bozza, la fa uguale
+  await assert.rejects(k.api('POST', `/documenti/nota-di-credito/${f13.id}`), /già una nota di credito/);
+  await k.api('DELETE', `/dati/fatture/${nc.id}`);
+  const ufficiale = await k.api('POST', `/documenti/nota-di-credito/${f13.id}`);
   for (const c of ['tipo', 'totale', 'ritenuta', 'ritenuta_tipo', 'ritenuta_causale', 'imposta', 'stato']) assert.deepEqual(nc[c], ufficiale[c], c);
   assert.equal(nc.collegata.id, f13.id);
 });

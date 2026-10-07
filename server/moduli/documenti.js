@@ -302,6 +302,10 @@ export function notaDiCredito(db, { S, D, P, ErroreHttp }, id, ctx) {
   const f = D.leggi(db, FATTURE, id, ctx), fdef = S.leggi(db, FATTURE);
   if (!f.numero || f.stato === 'bozza') throw new ErroreHttp(400, 'Si storna solo una fattura emessa: questa è ancora in bozza');
   if (f.tipo === 'TD04') throw new ErroreHttp(400, 'È già una nota di credito');
+  // il bottone fa lo storno totale: se c'è già una nota di credito (non annullata) per questa fattura non se ne fa un'altra
+  // (per uno storno parziale c'è Lumi, che controlla quanto resta)
+  const gia = D.elenca(db, FATTURE, { filtri: [{ campo: 'collegata', op: '=', valore: f.id }, { campo: 'tipo', op: '=', valore: 'TD04' }], perPagina: 100 }, ctx).righe.filter(x => x.stato !== 'annullata');
+  if (gia.length) throw new ErroreHttp(409, `Questa fattura ha già una nota di credito (${gia.map(x => x.numero || 'bozza').join(', ')}): annullala prima di farne un'altra`);
   const valori = { tipo: 'TD04', cliente: f.cliente?.id ?? null, collegata: f.id, riferimento: `Storno della fattura ${f.numero} del ${String(f.data).split('-').reverse().join('/')}`,
     ritenuta: f.ritenuta, ritenuta_tipo: f.ritenuta_tipo, ritenuta_causale: f.ritenuta_causale, bollo: f.bollo, bollo_tuo: f.bollo_tuo, modalita: f.modalita,
     cassa_tipo: f.cassa_tipo, cassa: f.cassa, cassa_iva: f.cassa_iva, esigibilita: f.esigibilita,

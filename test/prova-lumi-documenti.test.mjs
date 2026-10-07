@@ -166,6 +166,9 @@ test('«fai la nota di credito della fattura 12»: manca lo strumento, il modell
   const nc = await k.api('GET', `/dati/fatture/${r.traccia[2].esito.id}`);
   assert.equal(nc.tipo, 'TD04'); assert.equal(nc.collegata.id, f12.id); assert.equal(nc.totale, 292.8);
   // lo stesso con il bottone (rotta dedicata che Lumi non ha): stesso risultato, ma senza che il modello debba ricordarsi niente
+  // il bottone non fa una seconda nota totale finché c'è quella di Lumi: tolta la bozza, la fa uguale
+  await assert.rejects(k.api('POST', `/documenti/nota-di-credito/${f12.id}`), /già una nota di credito/);
+  await k.api('DELETE', `/dati/fatture/${nc.id}`);
   const ufficiale = await k.api('POST', `/documenti/nota-di-credito/${f12.id}`);
   for (const c of ['tipo', 'totale', 'ritenuta', 'ritenuta_tipo', 'ritenuta_causale', 'imposta']) assert.deepEqual(nc[c], ufficiale[c], c);
 });
