@@ -283,3 +283,43 @@ test('«Da vedere» dallo schema e riepilogo per periodo, con i permessi', async
     assert.equal((await k.chiama('POST', '/api/lumi/riepilogo', { entita: 'vendite' })).stato, 403);
   } finally { k.srv.close(); }
 });
+
+test('archiviare a parole: solo i campi chiesti, mai quelli nascosti a chi propone', async () => {
+  const k = await avvia();
+  try {
+    await configura(k);
+    let lista = await genera(k);
+    const via = { operazioni: [{ tipo: 'archivia_campo', sezione: 'clienti', campo: 'consenso' }] };
+    const p = await perNome(lista, 'proponi_modifica_schema').proponi(via);
+    assert.match(p.righe[0][1], /archiviato/);
+    await perNome(lista, 'proponi_modifica_schema').esegui(via);
+    assert.ok(!(await k.api('GET', '/schema')).find(e => e.id === 'clienti').campi.some(c => c.id === 'consenso'));
+    // un responsabile che personalizza ma non vede il costo: una sua modifica degli articoli non deve archiviarlo
+    await k.chiama('PUT', '/api/ruoli/responsabile', { nome: 'Responsabile', schema: true, entita: { '*': { leggi: true, crea: true, modifica: true }, articoli: { campi: { costo: 'nascosto' } } } });
+    await k.chiama('POST', '/api/utenti', { nome: 'Rita', email: 'rita@esempio.it', password: 'password-rita', ruolo: 'responsabile' });
+    await k.accedi('rita@esempio.it', 'password-rita');
+    lista = await genera(k);
+    const r = await perNome(lista, 'proponi_modifica_schema').proponi({ operazioni: [{ tipo: 'aggiungi_campo', sezione: 'articoli', nome: 'Colore', tipo_campo: 'testo' }] });
+    assert.match(r.errore, /articoli\.costo.*titolare/);
+    await k.accedi('titolare@esempio.it', 'prova-kubo-1');
+    assert.ok((await k.api('GET', '/schema')).find(e => e.id === 'articoli').campi.some(c => c.id === 'costo'));
+  } finally { k.srv.close(); }
+});
+
+test('«Da vedere» negli altri modelli: commesse in ritardo senza doppioni, pacchetti scaduti', async () => {
+  const k = await avvia();
+  try {
+    await configura(k, ['laboratorio', 'studio']);
+    const ieri = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
+    const schema = await k.api('GET', '/schema'), commesse = schema.find(e => e.id === 'commesse'), pacchetti = schema.find(e => e.id === 'pacchetti');
+    const minimo = def => Object.fromEntries(def.campi.filter(c => c.obbligatorio && c.tipo === 'testo').map(c => [c.id, 'Prova']));
+    const cliente = (await k.api('POST', '/dati/clienti', { nome: 'Studio Bianchi' })).id;
+    const conCliente = def => Object.fromEntries(def.campi.filter(c => c.obbligatorio && c.tipo === 'relazione' && c.entita === 'clienti').map(c => [c.id, cliente]));
+    await k.api('POST', '/dati/commesse', { ...minimo(commesse), ...conCliente(commesse), consegna: ieri });
+    await k.api('POST', '/dati/pacchetti', { ...minimo(pacchetti), ...conCliente(pacchetti), scadenza: ieri });
+    const cose = await k.api('GET', '/lumi/da-vedere');
+    assert.ok(cose.some(c => c.entita === 'commesse' && c.campo === 'in_ritardo'), JSON.stringify(cose));
+    assert.ok(!cose.some(c => c.entita === 'commesse' && c.campo === 'consegna'), 'la consegna passata è già «in ritardo»');
+    assert.ok(cose.some(c => c.entita === 'pacchetti' && c.campo === 'scadenza' && c.livello === 'urgente'), JSON.stringify(cose));
+  } finally { k.srv.close(); }
+});

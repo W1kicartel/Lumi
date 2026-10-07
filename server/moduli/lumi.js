@@ -139,14 +139,17 @@ export default function registra({ r, db, S, D, P, A, meta, serve, ErroreHttp })
   // ---------- verifica: la modifica si prova davvero (anche la perdita di dati) e poi si annulla ----------
   r('POST', '/api/lumi/verifica', ({ ctx, corpo }) => {
     if (!P.puoSchema(serve(ctx))) throw new P.ErrorePermesso('Non puoi personalizzare il gestionale');
-    const errori = [];
+    const errori = [], archivia = [];
+    // i campi attivi che sparirebbero dalla definizione: diventerebbero archiviati (anche quelli nascosti a chi propone)
+    for (const d of Array.isArray(corpo.entita) ? corpo.entita : []) for (const c of S.leggi(db, d?.id)?.campi || [])
+      if (!c.archiviato && !(d.campi || []).some(x => x.id === c.id && !x.archiviato)) archivia.push(`${d.id}.${c.id}`);
     db.exec('SAVEPOINT lumi_prova');
     try {
       const entita = Array.isArray(corpo.entita) ? corpo.entita : [];
       if (entita.length) try { S.applicaTutte(db, entita, { utente: ctx.utente.id }); } catch (e) { errori.push(...(e.dettagli?.length ? e.dettagli : [e.message])); }
       if (corpo.automazione && !errori.length) errori.push(...A.valida(db, corpo.automazione));
     } finally { db.exec('ROLLBACK TO lumi_prova'); db.exec('RELEASE lumi_prova'); }
-    return { ok: !errori.length, errori };
+    return { ok: !errori.length, errori, archivia };
   });
 }
 

@@ -231,7 +231,7 @@ function campoNuovo(o, schema, def) {
 const descriviCampo = (c, schema) => `${NOME_TIPO[c.tipo] || c.tipo}${c.opzioni ? ': ' + c.opzioni.map(o => o.nome).join(', ') : ''}${c.entita ? ' → ' + (schema.find(e => e.id === c.entita)?.nome || c.entita) : ''}${c.formula ? ' = ' + c.formula : ''}${c.obbligatorio ? ' · obbligatorio' : ''}`;
 
 export function applicaOperazioni(schema, operazioni) {
-  const lavoro = new Map(), righe = [];
+  const lavoro = new Map(), righe = [], archiviati = [];
   const prendi = id => { if (!lavoro.has(id)) { const d = schema.find(e => e.id === id || e.nome.toLowerCase() === String(id).toLowerCase()); if (!d) throw new Error(`sezione sconosciuta «${id}»`); lavoro.set(d.id, pulisci(d)); } return lavoro.get(schema.find(e => e.id === id || e.nome.toLowerCase() === String(id).toLowerCase())?.id ?? id); };
   const campoDi = (def, k) => { const c = def.campi.find(x => !x.archiviato && (x.id === k || x.nome.toLowerCase() === String(k).toLowerCase())); if (!c) throw new Error(`in «${def.nome}» non c'è il campo «${k}»`); return c; };
   for (const o of operazioni) {
@@ -250,7 +250,7 @@ export function applicaOperazioni(schema, operazioni) {
     const def = prendi(o.sezione);
     if (o.tipo === 'aggiungi_campo') { const c = campoNuovo(o, schema, def); def.campi.push(c); righe.push([`${def.nome} · + ${c.nome}`, descriviCampo(c, schema)]); }
     else if (o.tipo === 'rinomina_campo') { const c = campoDi(def, o.campo); righe.push([`${def.nome} · ${c.nome}`, `si chiamerà «${o.nome}» (i valori restano)`]); c.nome = String(o.nome).slice(0, 80); }
-    else if (o.tipo === 'archivia_campo') { const c = campoDi(def, o.campo); def.campi = def.campi.filter(x => x !== c); righe.push([`${def.nome} · ${c.nome}`, 'archiviato (i valori restano e si può ripristinare)']); }
+    else if (o.tipo === 'archivia_campo') { const c = campoDi(def, o.campo); def.campi = def.campi.filter(x => x !== c); archiviati.push(`${def.id}.${c.id}`); righe.push([`${def.nome} · ${c.nome}`, 'archiviato (i valori restano e si può ripristinare)']); }
     else if (o.tipo === 'aggiungi_opzioni') {
       const c = campoDi(def, o.campo); if (!c.opzioni) throw new Error(`«${c.nome}» non ha opzioni`);
       const nuove = (o.opzioni || []).map(String).filter(n => n && !c.opzioni.some(x => x.nome.toLowerCase() === n.toLowerCase() || x.id === slug(n)));
@@ -263,7 +263,7 @@ export function applicaOperazioni(schema, operazioni) {
     else if (o.tipo === 'rinomina_sezione') { righe.push([def.nome, `si chiamerà «${o.nome}»`]); def.nome = String(o.nome).slice(0, 60); }
     else throw new Error(`operazione sconosciuta «${o.tipo}»`);
   }
-  return { entita: [...lavoro.values()], righe };
+  return { entita: [...lavoro.values()], righe, archiviati };
 }
 
 function modificaSchema({ schema, api, dopoSchema, errore }) {
@@ -284,7 +284,13 @@ function modificaSchema({ schema, api, dopoSchema, errore }) {
     }, required: ['tipo', 'sezione'] } } }, required: ['operazioni'] },
     proponi: async inp => {
       let m; try { m = applicaOperazioni(schema, inp.operazioni); } catch (e) { return { errore: e.message }; }
-      try { const v = await api('POST', '/lumi/verifica', { entita: m.entita }); if (!v.ok) return { errore: 'la modifica non va: ' + v.errori.join('; ') }; } catch (e) { return errore(e); }
+      try {
+        const v = await api('POST', '/lumi/verifica', { entita: m.entita });
+        // solo i campi chiesti: chi non vede tutti i campi non deve archiviare per sbaglio quelli nascosti
+        const extra = (v.archivia || []).filter(x => !m.archiviati.includes(x));
+        if (extra.length) return { errore: `la modifica toglierebbe campi che questa persona non vede (${extra.join(', ')}): serve il titolare` };
+        if (!v.ok) return { errore: 'la modifica non va: ' + v.errori.join('; ') };
+      } catch (e) { return errore(e); }
       memo.set(inp, m);
       return { titolo: 'Modifica del gestionale', righe: m.righe, nota: 'Si può sempre tornare indietro: i dati non si perdono.' };
     },
