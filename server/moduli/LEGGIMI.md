@@ -11,6 +11,9 @@ Ogni file `*.js` di questa cartella esporta di default `registra(k)`. Il server 
 - `serve(ctx)`, che pretende un utente con l'accesso fatto;
 - `ErroreHttp(stato, messaggio)`;
 - `manda(evento)`, che manda un evento in tempo reale ai browser collegati.
+- `suErrore(f)`, per ritoccare il corpo di ogni errore prima che parta: `f(corpo, { req, ctx }) → corpo` (lo usa `lingue.js` per tradurre i messaggi).
+
+I modelli si possono adattare prima dell'installazione con `M.ritocchi.push((modello, db) => modello)`: per esempio, `lingue.js` traduce i nomi.
 
 Le regole:
 

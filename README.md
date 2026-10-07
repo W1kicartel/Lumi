@@ -14,6 +14,7 @@
   - Un campo tolto viene archiviato con i suoi valori.
   - Un cambio di tipo che perderebbe valori viene rifiutato e ti dice quali.
   - Ogni cosa finisce nella storia: chi, quando, prima → dopo.
+- **In sei lingue.** Italiano, inglese, spagnolo, francese, tedesco e portoghese del Brasile: ognuno sceglie la sua, l'azienda sceglie la valuta ([docs/LINGUE.md](docs/LINGUE.md)).
 - **Formule alla Excel, in italiano.** Per esempio `SOMMA(righe.totale)` o `SE(giacenza <= soglia; "riordina"; "")`. È lo stesso motore nel server e nel browser, ed è sicuro: niente `eval`.
 - **Automazioni.**
   - «Quando la vendita diventa pagata, scala il magazzino.»
