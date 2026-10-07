@@ -40,7 +40,8 @@ async function pagina(contenuto, k, id) {
   const ritorno = new URLSearchParams(location.hash.split('?')[1] || '').get('oauth');
   if (ritorno) { k.toast(t('connettori.oauth-' + (['ok', 'scaduto'].includes(ritorno) ? ritorno : 'errore')), ritorno !== 'ok'); history.replaceState(null, '', `#/connettori/${encodeURIComponent(id)}`); }
   const ricarica = () => pagina(contenuto, k, id);
-  const salva = async corpo => { try { await k.api('PUT', `/connettori/${encodeURIComponent(id)}`, corpo); k.toast(t('connettori.salvato')); ricarica(); } catch (e) { k.toast(e.message, true); } };
+  // dopo un'accensione o uno spegnimento i bottoni nelle schede cambiano subito, senza ricaricare l'app
+  const salva = async corpo => { try { await k.api('PUT', `/connettori/${encodeURIComponent(id)}`, corpo); k.toast(t('connettori.salvato')); azioni = await k.get('/connettori/azioni').catch(() => azioni); ricarica(); } catch (e) { k.toast(e.message, true); } };
   const corpo = h('div.corpo.conn');
   contenuto.replaceChildren(h('div.testa', h('a.btn.nudo', { href: '#/connettori' }, '←'), h('h1', c.nome || c.id), chipDi(k, statoDi(c)), h('div.conn-spazio'), interruttore(k, c, salva)), corpo);
   if (c.rotto) { corpo.append(h('div.avviso', t('connettori.rotto'))); return; }

@@ -58,8 +58,17 @@ export function durata(s) { const m = /^(\d+)\s*(s|m|h|g|d)$/.exec(String(s || '
 export function prossimo(def, dopo = Date.now(), fuso = FUSO) {
   if (def.ogni) return dopo + Math.max(6e4, durata(def.ogni) || 36e5);
   const [hh, mm] = String(def.alle || '03:00').split(':').map(Number), g = giornoDi(dopo, fuso);
-  for (let i = 0; i < 3; i++) { const t = Date.parse(mezzanotte(piuGiorni(g, i), fuso)) + (hh * 60 + mm) * 6e4; if (t > dopo) return t; }
+  for (let i = 0; i < 3; i++) { const t = alleOre(piuGiorni(g, i), hh, mm, fuso); if (t > dopo) return t; }
   return dopo + 864e5;
+}
+// l'istante di «giorno alle hh:mm» nel fuso, anche nel giorno del cambio dell'ora (mezzanotte + ore sbaglierebbe di un'ora)
+const orologi = new Map();
+function alleOre(giorno, hh, mm, fuso) {
+  if (!orologi.has(fuso)) orologi.set(fuso, new Intl.DateTimeFormat('en-CA', { timeZone: fuso, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }));
+  const [y, m, d] = giorno.split('-').map(Number), voluto = Date.UTC(y, m - 1, d, hh, mm); let t = Date.parse(mezzanotte(giorno, fuso)) + (hh * 60 + mm) * 6e4;
+  for (let i = 0; i < 2; i++) { const p = Object.fromEntries(orologi.get(fuso).formatToParts(new Date(t)).filter(x => x.type !== 'literal').map(x => [x.type, Number(x.value)]));
+    t += voluto - Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute); }
+  return t;
 }
 
 export const istanze = new WeakMap();   // db → il nucleo di quel database (per i test e per gli altri moduli)

@@ -66,6 +66,9 @@ test('pianificatore: «ogni» e «alle» nel fuso', () => {
   const t = Date.parse('2026-10-07T10:00:00Z');
   assert.equal(prossimo({ ogni: '15m' }, t), t + 15 * 6e4);
   assert.equal(new Date(prossimo({ alle: '03:00' }, t, 'Europe/Rome')).toISOString(), '2026-10-08T01:00:00.000Z');
+  // il giorno del ritorno all'ora solare (25 ottobre 2026): le 9 sono le 8:00 UTC, non le 7:00; e il cambio di marzo
+  assert.equal(new Date(prossimo({ alle: '09:00' }, Date.parse('2026-10-25T01:00:00Z'), 'Europe/Rome')).toISOString(), '2026-10-25T08:00:00.000Z');
+  assert.equal(new Date(prossimo({ alle: '09:00' }, Date.parse('2026-03-29T00:30:00Z'), 'Europe/Rome')).toISOString(), '2026-03-29T07:00:00.000Z');
 });
 
 test('SumUp: il webhook senza firma non basta, si rilegge il checkout dall\'API', async () => {
