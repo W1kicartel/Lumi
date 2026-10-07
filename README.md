@@ -51,6 +51,11 @@ Il disegno completo è in [docs/PROGETTO.md](docs/PROGETTO.md).
 - **`web/`**: l'interfaccia in moduli ES puri (lista, kanban, scheda, Personalizza, persone e permessi), aggiornata in tempo reale quando un collega modifica.
 - **`modelli/`**: i modelli di settore in JSON. Per aggiungerne uno basta scrivere un file.
 
+## Sicurezza e prestazioni
+
+- Come Kubo protegge i dati, e cosa si regola da *Sicurezza*: [docs/SICUREZZA.md](docs/SICUREZZA.md).
+- Quanto resta veloce con 50.000 articoli e 200.000 righe di vendita: [docs/PRESTAZIONI.md](docs/PRESTAZIONI.md).
+
 ## Licenza
 
 MIT. Il carattere Geist è © Vercel, con licenza SIL OFL 1.1.
