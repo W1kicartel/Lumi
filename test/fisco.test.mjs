@@ -23,13 +23,18 @@ class ErroreHttp extends Error { constructor(s, m) { super(m); this.stato = s; }
 function gestionale({ regime = 'RF01', fisco = {} } = {}) {
   const db = apri(); M.installa(db, 'fatture'); completaClienti(db, S); salvaAzienda(db, meta, { ...AZ, regime });
   const k = { db, S, D, P, meta, ErroreHttp };
-  S.applica(db, F.SEZIONE_RICEVUTE); F.salvaImpostazioni(db, meta, fisco);
+  F.salvaImpostazioni(db, meta, fisco);   // «Fatture ricevute» è la sezione del modello fatture: c'è già
   const cl = D.crea(db, 'clienti', { nome: 'Bianchi srl', piva: '00743110157', via: 'Corso Italia 5', cap: '10121', comune: 'Torino', provincia: 'TO', codice_destinatario: '0000000' });
   const fattura = (data, prezzo, extra = {}) => D.crea(db, 'fatture', { cliente: cl.id, data, stato: 'emessa', righe: [{ descrizione: 'Lavoro', quantita: 1, prezzo, aliquota: regime === 'RF19' ? 0 : 22, ...(regime === 'RF19' ? { natura: 'N2.2' } : {}) }], ...extra });
   return { db, k, fattura };
 }
 
 const reg0 = db => D.elenca(db, 'clienti', {}).righe[0].id;
+// una fattura ricevuta nella sezione unica: il fornitore è una relazione verso «Fornitori»
+const ricevuta = (db, nomeFornitore, valori) => {
+  const f = D.elenca(db, 'fornitori', {}).righe.find(x => x.nome === nomeFornitore) || D.crea(db, 'fornitori', { nome: nomeFornitore });
+  return D.crea(db, 'fatture_ricevute', { numero: '1', ...valori, fornitore: f.id });
+};
 
 test('date: sabato, domenica e festivi slittano al primo giorno lavorativo', () => {
   assert.equal(R.lavorativo('2026-05-16'), '2026-05-18');   // sabato
@@ -118,8 +123,8 @@ test('registri, liquidazione e LIPE dalle fatture emesse e ricevute', () => {
   const { db, k, fattura } = gestionale({ fisco: { regime: 'ordinario', periodicita: 'trimestrale' } });
   fattura('2026-02-10', 1000); fattura('2026-03-05', 500);
   D.crea(db, 'fatture', { cliente: reg0(db), data: '2026-03-20', stato: 'bozza', righe: [{ descrizione: 'x', quantita: 1, prezzo: 9999, aliquota: 22 }] });   // le bozze non contano
-  D.crea(db, 'fatture_ricevute', { fornitore: 'Carta spa', data: '2026-01-15', imponibile: 200, aliquota: 22 });
-  D.crea(db, 'fatture_ricevute', { fornitore: 'Auto', data: '2026-02-01', imponibile: 100, aliquota: 22, detraibile: 40 });
+  ricevuta(db, 'Carta spa', { data: '2026-01-15', imponibile: 200, aliquota: 22 });
+  ricevuta(db, 'Auto', { data: '2026-02-01', imponibile: 100, aliquota: 22, detraibile: 40 });
   const reg = F.registri(k, null, '2026-01-01', '2026-03-31');
   assert.equal(reg.vendite.length, 2); assert.deepEqual(reg.totali.vendite, { imponibile: 1500, imposta: 330 });
   assert.equal(reg.totali.acquisti.detraibile, 44 + 8.8);
@@ -138,7 +143,8 @@ test('forfettario dal gestionale: incassato per cassa, bollo, versamenti di giug
   fattura('2026-04-02', 3000, { pagata_il: '2026-04-30', bollo: true });
   fattura('2026-05-02', 1000, { bollo: true });                              // non ancora incassata
   const c = F.cruscottoForfettario(k, null, 2026, { piu: 10000 });
-  assert.equal(c.incassato, 5000); assert.equal(c.coefficiente, 78); assert.equal(c.redditoLordo, 3900);
+  // il bollo addebitato al cliente è compenso e conta nell'incassato: 2.002 + 3.002 (AdE, risposta all'interpello 428/2022)
+  assert.equal(c.incassato, 5004); assert.equal(c.coefficiente, 78); assert.equal(c.redditoLordo, 3903.12);
   assert.ok(c.simulazione.diPiu > 0 && c.simulazione.restaInTasca < 10000);
   const v = F.versamenti(k, null, 2026);
   assert.deepEqual(v.voci.filter(x => x.chiave === 'forf-acconto').map(x => [x.codice, x.importo, x.anno]), [['1790', 600, 2026], ['1791', 600, 2026]]);
@@ -152,7 +158,7 @@ test('forfettario dal gestionale: incassato per cassa, bollo, versamenti di giug
 
 test('ritenute come sostituto: versamento il 16 del mese dopo, riepilogo per la CU', () => {
   const { db, k } = gestionale({ fisco: { regime: 'semplificato', sostituto: true } });
-  D.crea(db, 'fatture_ricevute', { fornitore: 'Avv. Verdi', cf_percipiente: 'VRDLGU70A01L219X', causale_ritenuta: 'A', data: '2026-03-01', imponibile: 1000, aliquota: 22, ritenuta: 200, pagata_il: '2026-03-20' });
+  ricevuta(db, 'Avv. Verdi', { cf_percipiente: 'VRDLGU70A01L219X', causale_ritenuta: 'A', data: '2026-03-01', imponibile: 1000, aliquota: 22, ritenuta: 200, pagata_il: '2026-03-20' });
   const r = F.ritenute(k, null, 2026);
   assert.deepEqual([r.righe[0].versamento, r.righe[0].codice, r.perMese[3].ritenute], ['2026-04-16', '1040', 200]);
   assert.deepEqual(r.cu.map(x => [x.cf, x.compensi, x.ritenute]), [['VRDLGU70A01L219X', 1000, 200]]);
@@ -163,7 +169,7 @@ test('ritenute come sostituto: versamento il 16 del mese dopo, riepilogo per la 
 test('pacchetto per il commercialista: XML, registri CSV e XLSX, prima nota e riepilogo PDF', () => {
   const { db, k, fattura } = gestionale({ fisco: { regime: 'ordinario' } });
   fattura('2026-02-10', 1000, { pagata_il: '2026-02-20' });
-  D.crea(db, 'fatture_ricevute', { fornitore: 'Carta spa', numero: '7', data: '2026-01-15', imponibile: 200, aliquota: 22, pagata_il: '2026-01-31' });
+  ricevuta(db, 'Carta spa', { numero: '7', data: '2026-01-15', imponibile: 200, aliquota: 22, pagata_il: '2026-01-31' });
   const p = F.pacchetto(k, null, '2026-01-01', '2026-03-31'), z = leggiZip(p.dati);
   for (const n of ['registro-iva-vendite.csv', 'registro-iva-acquisti.xlsx', 'liquidazioni-iva.csv', 'prima-nota.csv', 'riepilogo.pdf', 'LEGGIMI.txt']) assert.ok(z.nomi.includes(n), n);
   assert.ok(z.nomi.some(n => /^fatture-emesse\/IT00743110157_\w{5}\.xml$/.test(n)), z.nomi.join(','));
@@ -205,7 +211,10 @@ test('API: impostazioni, prepara, permessi, LIPE da scaricare e pacchetto', asyn
     assert.equal((await chiama('PUT', '/api/fisco/impostazioni', { regime: 'boh' })).stato, 422);
     const imp = (await chiama('PUT', '/api/fisco/impostazioni', { regime: 'semplificato', periodicita: 'mensile', ateco: '43.21.01' })).json;
     assert.equal(imp.coefficienteAteco, 86);
-    assert.deepEqual((await chiama('POST', '/api/fisco/prepara', { corrispettivi: true })).json.aggiunte, ['fatture_ricevute', 'corrispettivi']);
+    // «Fatture ricevute» è già quella del modello fatture (una sola sezione): prepara aggiunge solo i corrispettivi
+    assert.equal((await chiama('GET', '/api/fisco/impostazioni')).json.sezioni.ricevute, true);
+    assert.deepEqual((await chiama('POST', '/api/fisco/prepara', { corrispettivi: true })).json.aggiunte, ['corrispettivi']);
+    assert.deepEqual((await chiama('POST', '/api/fisco/prepara', { corrispettivi: true })).json.aggiunte, []);
     await chiama('POST', '/api/dati/corrispettivi', { data: '2026-01-31', totale: 122, aliquota: 22 });
     const l = (await chiama('GET', '/api/fisco/liquidazione?anno=2026')).json;
     assert.equal(l.periodi[0].ivaEsigibile, 22); assert.equal(l.periodi[0].riportato, true);

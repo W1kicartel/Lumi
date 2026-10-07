@@ -198,7 +198,7 @@ async function impostazioni(dove, k, imp) {
     try { await api('PUT', '/fisco/impostazioni', corpo); toast(t('fisco.salvate')); location.hash = '#/fisco/impostazioni'; pagina(document.querySelector('main.contenuto'), k, 'impostazioni'); }
     catch (e) { errore.replaceChildren(h('div.avviso', e.message)); }
   } } });
-  const prepara = !imp.sezioni.ricevute && puo ? scheda(k, t('fisco.sezioni'), h('p', t('fisco.sezioni-cosa')), h('label.fisco-spunta', h('input', { type: 'checkbox', id: 'fisco-corr' }), ' ', t('fisco.anche-corrispettivi')),
+  const prepara = (!imp.sezioni.ricevute || !imp.sezioni.corrispettivi) && puo ? scheda(k, t('fisco.sezioni'), h('p', t('fisco.sezioni-cosa')), h('label.fisco-spunta', h('input', { type: 'checkbox', id: 'fisco-corr' }), ' ', t('fisco.anche-corrispettivi')),
     h('button.btn', { testo: t('fisco.aggiungi-sezioni'), on: { click: async ev => { try { await api('POST', '/fisco/prepara', { corrispettivi: document.getElementById('fisco-corr').checked }); await k.ricaricaSchema(); toast(t('fisco.sezioni-aggiunte')); ev.target.disabled = true; } catch (e) { toast(e.message, true); } } } })) : null;
   metti(dove, errore, prepara, ...gruppi.map(([g, ids]) => scheda(k, t('fisco.gruppo-' + g), h('div.fisco-griglia', ids.map(riga)))),
     h('p.nota', t('fisco.imp-anno-rif', { anno: imp.annoRiferimento || annoOra() })),

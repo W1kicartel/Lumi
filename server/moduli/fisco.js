@@ -1,6 +1,6 @@
 // Il fisco: quanto pagare, quando e con che codice, e i file pronti da caricare da soli con SPID. Il modulo aggiunge:
 //   GET/PUT /api/fisco/impostazioni   regime, periodicità IVA, ATECO e coefficiente, gestione INPS, riduzione 35%, 5% del forfettario…
-//   POST /api/fisco/prepara           aggiunge le sezioni «Fatture ricevute» (acquisti e ritenute) e, se serve, «Corrispettivi»
+//   POST /api/fisco/prepara           aggiunge «Fatture ricevute» (la sezione del modello fatture, una sola per tutto Kubo) e, se serve, «Corrispettivi»
 //   GET  /api/fisco/registri?anno&da&a      registri IVA vendite e acquisti (dalle fatture emesse, ricevute e dai corrispettivi)
 //   GET  /api/fisco/liquidazione?anno       liquidazioni periodiche, acconto di dicembre, credito riportato
 //   GET  /api/fisco/lipe?anno&trimestre     il file XML della Comunicazione liquidazioni periodiche IVA
@@ -18,22 +18,21 @@ import { cent, euro, intero } from './documenti-calcoli.js';
 import { contiFattura, xml as fatturaXml, controlla, progressivoDa } from './documenti-xml.js';
 import { scriviZip, scriviCsv, scriviXlsx } from './import-formati.js';
 import { azienda } from './documenti.js';
+import { AUTOFATTURE } from './fatture-codici.js';
+import { bolloTrimestri } from './fatture-regole.js';
+import { aggiornaModello } from './fatture.js';
 
 const FATTURE = 'fatture', RICEVUTE = 'fatture_ricevute', CORRISPETTIVI = 'corrispettivi';
-const STATI_VALIDI = ['emessa', 'pagata'];
+// «inviata» è lo stato delle fatture mandate allo SDI (modulo fatture): contano come le emesse
+const STATI_VALIDI = ['emessa', 'inviata', 'pagata'];
 export const REGIMI_FISCALI = ['forfettario', 'semplificato', 'ordinario'];
 export const GESTIONI = ['artigiani', 'commercianti', 'separata', 'cassa', 'nessuna'];
 
-// le sezioni che il modulo aggiunge (solo con «prepara», mai da sole all'avvio)
-export const SEZIONE_RICEVUTE = { id: RICEVUTE, nome: 'Fatture ricevute', icona: 'documento', titolo: 'fornitore', campi: [
-  { id: 'fornitore', nome: 'Fornitore', tipo: 'testo', obbligatorio: true }, { id: 'piva_fornitore', nome: 'Partita IVA del fornitore', tipo: 'testo' },
-  { id: 'numero', nome: 'Numero', tipo: 'testo' }, { id: 'data', nome: 'Data fattura', tipo: 'data', obbligatorio: true },
-  { id: 'data_ricezione', nome: 'Ricevuta il', tipo: 'data' }, { id: 'imponibile', nome: 'Imponibile', tipo: 'valuta' },
-  { id: 'aliquota', nome: 'IVA %', tipo: 'percentuale', predefinito: 22 }, { id: 'imposta', nome: 'IVA (vuota: si calcola)', tipo: 'valuta' },
-  { id: 'detraibile', nome: 'IVA detraibile %', tipo: 'percentuale', predefinito: 100 }, { id: 'pagata_il', nome: 'Pagata il', tipo: 'data' },
-  { id: 'ritenuta', nome: 'Ritenuta operata', tipo: 'valuta' }, { id: 'cf_percipiente', nome: 'Codice fiscale del percipiente', tipo: 'testo' },
-  { id: 'causale_ritenuta', nome: 'Causale (CU)', tipo: 'scelta', opzioni: [{ id: 'A', nome: 'A - lavoro autonomo abituale' }, { id: 'M', nome: 'M - occasionale' }, { id: 'Q', nome: 'Q - agenti monomandatari' }, { id: 'R', nome: 'R - agenti plurimandatari' }] },
-  { id: 'note', nome: 'Note', tipo: 'testo_lungo' }] };
+// Le fatture ricevute sono UNA sezione sola, quella del modello fatture (modelli/fatture.json): fornitore collegato a «Fornitori»,
+// import da XML/p7m, stato, scadenza, reverse charge e autofattura collegata, più i campi del fisco (aliquota, IVA detraibile,
+// registrata il, percipiente e causale della ritenuta). Il fisco la legge per i registri IVA acquisti, la liquidazione, le
+// ritenute e il pacchetto; «prepara» la aggiunge (con «Fornitori») portando il modello fatture alla versione di oggi.
+// Qui si aggiunge solo «Corrispettivi», mai da sola all'avvio.
 export const SEZIONE_CORRISPETTIVI = { id: CORRISPETTIVI, nome: 'Corrispettivi', icona: 'cassa', titolo: 'data', campi: [
   { id: 'data', nome: 'Giorno', tipo: 'data', obbligatorio: true }, { id: 'totale', nome: 'Incasso (IVA compresa)', tipo: 'valuta' },
   { id: 'aliquota', nome: 'IVA %', tipo: 'percentuale', predefinito: 22 }, { id: 'note', nome: 'Note', tipo: 'testo' }] };
@@ -96,15 +95,51 @@ export function vendite(k, ctx, da, a) {
       imposta: euro(segno * cent(c.imposta)), totale: euro(segno * cent(c.totale)), ritenuta: euro(segno * cent(c.ritenuta)), bollo: !!f.bollo, pagata_il: f.pagata_il || null, stato: f.stato, _f: f };
   });
 }
-export function acquisti(k, ctx, da, a) {
-  const { db, S, D, P } = k; if (!esiste(S, db, RICEVUTE) || !puoLeggere(P, ctx, RICEVUTE)) return [];
-  return tutte(D, db, RICEVUTE, [], ctx).map(f => {
-    const imponibile = cent(f.imponibile), aliquota = Number(f.aliquota ?? 22), imposta = f.imposta != null && f.imposta !== '' ? cent(f.imposta) : intero(imponibile * aliquota / 100);
-    const detraibile = intero(imposta * Number(f.detraibile ?? 100) / 100);
-    return { id: f.id, fornitore: f.fornitore ?? '', piva: f.piva_fornitore ?? '', numero: f.numero ?? '', data: f.data, registrazione: f.data_ricezione || f.data, aliquota,
-      imponibile: euro(imponibile), imposta: euro(imposta), detraibile: euro(detraibile), totale: euro(imponibile + imposta), pagata_il: f.pagata_il || null,
+// Le fatture ricevute nel registro acquisti, dalla sezione unica del modello fatture. Il fornitore è una relazione verso
+// «Fornitori» (la partita IVA viene da lì); nelle sezioni vecchie create dal fisco era un testo con «piva_fornitore» a fianco.
+// Reverse charge ed estero (campo «inversione»): la fattura del fornitore non ha IVA e va integrata con un documento TD16-TD19
+// (art. 17 DPR 633/72, artt. 46-47 DL 331/93). Entra nel registro acquisti quando l'integrazione è emessa, alla data
+// dell'integrazione e con la sua IVA (che la stessa integrazione porta nel registro vendite: debito e detrazione nello stesso
+// periodo); finché non è integrata resta fra le «da integrare» e non entra nei conti.
+export function acquisti(k, ctx, da, a, { conDaIntegrare = false } = {}) {
+  const { db, S, D, P } = k; if (!esiste(S, db, RICEVUTE) || !puoLeggere(P, ctx, RICEVUTE)) return conDaIntegrare ? { righe: [], daIntegrare: [] } : [];
+  const fornitori = new Map(), integrazioni = new Map();
+  const fornitore = f => {
+    if (!f.fornitore || typeof f.fornitore !== 'object') return { nome: f.fornitore ?? '', piva: f.piva_fornitore ?? '' };
+    if (!fornitori.has(f.fornitore.id)) { let piva = ''; try { piva = D.leggi(db, 'fornitori', f.fornitore.id, ctx, { conRighe: false }).piva || ''; } catch { piva = ''; } fornitori.set(f.fornitore.id, piva); }
+    return { nome: f.fornitore.titolo ?? '', piva: f.piva_fornitore || fornitori.get(f.fornitore.id) };
+  };
+  const integrazione = id => {
+    if (!integrazioni.has(id)) {
+      let x = null;
+      try { const v = D.leggi(db, FATTURE, id, ctx); if (STATI_VALIDI.includes(v.stato) && AUTOFATTURE.includes(v.tipo)) x = v; } catch { x = null; }
+      integrazioni.set(id, x);
+    }
+    return integrazioni.get(id);
+  };
+  const righe = [], daIntegrare = [];
+  for (const f of tutte(D, db, RICEVUTE, [], ctx)) {
+    const forn = fornitore(f), segno = f.tipo === 'TD04' ? -1 : 1;
+    const base = { id: f.id, tipo: f.tipo || 'TD01', fornitore: forn.nome, piva: forn.piva, numero: f.numero ?? '', data: f.data, pagata_il: f.pagata_il || null,
       ritenuta: euro(cent(f.ritenuta)), cf_percipiente: f.cf_percipiente ?? '', causale: f.causale_ritenuta ?? '' };
-  }).filter(x => x.registrazione >= da && x.registrazione <= a).sort((x, y) => x.registrazione.localeCompare(y.registrazione));
+    const imponibile = segno * cent(f.imponibile), perc = Number(f.detraibile ?? 100);
+    if (f.inversione) {
+      const g = f.integrata?.id ? integrazione(f.integrata.id) : null;
+      if (!g) { daIntegrare.push({ ...base, imponibile: euro(imponibile), totale: euro(cent(f.totale) || imponibile) }); continue; }
+      const c = contiFattura(g), imposta = segno * cent(c.imposta);
+      righe.push({ ...base, registrazione: g.data, aliquota: c.riepilogo.find(x => x.aliquota)?.aliquota ?? 0, imponibile: euro(imponibile), imposta: euro(imposta),
+        detraibile: euro(intero(imposta * perc / 100)), totale: euro(imponibile + imposta), integrazione: { id: g.id, tipo: g.tipo, numero: g.numero ?? '' } });
+      continue;
+    }
+    // l'IVA: quella della fattura (import XML o scritta a mano); vuota, dall'aliquota
+    const aliquota = f.aliquota != null && f.aliquota !== '' ? Number(f.aliquota) : imponibile && f.imposta != null && f.imposta !== '' ? Math.round(cent(f.imposta) * 100 / Math.abs(imponibile)) : 22;
+    const imposta = f.imposta != null && f.imposta !== '' ? segno * cent(f.imposta) : intero(imponibile * aliquota / 100);
+    righe.push({ ...base, registrazione: f.data_ricezione || f.data, aliquota, imponibile: euro(imponibile), imposta: euro(imposta),
+      detraibile: euro(intero(imposta * perc / 100)), totale: euro(imponibile + imposta) });
+  }
+  const nel = x => x.registrazione >= da && x.registrazione <= a, ordina = (x, y) => x.registrazione.localeCompare(y.registrazione);
+  const out = righe.filter(nel).sort(ordina);
+  return conDaIntegrare ? { righe: out, daIntegrare: daIntegrare.filter(x => x.data <= a) } : out;
 }
 export function corrispettivi(k, ctx, da, a) {
   const { db, S, D, P } = k; if (!esiste(S, db, CORRISPETTIVI) || !puoLeggere(P, ctx, CORRISPETTIVI)) return [];
@@ -116,9 +151,9 @@ export function corrispettivi(k, ctx, da, a) {
 
 // ---------- IVA ----------
 export function registri(k, ctx, da, a) {
-  const v = vendite(k, ctx, da, a), ac = acquisti(k, ctx, da, a), co = corrispettivi(k, ctx, da, a);
+  const v = vendite(k, ctx, da, a), { righe: ac, daIntegrare } = acquisti(k, ctx, da, a, { conDaIntegrare: true }), co = corrispettivi(k, ctx, da, a);
   const somma = (l, c) => euro(l.reduce((s, x) => s + cent(x[c]), 0));
-  return { da, a, vendite: v.map(({ _f, ...x }) => x), acquisti: ac, corrispettivi: co,
+  return { da, a, vendite: v.map(({ _f, ...x }) => x), acquisti: ac, daIntegrare, corrispettivi: co,
     totali: { vendite: { imponibile: somma(v, 'imponibile'), imposta: somma(v, 'imposta') }, corrispettivi: { imponibile: somma(co, 'imponibile'), imposta: somma(co, 'imposta') },
       acquisti: { imponibile: somma(ac, 'imponibile'), imposta: somma(ac, 'imposta'), detraibile: somma(ac, 'detraibile') } } };
 }
@@ -139,6 +174,7 @@ export function liquidazione(k, ctx, anno, imp0 = impostazioni(k.db, k.meta)) {
   const avvisi = [];
   if (l.periodi.at(-1).importoACredito > 5000) avvisi.push('visto-conformita');
   if (imp.regime === 'forfettario') avvisi.push('forfettario-niente-iva');
+  if (acquisti(k, ctx, `${anno}-01-01`, `${anno}-12-31`, { conDaIntegrare: true }).daIntegrare.length) avvisi.push('da-integrare');
   return { ...l, acconto, avvisi };
 }
 export function fileLipe(k, ctx, anno, trimestre) {
@@ -153,14 +189,24 @@ export function fileLipe(k, ctx, anno, trimestre) {
 }
 
 // ---------- forfettario ----------
-// l'incassato dell'anno (principio di cassa): le fatture con «Pagata il» nell'anno; quelle pagate senza data contano alla data della fattura
+// l'incassato dell'anno (principio di cassa, art. 1 c. 64 L. 190/2014), dai pagamenti registrati nelle fatture:
+//   - «Pagata il» nell'anno: tutta la fattura; una fattura pagata senza data conta alla sua data (e si avvisa);
+//   - senza «Pagata il», le rate segnate «pagata» con la data nell'anno: la parte di compenso che corrisponde alla rata;
+//   - le integrazioni e autofatture TD16-TD19 non sono ricavi (sono acquisti): non contano.
+// Il compenso è l'imponibile della fattura, che comprende la rivalsa INPS e il bollo da 2 € quando è addebitato al cliente
+// (campo «bollo» senza «il bollo lo paghi tu»): il bollo riaddebitato è parte del compenso e concorre al reddito forfettario
+// e alle soglie. Fonte: Agenzia delle Entrate, risposta all'interpello n. 428 del 12 agosto 2022 («L'importo dell'imposta
+// di bollo addebitato in fattura al cliente assume natura di ricavo/compenso» e concorre alla determinazione del reddito
+// forfetario ex art. 1 c. 64 L. 190/2014). Se il bollo lo paghi tu non è in fattura e non conta.
 export function incassato(k, ctx, anno) {
-  const da = `${anno - 1}-01-01`, a = `${anno}-12-31`;   // una fattura di dicembre si può incassare a gennaio
+  const da = `${anno - 1}-01-01`, a = `${anno}-12-31`, y = String(anno);   // una fattura di dicembre si può incassare a gennaio
   let tot = 0, senzaData = 0;
   for (const f of vendite(k, ctx, da, a)) {
-    const quando = f.pagata_il || (f.stato === 'pagata' ? f.data : null); if (!quando || !quando.startsWith(String(anno))) continue;
-    if (!f.pagata_il) senzaData++;
-    tot += cent(f.imponibile);
+    if (AUTOFATTURE.includes(f.tipo)) continue;
+    const quando = f.pagata_il || (f.stato === 'pagata' ? f.data : null);
+    if (quando) { if (!quando.startsWith(y)) continue; if (!f.pagata_il) senzaData++; tot += cent(f.imponibile); continue; }
+    const rate = (f._f.rate || []).filter(r => r.pagata && String(r.data || '').startsWith(y)), netto = cent(f._f.netto ?? f.totale);
+    for (const r of rate) tot += netto ? intero(cent(f.imponibile) * cent(r.importo) / netto) : 0;
   }
   return { incassato: euro(tot), senzaData };
 }
@@ -209,14 +255,24 @@ export function versamenti(k, ctx, anno) {
     }
     if (imp.gestione === 'cassa') avvisi.push('cassa-professionale');
   }
-  // bollo virtuale: le fatture dell'anno con il bollo, per trimestre della data
-  if (imp.regime === 'forfettario' || imp.bollo) {
-    const perT = {}; for (const f of vendite(k, ctx, `${anno}-01-01`, `${anno}-12-31`)) if (f.bollo && f.tipo !== 'TD04') { const t = Math.ceil(Number(f.data.slice(5, 7)) / 3); perT[t] = (perT[t] || 0) + R.BOLLO.importo; }
-    for (const b of R.bolli(anno, perT)) add({ data: b.scadenza, codice: b.codice, anno, importo: b.importo, chiave: 'bollo', periodo: b.trimestre });
+  // bollo virtuale: lo stesso conto della pagina Fatture (fatture-regole.js bolloTrimestri: fatture emesse col bollo, per trimestre
+  // della data, rinvii sotto 5.000 €, codici 2521-2524), così F24 e pagina Fatture dicono la stessa cifra con la stessa scadenza.
+  // Vale per ogni regime: il bollo è dovuto su ogni fattura che lo dichiara (forfettario, esenti, non imponibili)
+  if (esiste(k.S, k.db, FATTURE) && puoLeggere(k.P, ctx, FATTURE)) {
+    const emesse = tutte(k.D, k.db, FATTURE, [{ campo: 'data', op: 'tra', valore: [`${anno}-01-01`, `${anno}-12-31`] }], ctx);
+    for (const b of bolloTrimestri(emesse, anno)) add({ data: b.scadenza, codice: b.tributo, anno, importo: b.importo, chiave: 'bollo', periodo: b.trimestre });
+  }
+  // forfettario con acquisti in reverse charge o dall'estero: l'IVA delle integrazioni TD16-TD19 non si detrae e si versa
+  // entro il 16 del mese dopo l'operazione, con il codice del mese (art. 1 c. 58 lett. e) L. 190/2014)
+  if (imp.regime === 'forfettario') {
+    const perMese = {};
+    for (const f of vendite(k, ctx, `${anno}-01-01`, `${anno}-12-31`)) if (AUTOFATTURE.includes(f.tipo)) { const m = Number(f.data.slice(5, 7)); perMese[m] = (perMese[m] || 0) + cent(f.imposta); }
+    for (const [m, c] of Object.entries(perMese)) add({ data: R.scadenzaRitenuta(`${anno}-${String(m).padStart(2, '0')}-01`), codice: R.COD_IVA.mese(Number(m)), anno, importo: euro(c), chiave: 'iva-integrazioni', periodo: Number(m) });
   }
   // ritenute operate come sostituto d'imposta: il 16 del mese dopo il pagamento
   for (const [mese, v] of Object.entries(ritenute(k, ctx, anno).perMese)) add({ data: v.scadenza, codice: R.COD_RITENUTE, anno, rateazione: '', importo: v.ritenute, chiave: 'ritenute', periodo: Number(mese) });
   if (imp.camerale) out.push({ sezione: 'locali', data: R.scadenzaGiugno(anno), ente: imp.provinciaCciaa, codice: R.COD_CAMERALE, anno, rateazione: '', importo: euro(cent(imp.camerale)), chiave: 'camerale' });
+  if (acquisti(k, ctx, `${anno}-01-01`, `${anno}-12-31`, { conDaIntegrare: true }).daIntegrare.length) avvisi.push('da-integrare');
   out.sort((a, b) => a.data.localeCompare(b.data));
   // un F24 per ogni scadenza
   const f24 = []; for (const v of out) { let g = f24.find(x => x.data === v.data); if (!g) f24.push(g = { data: v.data, voci: [], totale: 0 }); g.voci.push(v); g.totale = euro(cent(g.totale) + cent(v.importo)); }
@@ -387,7 +443,12 @@ export default function registra(k) {
   r('PUT', '/api/fisco/impostazioni', ({ ctx, corpo }) => { gestore(ctx); try { return salvaImpostazioni(db, meta, corpo); } catch (e) { errore(e); } });
   r('POST', '/api/fisco/prepara', ({ ctx, corpo }) => {
     gestore(ctx); const fatte = [];
-    for (const [def, vuoi] of [[SEZIONE_RICEVUTE, true], [SEZIONE_CORRISPETTIVI, !!corpo.corrispettivi]]) if (vuoi && !esiste(S, db, def.id)) { S.applica(db, def, { utente: ctx.utente.id }); fatte.push(def.id); }
+    // le fatture ricevute sono quelle del modello fatture: si porta il modello alla versione di oggi (aggiunge «Fatture ricevute»
+    // e «Fornitori» se mancano, i campi del fisco se la sezione è di prima, e converte la sezione che il fisco creava da solo)
+    if (!esiste(S, db, FATTURE)) throw new ErroreHttp(409, 'Aggiungi prima il modello «Fatture e fattura elettronica» (Personalizza → modelli).');
+    const c = S.leggi(db, RICEVUTE), vecchia = !c || c.archiviata || S.campo(c, 'fornitore')?.tipo !== 'relazione' || !S.campo(c, 'detraibile');
+    if (vecchia) { aggiornaModello(db, S, { utente: ctx.utente.id, D: k.D }); if (!c || c.archiviata) fatte.push(RICEVUTE); }
+    if (corpo.corrispettivi && !esiste(S, db, CORRISPETTIVI)) { S.applica(db, SEZIONE_CORRISPETTIVI, { utente: ctx.utente.id }); fatte.push(CORRISPETTIVI); }
     return { aggiunte: fatte };
   });
   r('GET', '/api/fisco/registri', ({ ctx, q }) => { lettore(ctx); const [da, a] = periodo(q, ErroreHttp); return registri(k, ctx, da, a); });

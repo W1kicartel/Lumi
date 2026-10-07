@@ -97,9 +97,11 @@ Nella pagina **Fatture elettroniche → Ricevute** si trascinano i file scaricat
 - **Il costo** finisce nella sezione «Fatture ricevute» con:
   - imponibile, IVA, totale, ritenuta e netto da pagare;
   - la scadenza (la prima rata) e la categoria di costo;
-  - lo stato «Da pagare / Pagata», e la data del pagamento si scrive da sola.
+  - lo stato «Da pagare / Pagata», e la data del pagamento si scrive da sola;
+  - l'aliquota, quando la fattura ne ha una sola (per il registro IVA acquisti).
 
   Il file XML resta in `_fatture_xml`.
+- **Una sezione sola.** «Fatture ricevute» è la stessa per le fatture e per il fisco (`docs/FISCO.md`): oltre ai campi qui sopra ha quelli del registro IVA acquisti e delle ritenute (aliquota, IVA detraibile %, «registrata il», codice fiscale del percipiente e causale della CU). La sezione che il fisco creava da solo prima dell'unione, con il fornitore scritto a mano, diventa questa con l'aggiornamento del modello: il fornitore passa a «Fornitori» (cercato per partita IVA o per nome, creato se manca) e i valori restano.
 - **La vista leggibile** (`GET /api/fatture/ricevute/:id/vista`) è un HTML semplice con ogni valore passato dall'escape. Si mostra in un iframe sandbox e si stampa.
 - **Le integrazioni.** Una ricevuta in inversione contabile (N6.x) o da un fornitore estero senza IVA è segnata «Da integrare». Con «Crea integrazione» (`POST /api/fatture/integrazione/:id`) nasce in bozza l'integrazione o autofattura, con l'IVA italiana al 22%. Il tipo dipende dal fornitore:
   - TD16 se è italiano;
@@ -107,7 +109,7 @@ Nella pagina **Fatture elettroniche → Ricevute** si trascinano i file scaricat
   - TD18 per i beni UE;
   - TD19 per i beni extra UE.
 
-  La controlli e la emetti tu.
+  La controlli e la emetti tu. La data è quella di oggi nel fuso dell'azienda. Emessa (o inviata), l'integrazione va nel registro IVA vendite e la ricevuta nel registro acquisti con la stessa IVA, alla data dell'integrazione: finché non c'è resta fra le «da integrare» del fisco.
 
 ## Il bollo virtuale
 
@@ -118,9 +120,9 @@ Nella pagina **Fatture elettroniche → Ricevute** si trascinano i file scaricat
 - la scadenza;
 - il codice tributo F24 (2521-2524).
 
-La funzione `bolloAnno(db, { D, P }, anno, ctx)` di `server/moduli/fatture.js` fa lo stesso per gli altri moduli, per esempio la parte fiscale.
+La funzione `bolloAnno(db, { D, P }, anno, ctx)` di `server/moduli/fatture.js` fa lo stesso per gli altri moduli. Il fisco usa la stessa regola (`bolloTrimestri` di `fatture-regole.js`) per le righe 2521-2524 dei suoi F24: la pagina Fatture e l'F24 dicono la stessa cifra con la stessa scadenza, in ogni regime.
 
-Le scadenze sono quelle della guida dell'Agenzia: 31 maggio, 30 settembre, 30 novembre e 28 febbraio (29 negli anni bisestili). Ci sono anche i rinvii per gli importi piccoli: se il 1° trimestre non supera 5.000 € si versa entro il 30 settembre, e se 1° e 2° insieme non li superano, entro il 30 novembre. Le scadenze che cadono di festa slittano, e Kubo non lo calcola.
+Le scadenze sono quelle della guida dell'Agenzia: 31 maggio, 30 settembre, 30 novembre e 28 febbraio (29 negli anni bisestili). Ci sono anche i rinvii per gli importi piccoli: se il 1° trimestre non supera 5.000 € si versa entro il 30 settembre, e se 1° e 2° insieme non li superano, entro il 30 novembre. Le scadenze che cadono di sabato, domenica o festa slittano al primo giorno lavorativo (art. 7 c. 1 lett. h DL 70/2011), con lo stesso calendario del fisco: il 31 maggio 2026 è domenica e diventa il 1° giugno.
 
 ## Un gestionale già installato
 

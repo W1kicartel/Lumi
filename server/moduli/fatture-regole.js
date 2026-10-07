@@ -5,6 +5,7 @@
 //   - una fattura emessa non si elimina: lascerebbe un buco nella numerazione;
 //   - buchiNumerazione() trova i numeri che mancano in una serie e in un anno (per esempio fatture riportate a mano).
 // Il modulo non registra rotte.
+import { lavorativo } from './fisco-regole.js';
 
 // i campi che si possono cambiare dopo l'emissione; i campi «si calcola da solo» li riscrive il server
 export const MODIFICABILI = new Set(['stato', 'pagata_il', 'note_interne', 'inviata_il', 'nome_documento', 'scaduta']);
@@ -64,6 +65,8 @@ export function bolloTrimestri(fatture, anno) {
   // i rinvii per gli importi piccoli
   if (t[0].importo && t[0].importo <= SOGLIA_RINVIO) t[0].scadenza = `${anno}-09-30`;
   if (t[0].importo + t[1].importo && t[0].importo + t[1].importo <= SOGLIA_RINVIO) { if (t[0].importo) t[0].scadenza = `${anno}-11-30`; if (t[1].importo) t[1].scadenza = `${anno}-11-30`; }
-  return t.map(x => ({ ...x, importo: x.importo / 100 }));
+  // una scadenza di sabato, domenica o festivo slitta al primo giorno lavorativo (art. 7 c. 1 lett. h DL 70/2011): la stessa
+  // regola delle altre scadenze del fisco, così F24 e pagina Fatture hanno la stessa data
+  return t.map(x => ({ ...x, scadenza: lavorativo(x.scadenza), importo: x.importo / 100 }));
 }
 const bisestile = a => (a % 4 === 0 && a % 100 !== 0) || a % 400 === 0;

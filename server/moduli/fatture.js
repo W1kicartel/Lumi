@@ -17,6 +17,7 @@ import { bolloTrimestri, buchiNumerazione } from './fatture-regole.js';
 import { tipoIntegrazione, PAESI_UE, AUTOFATTURE } from './fatture-codici.js';
 import { azienda } from './documenti.js';
 import * as A from '../automazioni.js';
+import { calcola } from '../formule.js';
 
 const RICEVUTE = 'fatture_ricevute', FATTURE = 'fatture';
 const MODELLO = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'modelli', 'fatture.json');
@@ -45,8 +46,8 @@ export default function registra({ r, prima, db, S, D, P, meta, serve, ErroreHtt
     return { anno, serie: buchiNumerazione(emesse(db, D, ctx).filter(f => String(f.data || '').startsWith(anno))) };
   });
   // quando l'interfaccia prepara i documenti per chi personalizza, il modello fatture si aggiorna da solo
-  prima('POST', '/api/documenti/prepara', ({ ctx }) => { if (ctx && P.puoSchema(ctx)) aggiornaModello(db, S, { utente: ctx.utente.id }); });
-  r('POST', '/api/fatture/aggiorna', ({ ctx }) => { if (!P.puoSchema(serve(ctx))) throw new P.ErrorePermesso('Solo chi può personalizzare il gestionale cambia questi dati'); return aggiornaModello(db, S, { utente: ctx.utente.id }); });
+  prima('POST', '/api/documenti/prepara', ({ ctx }) => { if (ctx && P.puoSchema(ctx)) aggiornaModello(db, S, { utente: ctx.utente.id, D }); });
+  r('POST', '/api/fatture/aggiorna', ({ ctx }) => { if (!P.puoSchema(serve(ctx))) throw new P.ErrorePermesso('Solo chi può personalizzare il gestionale cambia questi dati'); return aggiornaModello(db, S, { utente: ctx.utente.id, D }); });
 }
 
 // le fatture emesse visibili all'utente (con i suoi permessi), senza le righe
@@ -75,7 +76,9 @@ export function importa(db, { S, D, meta }, nome, dati, ctx) {
     const gia = db.prepare(`SELECT id FROM d_${RICEVUTE} WHERE archiviato = 0 AND c_fornitore = ? AND c_numero = ? AND c_data = ?`).get(fornitore.id, f.numero, f.data);
     if (gia) { saltate.push({ id: gia.id, numero: f.numero }); return; }
     const valori = { fornitore: fornitore.id, tipo: f.tipo, numero: f.numero, data: f.data, imponibile: f.imponibile, imposta: f.imposta, totale: f.totale, ritenuta: f.ritenuta,
-      netto: f.netto, scadenza: f.scadenza, modalita: f.modalita, iban: f.iban, inversione: f.inversione, file: String(nome || '').slice(0, 200), note: f.causale.slice(0, 2000),
+      netto: f.netto, scadenza: f.scadenza, modalita: f.modalita, iban: f.iban, inversione: f.inversione,
+      // l'aliquota per il registro IVA acquisti del fisco, quando la fattura ne ha una sola
+      aliquota: new Set(f.riepilogo.map(r => r.aliquota)).size === 1 ? f.riepilogo[0].aliquota : null, file: String(nome || '').slice(0, 200), note: f.causale.slice(0, 2000),
       nome_documento: `${f.numero} · ${letta.fornitore.nome}`.slice(0, 200) };
     for (const k of Object.keys(valori)) if (!haCampo(k) || valori[k] == null || valori[k] === '') delete valori[k];
     const riga = D.crea(db, RICEVUTE, valori, ctx);
@@ -113,7 +116,7 @@ export function integrazione(db, { S, D, P, ErroreHttp }, id, { tipo = null, ali
   const righe = (gruppi.length ? gruppi : [{ imponibile: Number(ric.imponibile) || 0 }]).map(g => ({
     descrizione: `Integrazione della fattura ${ric.numero} del ${String(ric.data).split('-').reverse().join('/')}${g.natura ? ` (${g.natura})` : ''}`, quantita: 1, prezzo: g.imponibile, aliquota: Number(aliquota) }));
   const fdef = S.leggi(db, FATTURE);
-  const valori = { tipo: t, serie: 'AF', fornitore: forn.id, ricevuta: ric.id, data: new Date().toISOString().slice(0, 10), riferimento: `${ric.numero} · ${forn.nome || ''}`.slice(0, 200), righe };
+  const valori = { tipo: t, serie: 'AF', fornitore: forn.id, ricevuta: ric.id, data: calcola('OGGI()', {}), riferimento: `${ric.numero} · ${forn.nome || ''}`.slice(0, 200), righe };
   for (const k of Object.keys(valori)) if (!S.campo(fdef, k) || S.campo(fdef, k).archiviato) delete valori[k];
   const nuova = D.crea(db, FATTURE, valori, ctx);
   D.modifica(db, RICEVUTE, ric.id, { integrata: nuova.id }, ctx);
@@ -123,7 +126,10 @@ export function integrazione(db, { S, D, P, ErroreHttp }, id, { tipo = null, ali
 // ---------- un gestionale già installato prende i campi nuovi del modello ----------
 // Si aggiunge e basta: entità e campi mancanti, opzioni mancanti delle scelte; il prezzo delle righe passa da valuta (centesimi)
 // a numero (fino a 8 decimali, i valori si convertono); i conti che ora scrive il server diventano campi veri.
-export function aggiornaModello(db, S, { utente = null } = {}) {
+// Con D: le «Fatture ricevute» che il modulo fisco creava da solo prima dell'unione (fornitore scritto come testo, con
+// «piva_fornitore» a fianco) diventano la sezione unica: il fornitore passa alla relazione verso «Fornitori» (cercato per
+// partita IVA o per nome, creato se manca) e i campi del fisco restano con i loro valori.
+export function aggiornaModello(db, S, { utente = null, D = null } = {}) {
   const m = JSON.parse(readFileSync(MODELLO, 'utf8')), fatto = [];
   if (!S.leggi(db, FATTURE)) return { fatto };   // il modello fatture non c'è: si aggiunge da Personalizza
   // le sezioni che mancano entrano tutte insieme (fatture ↔ fatture_ricevute si citano a vicenda), con le loro automazioni
@@ -132,6 +138,7 @@ export function aggiornaModello(db, S, { utente = null } = {}) {
     S.applicaTutte(db, nuove, { utente }); fatto.push(...nuove.map(e => e.id));
     for (const a of m.automazioni || []) if (nuove.some(e => e.id === a.entita)) A.salva(db, a, { utente });
   }
+  const daFisco = !!D && ricevuteDelFisco(db, S, D);
   for (const e of m.entita) {
     if (nuove.includes(e)) continue;
     const v = S.leggi(db, e.id);
@@ -145,8 +152,10 @@ export function aggiornaModello(db, S, { utente = null } = {}) {
       const tipoNuovo = (e.id === 'righe_fattura' && c.id === 'prezzo' && c.tipo === 'valuta') || (e.id === FATTURE && c.id === 'importo_ritenuta' && c.tipo === 'calcolato');
       if (tipoNuovo || (c.tipo === 'calcolato' && n.tipo === 'calcolato' && ['imponibile', 'netto', 'totale', 'scaduta'].includes(c.id) && c.formula !== n.formula)) { Object.assign(x, n); delete x.formula; if (n.formula) x.formula = n.formula; cambiato = true; }
       if (e.id === FATTURE && c.id === 'cliente' && c.obbligatorio) { delete x.obbligatorio; cambiato = true; }
+      if (daFisco && e.id === RICEVUTE && c.id === 'fornitore' && c.tipo !== n.tipo) { Object.assign(x, n); cambiato = true; }
       return x;
     });
+    if (daFisco && e.id === RICEVUTE && def.titolo !== e.titolo) { def.titolo = e.titolo; cambiato = true; }
     const mancanti = e.campi.filter(n => !def.campi.some(c => c.id === n.id));
     if (mancanti.length) { def.campi.push(...mancanti); cambiato = true; }
     const ritenutaNuova = e.id === FATTURE && v.campi.some(c => c.id === 'importo_ritenuta' && c.tipo === 'calcolato');
@@ -158,7 +167,28 @@ export function aggiornaModello(db, S, { utente = null } = {}) {
     // con cui sono uscite (la formula di prima; il prezzo è già passato a euro con 8 decimali), le bozze lo ricalcolano alla prossima modifica
     if (ritenutaNuova) db.prepare(`UPDATE d_${FATTURE} SET c_importo_ritenuta = (SELECT CAST(ROUND(IFNULL(SUM(ROUND(IFNULL(r.c_quantita, 1) * IFNULL(r.c_prezzo, 0) * (1 - IFNULL(r.c_sconto, 0) / 100.0) * 100, 0)), 0) * IFNULL(d_${FATTURE}.c_ritenuta, 0) / 100.0) AS INTEGER) FROM d_righe_fattura r WHERE r.c_fattura = d_${FATTURE}.id AND r.archiviato = 0)`).run();
   }
+  // il nome del documento (il titolo della sezione unica) per le righe che venivano dal fisco
+  if (daFisco) db.prepare(`UPDATE d_${RICEVUTE} SET c_nome_documento = SUBSTR(IFNULL(c_numero, '') || ' · ' || IFNULL((SELECT c_nome FROM d_fornitori f WHERE f.id = d_${RICEVUTE}.c_fornitore), ''), 1, 200) WHERE IFNULL(c_nome_documento, '') = ''`).run();
   return { fatto };
+}
+
+// le fatture ricevute col fornitore scritto a mano (la sezione che il fisco creava prima dell'unione): i valori diventano
+// l'id del fornitore, così il cambio di tipo testo → relazione non perde niente. Vero se la sezione era quella del fisco.
+function ricevuteDelFisco(db, S, D) {
+  const v = S.leggi(db, RICEVUTE), c = v && !v.archiviata && S.campo(v, 'fornitore');
+  if (!c || c.tipo !== 'testo' || !S.leggi(db, 'fornitori')) return false;
+  const conPiva = v.campi.some(x => x.id === 'piva_fornitore');
+  const righe = db.prepare(`SELECT id, c_fornitore AS nome, ${conPiva ? 'c_piva_fornitore' : 'NULL'} AS piva FROM d_${RICEVUTE} WHERE IFNULL(c_fornitore, '') <> ''`).all();
+  const trovati = new Map();
+  for (const r of righe) {
+    const piva = pulito(r.piva).replace(/^IT/, ''), k = `${piva}|${String(r.nome).trim().toLowerCase()}`;
+    if (!trovati.has(k)) {
+      const perNome = !piva && db.prepare('SELECT id FROM d_fornitori WHERE archiviato = 0 AND LOWER(TRIM(c_nome)) = ?').get(String(r.nome).trim().toLowerCase());
+      trovati.set(k, perNome ? perNome.id : fornitoreDi(db, { S, D }, { nome: String(r.nome).trim(), piva, codice_fiscale: '', paese: 'IT' }, null).id);
+    }
+    db.prepare(`UPDATE d_${RICEVUTE} SET c_fornitore = ? WHERE id = ?`).run(trovati.get(k), r.id);
+  }
+  return true;
 }
 
 // le etichette della vista della fattura ricevuta, nelle sei lingue

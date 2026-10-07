@@ -99,8 +99,11 @@ const lista = v => (Array.isArray(v) ? v : [v]).flat(Infinity).filter(x => x != 
 const giorno = v => { if (v == null || v === '') return null; const d = new Date(String(v).length === 10 ? v + 'T00:00:00Z' : v); return isNaN(d) ? null : d; };
 const isoGiorno = d => d.toISOString().slice(0, 10);
 // OGGI() è il giorno nel fuso dell'azienda, non in quello UTC (a mezzanotte e mezza in Italia è già domani). Il server e il
-// browser impostano orologio.fuso dall'impostazione dell'azienda; senza (i test del motore), il giorno UTC come prima.
-export const orologio = { fuso: null };
+// browser impostano orologio.fuso dall'impostazione dell'azienda. Prima che lo facciano (test, script, import) vale lo stesso
+// predefinito dell'impostazione «fuso» e del calendario (agenda-aggregati.js FUSO): Europe/Rome. Con UTC qui e Europe/Rome là,
+// fra mezzanotte e le due di notte «@oggi» dei dati d'esempio era già domani mentre OGGI() delle formule era ancora ieri.
+// fuso: null torna al giorno UTC.
+export const orologio = { fuso: 'Europe/Rome' };
 const giornoLocale = d => { if (!orologio.fuso) return isoGiorno(d); try { return new Intl.DateTimeFormat('en-CA', { timeZone: orologio.fuso, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d); } catch { return isoGiorno(d); } };
 
 export const FUNZIONI = {

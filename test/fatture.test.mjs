@@ -100,9 +100,10 @@ test('numerazione: i buchi per serie e anno; il bollo per trimestre con scadenze
   const t = bolloTrimestri([f('2026-01-10'), f('2026-02-10'), f('2026-05-10'), f('2026-08-01'), f('2026-11-30'), f('2026-12-01', false), f('2026-12-02', true, 'annullata'), f('2025-12-31')], 2026);
   assert.deepEqual(t.map(x => [x.fatture, x.importo, x.tributo]), [[2, 4, '2521'], [1, 2, '2522'], [1, 2, '2523'], [1, 2, '2524']]);
   // piccoli importi: il 1° e il 2° trimestre si versano entro il 30 novembre (art. 17 DL 124/2019, guida AdE 2024)
-  assert.deepEqual(t.map(x => x.scadenza), ['2026-11-30', '2026-11-30', '2026-11-30', '2027-02-28']);
+  // 28/02/2027 è domenica: slitta a lunedì 1° marzo, come le altre scadenze del fisco (art. 7 c. 1 lett. h DL 70/2011)
+  assert.deepEqual(t.map(x => x.scadenza), ['2026-11-30', '2026-11-30', '2026-11-30', '2027-03-01']);
   assert.equal(bolloTrimestri([], 2027)[3].scadenza, '2028-02-29');   // anno bisestile
-  assert.equal(bolloTrimestri(Array.from({ length: 2600 }, () => f('2026-02-01')), 2026)[0].scadenza, '2026-05-31');   // 5.200 €: niente rinvio
+  assert.equal(bolloTrimestri(Array.from({ length: 2600 }, () => f('2026-02-01')), 2026)[0].scadenza, '2026-06-01');   // 5.200 €: niente rinvio; il 31/05/2026 è domenica
 });
 
 // ---------- le fatture ricevute ----------
