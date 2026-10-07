@@ -89,7 +89,7 @@ async function persone(k) {
   return h('section.foglio', h('h2', 'Persone'), l.length ? h('div.sic-scorri', h('table.tabella.sic-tabella', h('thead', h('tr', h('th', 'Nome'), h('th', 'Ruolo'), h('th', ''), h('th', ''))),
     h('tbody', l.map(u => h('tr', h('td', u.nome), h('td', nomi.get(u.ruolo) || u.ruolo),
       h('td', h('button.btn.piccolo.nudo', { on: { click: azione(u, { cambioObbligatorio: true }, `${u.nome} cambierà la password al prossimo accesso`) } }, 'Obbliga a cambiare password')),
-      h('td', h('button.btn.piccolo.nudo', { on: { click: azione(u, { esciOvunque: true }, `${u.nome} è stato scollegato ovunque`) } }, 'Scollega ovunque'))))))) : h('p.nota', 'Nessun\'altra persona.'));
+      h('td', h('button.btn.piccolo.nudo', { on: { click: azione(u, { esciOvunque: true }, `Sessioni di ${u.nome} chiuse su tutti i dispositivi`) } }, 'Scollega ovunque'))))))) : h('p.nota', 'Nessun\'altra persona.'));
 }
 
 export default {

@@ -58,9 +58,11 @@ export function invia(url, { metodo = 'POST', intestazioni = {}, corpo = '', ms 
       const pezzi = []; let n = 0;
       rs.on('data', x => { if (n < 4096) { pezzi.push(x); n += x.length; } });
       rs.on('end', () => ok({ status: rs.statusCode, testo: Buffer.concat(pezzi).toString('utf8') }));
-      rs.on('error', ko);
+      rs.on('error', ko); rs.on('aborted', () => ko(Object.assign(new Error('Tempo scaduto'), { code: 'TEMPO' })));
     });
-    rq.on('timeout', () => rq.destroy(Object.assign(new Error('Tempo scaduto'), { code: 'TEMPO' })));
+    // «timeout» conta solo il silenzio: un ricevitore che manda un byte ogni tanto terrebbe ferma la coda. Anche un limite totale
+    const scaduto = () => rq.destroy(Object.assign(new Error('Tempo scaduto'), { code: 'TEMPO' })), tutto = setTimeout(scaduto, ms);
+    rq.on('timeout', scaduto); rq.on('close', () => clearTimeout(tutto));
     rq.on('error', ko);
     rq.end(corpo);
   });

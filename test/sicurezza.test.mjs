@@ -158,6 +158,23 @@ test('campi nascosti: i calcolati che li usano, l\'ordinamento e la storia non l
   } finally { k.chiudi(); }
 });
 
+test('campi nascosti a catena e sezioni non leggibili: i calcolati che ne dipendono si nascondono', async () => {
+  const k = await avvia(), a = k.browser(), b = k.browser();
+  try {
+    await k.t('PUT', '/api/ruoli/cassa', { nome: 'Cassa', entita: { '*': { leggi: true, crea: true, modifica: true }, righe_vendita: { campi: { prezzo: 'nascosto' } } } });
+    await k.t('PUT', '/api/ruoli/conta', { nome: 'Conta', entita: { '*': { leggi: true }, righe_vendita: { leggi: false } } });
+    await k.t('POST', '/api/utenti', { nome: 'Anna', email: 'a@prova.it', password: 'password-anna', ruolo: 'cassa' });
+    await k.t('POST', '/api/utenti', { nome: 'Bruno', email: 'b@prova.it', password: 'password-bruno', ruolo: 'conta' });
+    await a.accedi('a@prova.it', 'password-anna'); await b.accedi('b@prova.it', 'password-bruno');
+    const campi = async (x, e) => (await x.chiama('GET', '/api/schema')).json.find(d => d.id === e)?.campi.map(c => c.id) || [];
+    // prezzo nascosto → il totale della riga (quantità × prezzo) → il totale della vendita: tutti nascosti; i pezzi no
+    assert.ok(!(await campi(a, 'righe_vendita')).includes('totale'));
+    const va = await campi(a, 'vendite'); assert.ok(!va.includes('totale') && va.includes('pezzi'));
+    // chi non legge le righe non ne vede neanche le somme
+    const vb = await campi(b, 'vendite'); assert.ok(!vb.includes('totale') && !vb.includes('pezzi'));
+  } finally { k.chiudi(); }
+});
+
 test('webhook: niente rete interna (SSRF), salvo opzione esplicita', async () => {
   for (const ip of ['127.0.0.1', '10.1.2.3', '172.16.0.1', '192.168.1.10', '169.254.169.254', '0.0.0.0', '::1', 'fd00::1', 'fe80::1', '::ffff:127.0.0.1', '::ffff:7f00:1', '::ffff:a9fe:a9fe', '0:0:0:0:0:0:0:1', '100.64.0.1']) assert.equal(interno(ip), true, ip);
   for (const ip of ['8.8.8.8', '151.101.1.69', '2a00:1450:4002::1', '::ffff:808:808']) assert.equal(interno(ip), false, ip);
