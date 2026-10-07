@@ -350,4 +350,7 @@ export default {
   'moduli.api-firma': "Come verificare la firma",
   'moduli.lumi-dv-ferme': "{sezione}: ferme su «{stato}» da più di una settimana",
   'moduli.lumi-dv-oltre': "{sezione} oltre «{campo}»",
+  'moduli.ag-niente': "Niente da segnalare.",
+  'moduli.doc-prepara-chiedi': "Per la fattura elettronica servono alcuni campi in «{nome}»: codice destinatario, PEC, via, CAP, comune e provincia. L'indirizzo scritto finora si divide in questi campi; quello vecchio resta archiviato. Li aggiungo adesso?",
+  'moduli.doc-prepara-fatto': "Clienti pronti per la fattura elettronica",
 };

@@ -349,4 +349,7 @@ export default {
   'moduli.api-firma': "Como verificar a assinatura",
   'moduli.lumi-dv-ferme': "{sezione}: paradas em «{stato}» há mais de uma semana",
   'moduli.lumi-dv-oltre': "{sezione}: «{campo}» já passou",
+  'moduli.ag-niente': "Nada a relatar.",
+  'moduli.doc-prepara-chiedi': "A nota fiscal eletrônica precisa de alguns campos em “{nome}”: código do destinatário, PEC, rua, CEP, município e província. O endereço escrito até agora é dividido nesses campos; o antigo fica arquivado. Adiciono agora?",
+  'moduli.doc-prepara-fatto': "Clientes prontos para a nota fiscal eletrônica",
 };

@@ -53,8 +53,11 @@ export const DOMANDE = [
 export const tipiche = settore => ({ settore, persone: 'solo', lumi: true, esempi: true, ...(SETTORI.find(s => s.id === settore) || SETTORI.at(-1)).tipico });
 
 // ---------- il piano ----------
-const entitaDi = m => (m.entita ? M.leggi(m.id).entita.filter(e => m.entita.includes(e.id)) : M.leggi(m.id).entita);
-export function piano(risposte = {}) {
+// il modello con i ritocchi (server/moduli/lingue.js: i nomi nella lingua dell'azienda); senza db, quello del file
+const modello = (id, db = null) => { let m = M.leggi(id); if (db) for (const f of M.ritocchi) m = f(m, db) || m; return m; };
+const entitaDi = (m, db = null) => (m.entita ? modello(m.id, db).entita.filter(e => m.entita.includes(e.id)) : modello(m.id, db).entita);
+// db (facoltativo) serve solo per i nomi nella lingua dell'azienda: il piano non scrive niente
+export function piano(risposte = {}, db = null) {
   const st = SETTORI.find(s => s.id === risposte.settore) || SETTORI.at(-1);
   const r = { ...tipiche(st.id), ...Object.fromEntries(Object.entries(risposte).filter(([, v]) => v !== undefined && v !== null)) };
   const si = k => r[k] === true || r[k] === 'si';
@@ -71,22 +74,23 @@ export function piano(risposte = {}) {
     prodotti: r.offerta === 'servizi', servizi: r.offerta === 'prodotti' };
   for (const m of modelli) for (const [k, x] of Object.entries(M.leggi(m.id).interruttori || {})) if (no[k]) { spenti.entita.push(...(x.entita || [])); spenti.campi.push(...(x.campi || [])); }
   // ruoli: quelli del settore e quelli di base; le persone con un ruolo che non c'è diventano collaboratori
-  const ruoli = M.leggi(st.modello).ruoli || [];
+  const ruoli = modello(st.modello, db).ruoli || [];
   const idRuoli = new Set([...P.RUOLI_BASE.map(x => x.id), ...ruoli.map(x => x.id)]); idRuoli.delete('titolare');
   const persone = r.persone === 'solo' ? [] : (Array.isArray(r.squadra) ? r.squadra : []).slice(0, 30)
     .map(p => ({ nome: String(p?.nome || '').trim().slice(0, 80), email: String(p?.email || '').trim().toLowerCase().slice(0, 120), ruolo: idRuoli.has(p?.ruolo) ? p.ruolo : 'collaboratore' }))
     .filter(p => p.nome && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(p.email));
   const pl = { settore: st.id, modelli, spenti: { entita: [...new Set(spenti.entita)], campi: [...new Set(spenti.campi)] }, ruoli, persone, lumi: si('lumi'), esempi: si('esempi') };
-  return { ...pl, sezioni: costruisci(pl).defs.filter(e => !e.nascosta).map(e => e.nome) };
+  return { ...pl, sezioni: costruisci(pl, null, db).defs.filter(e => !e.nascosta).map(e => e.nome) };
 }
 
 // ---------- dal piano alle definizioni: unione dei modelli, sezioni spente, campi archiviati ----------
-function costruisci(pl, db = null) {
+// dbLingua: da dove leggere la lingua dell'azienda per i nomi (di solito lo stesso db)
+function costruisci(pl, db = null, dbLingua = db) {
   const spente = new Set(pl.spenti.entita), spenti = new Set(pl.spenti.campi);
   const tutte = new Map(), automazioni = [];
   for (const m of pl.modelli) {
-    const mod = M.leggi(m.id);
-    for (const e of entitaDi(m)) {
+    const mod = modello(m.id, dbLingua);
+    for (const e of entitaDi(m, dbLingua)) {
       if (spente.has(e.id) || (db && S.leggi(db, e.id))) continue;
       const g = tutte.get(e.id);
       if (!g) tutte.set(e.id, structuredClone(e));
@@ -177,7 +181,7 @@ export function cruscotto(db) {
   const usabile = x => { const d = S.leggi(db, x.entita); return !!d && !d.archiviata && [x.campo, x.campoData, ...(x.filtri || []).map(f => f.campo)].filter(Boolean).every(id => attivo(d, id)); };
   const propri = [], voci = [];
   for (const id of JSON.parse(meta.leggi(db, 'modelli') || '[]')) {
-    let m; try { m = M.leggi(id); } catch { continue; }
+    let m; try { m = modello(id, db); } catch { continue; }
     propri.push(...(m.cruscotto?.widget || []).filter(usabile)); voci.push(...(m.cruscotto?.attenzione || []).filter(usabile));
   }
   let base = predefinito(db, S);

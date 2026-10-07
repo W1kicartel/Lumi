@@ -380,7 +380,7 @@ function grafico(w, d) {
 function scala(max) { const p = 10 ** Math.floor(Math.log10(max / 3)), n = max / 3 / p; return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * p; }
 
 function attenzione(d) {
-  if (!d.voci?.length) return h('div.nota', 'Niente da segnalare.');
+  if (!d.voci?.length) return h('div.nota', t('moduli.ag-niente'));
   const tutto = d.voci.every(v => !v.totale);
   if (tutto) return h('div.cr-tutto-ok', t('moduli.ag-tutto-ok'));
   return h('ul.cr-attenzione', d.voci.filter(v => v.totale).map(v => h('li',
@@ -403,5 +403,5 @@ function ultime(d) {
   // «5 min fa», «5 min ago», «hace 5 min»… dal formato della lingua (Intl.RelativeTimeFormat)
   const rel = new Intl.RelativeTimeFormat(locale(), { style: 'short' });
   const quando = q => { const m = Math.round((Date.now() - new Date(q)) / 6e4); return m < 1 ? t('moduli.ag-adesso') : m < 60 ? rel.format(-m, 'minute') : m < 24 * 60 ? rel.format(-Math.round(m / 60), 'hour') : new Date(q).toLocaleDateString(locale(), { day: 'numeric', month: 'short' }); };
-  return h('ul.cr-ultime', d.voci.map(v => h('li', h('span', h('b', v.chi), ` ${verbo[v.tipo] || v.tipo} `, h('a', { href: `#/e/${v.entita}/${v.riga}`, testo: v.titolo || t('moduli.ag-un-elemento') }), h('span.nota', ' ', t('moduli.ag-in-sezione', { nome: minuscole(v.nomeEntita) }))), h('span.nota', quando(v.quando)))));
+  return h('ul.cr-ultime', d.voci.map(v => h('li', h('span', h('b', v.automatica ? t('viste.automazione') : v.chi), ` ${verbo[v.tipo] || v.tipo} `, h('a', { href: `#/e/${v.entita}/${v.riga}`, testo: v.titolo || t('moduli.ag-un-elemento') }), h('span.nota', ' ', t('moduli.ag-in-sezione', { nome: minuscole(v.nomeEntita) }))), h('span.nota', quando(v.quando)))));
 }

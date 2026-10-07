@@ -32,6 +32,7 @@
 .avvio-chip .vuota { border-style: dashed; color: var(--tenue); }
 .avvio-dettagli { margin: 0; padding-left: 18px; color: var(--tenue); font-size: 13.5px; } .avvio-dettagli li { margin: 2px 0; }
 .avvio-griglia { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 16px; } .avvio-griglia .largo { grid-column: 1 / -1; }
+.avvio-lingua { margin-top: 16px; }
 .avvio-consegne td { white-space: normal; }
 
 /* il giro guidato */

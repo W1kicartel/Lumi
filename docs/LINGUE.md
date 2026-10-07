@@ -41,7 +41,7 @@ In **Lingua e valuta** chi può personalizzare sceglie:
 - **la lingua dei modelli nuovi**: i modelli installati da lì in poi arrivano con i nomi in quella lingua;
 - **la valuta** (EUR predefinito, USD, GBP, CHF, BRL, MXN e altre): cambia solo come si mostrano gli importi, non i valori salvati.
 
-Nella prima pagina le due cose si scelgono prima di creare il titolare. La lingua è quella della pagina e la valuta è proposta dal paese del browser (en-US → USD, pt-BR → BRL, de-CH → CHF). Prima del primo avvio `PUT /api/lingua/azienda` è aperto a tutti, perché non c'è ancora nessun utente. Dopo serve il potere di personalizzare.
+Nella prima pagina le due cose si scelgono prima di creare il titolare. La lingua è quella della pagina e la valuta è proposta dal paese del browser (en-US → USD, pt-BR → BRL, de-CH → CHF). Nell'avvio guidato (`web/moduli/avvio.js`) la lingua e la valuta stanno nella prima schermata, accanto al nome dell'attività. Prima del primo avvio `PUT /api/lingua/azienda` è aperto a tutti, perché non c'è ancora nessun utente, ma da un altro computer chiede il codice di avvio come `/api/configura`. Dopo serve il potere di personalizzare.
 
 ## Come si scrive un testo
 
@@ -87,7 +87,7 @@ Prima che la risposta parta, un aggancio di `api.js` (`suErrore`) passa il corpo
 
 ## I modelli
 
-I nomi tradotti stanno in `modelli/lingue/<codice>.json`: modello, descrizione, entità, campi, opzioni e automazioni, per id. Gli id non cambiano mai. `M.ritocchi` (in `server/modelli.js`) applica i nomi della lingua dell'azienda al momento dell'installazione. `GET /api/lingua/modelli?l=<codice>` dà i nomi tradotti alla prima pagina.
+I nomi tradotti stanno in `modelli/lingue/<codice>.json`: modello, descrizione, entità, campi, opzioni, automazioni e ruoli per id, più i titoli del cruscotto del modello (`cruscotto`, per titolo italiano). Gli id non cambiano mai. `M.ritocchi` (in `server/modelli.js`) applica i nomi della lingua dell'azienda al momento dell'installazione. Anche l'avvio guidato (`server/moduli/avvio-piano.js`) passa da `M.ritocchi`: il riepilogo, le sezioni, i ruoli e il cruscotto nascono nella lingua dell'azienda. Le domande dell'avvio arrivano dal server in italiano e l'interfaccia le traduce per id (`avvio.d-<id>`, `avvio.o-<id>-<opzione>`). `GET /api/lingua/modelli?l=<codice>` dà i nomi tradotti alla prima pagina.
 
 Il cruscotto predefinito nasce con i titoli in italiano. Nell'interfaccia si vedono tradotti finché nessuno li cambia (`nomeW` in `web/moduli/agenda.js`).
 
@@ -130,6 +130,7 @@ Valgono anche CONTA, VUOTO, ARROTONDA, CONCATENA, MAIUSCOLO, MINUSCOLO, LUNGHEZZ
 
 Tutte le schermate sono tradotte, compresi documenti, import ed export e **API e integrazioni**; gli esempi di codice (curl, verifica della firma) restano come sono. I loro messaggi d'errore dal server invece sono già tradotti. L'import accetta numeri nei due formati («1.234,50» e «1,234.50»), ma le date solo con il giorno prima («31/12/2026») e il sì/no come «sì», «yes», «1», «x». Restano in italiano anche:
 
-- gli avvisi delle automazioni (`ev.testo`);
-- le stampe dei documenti;
+- gli avvisi delle automazioni (`ev.testo`); quelli fissi dei moduli arrivano con una `chiave` e si traducono (`web/app.js`);
+- nelle stampe le diciture di legge della fattura elettronica italiana e il formato degli importi; i testi predefiniti del modello di stampa (colonne, totali, riepilogo IVA) sono invece nella lingua dell'azienda (`server/moduli/documenti-stampa.js`), e un modello già personalizzato resta com'è;
+- l'avviso di un backup non riuscito e l'esito del controllo delle versioni (testi salvati dal server);
 - il contesto che l'interfaccia manda a Lumi (sono dati per il modello, che li capisce comunque).

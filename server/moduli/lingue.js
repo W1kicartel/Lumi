@@ -82,7 +82,11 @@ export function traduciModello(m, lingua) {
     entita: m.entita.map(e => { const te = n.entita?.[e.id]; if (!te) return e;
       return { ...e, nome: te.nome ?? e.nome, campi: e.campi.map(c => { const tc = te.campi?.[c.id]; if (!tc) return c;
         return { ...c, nome: nomeDi(tc) ?? c.nome, ...(c.opzioni && tc.opzioni ? { opzioni: c.opzioni.map(o => ({ ...o, nome: tc.opzioni[o.id] ?? o.nome })) } : {}) }; }) }; }),
-    automazioni: (m.automazioni || []).map(a => ({ ...a, nome: n.automazioni?.[a.id] ?? a.nome })) };
+    automazioni: (m.automazioni || []).map(a => ({ ...a, nome: n.automazioni?.[a.id] ?? a.nome })),
+    // i ruoli per id; i titoli del cruscotto (widget e «cosa richiede attenzione») per il titolo italiano
+    ...(m.ruoli ? { ruoli: m.ruoli.map(r => ({ ...r, nome: n.ruoli?.[r.id] ?? r.nome })) } : {}),
+    ...(m.cruscotto ? { cruscotto: { ...m.cruscotto, ...Object.fromEntries(['widget', 'attenzione'].filter(k => Array.isArray(m.cruscotto[k]))
+      .map(k => [k, m.cruscotto[k].map(w => ({ ...w, titolo: n.cruscotto?.[w.titolo] ?? w.titolo }))])) } } : {}) };
 }
 
 const ritoccoModelli = (m, db) => traduciModello(m, meta.leggi(db, 'lingue.azienda') || 'it');

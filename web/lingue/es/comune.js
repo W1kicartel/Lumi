@@ -35,4 +35,6 @@ export default {
   'comune.togli': 'Quitar',
   'comune.cerca': 'Buscar…',
   'comune.carico': 'Cargando…',
+  'comune.avviso-esempi-aggiunti': "Datos de ejemplo añadidos",
+  'comune.avviso-esempi-tolti': "Datos de ejemplo eliminados",
 };

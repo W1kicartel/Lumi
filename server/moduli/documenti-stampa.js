@@ -14,8 +14,33 @@ export function singolare(nome) {
   return [s, ...resto].join(' ');
 }
 
-// il modello che si usa finché il titolare non lo cambia, ricavato dallo schema dell'entità
-export function modelloPredefinito(def, schema) {
+// i testi fissi della stampa nella lingua dell'azienda (meta «lingue.azienda», server/moduli/lingue.js). Le diciture di
+// legge della fattura elettronica italiana (forfettario, bollo) restano in italiano: valgono solo in Italia.
+const TESTI = {
+  it: { numero: 'Numero', data: 'Data', scadenza: 'Scadenza', riferimento: 'Riferimento', descrizione: 'Descrizione', quantita: 'Q.tà', prezzo: 'Prezzo', sconto: 'Sconto', iva: 'IVA', importo: 'Importo',
+    fornitore: 'Fornitore', destinatario: 'Spett.le', n: 'n.', bozza: 'bozza', entro: 'entro il', piva: 'P.IVA', cf: 'C.F.', codiceDest: 'Codice destinatario',
+    imponibile: 'Imponibile', imposta: 'Imposta', ritenuta: 'Ritenuta d\'acconto', netto: 'Netto a pagare', totale: 'Totale', riepilogo: 'Riepilogo IVA', note: 'Note', pagamento: 'Pagamento' },
+  en: { numero: 'Number', data: 'Date', scadenza: 'Due date', riferimento: 'Reference', descrizione: 'Description', quantita: 'Qty', prezzo: 'Price', sconto: 'Discount', iva: 'VAT', importo: 'Amount',
+    fornitore: 'Supplier', destinatario: 'To', n: 'no.', bozza: 'draft', entro: 'by', piva: 'VAT no.', cf: 'Tax code', codiceDest: 'Recipient code',
+    imponibile: 'Taxable amount', imposta: 'Tax', ritenuta: 'Withholding tax', netto: 'Net to pay', totale: 'Total', riepilogo: 'VAT summary', note: 'Notes', pagamento: 'Payment' },
+  es: { numero: 'Número', data: 'Fecha', scadenza: 'Vencimiento', riferimento: 'Referencia', descrizione: 'Descripción', quantita: 'Cant.', prezzo: 'Precio', sconto: 'Descuento', iva: 'IVA', importo: 'Importe',
+    fornitore: 'Proveedor', destinatario: 'Destinatario', n: 'n.º', bozza: 'borrador', entro: 'antes del', piva: 'NIF-IVA', cf: 'NIF', codiceDest: 'Código de destinatario',
+    imponibile: 'Base imponible', imposta: 'Cuota', ritenuta: 'Retención', netto: 'Total a pagar', totale: 'Total', riepilogo: 'Resumen de IVA', note: 'Notas', pagamento: 'Pago' },
+  fr: { numero: 'Numéro', data: 'Date', scadenza: 'Échéance', riferimento: 'Référence', descrizione: 'Désignation', quantita: 'Qté', prezzo: 'Prix', sconto: 'Remise', iva: 'TVA', importo: 'Montant',
+    fornitore: 'Fournisseur', destinatario: 'À l\'attention de', n: 'n°', bozza: 'brouillon', entro: 'avant le', piva: 'N° TVA', cf: 'N° fiscal', codiceDest: 'Code destinataire',
+    imponibile: 'Total HT', imposta: 'TVA', ritenuta: 'Retenue à la source', netto: 'Net à payer', totale: 'Total TTC', riepilogo: 'Récapitulatif TVA', note: 'Notes', pagamento: 'Paiement' },
+  de: { numero: 'Nummer', data: 'Datum', scadenza: 'Fällig am', riferimento: 'Referenz', descrizione: 'Beschreibung', quantita: 'Menge', prezzo: 'Preis', sconto: 'Rabatt', iva: 'MwSt.', importo: 'Betrag',
+    fornitore: 'Lieferant', destinatario: 'An', n: 'Nr.', bozza: 'Entwurf', entro: 'bis', piva: 'USt-IdNr.', cf: 'Steuernr.', codiceDest: 'Empfängercode',
+    imponibile: 'Nettobetrag', imposta: 'Steuer', ritenuta: 'Quellensteuer', netto: 'Zahlbetrag', totale: 'Gesamt', riepilogo: 'MwSt.-Übersicht', note: 'Hinweise', pagamento: 'Zahlung' },
+  pt: { numero: 'Número', data: 'Data', scadenza: 'Vencimento', riferimento: 'Referência', descrizione: 'Descrição', quantita: 'Qtd.', prezzo: 'Preço', sconto: 'Desconto', iva: 'Imposto', importo: 'Valor',
+    fornitore: 'Fornecedor', destinatario: 'Para', n: 'nº', bozza: 'rascunho', entro: 'até', piva: 'CNPJ', cf: 'CPF', codiceDest: 'Código do destinatário',
+    imponibile: 'Base de cálculo', imposta: 'Imposto', ritenuta: 'Retenção na fonte', netto: 'Líquido a pagar', totale: 'Total', riepilogo: 'Resumo dos impostos', note: 'Observações', pagamento: 'Pagamento' },
+};
+export const testiStampa = lingua => TESTI[lingua] || TESTI.it;
+
+// il modello che si usa finché il titolare non lo cambia, ricavato dallo schema dell'entità, nella lingua dell'azienda
+export function modelloPredefinito(def, schema, lingua = 'it') {
+  const L = testiStampa(lingua);
   const trova = id => schema.find(e => e.id === id);
   const campoRighe = def.campi.find(c => c.tipo === 'righe' && !c.archiviato && c.id !== 'rate');
   const figlia = campoRighe ? trova(campoRighe.entita) : null;
@@ -23,27 +48,27 @@ export function modelloPredefinito(def, schema) {
   const dest = def.campi.find(c => c.tipo === 'relazione' && !c.molti && !c.archiviato && trova(c.entita) && c.entita !== campoRighe?.entita);
   const D = dest?.id;
   const fattura = def.id === 'fatture';
-  const dettagli = fattura ? [{ etichetta: 'Numero', valore: '{{numero}}' }, { etichetta: 'Data', valore: '{{data}}' }, { etichetta: 'Scadenza', valore: '{{scadenza}}' }, { etichetta: 'Riferimento', valore: '{{riferimento}}' }]
+  const dettagli = fattura ? [{ etichetta: L.numero, valore: '{{numero}}' }, { etichetta: L.data, valore: '{{data}}' }, { etichetta: L.scadenza, valore: '{{scadenza}}' }, { etichetta: L.riferimento, valore: '{{riferimento}}' }]
     : def.campi.filter(c => !c.archiviato && ['contatore', 'data'].includes(c.tipo)).slice(0, 3).map(c => ({ etichetta: c.nome, valore: `{{${c.id}}}` }));
-  const colonne = [{ etichetta: 'Descrizione', valore: '{{linea.descrizione}}' }, { etichetta: 'Q.tà', valore: '{{linea.quantita}}', allinea: 'destra' },
-    { etichetta: 'Prezzo', valore: '{{linea.prezzo}}', allinea: 'destra' }];
-  if (haF(figlia, 'sconto')) colonne.push({ etichetta: 'Sconto', valore: '{{linea.sconto}}', allinea: 'destra' });
-  colonne.push({ etichetta: 'IVA', valore: '{{linea.iva}}', allinea: 'destra' }, { etichetta: 'Importo', valore: '{{linea.totale}}', allinea: 'destra' });
+  const colonne = [{ etichetta: L.descrizione, valore: '{{linea.descrizione}}' }, { etichetta: L.quantita, valore: '{{linea.quantita}}', allinea: 'destra' },
+    { etichetta: L.prezzo, valore: '{{linea.prezzo}}', allinea: 'destra' }];
+  if (haF(figlia, 'sconto')) colonne.push({ etichetta: L.sconto, valore: '{{linea.sconto}}', allinea: 'destra' });
+  colonne.push({ etichetta: L.iva, valore: '{{linea.iva}}', allinea: 'destra' }, { etichetta: L.importo, valore: '{{linea.totale}}', allinea: 'destra' });
   return {
-    titolo: fattura ? '{{tipo}}{{#numero}} n. {{numero}}{{/numero}}{{^numero}} (bozza){{/numero}}' : `${singolare(def.nome)} {{_titolo}}`,
+    titolo: fattura ? `{{tipo}}{{#numero}} ${L.n} {{numero}}{{/numero}}{{^numero}} (${L.bozza}){{/numero}}` : `${lingua === 'it' ? singolare(def.nome) : def.nome} {{_titolo}}`,
     colore: '',
     destinatario: D ? [`{{${D}}}`, `{{#${D}.via}}{{${D}.via}}{{/${D}.via}}{{^${D}.via}}{{${D}.indirizzo}}{{/${D}.via}}`, `{{${D}.cap}} {{${D}.comune}} {{#${D}.provincia}}({{${D}.provincia}}){{/${D}.provincia}}`,
-      `{{#${D}.piva}}P.IVA {{${D}.piva}}{{/${D}.piva}}`, `{{#${D}.codice_fiscale}}C.F. {{${D}.codice_fiscale}}{{/${D}.codice_fiscale}}`,
-      ...(fattura ? [`{{#${D}.codice_destinatario}}Codice destinatario {{${D}.codice_destinatario}}{{/${D}.codice_destinatario}}`, `{{#${D}.pec}}PEC {{${D}.pec}}{{/${D}.pec}}`] : [])].join('\n') : '',
-    etichettaDestinatario: dest ? (dest.entita === 'fornitori' ? 'Fornitore' : 'Spett.le') : '',
+      `{{#${D}.piva}}${L.piva} {{${D}.piva}}{{/${D}.piva}}`, `{{#${D}.codice_fiscale}}${L.cf} {{${D}.codice_fiscale}}{{/${D}.codice_fiscale}}`,
+      ...(fattura ? [`{{#${D}.codice_destinatario}}${L.codiceDest} {{${D}.codice_destinatario}}{{/${D}.codice_destinatario}}`, `{{#${D}.pec}}PEC {{${D}.pec}}{{/${D}.pec}}`] : [])].join('\n') : '',
+    etichettaDestinatario: dest ? (dest.entita === 'fornitori' ? L.fornitore : L.destinatario) : '',
     dettagli, colonne, riepilogoIva: true,
     prezziIvati: !haF(figlia, 'aliquota', 'iva') && !haF(def, 'iva', 'aliquota') && !fattura,
     note: [haF(def, 'causale') ? '{{causale}}' : '', haF(def, 'note') ? '{{note}}' : '', haF(def, 'oggetto') ? '{{oggetto}}' : '',
       fattura ? '{{#forfettario}}Operazione in franchigia da IVA ai sensi dell\'art. 1, commi 54-89, L. 190/2014. Operazione senza applicazione della ritenuta alla fonte (art. 1, comma 67, L. 190/2014).{{/forfettario}}' : '',
       fattura ? '{{#bollo}}Imposta di bollo da 2,00 € assolta in modo virtuale.{{/bollo}}' : ''].filter(Boolean).join('\n'),
-    pagamento: fattura ? '{{modalita}}{{#scadenza}} entro il {{scadenza}}{{/scadenza}}{{#azienda.iban}}\nIBAN {{azienda.iban}}{{#azienda.banca}} · {{azienda.banca}}{{/azienda.banca}}{{/azienda.iban}}'
+    pagamento: fattura ? `{{modalita}}{{#scadenza}} ${L.entro} {{scadenza}}{{/scadenza}}{{#azienda.iban}}\nIBAN {{azienda.iban}}{{#azienda.banca}} · {{azienda.banca}}{{/azienda.banca}}{{/azienda.iban}}`
       : haF(def, 'pagamento') ? '{{pagamento}}' : '',
-    piede: '{{azienda.ragione_sociale}}{{#azienda.piva}} · P.IVA {{azienda.piva}}{{/azienda.piva}}{{#azienda.pec}} · PEC {{azienda.pec}}{{/azienda.pec}}',
+    piede: `{{azienda.ragione_sociale}}{{#azienda.piva}} · ${L.piva} {{azienda.piva}}{{/azienda.piva}}{{#azienda.pec}} · PEC {{azienda.pec}}{{/azienda.pec}}`,
   };
 }
 
@@ -114,27 +139,28 @@ table.righe tr { break-inside: avoid; } .dx { text-align: right; white-space: no
 
 // ctx: { azienda (testi), logo (data URL o null), dati (la pila dei segnaposto), linee, riepilogo, totali }, tutto già formattato
 export function documentoHtml(m, ctx) {
+  const L = testiStampa(ctx.lingua);
   const pila = [ctx.dati];
   const colore = COLORE.test(m.colore || '') ? m.colore : COLORE.test(ctx.azienda.colore || '') ? ctx.azienda.colore : '#111111';
   const az = ctx.azienda, titolo = rendi(m.titolo, pila).replace(/\s+/g, ' ').trim();
   const mittente = [az.via, [az.cap, az.comune, az.provincia ? `(${az.provincia})` : ''].filter(Boolean).join(' '),
-    [az.piva ? `P.IVA ${az.piva}` : '', az.codice_fiscale && az.codice_fiscale !== az.piva ? `C.F. ${az.codice_fiscale}` : ''].filter(Boolean).join(' · '),
+    [az.piva ? `${L.piva} ${az.piva}` : '', az.codice_fiscale && az.codice_fiscale !== az.piva ? `${L.cf} ${az.codice_fiscale}` : ''].filter(Boolean).join(' · '),
     [az.telefono, az.email].filter(Boolean).join(' · '), az.pec ? `PEC ${az.pec}` : ''].filter(Boolean).map(escHtml).join('<br>');
   const dettagli = m.dettagli.map(d => [d.etichetta, rendi(d.valore, pila).trim()]).filter(([, v]) => v);
   const destinatario = blocco(m.destinatario, pila);
   const righe = ctx.linee.map(l => `<tr>${m.colonne.map(c => `<td${c.allinea === 'destra' ? ' class="dx"' : ''}>${blocco(c.valore, [...pila, { linea: l, riga: l.riga }])}</td>`).join('')}</tr>`).join('');
   const T = ctx.totali, sez = (t, x) => (x ? `<section><h3>${escHtml(t)}</h3>${x}</section>` : '');
-  const iva = m.riepilogoIva && ctx.riepilogo.length ? `<table class="iva"><tr><th>IVA</th><th>Imponibile</th><th>Imposta</th></tr>${ctx.riepilogo.map(g => `<tr><td>${escHtml(g.etichetta)}</td><td>${escHtml(g.imponibile)}</td><td>${escHtml(g.imposta)}</td></tr>`).join('')}</table>` : '';
-  const tot = [['Imponibile', T.imponibile], ['IVA', T.imposta], T.ritenuta ? [`Ritenuta d'acconto`, `− ${T.ritenuta}`] : null].filter(Boolean)
+  const iva = m.riepilogoIva && ctx.riepilogo.length ? `<table class="iva"><tr><th>${escHtml(L.iva)}</th><th>${escHtml(L.imponibile)}</th><th>${escHtml(L.imposta)}</th></tr>${ctx.riepilogo.map(g => `<tr><td>${escHtml(g.etichetta)}</td><td>${escHtml(g.imponibile)}</td><td>${escHtml(g.imposta)}</td></tr>`).join('')}</table>` : '';
+  const tot = [[L.imponibile, T.imponibile], [L.iva, T.imposta], T.ritenuta ? [L.ritenuta, `− ${T.ritenuta}`] : null].filter(Boolean)
     .map(([a, b]) => `<tr><td>${escHtml(a)}</td><td>${escHtml(b)}</td></tr>`).join('') +
-    `<tr class="grande"><td>${T.ritenuta ? 'Netto a pagare' : 'Totale'}</td><td>${escHtml(T.ritenuta ? T.netto : T.totale)}</td></tr>`;
-  return `<!doctype html><html lang="it"><head><meta charset="utf-8"><title>${escHtml(titolo)}</title><style>${CSS}</style></head>
+    `<tr class="grande"><td>${escHtml(T.ritenuta ? L.netto : L.totale)}</td><td>${escHtml(T.ritenuta ? T.netto : T.totale)}</td></tr>`;
+  return `<!doctype html><html lang="${ctx.lingua && TESTI[ctx.lingua] ? ctx.lingua : 'it'}"><head><meta charset="utf-8"><title>${escHtml(titolo)}</title><style>${CSS}</style></head>
 <body style="--c:${colore}"><div class="foglio">
 <header class="testa"><div class="mittente">${ctx.logo ? `<img src="${escHtml(ctx.logo)}" alt="">` : ''}<b>${escHtml(az.ragione_sociale)}</b>${mittente}</div>
 <div class="doc"><h1>${escHtml(titolo)}</h1><table class="dettagli">${dettagli.map(([a, b]) => `<tr><td>${escHtml(a)}</td><td>${escHtml(b)}</td></tr>`).join('')}</table></div></header>
 <div class="parti">${destinatario ? `<div class="dest">${m.etichettaDestinatario ? `<small>${escHtml(m.etichettaDestinatario)}</small>` : ''}${destinatario}</div>` : ''}</div>
 <table class="righe"><thead><tr>${m.colonne.map(c => `<th${c.allinea === 'destra' ? ' class="dx"' : ''}>${escHtml(c.etichetta)}</th>`).join('')}</tr></thead><tbody>${righe}</tbody></table>
-<div class="fondo"><div class="sx">${sez('Riepilogo IVA', iva)}${sez('Note', blocco(m.note, pila))}${sez('Pagamento', blocco(m.pagamento, pila))}</div>
+<div class="fondo"><div class="sx">${sez(L.riepilogo, iva)}${sez(L.note, blocco(m.note, pila))}${sez(L.pagamento, blocco(m.pagamento, pila))}</div>
 <table class="tot">${tot}</table></div>
 ${m.piede ? `<footer class="piede">${blocco(m.piede, pila)}</footer>` : ''}
 </div></body></html>`;

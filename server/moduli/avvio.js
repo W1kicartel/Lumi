@@ -14,13 +14,13 @@ export default function registra({ r, db, U, P, meta, serve, ErroreHttp, manda, 
   const cookie = token => `kubo=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${30 * 86400}`;
 
   r('GET', '/api/avvio/domande', () => ({ domande: DOMANDE, tipiche: Object.fromEntries(SETTORI.map(s => [s.id, tipiche(s.id)])) }));
-  r('POST', '/api/avvio/piano', ({ corpo }) => { if (U.quanti(db) > 0) throw new ErroreHttp(409, 'Già configurato'); return piano(corpo?.risposte || {}); });
+  r('POST', '/api/avvio/piano', ({ corpo }) => { if (U.quanti(db) > 0) throw new ErroreHttp(409, 'Già configurato'); return piano(corpo?.risposte || {}, db); });
   r('POST', '/api/avvio/configura', ({ corpo, risposta, req, ip }) => {
     if (U.quanti(db) > 0) throw new ErroreHttp(409, 'Già configurato');
     primoAvvio(ip, corpo?.codice);   // da un altro computer serve il codice stampato nel log
     const { azienda, nome, email, password, risposte = {} } = corpo || {};
     if (!String(azienda || '').trim()) throw new ErroreHttp(400, 'Manca il nome dell\'azienda');
-    const pl = piano(risposte);
+    const pl = piano(risposte, db);
     // tutto o niente: se il titolare non va (password corta, email sbagliata) non resta niente a metà
     // un errore sul titolare è un 400, non un 401: l'interfaccia altrimenti salterebbe alla pagina d'accesso
     const fatto = transazione(db, () => {
@@ -45,7 +45,7 @@ export default function registra({ r, db, U, P, meta, serve, ErroreHttp, manda, 
     // con un webhook acceso le righe finte arriverebbero anche agli altri programmi (e lì non si tolgono con un clic)
     let webhook = []; try { webhook = db.prepare('SELECT def FROM _import_webhook').all().filter(w => JSON.parse(w.def).attivo !== false); } catch { /* modulo assente */ }
     if (webhook.length) throw new ErroreHttp(409, 'Hai dei webhook attivi: i dati d\'esempio arriverebbero anche lì. Sospendili da «API e integrazioni», poi riprova.');
-    const x = mettiEsempi(db, ctx); manda({ tipo: 'avviso', testo: 'Dati d\'esempio aggiunti' }); return x;
+    const x = mettiEsempi(db, ctx); manda({ tipo: 'avviso', testo: 'Dati d\'esempio aggiunti', chiave: 'esempi-aggiunti' }); return x;
   });
-  r('DELETE', '/api/avvio/esempi', ({ ctx }) => { titolare(ctx); const x = togliEsempi(db); manda({ tipo: 'avviso', testo: 'Dati d\'esempio tolti' }); return x; });
+  r('DELETE', '/api/avvio/esempi', ({ ctx }) => { titolare(ctx); const x = togliEsempi(db); manda({ tipo: 'avviso', testo: 'Dati d\'esempio tolti', chiave: 'esempi-tolti' }); return x; });
 }

@@ -349,4 +349,7 @@ export default {
   'moduli.api-firma': "So prüfst du die Signatur",
   'moduli.lumi-dv-ferme': "{sezione}: seit über einer Woche auf „{stato}“",
   'moduli.lumi-dv-oltre': "{sezione}: „{campo}“ überschritten",
+  'moduli.ag-niente': "Nichts zu melden.",
+  'moduli.doc-prepara-chiedi': "Für die E-Rechnung braucht „{nome}“ einige Felder: Empfängercode, PEC, Straße, PLZ, Ort und Provinz. Die bisherige Adresse wird auf diese Felder aufgeteilt; die alte bleibt archiviert. Jetzt hinzufügen?",
+  'moduli.doc-prepara-fatto': "Kunden bereit für die E-Rechnung",
 };

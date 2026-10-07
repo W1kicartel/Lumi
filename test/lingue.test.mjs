@@ -229,3 +229,30 @@ test('modelli tradotti: ogni nome tradotto punta a un id che esiste, in tutte le
     }
   }
 });
+
+test('avvio guidato in tedesco: sezioni, ruoli e cruscotto nella lingua dell\'azienda, dati d\'esempio che funzionano', async () => {
+  const { srv, chiama } = await avvia();
+  try {
+    assert.equal((await chiama('PUT', '/api/lingua/azienda', { lingua: 'de', valuta: 'CHF' })).stato, 200);
+    const risposte = { settore: 'ristorante', persone: 'solo', esempi: true, lumi: false };
+    const pl = (await chiama('POST', '/api/avvio/piano', { risposte })).json;
+    assert.ok(!pl.sezioni.some(s => /^(Tavoli|Comande|Prenotazioni)$/.test(s)), JSON.stringify(pl.sezioni));
+    assert.ok(!pl.ruoli.some(r => r.nome === 'Sala' || r.nome === 'Cucina'), JSON.stringify(pl.ruoli));
+    const c = await chiama('POST', '/api/avvio/configura', { azienda: 'Gasthaus', nome: 'Inhaber', email: 'i@prova.it', password: 'password-lunga-1', risposte });
+    assert.equal(c.stato, 200, JSON.stringify(c.json)); assert.ok(c.json.esempi > 0);
+    const schema = (await chiama('GET', '/api/schema')).json;
+    assert.ok(!schema.some(e => ['Tavoli', 'Comande', 'Prenotazioni'].includes(e.nome)), schema.map(e => e.nome).join(', '));
+    const cr = (await chiama('GET', '/api/cruscotto')).json, titoli = JSON.stringify(cr);
+    assert.ok(!/Coperti oggi|Prenotazioni da confermare/.test(titoli), titoli.slice(0, 300));
+  } finally { srv.close(); }
+});
+
+test('stampe: i testi predefiniti nella lingua dell\'azienda', async () => {
+  const S = await import('../server/moduli/documenti-stampa.js');
+  const def = { id: 'vendite', nome: 'Sales', campi: [{ id: 'righe', tipo: 'righe', entita: 'righe_vendita' }, { id: 'cliente', tipo: 'relazione', entita: 'clienti' }] };
+  const schema = [def, { id: 'righe_vendita', campi: [{ id: 'sconto', tipo: 'percentuale' }] }, { id: 'clienti', campi: [] }];
+  const m = S.modelloPredefinito(def, schema, 'de');
+  assert.deepEqual(m.colonne.map(c => c.etichetta), ['Beschreibung', 'Menge', 'Preis', 'Rabatt', 'MwSt.', 'Betrag']);
+  assert.equal(m.titolo, 'Sales {{_titolo}}');
+  assert.equal(S.modelloPredefinito({ ...def, nome: 'Vendite' }, schema).titolo, 'Vendita {{_titolo}}');
+});

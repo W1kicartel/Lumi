@@ -208,9 +208,9 @@ export default {
     // è una modifica dello schema: si chiede prima (una volta per sessione, se la risposta è «no»)
     let chiesto = false; try { chiesto = sessionStorage.getItem('kubo.documenti.prepara') === 'no'; } catch {}
     if (cl && (!cl.campi.some(c => c.id === 'codice_destinatario') || cl.campi.some(c => c.id === 'indirizzo')) && k.stato.poteri?.schema && !chiesto) {
-      const ok = confirm(`Per la fattura elettronica servono alcuni campi in «${cl.nome}»: codice destinatario, PEC, via, CAP, comune e provincia. L'indirizzo scritto finora si divide in questi campi; quello vecchio resta archiviato. Li aggiungo adesso?`);
+      const ok = confirm(t('moduli.doc-prepara-chiedi', { nome: cl.nome }));
       if (!ok) { try { sessionStorage.setItem('kubo.documenti.prepara', 'no'); } catch {} return; }
-      try { const r = await k.api('POST', '/documenti/prepara'); await k.ricaricaSchema(); if (r.aggiunti?.length) k.toast('Clienti pronti per la fattura elettronica'); } catch { /* si riprova al prossimo avvio */ }
+      try { const r = await k.api('POST', '/documenti/prepara'); await k.ricaricaSchema(); if (r.aggiunti?.length) k.toast(t('moduli.doc-prepara-fatto')); } catch { /* si riprova al prossimo avvio */ }
     }
   },
   lato: k => (k.stato.poteri?.schema ? [{ href: '#/documenti', icona: 'documento', nome: t('moduli.doc-documenti') }] : []),

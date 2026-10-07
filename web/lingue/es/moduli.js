@@ -349,4 +349,7 @@ export default {
   'moduli.api-firma': "Cómo verificar la firma",
   'moduli.lumi-dv-ferme': "{sezione}: paradas en «{stato}» desde hace más de una semana",
   'moduli.lumi-dv-oltre': "{sezione}: «{campo}» ya pasó",
+  'moduli.ag-niente': "Nada que señalar.",
+  'moduli.doc-prepara-chiedi': "La factura electrónica necesita algunos campos en «{nome}»: código de destinatario, PEC, calle, código postal, municipio y provincia. La dirección escrita hasta ahora se reparte en estos campos; la antigua queda archivada. ¿Los añado ahora?",
+  'moduli.doc-prepara-fatto': "Clientes listos para la factura electrónica",
 };

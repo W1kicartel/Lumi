@@ -30,7 +30,7 @@ export const cartellaBackup = (db, meta) => meta.leggi(db, 'backup.cartella') ||
 // una cartella scelta dal titolare: percorso assoluto, normalizzato, scrivibile, e mai dentro la cartella dei dati
 export function validaCartella(db, testo) {
   const t = String(testo || '').trim(); if (!t) return '';
-  if (!isAbsolute(t)) throw new Error('Scrivi il percorso completo della cartella (per esempio /Volumes/Disco/Kubo o D:\\Backup\\Kubo)');
+  if (!isAbsolute(t)) throw new Error(`Scrivi il percorso completo della cartella (per esempio ${'/Volumes/Disco/Kubo'} o ${'D:\\Backup\\Kubo'})`);
   const c = resolve(t), dati = dirname(fileDb(db) || '.');
   if ((c + sep).startsWith(dati + sep) && c !== join(dati, 'backup')) throw new Error('Scegli una cartella fuori da quella dei dati');
   try { mkdirSync(c, { recursive: true }); const prova = join(c, `.kubo-prova-${randomBytes(4).toString('hex')}`); writeFileSync(prova, 'ok'); rmSync(prova); }

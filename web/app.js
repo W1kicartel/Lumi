@@ -132,7 +132,8 @@ function collegaEventi() {
   eventi?.close(); eventi = new EventSource('/api/eventi');
   eventi.onmessage = m => {
     const ev = JSON.parse(m.data);
-    if (ev.tipo === 'avviso') return toast(ev.testo);
+    // gli avvisi fissi dei moduli arrivano con una chiave e si mostrano nella lingua di chi guarda; gli altri come sono
+    if (ev.tipo === 'avviso') return toast({ 'esempi-aggiunti': () => t('comune.avviso-esempi-aggiunti'), 'esempi-tolti': () => t('comune.avviso-esempi-tolti') }[ev.chiave]?.() ?? ev.testo);
     window.dispatchEvent(new CustomEvent('kubo:evento', { detail: ev }));   // per i moduli (es. calendario e cruscotto)
     if (ev.da === stato.utente.id) return;
     if (vistaAttiva?.entita === ev.entita) vistaAttiva.ricarica();

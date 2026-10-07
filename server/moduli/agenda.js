@@ -92,7 +92,7 @@ export default function registra({ r, db, S, D, P, serve, ErroreHttp }) {
       const def = S.leggi(db, x.entita); if (!def || def.archiviata || def.nascosta || !P.puo(ctx, def.id, 'leggi')) continue;
       let riga; try { riga = D.leggi(db, def.id, x.riga, ctx, { conRighe: false }); } catch { continue; }
       const t = S.campoTitolo(def), v = t && riga[t.id];
-      out.push({ quando: x.quando, chi: nomi.get(x.utente) || 'automazione', tipo: x.tipo, entita: def.id, nomeEntita: def.nome, riga: x.riga, titolo: String((v && typeof v === 'object' ? v.titolo : v) ?? '') });
+      out.push({ quando: x.quando, chi: nomi.get(x.utente) || 'automazione', automatica: !nomi.get(x.utente), tipo: x.tipo, entita: def.id, nomeEntita: def.nome, riga: x.riga, titolo: String((v && typeof v === 'object' ? v.titolo : v) ?? '') });
     }
     return { voci: out };
   }

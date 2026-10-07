@@ -139,7 +139,7 @@ export function modelloDi(db, meta, S, e) {
   const def = S.leggi(db, e); if (!def || def.archiviata) throw new Error(`Sezione sconosciuta «${e}»`);
   const salvato = meta.leggi(db, `documenti.stampa.${e}`);
   if (salvato) { try { return { ...JSON.parse(salvato), personalizzato: true }; } catch { /* rotto: si torna al predefinito */ } }
-  return modelloPredefinito(def, S.elenco(db));
+  return modelloPredefinito(def, S.elenco(db), meta.leggi(db, 'lingue.azienda') || 'it');
 }
 
 // i valori di una riga, formattati per la stampa; le relazioni diventano { _: titolo, …campi della riga collegata }
@@ -187,7 +187,7 @@ export function stampa(db, { S, D, meta }, e, id, ctx, modello = null) {
   const T = { imponibile: eur.format(conti.imponibile), imposta: eur.format(conti.imposta), totale: eur.format(conti.totale), ritenuta: conti.ritenuta ? eur.format(conti.ritenuta) : '', netto: eur.format(conti.netto) };
   Object.assign(dati, { doc: { ...dati }, azienda: az, linee: lineeF, riepilogo, totali: T, oggi: dataIt(new Date().toISOString().slice(0, 10)),
     forfettario: fattura && az.regime === 'RF19' ? 'sì' : '' });
-  const html = documentoHtml(m, { azienda: az, logo: leggiLogo(db, meta), dati, linee: lineeF, riepilogo, totali: T });
+  const html = documentoHtml(m, { lingua: meta.leggi(db, 'lingue.azienda') || 'it', azienda: az, logo: leggiLogo(db, meta), dati, linee: lineeF, riepilogo, totali: T });
   return { titolo: rendi(m.titolo, [dati]).replace(/\s+/g, ' ').trim() || `${singolare(def.nome)} ${dati._titolo}`.trim(), html, totali: conti };
 }
 

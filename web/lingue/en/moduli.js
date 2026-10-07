@@ -349,4 +349,7 @@ export default {
   'moduli.api-firma': "How to verify the signature",
   'moduli.lumi-dv-ferme': "{sezione}: stuck on “{stato}” for over a week",
   'moduli.lumi-dv-oltre': "{sezione} past “{campo}”",
+  'moduli.ag-niente': "Nothing to report.",
+  'moduli.doc-prepara-chiedi': "E-invoicing needs a few fields in “{nome}”: recipient code, PEC, street, postcode, town and province. The address written so far is split into these fields; the old one stays archived. Add them now?",
+  'moduli.doc-prepara-fatto': "Customers ready for e-invoicing",
 };
