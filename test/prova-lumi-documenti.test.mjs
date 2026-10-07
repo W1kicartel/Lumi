@@ -109,7 +109,8 @@ test('inventario: cosa vede Lumi per i documenti', () => {
   const crea = lista.find(s => s.nome === 'crea_fatture').schema.properties.valori.properties;
   assert.deepEqual(Object.keys(crea.righe.items.properties).sort(), ['aliquota', 'descrizione', 'natura', 'no_ritenuta', 'prezzo', 'quantita', 'sconto', 'sconto_importo']);
   assert.deepEqual(crea.tipo.enum, ['TD01', 'TD24', 'TD02', 'TD03', 'TD04', 'TD05', 'TD06', 'TD16', 'TD17', 'TD18', 'TD19']);
-  // NON ci sono strumenti per le azioni dei documenti: emettere (c'è solo modifica stato), nota di credito, FatturaPA, stampa/PDF, controlli
+  // fra quelli generati dallo schema NON ci sono strumenti per le azioni dei documenti: arrivano dal modulo dei documenti con
+  // k.lumi (server/moduli/lumidoc.js, provati in test/lumidoc.test.mjs), qui non passati a strumenti()
   const documentali = nomi.filter(n => /fatturapa|xml|stampa|pdf|nota|storna|emetti|controlla|documenti/.test(n));
   console.log(`  strumenti totali: ${nomi.length}; dedicati ai documenti: ${documentali.length ? documentali.join(', ') : 'nessuno'}`);
   assert.deepEqual(documentali, []);
@@ -187,7 +188,8 @@ test('i rischi del fare a parole con gli strumenti generici (nessun controllo fi
   assert.match((await mod.esegui({ id: fatta.id, valori: { numero: '12' } })).errore, /è emessa: non si modifica più/);
 });
 
-test('la scheda di conferma mostra righe con importi, IVA e totale prima di creare la fattura', { todo: 'oggi mostra solo «Righe: 1 riga»: la persona conferma senza vedere prezzi né totale' }, async () => {
+// (era un todo: la scheda mostrava solo «Righe: 1 riga». Ora le righe in più le dà il modulo dei documenti con k.lumi.scheda)
+test('la scheda di conferma mostra righe con importi, IVA e totale prima di creare la fattura', async () => {
   const p = await lista.find(s => s.nome === 'crea_fatture').proponi({ valori: { cliente: 'Rossi Srl', righe: [{ descrizione: 'Consulenza', quantita: 3, prezzo: 80, aliquota: 22 }] } });
   const testo = JSON.stringify(p.righe);
   assert.match(testo, /80/); assert.match(testo, /292,80/);
