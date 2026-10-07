@@ -1,6 +1,8 @@
 // Il database: un file SQLite (node:sqlite, nessuna dipendenza) in modalità WAL. Le tabelle di sistema iniziano con «_»,
 // quelle dei dati con «d_» (una per entità, vedi schema.js), quelle delle relazioni molti-a-molti con «r_».
 import { DatabaseSync } from 'node:sqlite';
+import { mkdirSync } from 'node:fs';
+import { join, dirname } from 'node:path';
 
 const MIGRAZIONI = [
   // 1: il motore
@@ -22,6 +24,11 @@ export function apri(percorso = ':memory:') {
   const db = new DatabaseSync(percorso);
   db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000; PRAGMA synchronous = NORMAL;');
   const v = db.prepare('PRAGMA user_version').get().user_version;
+  // prima di migrare un database che ha già dati: una copia in backup/ (la vede la pagina Backup, server/moduli/desktop.js)
+  if (v > 0 && v < MIGRAZIONI.length && percorso !== ':memory:') {
+    const d = new Date(), z = n => String(n).padStart(2, '0'), cartella = join(dirname(percorso), 'backup'); mkdirSync(cartella, { recursive: true });
+    db.exec(`VACUUM INTO '${join(cartella, `kubo-${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}-${z(d.getHours())}-${z(d.getMinutes())}-${z(d.getSeconds())}-modifica.db`).replaceAll("'", "''")}'`);
+  }
   for (let i = v; i < MIGRAZIONI.length; i++) {
     transazione(db, () => { db.exec(MIGRAZIONI[i]); db.exec(`PRAGMA user_version = ${i + 1}`); });
   }
