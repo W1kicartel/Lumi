@@ -26,7 +26,8 @@ export function creaUtente(db, { nome, email, password, ruolo: r = 'collaborator
   return pubblico(db.prepare('SELECT * FROM _utenti WHERE id = ?').get(id));
 }
 export const pubblico = u => u && ({ id: u.id, nome: u.nome, email: u.email, ruolo: u.ruolo, attivo: !!u.attivo, pin: !!u.pin });
-export const utenti = db => db.prepare('SELECT * FROM _utenti ORDER BY nome').all().map(pubblico);
+// le identità di servizio dei connettori («servizio:stripe», server/moduli/connettori.js) non sono persone: non si elencano
+export const utenti = db => db.prepare("SELECT * FROM _utenti WHERE id NOT LIKE 'servizio:%' ORDER BY nome").all().map(pubblico);
 
 export function accedi(db, { email, password }, agente = '') {
   const u = db.prepare('SELECT * FROM _utenti WHERE email = ? AND attivo = 1').get(String(email || ''));
