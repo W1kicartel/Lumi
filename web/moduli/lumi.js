@@ -10,7 +10,7 @@ const titolare = () => K?.stato.utente?.ruolo === 'titolare';
 
 async function accendi(k) {
   K = k; schema = k.schema;
-  if (!document.querySelector('link[data-kubo-lumi]')) document.head.append(Object.assign(document.createElement('link'), { rel: 'stylesheet', href: '/moduli/lumi.css', dataset: { kuboLumi: '' } }));
+  if (!document.querySelector('link[data-kubo-lumi]')) document.head.append(k.h('link', { rel: 'stylesheet', href: '/moduli/lumi.css', 'data-kubo-lumi': '' }));
   const s = await k.api('POST', '/lumi', { azione: 'stato' }).catch(() => null), vero = !!s?.claude;
   document.documentElement.classList.add('con-lumi');
   lumi = Lumi.avvia({
@@ -66,6 +66,8 @@ function azioni(vero) {
 }
 
 // ---------- impostazioni (#/lumi): solo il titolare ----------
+// le proprietà --x non si impostano con Object.assign(style): serve setProperty
+const colore = (e, c) => { e.style.setProperty('--c', `var(--${c})`); return e; };
 async function impostazioni(contenuto, k) {
   const { h, api, toast } = k;
   if (k.stato.utente?.ruolo !== 'titolare') { contenuto.replaceChildren(h('div.corpo', h('div.avviso', 'Le impostazioni di Lumi sono del titolare.'))); return; }
@@ -78,22 +80,22 @@ async function impostazioni(contenuto, k) {
   const stato = !st.attivo ? ['Spento', 'grigio'] : st.chiave ? ['Acceso', 'verde'] : ['Manca la chiave', 'giallo'];
   contenuto.replaceChildren(
     h('div.testa', h('h1', 'Lumi')),
-    h('div.corpo.lumi-impostazioni',
+    h('div.corpo.kubo-lumi',
       h('div.foglio',
-        h('div.lumi-riga', h('span.chip', { stile: { '--c': `var(--${stato[1]})` }, testo: stato[0] }),
+        h('div.kubo-lumi-riga', colore(h('span.chip', { testo: stato[0] }), stato[1]),
           h('span.nota', st.fonte === 'ambiente' ? 'La chiave arriva dalla variabile ANTHROPIC_API_KEY del server.' : st.fonte ? 'Chiave salvata su questo computer.' : '')),
         h('p', 'Lumi è l\'assistente di Kubo. Gli parli o gli scrivi dalla pillola in alto: cerca, conta, prepara schede e cambia la forma del gestionale. Ogni modifica aspetta il tuo «Conferma», e ognuno vede solo quello che i suoi permessi gli lasciano vedere.'),
         h('label.etichetta', 'Chiave di Claude'),
-        h('div.lumi-riga', chiave, h('button.btn.pieno', { testo: 'Salva la chiave', on: { click: () => (chiave.value.trim() ? salva({ chiave: chiave.value.trim(), attivo: true }) : toast('Incolla la chiave', true)) } }),
+        h('div.kubo-lumi-riga', chiave, h('button.btn.pieno', { testo: 'Salva la chiave', on: { click: () => (chiave.value.trim() ? salva({ chiave: chiave.value.trim(), attivo: true }) : toast('Incolla la chiave', true)) } }),
           st.fonte === 'impostazioni' ? h('button.btn.pericolo', { testo: 'Togli', on: { click: () => { if (confirm('Togliere la chiave? Lumi smette di rispondere.')) salva({ togliChiave: true }); } } }) : null),
         h('p.nota', 'La crei su console.anthropic.com, alla voce API Keys. Resta su questo computer, in un file accanto ai dati che solo Kubo legge, e non arriva mai ai browser.'),
-        h('div.lumi-riga', { stile: { marginTop: '18px' } },
-          h('label.lumi-interruttore', attivo, 'Lumi acceso'),
-          h('label.lumi-interruttore', 'Domande al minuto per persona', limite),
+        h('div.kubo-lumi-riga', { stile: { marginTop: '18px' } },
+          h('label.kubo-lumi-interruttore', attivo, 'Lumi acceso'),
+          h('label.kubo-lumi-interruttore', 'Domande al minuto per persona', limite),
           h('button.btn', { testo: 'Salva', on: { click: () => salva({ attivo: attivo.checked, limite: Number(limite.value) }) } }))),
       h('div.foglio', { stile: { marginTop: '16px' } },
         h('div.etichetta', 'Da provare'),
-        h('ul.lumi-esempi', ['Quanto ho venduto questa settimana?', 'Cosa devo riordinare?', 'Aggiungi la taglia agli articoli con S, M, L e XL',
+        h('ul.kubo-lumi-esempi', ['Quanto ho venduto questa settimana?', 'Cosa devo riordinare?', 'Aggiungi la taglia agli articoli con S, M, L e XL',
           'Fammi una sezione per i noleggi con cliente, attrezzo, dal, al e stato', 'Quando un noleggio passa a restituito avvisami'].map(t => h('li', t))),
         h('p.nota', `Modello: ${st.modello}. ${st.voce ? 'Voce in tempo reale accesa.' : 'Voce: quella del browser, dove c\'è.'}`))));
 }
