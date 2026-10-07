@@ -65,6 +65,13 @@ export default function registra({ r, db, D, P, U, meta, serve, ErroreHttp, cont
   const usatiLumi = () => db.prepare('SELECT COALESCE(SUM(token), 0) n FROM _sicurezza_lumi WHERE mese = ?').get(mese()).n;
   // la password va cambiata finché l'impronta salvata è ancora quella di quando il titolare l'ha chiesto
   const deveCambiare = id => { const x = db.prepare('SELECT s.cambia_hash h, u.hash FROM _sicurezza_utenti s JOIN _utenti u ON u.id = s.utente WHERE s.utente = ?').get(id); return !!x?.h && x.h === x.hash; };
+  // la password attuale, con lo stesso limite dei tentativi di accesso: chi ha in mano una sessione non la indovina a forza
+  function attualeGiusta(utente, pw) {
+    const chiave = `attuale:${utente}`, ora = Date.now();
+    if (db.prepare('SELECT COUNT(*) n FROM _sicurezza_tentativi WHERE chiave = ? AND quando > ?').get(chiave, ora - FINESTRA).n >= TENTATIVI) throw new ErroreHttp(429, 'Troppi tentativi sbagliati: riprova fra 15 minuti');
+    if (U.verificaPassword(db, utente, pw)) { db.prepare('DELETE FROM _sicurezza_tentativi WHERE chiave = ?').run(chiave); return true; }
+    db.prepare('INSERT INTO _sicurezza_tentativi (chiave, quando) VALUES (?, ?)').run(chiave, ora); return false;
+  }
   const LIBERE_CAMBIO = [/^GET \/api\/(stato|schema|moduli|sicurezza\/io|ruoli)$/, /^POST \/api\/(esci|sicurezza\/password)$/];
 
   // ---------- i controlli prima di ogni rotta ----------
@@ -86,14 +93,14 @@ export default function registra({ r, db, D, P, U, meta, serve, ErroreHttp, cont
     // 3. password robuste ovunque se ne sceglie una
     // (anche il PIN del banco: chi lo imposta per un altro entra al suo posto)
     const proprio = /^\/api\/utenti\/([^/]+)$/.exec(percorso);
-    if (metodo === 'PATCH' && proprio && ctx && !ctx.viaToken && corpo?.pin != null && corpo.pin !== '' && decodeURIComponent(proprio[1]) === ctx.utente.id && !U.verificaPassword(db, ctx.utente.id, corpo.attuale))
+    if (metodo === 'PATCH' && proprio && ctx && !ctx.viaToken && corpo?.pin != null && corpo.pin !== '' && decodeURIComponent(proprio[1]) === ctx.utente.id && !attualeGiusta(ctx.utente.id, corpo.attuale))
       throw new ErroreHttp(400, 'Per cambiare il PIN serve la password attuale');
     if (metodo !== 'GET' && !ctx?.viaToken && corpo && corpo.password != null && corpo.password !== '' && (/^\/api\/(configura|utenti)$/.test(percorso) || /^\/api\/utenti\/[^/]+$/.test(percorso))) {
       let nome = corpo.nome, email = corpo.email;
       const m = /^\/api\/utenti\/([^/]+)$/.exec(percorso); if (m) { const u = db.prepare('SELECT nome, email FROM _utenti WHERE id = ?').get(decodeURIComponent(m[1])); nome ??= u?.nome; email ??= u?.email; }
       const no = robustezza(corpo.password, { nome, email }); if (no) throw new ErroreHttp(400, no);
       // la propria password si cambia solo conoscendo quella attuale (chi trova il PC acceso non se la prende)
-      if (m && ctx && decodeURIComponent(m[1]) === ctx.utente.id && !U.verificaPassword(db, ctx.utente.id, corpo.attuale)) throw new ErroreHttp(400, 'La password attuale non è giusta');
+      if (m && ctx && decodeURIComponent(m[1]) === ctx.utente.id && !attualeGiusta(ctx.utente.id, corpo.attuale)) throw new ErroreHttp(400, 'La password attuale non è giusta');
     }
     // 4. tentativi di accesso per account (o per PIN), oltre a quelli per indirizzo che conta già il server
     if (metodo === 'POST' && percorso === '/api/accedi') {
@@ -144,7 +151,7 @@ export default function registra({ r, db, D, P, U, meta, serve, ErroreHttp, cont
   r('GET', '/api/sicurezza/io', ({ ctx }) => ({ deveCambiare: deveCambiare(serve(ctx).utente.id), inattivita: imp.inattivita() }));
   r('POST', '/api/sicurezza/password', ({ ctx, corpo, risposta }) => {
     if (serve(ctx).viaToken) throw new P.ErrorePermesso('Con un token non si cambia la password');
-    if (!U.verificaPassword(db, ctx.utente.id, corpo.attuale)) throw new ErroreHttp(400, 'La password attuale non è giusta');
+    if (!attualeGiusta(ctx.utente.id, corpo.attuale)) throw new ErroreHttp(400, 'La password attuale non è giusta');
     const no = robustezza(corpo.nuova, ctx.utente); if (no) throw new ErroreHttp(400, no);
     if (corpo.nuova === corpo.attuale) throw new ErroreHttp(400, 'La nuova password deve essere diversa da quella di prima');
     U.modificaUtente(db, ctx.utente.id, { password: corpo.nuova }, { utente: ctx.utente.id });   // chiude tutte le sessioni

@@ -95,6 +95,9 @@ test('cambio password obbligatorio e cambio con la password attuale', async () =
     // anche il PIN del banco: chi lo imposta entra al posto della persona
     assert.equal((await g.chiama('PATCH', `/api/utenti/${u.id}`, { pin: '4321' })).stato, 400);
     assert.equal((await g.chiama('PATCH', `/api/utenti/${u.id}`, { pin: '4321', attuale: 'la-mia-di-giulia' })).stato, 200);
+    // la password attuale non si indovina a forza da una sessione rubata
+    for (let i = 0; i < 5; i++) assert.equal((await g.chiama('POST', '/api/sicurezza/password', { attuale: 'tentativo-' + i, nuova: 'nuova-password-9' })).stato, 400);
+    assert.equal((await g.chiama('POST', '/api/sicurezza/password', { attuale: 'la-mia-di-giulia', nuova: 'nuova-password-9' })).stato, 429);
   } finally { k.chiudi(); }
 });
 
