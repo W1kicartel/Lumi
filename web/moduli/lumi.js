@@ -1,6 +1,7 @@
 // Lumi nell'interfaccia di Kubo: la pillola in alto (il motore è in /lumi/, copiato dal progetto Lumi), con gli strumenti
 // generati dallo schema (./lumi/strumenti.js), «Da vedere» dal server e le azioni rapide. Senza la chiave di Claude la
 // pillola resta, mostra «Da vedere» e dice con garbo come accenderla. Le impostazioni (#/lumi) sono del titolare.
+import { urlLista } from '../filtri.js';
 import { Lumi } from '/lumi/lumi.js';
 import { strumenti, istruzioni } from './lumi/strumenti.js';
 
@@ -53,7 +54,7 @@ async function contesto() {
 
 async function daVedere() {
   const cose = await K.get('/lumi/da-vedere').catch(() => []);
-  return cose.map(x => ({ testo: x.testo, numero: x.numero, livello: x.livello, bottone: 'Apri', apri: () => { location.hash = `#/e/${x.entita}`; } }));
+  return cose.map(x => ({ testo: x.testo, numero: x.numero, livello: x.livello, bottone: 'Apri', apri: () => { location.hash = urlLista(x.entita, x.filtri); } }));
 }
 
 function azioni(vero) {

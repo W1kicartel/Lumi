@@ -1,0 +1,18 @@
+/* Sicurezza: pagina #/sicurezza e la finestra del cambio password obbligatorio (classi «sic-») */
+.sic { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; max-width: 920px; }
+.sic > * { min-width: 0; }
+.sic-scorri { overflow-x: auto; border-radius: var(--raggio); }
+.sic h2 { font-size: 15px; font-weight: 600; margin: 0 0 14px; }
+.sic-password { display: grid; gap: 4px; max-width: 420px; }
+.sic-password .btn { justify-self: start; margin-top: 6px; }
+.sic-tabella td { white-space: normal; }
+.sic-tabella tbody tr { cursor: default; }
+.sic-questo { color: var(--tenue); font-size: 12.5px; }
+.sic-spazio { margin-top: 14px; }
+.sic-griglia { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: 14px 18px; }
+.sic-griglia .campo, .sic-password .campo { width: 100%; box-sizing: border-box; }
+.sic-griglia label { display: grid; gap: 4px; align-content: start; }
+.sic-spunta { display: flex; gap: 10px; align-items: flex-start; margin-top: 14px; font-size: 13.5px; }
+.sic-spunta input { margin-top: 3px; }
+.sic-velo { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 16px; background: color-mix(in srgb, var(--sfondo) 78%, transparent); backdrop-filter: blur(6px); }
+.sic-finestra { width: min(460px, 100%); }

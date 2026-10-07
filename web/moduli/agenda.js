@@ -2,7 +2,7 @@
 // Il calendario funziona per qualsiasi entità con un campo data o data_ora: mese, settimana, giorno (con le colonne per
 // persona o per risorsa), trascina per spostare, clic su uno spazio vuoto per creare con la data già messa.
 // Il cruscotto: widget salvati nel server (numeri, grafici disegnati a mano in SVG, «cosa richiede attenzione», ultime modifiche).
-import { costruttore, risolvi, apriPop, etichetta } from '../filtri.js';
+import { costruttore, risolvi, apriPop, etichetta, urlLista } from '../filtri.js';
 
 let h, api, get, toast, icona;
 const prefs = (k, v) => { try { if (v === undefined) return JSON.parse(localStorage.getItem('kubo.agenda.' + k) || 'null'); localStorage.setItem('kubo.agenda.' + k, JSON.stringify(v)); } catch { return null; } };
@@ -267,7 +267,7 @@ async function cruscotto(contenuto, k) {
       const diff = v - prima, pct = prima ? Math.round(diff / Math.abs(prima) * 100) : null;
       conf = h('div.cr-conf', { class: diff > 0 ? 'su' : diff < 0 ? 'giu' : '' }, diff === 0 ? `come ${COME[w.periodo]}` : `${diff > 0 ? '▲' : '▼'} ${pct != null ? Math.abs(pct) + '%' : valore(Math.abs(diff), val)} rispetto ${PRIMA[w.periodo]} (${valore(prima, val)})`);
     }
-    return h('a.cr-numero', { href: `#/e/${w.entita}`, title: 'Vedi l\'elenco', on: { click: () => apriLista(w.entita, w.filtri, w.periodo && w.periodo !== 'sempre' ? { campo: w.campoData, op: 'periodo', valore: w.periodo } : null) } }, h('div.cr-valore', valore(v, val)), conf);
+    return h('a.cr-numero', { href: urlLista(w.entita, w.filtri, w.periodo && w.periodo !== 'sempre' ? { campo: w.campoData, op: 'periodo', valore: w.periodo } : null), title: 'Vedi l\'elenco', on: { click: () => apriLista(w.entita, w.filtri, w.periodo && w.periodo !== 'sempre' ? { campo: w.campoData, op: 'periodo', valore: w.periodo } : null) } }, h('div.cr-valore', valore(v, val)), conf);
   }
   carica();
 
@@ -380,8 +380,8 @@ function attenzione(d) {
   const tutto = d.voci.every(v => !v.totale);
   if (tutto) return h('div.cr-tutto-ok', '✓ Tutto in ordine: niente da sistemare.');
   return h('ul.cr-attenzione', d.voci.filter(v => v.totale).map(v => h('li',
-    h('a.cr-att-testa', { href: `#/e/${v.entita}`, title: 'Vedi l\'elenco', on: { click: () => apriLista(v.entita, v.filtri) } }, h('b', v.titolo), h('span.cr-conta', String(v.totale))),
-    h('div.cr-att-righe', v.righe.map(r => h('a', { href: `#/e/${v.entita}/${r.id}`, testo: r.titolo })), v.totale > v.righe.length ? h('a.nota', { href: `#/e/${v.entita}`, testo: `e altri ${v.totale - v.righe.length}`, on: { click: () => apriLista(v.entita, v.filtri) } }) : null))));
+    h('a.cr-att-testa', { href: urlLista(v.entita, v.filtri), title: 'Vedi l\'elenco', on: { click: () => apriLista(v.entita, v.filtri) } }, h('b', v.titolo), h('span.cr-conta', String(v.totale))),
+    h('div.cr-att-righe', v.righe.map(r => h('a', { href: `#/e/${v.entita}/${r.id}`, testo: r.titolo })), v.totale > v.righe.length ? h('a.nota', { href: urlLista(v.entita, v.filtri), testo: `e altri ${v.totale - v.righe.length}`, on: { click: () => apriLista(v.entita, v.filtri) } }) : null))));
 }
 // dal cruscotto alla lista con gli stessi filtri: le date relative del server («@oggi-7») diventano «prima del» / «dal»
 function apriLista(entita, filtri = [], periodo = null) {

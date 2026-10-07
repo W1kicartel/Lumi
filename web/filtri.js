@@ -4,6 +4,7 @@
 // così una vista salvata «questo mese» resta questo mese anche il mese prossimo.
 import { h, get, chip } from './ui.js';
 import { editor } from './campi.js';
+import { orologio } from '/motore/formule.js';
 
 // il foglio di stile del costruttore e dei popover, una volta sola
 if (!document.querySelector('link[href="/filtri.css"]')) document.head.append(h('link', { rel: 'stylesheet', href: '/filtri.css' }));
@@ -36,8 +37,17 @@ const campoDi = (def, id) => def.campi.find(c => c.id === id) || SISTEMA.find(c 
 // ---------- date locali ----------
 const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const piu = (g, n) => { const [y, m, d] = g.split('-').map(Number); return iso(new Date(y, m - 1, d + n)); };
-const mezzanotte = g => { const [y, m, d] = g.split('-').map(Number); return new Date(y, m - 1, d).toISOString(); };
-export function periodoLocale(nome, oggi = iso(new Date())) {
+// i giorni nel fuso dell'azienda (orologio.fuso, da /api/stato), non in quello del browser: «oggi» e la mezzanotte
+const parti = (ms, fuso) => Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: fuso, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' })
+  .formatToParts(new Date(ms)).filter(x => x.type !== 'literal').map(x => [x.type, Number(x.value)]));
+export const oggiAzienda = () => { if (!orologio.fuso) return iso(new Date()); const p = parti(Date.now(), orologio.fuso); return `${p.year}-${String(p.month).padStart(2, '0')}-${String(p.day).padStart(2, '0')}`; };
+const mezzanotte = g => {
+  const [y, m, d] = g.split('-').map(Number); if (!orologio.fuso) return new Date(y, m - 1, d).toISOString();
+  const base = Date.UTC(y, m - 1, d); let t = base;   // due giri bastano anche nei giorni dell'ora legale
+  for (let i = 0; i < 2; i++) { const p = parti(t, orologio.fuso); t = base - (Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second) - t); }
+  return new Date(t).toISOString();
+};
+export function periodoLocale(nome, oggi = oggiAzienda()) {
   const dow = (new Date(oggi + 'T12:00:00').getDay() + 6) % 7, m = /^ultimi_(\d+)$/.exec(nome);
   if (m) return [piu(oggi, -(Number(m[1]) - 1)), oggi];
   switch (nome) {
@@ -71,6 +81,35 @@ export function risolvi(def, filtri) {
   });
 }
 
+// ---------- filtri nell'indirizzo: #/e/<entità>?f=[…] ----------
+// Il cruscotto e «Da vedere» aprono la lista con un indirizzo che porta i filtri (si può aprire in un'altra scheda o
+// mandare a un collega). Arrivano nella forma del server (= vero, < «@oggi», < una data e ora…) e diventano quelli della
+// lista (si, no, prima, dopo, periodo), che la persona poi vede e cambia come i suoi.
+const oggiLocale = () => oggiAzienda();
+export function daServer(filtri = [], periodo = null) {
+  const giornoRel = v => { const m = /^@oggi([+-]\d+)?$/.exec(v); return m ? piu(oggiLocale(), Number(m[1] || 0)) : /^\d{4}-\d{2}-\d{2}/.test(v) ? v.slice(0, 10) : null; };
+  return [...(Array.isArray(filtri) ? filtri : []).flatMap(f => {
+    if (!f || typeof f.campo !== 'string') return [];
+    if (f.op === '=' && f.valore === true) return [{ campo: f.campo, op: 'si' }];
+    if (f.op === '=' && f.valore === false) return [{ campo: f.campo, op: 'no' }];
+    if (typeof f.valore === 'string' && (f.valore.startsWith('@oggi') || /^\d{4}-\d{2}-\d{2}T/.test(f.valore)) && ['<', '>='].includes(f.op)) {
+      const g = giornoRel(f.valore); return g ? [{ campo: f.campo, op: f.op === '<' ? 'prima' : 'dopo', valore: g }] : [];
+    }
+    if (typeof f.valore === 'string' && f.valore.startsWith('@') && f.valore !== '@io') return [];
+    return [{ campo: f.campo, op: String(f.op || '='), valore: f.valore ?? null }];
+  }), ...(periodo?.campo ? [periodo] : [])];
+}
+export const urlLista = (entita, filtri, periodo) => { const l = daServer(filtri, periodo); return `#/e/${entita}${l.length ? '?f=' + encodeURIComponent(JSON.stringify(l)) : ''}`; };
+// all'apertura della lista: i filtri dell'indirizzo diventano quelli salvati della lista, poi l'indirizzo torna pulito
+export function filtriDaIndirizzo(entita) {
+  const [via, q] = location.hash.split('?'); if (!q) return;
+  try {
+    const f = JSON.parse(new URLSearchParams(q).get('f') || '[]');
+    if (Array.isArray(f)) { const k = 'kubo.lista.' + entita, s = JSON.parse(localStorage.getItem(k) || '{}'); localStorage.setItem(k, JSON.stringify({ ...s, filtri: f.slice(0, 30), vista: null, raggruppa: null })); }
+  } catch { /* un indirizzo rovinato: la lista si apre senza filtri */ }
+  history.replaceState(null, '', via);
+}
+
 // ---------- etichetta del filtro ----------
 let persone = null;
 export const caricaPersone = () => (persone ||= get('/agenda-persone').catch(() => []));
@@ -83,6 +122,7 @@ export function etichetta(def, f) {
   else if (f.op === 'in') testo = (v || []).map(x => c.opzioni?.find(o => o.id === x)?.nome || x).join(' o ');
   else if (f.op === 'tra') testo = ['data', 'data_ora'].includes(tipoDi(c)) ? `${data(v?.[0])} – ${data(v?.[1])}` : `${v?.[0]} e ${v?.[1]}`;
   else if (['prima', 'dopo'].includes(f.op)) testo = `${NOMI_OP[f.op]} ${data(v)}`;
+  else if (['=', '!='].includes(f.op) && ['scelta', 'stato'].includes(tipoDi(c))) testo = `${NOMI_OP[f.op]} ${c.opzioni?.find(o => o.id === v)?.nome ?? v}`;   // il nome, non l'id
   else if (f.op === '=' && tipoDi(c) === 'utente') return `${c.nome}: ${v === '@io' ? 'io' : v?.nome ?? v}`;
   else if (f.op === 'contiene' && tipoDi(c) === 'scelta_multipla') testo = `contiene ${c.opzioni?.find(o => o.id === v)?.nome || v}`;
   else testo = `${NOMI_OP[f.op] || f.op} ${v === '@io' ? 'me' : v?.titolo ?? v?.nome ?? v}`;

@@ -3,7 +3,7 @@
 import { h, get, api, toast, formatta, chip } from './ui.js';
 import { calcola } from '/motore/formule.js';
 
-const ORA = () => new Date().toISOString().slice(0, 10);
+const ORA = () => calcola('OGGI()', { valori: {} });   // oggi nel fuso dell'azienda (formule.js → orologio)
 
 export function editor(c, v, opz = {}) {
   const cambia = () => opz.cambia?.();

@@ -68,6 +68,11 @@ Il disegno completo è in [docs/PROGETTO.md](docs/PROGETTO.md).
 
 …vuoi un numero di telefono da chiamare quando qualcosa non va e non hai nessuno che sappia installare un programma, oppure ti serve la contabilità completa (prima nota, bilancio, F24): quella resta al commercialista.
 
+## Sicurezza e prestazioni
+
+- Come Kubo protegge i dati, e cosa si regola da *Sicurezza*: [docs/SICUREZZA.md](docs/SICUREZZA.md).
+- Quanto resta veloce con 50.000 articoli e 200.000 righe di vendita: [docs/PRESTAZIONI.md](docs/PRESTAZIONI.md).
+
 ## Licenza
 
 MIT © W1kicartel. Il carattere Geist è © Vercel, con licenza SIL OFL 1.1.

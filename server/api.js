@@ -3,7 +3,7 @@
 // «X-Kubo: 1» (una pagina di un altro sito non può aggiungerla). In alternativa «Authorization: Bearer <token>».
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
-import { join, dirname, extname, normalize } from 'node:path';
+import { join, dirname, extname, normalize, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as S from './schema.js';
 import * as D from './dati.js';
@@ -17,7 +17,10 @@ import { randomBytes } from 'node:crypto';
 
 // I moduli (server/moduli/*.js): ognuno esporta di default registra(k) e aggiunge le sue rotte e i suoi ascoltatori.
 // k = { r, db, S, D, P, A, M, U, meta, serve, ErroreHttp, manda }. Si caricano in ordine alfabetico. Una rotta riceve anche
-// «res»: se risponde da sé (un file da scaricare), il server non aggiunge il JSON.
+// «res»: se risponde da sé (un file da scaricare), il server non aggiunge il JSON. Con k.controllo(f) un modulo aggiunge un
+// controllo che gira prima di ogni rotta /api/* (anche /api/eventi): f({ req, res, ctx, token, metodo, percorso, corpo, ip })
+// lancia un errore per fermare la richiesta, o restituisce { ctx: null } per trattarla come senza accesso (es.
+// server/moduli/sicurezza.js: sessioni scadute per inattività, password da cambiare, tentativi di accesso).
 const CARTELLA_MODULI = join(dirname(fileURLToPath(import.meta.url)), 'moduli');
 const MODULI_SERVER = await Promise.all(readdirSync(CARTELLA_MODULI).filter(f => f.endsWith('.js')).sort()
   .map(f => import(join(CARTELLA_MODULI, f)).then(m => ({ nome: f.replace(/\.js$/, ''), registra: m.default }))));
@@ -32,6 +35,12 @@ const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; cha
 const indirizzo = req => (process.env.KUBO_PROXY === '1' && req.headers['x-forwarded-for'] ? String(req.headers['x-forwarded-for']).split(',')[0].trim() : req.socket.remoteAddress);
 const locale = ip => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(ip);
 
+// l'interfaccia è tutta in file nostri: niente script in linea, niente risorse da altri siti (la voce di Lumi parla con Deepgram)
+const INTESTAZIONI = { 'X-Content-Type-Options': 'nosniff', 'Cross-Origin-Opener-Policy': 'same-origin', 'Cross-Origin-Resource-Policy': 'same-origin',
+  'Permissions-Policy': 'camera=(self), microphone=(self), geolocation=(), payment=(), usb=()',
+  'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; " +
+    "connect-src 'self' wss://api.deepgram.com; media-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-src 'self'; frame-ancestors 'none'; form-action 'self'" };
+
 class ErroreHttp extends Error { constructor(stato, m, extra = {}) { super(m); this.stato = stato; this.extra = extra; } }
 
 export function creaServer(db) {
@@ -40,7 +49,14 @@ export function creaServer(db) {
   if (U.quanti(db) === 0 && process.env.NODE_ENV !== 'test') console.log(`Primo avvio da un altro computer: codice ${codiceAvvio}`);
   const primoAvvio = (ip, codice) => { if (!locale(ip) && String(codice || '').trim().toUpperCase() !== codiceAvvio) throw new ErroreHttp(403, 'Serve il codice di avvio: lo trovi nel terminale o nel log di Kubo'); };
   const clienti = new Set();   // connessioni SSE: { res, ctx }
-  const manda = (ev) => { for (const c of clienti) if (!ev.entita || P.puo(c.ctx, ev.entita, 'leggi')) c.res.write(`data: ${JSON.stringify(ev)}\n\n`); };
+  // a ogni evento si rilegge la sessione: chi è uscito (o è stato scollegato, o ha cambiato ruolo) non riceve più niente
+  const manda = (ev) => {
+    for (const c of clienti) {
+      const ctx = c.token ? U.contesto(db, c.token) : null;
+      if (!ctx) { clienti.delete(c); c.res.end(); continue; }
+      if (!ev.entita || P.puo(ctx, ev.entita, 'leggi')) c.res.write(`data: ${JSON.stringify(ev)}\n\n`);
+    }
+  };
   D.ascolta((ev, _db, ctx) => { if (!ev.interno) manda({ tipo: ev.tipo, entita: ev.entita, id: ev.id, da: ctx?.utente?.id ?? null }); });
   A.suAvviso(a => manda({ tipo: 'avviso', ...a }));
   const tentativi = new Map();   // ip → [orari] degli accessi falliti
@@ -61,13 +77,15 @@ export function creaServer(db) {
     }));
   }
 
-  const rotte = [];
+  const rotte = [], controlli = [];
+  const controllo = f => { controlli.push(f); };
   const r = (metodo, percorso, f) => rotte.push({ metodo, re: new RegExp('^' + percorso.replace(/:(\w+)/g, '(?<$1>[^/]+)') + '$'), f });
   // «prima»: un modulo può agire prima di una rotta di un altro (es. il backup prima di cambiare lo schema o di un import)
   const ganci = [], prima = (metodo, percorso, f) => ganci.push({ metodo, re: new RegExp('^' + percorso.replace(/:(\w+)/g, '[^/]+') + '$'), f });
 
   r('GET', '/api/stato', ({ ctx, ip }) => ({ versione: VERSIONE, configurato: U.quanti(db) > 0, serveCodice: U.quanti(db) === 0 && !locale(ip), azienda: meta.leggi(db, 'azienda'), utente: ctx?.utente ?? null,
-    poteri: ctx ? { schema: P.puoSchema(ctx), utenti: P.puoUtenti(ctx) } : null, modelli: JSON.parse(meta.leggi(db, 'modelli') || '[]') }));
+    poteri: ctx ? { schema: P.puoSchema(ctx), utenti: P.puoUtenti(ctx) } : null, modelli: JSON.parse(meta.leggi(db, 'modelli') || '[]'),
+    fuso: meta.leggi(db, 'fuso') || 'Europe/Rome' }));
   r('GET', '/api/modelli', () => M.elenco());
   r('POST', '/api/configura', ({ corpo, risposta, ip }) => {
     if (U.quanti(db) > 0) throw new ErroreHttp(409, 'Già configurato');
@@ -133,13 +151,14 @@ export function creaServer(db) {
   r('PUT', '/api/ruoli/:id', ({ ctx, p, corpo }) => { if (!P.puoUtenti(serve(ctx))) throw new P.ErrorePermesso(); P.salvaRuolo(db, { ...corpo, id: p.id }); return P.ruolo(db, p.id); });
 
   r('GET', '/api/moduli', () => moduliWeb());
-  for (const m of MODULI_SERVER) if (typeof m.registra === 'function') m.registra({ r, prima, db, S, D, P, A, M, U, meta, serve, ErroreHttp, manda, primoAvvio });
+  for (const m of MODULI_SERVER) if (typeof m.registra === 'function') m.registra({ r, prima, db, S, D, P, A, M, U, meta, serve, ErroreHttp, manda, primoAvvio, controllo });
 
   async function statico(req, res, percorso) {
     // il motore delle formule è lo stesso nel server e nel browser
     if (percorso === '/motore/formule.js') { res.writeHead(200, { 'Content-Type': MIME['.js'], 'Cache-Control': 'no-cache' }).end(await readFile(join(WEB, '..', 'server', 'formule.js'))); return; }
-    let f = normalize(join(WEB, decodeURIComponent(percorso === '/' ? '/index.html' : percorso)));
-    if (!f.startsWith(WEB)) { res.writeHead(403).end(); return; }
+    // un indirizzo con «%» rotti non deve far cadere il server; e mai fuori da web/ (neanche in una cartella «web-qualcosa»)
+    let f; try { f = normalize(join(WEB, decodeURIComponent(percorso === '/' ? '/index.html' : percorso))); } catch { res.writeHead(400).end(); return; }
+    if (!f.startsWith(WEB + sep) || f.includes('\0')) { res.writeHead(403).end(); return; }
     try { if ((await stat(f)).isDirectory()) f = join(f, 'index.html'); const b = await readFile(f);
       res.writeHead(200, { 'Content-Type': MIME[extname(f)] || 'application/octet-stream', 'Cache-Control': 'no-cache', 'X-Content-Type-Options': 'nosniff' }).end(b);
     } catch {   // le rotte dell'interfaccia (#…) stanno tutte in index.html
@@ -151,12 +170,16 @@ export function creaServer(db) {
   return createServer(async (req, res) => {
     const url = new URL(req.url, 'http://x'), percorso = url.pathname;
     res.setHeader('X-Frame-Options', 'DENY'); res.setHeader('Referrer-Policy', 'no-referrer');
-    if (!percorso.startsWith('/api/')) return statico(req, res, percorso);
-    const { token, ctx } = ctxDi(req);
+    for (const [k, v] of Object.entries(INTESTAZIONI)) res.setHeader(k, v);
+    if (!percorso.startsWith('/api/')) return statico(req, res, percorso).catch(() => { if (!res.headersSent) res.writeHead(500).end(); else res.end(); });
+    let { token, ctx } = ctxDi(req);
+    // un controllo può anche togliere l'utente alla richiesta (sessione scaduta per inattività): restituisce { ctx: null }
+    const controllaTutti = async corpo => { for (const f of controlli) { const x = await f({ req, res, ctx, token, metodo: req.method, percorso, corpo, ip: req.socket.remoteAddress }); if (x && 'ctx' in x) ctx = x.ctx; } };
     if (percorso === '/api/eventi') {
+      try { await controllaTutti({}); } catch { res.writeHead(401).end(); return; }
       if (!ctx) { res.writeHead(401).end(); return; }
       res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' }); res.write(': ciao\n\n');
-      const c = { res, ctx }; clienti.add(c); const batti = setInterval(() => res.write(': .\n\n'), 25000);
+      const c = { res, ctx, token }; clienti.add(c); const batti = setInterval(() => res.write(': .\n\n'), 25000);
       req.on('close', () => { clearInterval(batti); clienti.delete(c); }); return;
     }
     const risposta = { intestazioni: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } };
@@ -168,9 +191,10 @@ export function creaServer(db) {
         for await (const x of req) { n += x.length; if (n > 5e6) throw new ErroreHttp(413, 'Troppo grande'); pezzi.push(x); }
         const t = Buffer.concat(pezzi).toString('utf8'); if (t) { try { corpo = JSON.parse(t); } catch { throw new ErroreHttp(400, 'JSON non valido'); } }
       }
+      await controllaTutti(corpo);
       const rotta = rotte.find(x => x.metodo === req.method && x.re.test(percorso));
       if (!rotta) throw new ErroreHttp(404, 'Non trovato');
-      const p = Object.fromEntries(Object.entries(percorso.match(rotta.re).groups || {}).map(([k, v]) => [k, decodeURIComponent(v)]));
+      let p; try { p = Object.fromEntries(Object.entries(percorso.match(rotta.re).groups || {}).map(([k, v]) => [k, decodeURIComponent(v)])); } catch { throw new ErroreHttp(400, 'Indirizzo non valido'); }
       for (const g of ganci) if (g.metodo === req.method && g.re.test(percorso)) await g.f({ ctx, percorso, corpo });
       const out = await rotta.f({ req, res, ctx, token, p, q: url.searchParams, corpo, risposta, ip: indirizzo(req) });
       if (res.headersSent) return;   // la rotta ha già risposto da sé (streaming di Lumi, file, scaricamenti)

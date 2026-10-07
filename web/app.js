@@ -5,6 +5,7 @@ import { lista, scheda } from './viste.js';
 import { personalizza } from './personalizza.js';
 import { usaSchema } from './campi.js';
 import { utenti } from './utenti.js';
+import { filtriDaIndirizzo } from './filtri.js';
 
 const app = document.getElementById('app');
 let stato = null, schema = [], eventi = null, vistaAttiva = null;
@@ -83,11 +84,12 @@ function disegnaLato() {
 }
 const vociModuli = () => MODULI.flatMap(m => { try { return m.lato?.(contesto()) || []; } catch { return []; } });
 function logo() { const s = icona('griglia'); s.style.width = '22px'; s.style.height = '22px'; return s; }
-function evidenzia() { const e = location.hash.split('/')[2]; lato?.querySelectorAll('nav a').forEach(a => a.classList.toggle('attivo', a.getAttribute('href') === `#/e/${e}` || a.getAttribute('href') === location.hash)); }
+function evidenzia() { const e = location.hash.split('?')[0].split('/')[2]; lato?.querySelectorAll('nav a').forEach(a => a.classList.toggle('attivo', a.getAttribute('href') === `#/e/${e}` || a.getAttribute('href') === location.hash)); }
 
 function instrada() {
   window.onbeforeunload = null;
-  const [, tipo, a, b] = (location.hash || '').replace(/^#/, '').split('/');
+  const [, tipo, a, b] = (location.hash || '').replace(/^#/, '').split('?')[0].split('/');   // dopo «?» i filtri (filtri.js)
+  if (tipo === 'e' && a && !b && location.hash.includes('?')) filtriDaIndirizzo(a);
   evidenzia(); vistaAttiva = null;
   const def = schema.find(e => e.id === a);
   const daModulo = MODULI.find(m => m.rotte?.[tipo]);
