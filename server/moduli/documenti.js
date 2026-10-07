@@ -9,7 +9,7 @@ import { join, dirname } from 'node:path';
 import { VALIDATORI } from './documenti-italia.js';
 import { totali, cent } from './documenti-calcoli.js';
 import { controlla, xml, contiFattura, progressivoDa, REGIMI } from './documenti-xml.js';
-import { modelloPredefinito, pulisciModello, documentoHtml, singolare } from './documenti-stampa.js';
+import { modelloPredefinito, pulisciModello, documentoHtml, singolare, rendi } from './documenti-stampa.js';
 
 const FATTURE = 'fatture';
 const CAMPI_AZIENDA = ['ragione_sociale', 'piva', 'codice_fiscale', 'regime', 'via', 'cap', 'comune', 'provincia', 'telefono', 'email', 'pec', 'codice_destinatario', 'iban', 'banca', 'colore', 'aliquota'];
@@ -57,13 +57,16 @@ export default function registra({ r, db, S, D, P, meta, serve, ErroreHttp }) {
 
   // modelli di stampa
   r('GET', '/api/documenti/modelli', ({ ctx }) => { serve(ctx); return stampabili(S.elenco(db)).filter(e => P.puo(ctx, e.id, 'leggi')).map(e => ({ id: e.id, nome: e.nome, personalizzato: !!meta.leggi(db, `documenti.stampa.${e.id}`) })); });
-  r('GET', '/api/documenti/modelli/:e', ({ ctx, p }) => { serve(ctx); return modelloDi(db, meta, S, p.e); });
+  r('GET', '/api/documenti/modelli/:e', ({ ctx, p }) => { P.verifica(serve(ctx), p.e, 'leggi'); try { return modelloDi(db, meta, S, p.e); } catch (e) { throw new ErroreHttp(404, e.message); } });
   r('PUT', '/api/documenti/modelli/:e', ({ ctx, p, corpo }) => {
     puoImpostare(ctx); if (!stampabili(S.elenco(db)).some(e => e.id === p.e)) throw new ErroreHttp(404, 'Questa sezione non ha righe da stampare');
     let m; try { m = pulisciModello(corpo); } catch (e) { errore(e); }
     meta.scrivi(db, `documenti.stampa.${p.e}`, JSON.stringify(m)); return m;
   });
-  r('DELETE', '/api/documenti/modelli/:e', ({ ctx, p }) => { puoImpostare(ctx); db.prepare('DELETE FROM _meta WHERE chiave = ?').run(`documenti.stampa.${p.e}`); return modelloDi(db, meta, S, p.e); });
+  r('DELETE', '/api/documenti/modelli/:e', ({ ctx, p }) => {
+    puoImpostare(ctx); db.prepare('DELETE FROM _meta WHERE chiave = ?').run(`documenti.stampa.${p.e}`);
+    try { return modelloDi(db, meta, S, p.e); } catch (e) { throw new ErroreHttp(404, e.message); }
+  });
 
   // la stampa (HTML pronto per la finestra di stampa del browser); con un corpo è l'anteprima di un modello non salvato
   r('GET', '/api/documenti/stampa/:e/:id', ({ ctx, p }) => stampa(db, { S, D, meta }, p.e, p.id, serve(ctx)));
@@ -180,7 +183,7 @@ export function stampa(db, { S, D, meta }, e, id, ctx, modello = null) {
   Object.assign(dati, { doc: { ...dati }, azienda: az, linee: lineeF, riepilogo, totali: T, oggi: dataIt(new Date().toISOString().slice(0, 10)),
     forfettario: fattura && az.regime === 'RF19' ? 'sì' : '' });
   const html = documentoHtml(m, { azienda: az, logo: leggiLogo(db, meta), dati, linee: lineeF, riepilogo, totali: T });
-  return { titolo: `${singolare(def.nome)} ${dati._titolo}`.trim(), html, totali: conti };
+  return { titolo: rendi(m.titolo, [dati]).replace(/\s+/g, ' ').trim() || `${singolare(def.nome)} ${dati._titolo}`.trim(), html, totali: conti };
 }
 
 // ---------- fatture ----------

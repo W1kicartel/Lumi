@@ -15,7 +15,7 @@ import { pivaValida, cfValido, ibanValido } from '../server/moduli/documenti-ita
 import { totali } from '../server/moduli/documenti-calcoli.js';
 import { xml, controlla, testoPA } from '../server/moduli/documenti-xml.js';
 import { rendi, modelloPredefinito, singolare } from '../server/moduli/documenti-stampa.js';
-import { attivaFatture, salvaAzienda, salvaLogo, leggiLogo, stampa, completaClienti } from '../server/moduli/documenti.js';
+import { attivaFatture, salvaAzienda, salvaLogo, leggiLogo, stampa, completaClienti, fatturaDa } from '../server/moduli/documenti.js';
 
 const QUI = dirname(fileURLToPath(import.meta.url));
 A.attiva(); attivaFatture(D);
@@ -201,4 +201,23 @@ test('API: crea fattura da una vendita, stampa, controlli e XML; permessi rispet
     assert.equal((await chiama('PUT', '/api/documenti/azienda', AZ)).stato, 403);
     assert.equal((await chiama('GET', `/api/documenti/stampa/vendite/${v.id}`)).stato, 200);
   } finally { srv.close(); }
+});
+
+test('crea fattura da un preventivo (IVA del documento) e da una commessa (una riga col prezzo)', () => {
+  const db = apri(); M.installa(db, 'laboratorio'); M.installa(db, 'fatture'); completaClienti(db, S);
+  const P = { verifica() {} }, ErroreHttp = class extends Error {};
+  const cl = D.crea(db, 'clienti', { nome: 'Studio Verdi' });
+  const pr = D.crea(db, 'preventivi', { cliente: cl.id, oggetto: 'Mobile su misura', iva: 10, voci: [{ descrizione: 'Progetto', quantita: 1, prezzo: 300 }, { descrizione: 'Posa', quantita: 4, prezzo: 45 }] });
+  const f = D.leggi(db, 'fatture', fatturaDa(db, { S, D, P, meta, ErroreHttp }, 'preventivi', pr.id, null).id);
+  assert.deepEqual(f.righe.map(r => [r.descrizione, r.quantita, r.prezzo, r.aliquota]), [['Progetto', 1, 300, 10], ['Posa', 4, 45, 10]]);
+  assert.equal(f.imposta, 48); assert.equal(f.totale, 528); assert.match(f.riferimento, /^Preventivo P-/); assert.equal(f.nome_documento, 'Fattura in bozza');
+  const co = D.crea(db, 'commesse', { titolo: 'Restauro tavolo', cliente: cl.id, prezzo: 850 });
+  const g = D.leggi(db, 'fatture', fatturaDa(db, { S, D, P, meta, ErroreHttp }, 'commesse', co.id, null).id);
+  assert.deepEqual(g.righe.map(r => [r.descrizione, r.prezzo, r.aliquota]), [['Restauro tavolo', 850, 22]]); assert.equal(g.totale, 1037);
+  // nel forfettario niente IVA: righe a 0 con natura N2.2 e la dicitura in stampa
+  salvaAzienda(db, meta, { ...AZ, regime: 'RF19' });
+  const h = D.leggi(db, 'fatture', fatturaDa(db, { S, D, P, meta, ErroreHttp }, 'commesse', co.id, null).id);
+  assert.deepEqual(h.righe.map(r => [r.aliquota, r.natura]), [[0, 'N2.2']]); assert.equal(h.totale, 850);
+  assert.ok(stampa(db, { S, D, meta }, 'fatture', h.id, null).html.includes('franchigia da IVA'));
+  assert.ok(xml({ ...AZ, regime: 'RF19' }, { ...h, numero: '1', stato: 'emessa' }, { ...CLIENTE }).xml.includes('<RiferimentoNormativo>Operazione in franchigia da IVA'));
 });

@@ -42,7 +42,7 @@
       { "id": "data", "nome": "Scadenza", "tipo": "data", "obbligatorio": true },
       { "id": "importo", "nome": "Importo", "tipo": "valuta" },
       { "id": "pagata", "nome": "Pagata", "tipo": "si_no" } ] },
-    { "id": "fatture", "nome": "Fatture", "icona": "documento", "titolo": "numero", "campi": [
+    { "id": "fatture", "nome": "Fatture", "icona": "documento", "titolo": "nome_documento", "campi": [
       { "id": "tipo", "nome": "Documento", "tipo": "scelta", "predefinito": "TD01", "opzioni": [
         { "id": "TD01", "nome": "Fattura" }, { "id": "TD24", "nome": "Fattura differita" }, { "id": "TD04", "nome": "Nota di credito" },
         { "id": "TD05", "nome": "Nota di debito" }, { "id": "TD06", "nome": "Parcella" } ] },
@@ -78,7 +78,9 @@
       { "id": "rate", "nome": "Rate (se a rate)", "tipo": "righe", "entita": "rate_fattura", "campo": "fattura" },
       { "id": "pagata_il", "nome": "Pagata il", "tipo": "data" },
       { "id": "causale", "nome": "Causale", "tipo": "testo_lungo" },
-      { "id": "note", "nome": "Note in fattura", "tipo": "testo_lungo" } ] }
+      { "id": "note", "nome": "Note in fattura", "tipo": "testo_lungo" },
+      { "id": "nome_documento", "nome": "Nome del documento", "tipo": "calcolato", "nascosto_in_lista": true,
+        "formula": "SE(tipo = \"TD04\"; \"Nota di credito\"; SE(tipo = \"TD05\"; \"Nota di debito\"; SE(tipo = \"TD06\"; \"Parcella\"; \"Fattura\"))) & \" \" & SE(VUOTO(numero); \"in bozza\"; numero)" } ] }
   ],
   "automazioni": [
     { "id": "fattura_pagata", "nome": "Fattura pagata: segna la data", "entita": "fatture", "quando": "campo_cambia", "campo": "stato", "a": "pagata", "se": "VUOTO(pagata_il)",

@@ -30,7 +30,7 @@ export function modelloPredefinito(def, schema) {
   if (haF(figlia, 'sconto')) colonne.push({ etichetta: 'Sconto', valore: '{{linea.sconto}}', allinea: 'destra' });
   colonne.push({ etichetta: 'IVA', valore: '{{linea.iva}}', allinea: 'destra' }, { etichetta: 'Importo', valore: '{{linea.totale}}', allinea: 'destra' });
   return {
-    titolo: fattura ? '{{tipo}} n. {{numero}}' : `${singolare(def.nome)} {{_titolo}}`,
+    titolo: fattura ? '{{tipo}}{{#numero}} n. {{numero}}{{/numero}}{{^numero}} (bozza){{/numero}}' : `${singolare(def.nome)} {{_titolo}}`,
     colore: '',
     destinatario: D ? [`{{${D}}}`, `{{#${D}.via}}{{${D}.via}}{{/${D}.via}}{{^${D}.via}}{{${D}.indirizzo}}{{/${D}.via}}`, `{{${D}.cap}} {{${D}.comune}} {{#${D}.provincia}}({{${D}.provincia}}){{/${D}.provincia}}`,
       `{{#${D}.piva}}P.IVA {{${D}.piva}}{{/${D}.piva}}`, `{{#${D}.codice_fiscale}}C.F. {{${D}.codice_fiscale}}{{/${D}.codice_fiscale}}`,
@@ -87,8 +87,10 @@ const CSS = `@font-face { font-family: Geist; src: url(/font/Geist-Variable.woff
 @page { size: A4; margin: 14mm 14mm 16mm; @bottom-right { content: counter(page) " / " counter(pages); font: 8pt Geist, Arial, sans-serif; color: #888; } }
 * { box-sizing: border-box; }
 html, body { margin: 0; background: #fff; color: #111; font: 9.5pt/1.45 Geist, "Helvetica Neue", Arial, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-.foglio { max-width: 182mm; margin: 0 auto; padding: 8mm 0; }
+.foglio { max-width: 210mm; margin: 0 auto; padding: 12mm 14mm; }
 @media print { .foglio { padding: 0; max-width: none; } }
+@media screen and (max-width: 600px) { .foglio { padding: 6mm 5mm; } .testa, .fondo { flex-direction: column; gap: 5mm; } .doc { text-align: left; } .dettagli { margin-left: 0; } .dettagli td { padding: .6mm 4mm .6mm 0; }
+  .parti { justify-content: flex-start; } .dest { min-width: 0; max-width: none; width: 100%; } .tot { width: 100%; } table.righe th, table.righe td { padding-left: 1mm; padding-right: 1mm; } }
 .testa { display: flex; justify-content: space-between; gap: 10mm; align-items: flex-start; padding-bottom: 6mm; border-bottom: 1.5pt solid var(--c); }
 .mittente { font-size: 8.5pt; color: #444; } .mittente b { display: block; font-size: 11pt; color: #111; margin-bottom: 1mm; }
 .mittente img { display: block; max-height: 18mm; max-width: 60mm; margin-bottom: 3mm; }
@@ -106,7 +108,7 @@ table.righe tr { break-inside: avoid; } .dx { text-align: right; white-space: no
 .sx { flex: 1; min-width: 0; font-size: 8.5pt; color: #333; } .sx h3 { font-size: 7.5pt; text-transform: uppercase; letter-spacing: .08em; color: #888; margin: 0 0 1.5mm; font-weight: 600; }
 .sx section { margin-bottom: 5mm; }
 .iva { border-collapse: collapse; font-size: 8pt; } .iva th, .iva td { padding: 1mm 4mm 1mm 0; text-align: right; } .iva th { color: #888; font-weight: 500; } .iva th:first-child, .iva td:first-child { text-align: left; }
-.tot { width: 68mm; border-collapse: collapse; font-variant-numeric: tabular-nums; } .tot td { padding: 1.3mm 0; } .tot td:last-child { text-align: right; }
+.tot { width: 68mm; align-self: flex-start; border-collapse: collapse; font-variant-numeric: tabular-nums; } .tot td { padding: 1.3mm 0; } .tot td:last-child { text-align: right; }
 .tot .grande td { font-size: 12.5pt; font-weight: 650; border-top: 1pt solid #111; padding-top: 2.5mm; color: var(--c); }
 .piede { margin-top: 10mm; padding-top: 3mm; border-top: .5pt solid #ddd; font-size: 7.5pt; color: #888; text-align: center; }`;
 
