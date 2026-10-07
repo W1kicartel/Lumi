@@ -22,6 +22,7 @@ export default {
   'connettori.p-modifica': "bearbeiten",
   'connettori.p-elimina': "löschen",
   'connettori.somma': "Prüfsumme (SHA-256) der Datei: Vergleiche sie mit der vom Autor veröffentlichten.",
+  'connettori.da-approvare': "Der Code dieses Connectors wurde noch nicht ausgeführt: Kubo lädt ihn erst, wenn du die Prüfsumme unten bestätigst. Danach siehst du die Bereiche, die er nutzen darf.",
   'connettori.impostazioni': "Einstellungen",
   'connettori.salvato-segreto': "Gespeichert",
   'connettori.cambia': "Ändern",

@@ -45,6 +45,7 @@ async function pagina(contenuto, k, id) {
   const corpo = h('div.corpo.conn');
   contenuto.replaceChildren(h('div.testa', h('a.btn.nudo', { href: '#/connettori' }, '←'), h('h1', c.nome || c.id), chipDi(k, statoDi(c)), h('div.conn-spazio'), interruttore(k, c, salva)), corpo);
   if (c.rotto) { corpo.append(h('div.avviso', t('connettori.rotto'))); return; }
+  if (c.daApprovare) { corpo.append(h('div.avviso', t(c.cambiato ? 'connettori.cambiato' : 'connettori.da-approvare')), h('p', t('connettori.somma'), h('br'), h('code.mono.conn-somma', c.somma))); return; }
   corpo.append(h('p.nota', c.descrizione || ''));
   if (c.mancano?.length) corpo.append(h('div.avviso', t('connettori.mancano', { cosa: c.mancano.join(', ') })));
   if (c.cambiato) corpo.append(h('div.avviso', t('connettori.cambiato')));
@@ -58,7 +59,7 @@ function interruttore(k, c, salva) {
   const { h } = k;
   if (c.attivo || c.acceso) return h('button.btn', { on: { click: () => salva({ attivo: false }) } }, t('connettori.spegni'));
   return h('button.btn.pieno', { on: { click: () => finestra(k, t('connettori.accendi-titolo', { nome: c.nome }), [
-    h('p', t('connettori.potra')),
+    c.daApprovare ? h('p', t('connettori.da-approvare')) : h('p', t('connettori.potra')),
     h('ul.conn-elenco', c.permessi.map(p => h('li', t('connettori.permesso', { sezione: p.entita, cosa: ['leggi', 'crea', 'modifica', 'elimina'].filter(x => p[x]).map(x => t('connettori.p-' + x)).join(', ') })))),
     c.origine === 'locale' ? h('p', t('connettori.somma'), h('br'), h('code.mono.conn-somma', c.somma)) : null,
   ], t('connettori.accendi'), () => salva({ attivo: true, somma: c.somma })) } }, t('connettori.accendi'));

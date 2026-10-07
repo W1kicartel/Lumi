@@ -31,14 +31,17 @@ const somma = f => createHash('sha256').update(readFileSync(f)).digest('hex');
 const ID = /^[a-z][a-z0-9-]{1,40}$/;
 
 // legge le cartelle dei connettori: { man, file, somma, origine }. Un manifesto rotto non ferma Kubo (si segna l'errore).
-export async function carica(cartella, origine) {
-  let nomi = []; try { nomi = readdirSync(cartella).filter(n => ID.test(n)).sort(); } catch { return []; }
+// «approvata(id, somma)»: un connettore di terzi si importa (cioè il suo codice gira) solo se il titolare ha approvato
+// QUELLA somma; altrimenti resta { inattesa: true } con la sola somma da mostrare, e il file non viene eseguito.
+export async function carica(cartella, origine, approvata = () => true, solo = null) {
+  let nomi = []; try { nomi = readdirSync(cartella).filter(n => ID.test(n) && (!solo || n === solo)).sort(); } catch { return []; }
   const out = [];
   for (const n of nomi) {
     const file = join(cartella, n, 'connettore.js');
     if (!existsSync(file) || !resolve(file).startsWith(resolve(cartella) + sep)) continue;
     try {
-      const s = somma(file), man = (await import(pathToFileURL(file).href + `?s=${s.slice(0, 12)}`)).default;
+      const s = somma(file); if (!approvata(n, s)) { out.push({ id: n, file, somma: s, origine, inattesa: true }); continue; }
+      const man = (await import(pathToFileURL(file).href + `?s=${s.slice(0, 12)}`)).default;
       if (!man || man.id !== n) { out.push({ id: n, file, somma: s, origine, rotto: 'id' }); continue; }
       out.push({ id: n, man, file, somma: s, origine });
     } catch (e) { out.push({ id: n, file, origine, rotto: String(e.message).slice(0, 200) }); }
@@ -101,11 +104,12 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
   // ---------- i connettori di questo database ----------
   const cartellaDati = () => { const l = db.location?.(); return l ? join(dirname(l), 'connettori') : null; };
   let tutti = new Map(UFFICIALI.map(c => [c.id, c]));
-  const pronti = (async () => { const c = cartellaDati(); if (!c) return; for (const x of await carica(c, 'locale')) if (!tutti.has(x.id)) tutti.set(x.id, x); })().catch(e => console.error('connettori', e));
+  const approvata = (id, s) => { try { const x = db.prepare('SELECT attivo, somma FROM _connettori WHERE id = ?').get(id); return !!x?.attivo && x.somma === s; } catch { return false; } };
+  const pronti = (async () => { const c = cartellaDati(); if (!c) return; for (const x of await carica(c, 'locale', approvata)) if (!tutti.has(x.id)) tutti.set(x.id, x); })().catch(e => console.error('connettori', e));
   const riga = id => db.prepare('SELECT * FROM _connettori WHERE id = ?').get(id);
-  const conn = id => { const c = tutti.get(id); if (!c || c.rotto) throw errore(404, 'sconosciuto'); return c; };
+  const conn = id => { const c = tutti.get(id); if (!c || c.rotto || !c.man) throw errore(404, 'sconosciuto'); return c; };
   // attivo davvero: acceso dal titolare e, per quelli locali, con la stessa somma approvata
-  const attivo = id => { const c = tutti.get(id), x = riga(id); return !!(c && !c.rotto && x?.attivo && (c.origine === 'ufficiale' || x.somma === c.somma)); };
+  const attivo = id => { const c = tutti.get(id), x = riga(id); return !!(c?.man && !c.rotto && x?.attivo && (c.origine === 'ufficiale' || x.somma === c.somma)); };
   const leggiJson = (s, d = {}) => { try { return JSON.parse(s || '') ?? d; } catch { return d; } };
   const impDi = id => leggiJson(riga(id)?.impostazioni);
   const scriviRiga = (id, campi) => {
@@ -282,7 +286,7 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
   D.ascolta((ev, dbEv) => {
     if (dbEv !== db || !['crea', 'modifica'].includes(ev.tipo)) return;
     for (const [id, c] of tutti) {
-      if (c.rotto || !c.man.uscita || origine === id || !attivo(id)) continue;
+      if (c.rotto || !c.man?.uscita || origine === id || !attivo(id)) continue;
       for (const [sem, u] of Object.entries(c.man.uscita)) {
         if (entitaDi(id, sem) !== ev.entita) continue;
         const campi = (u.campi || []).map(x => campoDi(id, sem, x)).filter(Boolean);
@@ -311,7 +315,7 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
   }
   async function pianificatore(adesso = Date.now()) {
     for (const [id, c] of tutti) {
-      if (c.rotto || !c.man.pianificati || !attivo(id)) continue;
+      if (c.rotto || !c.man?.pianificati || !attivo(id)) continue;
       for (const [nome, def] of Object.entries(c.man.pianificati)) {
         const x = db.prepare('SELECT prossimo FROM _connettori_giri WHERE connettore = ? AND giro = ?').get(id, nome);
         if (!x) { db.prepare('INSERT INTO _connettori_giri (connettore, giro, prossimo) VALUES (?, ?, ?)').run(id, nome, def.ogni ? adesso : prossimo(def, adesso)); if (!def.ogni) continue; }
@@ -380,6 +384,8 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
   function scheda(id, l, completa = false) {
     const c = tutti.get(id), x = riga(id);
     if (!c || c.rotto) return { id, rotto: c?.rotto || true, origine: c?.origine, somma: c?.somma };
+    // un connettore di terzi non ancora approvato (o cambiato dopo): solo la somma, il suo codice non è stato eseguito
+    if (c.inattesa) return { id, nome: id, descrizione: '', origine: c.origine, somma: c.somma, attivo: false, acceso: !!x?.attivo, cambiato: !!x?.attivo, daApprovare: true, mancano: [], permessi: [] };
     const { man } = c, salvati = segretiSalvati(id), imp = impDi(id), tok = tokenSalvato(id);
     const base = { id, nome: tr(man, l, 'nome', man.nome), descrizione: tr(man, l, 'descrizione', man.descrizione), icona: man.icona || 'cartella', versione: man.versione || 1, origine: c.origine,
       somma: c.somma, attivo: attivo(id), acceso: !!x?.attivo, cambiato: c.origine === 'locale' && !!x?.attivo && x.somma !== c.somma,
@@ -409,9 +415,19 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
       if (d.su && P.puo(ctx, entitaDi(id, d.su), d.scrive ? 'modifica' : 'leggi')) out.push({ connettore: id, nomeConnettore: c.man.nome, azione: a, nome: tr(c.man, l, `az.${a}`, d.nome), su: entitaDi(id, d.su), scrive: !!d.scrive, input: Object.keys(d.input || {}) });
     return out;
   });
-  r('GET', '/api/connettori/:id', async ({ ctx, p, req }) => { titolare(ctx); await pronti; conn(p.id); return scheda(p.id, linguaDi(req, ctx), true); });
+  r('GET', '/api/connettori/:id', async ({ ctx, p, req }) => { titolare(ctx); await pronti; if (!tutti.get(p.id)?.inattesa) conn(p.id); return scheda(p.id, linguaDi(req, ctx), true); });
   r('PUT', '/api/connettori/:id', async ({ ctx, p, corpo, req }) => {
-    titolare(ctx); await pronti; const c = conn(p.id), { man } = c;
+    titolare(ctx); await pronti;
+    const pre = tutti.get(p.id);
+    if (pre?.inattesa) {
+      if (corpo.attivo === false) { scriviRiga(p.id, { attivo: 0 }); return scheda(p.id, linguaDi(req, ctx), true); }
+      // il codice di terzi si importa adesso, e solo se il file ha ancora la somma che il titolare ha visto e confermato
+      if (corpo.attivo !== true || corpo.somma !== pre.somma) throw errore(409, 'somma-diversa');
+      const [x] = await carica(cartellaDati(), 'locale', (id, s) => s === corpo.somma, p.id);
+      if (!x || x.inattesa) throw errore(409, 'somma-diversa');
+      tutti.set(p.id, x); if (x.rotto) throw errore(404, 'sconosciuto');
+    }
+    const c = conn(p.id), { man } = c;
     transazione(db, () => {
       if (corpo.interni != null) scriviRiga(p.id, { interni: corpo.interni ? 1 : 0 });
       if (corpo.impostazioni) {

@@ -115,8 +115,8 @@ await manda(K, '/api/connettori/prenota/in', corpo, { 'X-Prenota-Firma': firmaHm
 
 1. Copia la cartella in `<dati>/connettori/<id>/`, accanto a `kubo.db`. Il nome della cartella deve essere uguale all'`id` del manifesto.
 2. Riavvia Kubo. Il connettore compare nel catalogo come «Installato a mano».
-3. Nella sua pagina, **Accendi** mostra la somma SHA-256 del file: confrontala con quella pubblicata dall'autore.
-4. Se il file cambia dopo l'accensione, il connettore si ferma («Cambiato») finché il titolare non lo riaccende controllando la nuova somma.
+3. Nella sua pagina, **Accendi** mostra la somma SHA-256 del file: confrontala con quella pubblicata dall'autore. Fino a quel momento Kubo non esegue il file (non lo importa nemmeno all'avvio): per questo nome, impostazioni e permessi si vedono solo dopo l'accensione.
+4. Se il file cambia dopo l'accensione, al riavvio successivo il connettore non viene caricato e resta fermo («Cambiato») finché il titolare non lo riaccende controllando la nuova somma. Conta la somma di `connettore.js`: se il connettore importa altri file della sua cartella, cambiarli non cambia la somma.
 
 Un connettore è codice che gira con i permessi del server: installa solo quelli di cui ti fidi. Non si caricano mai dall'interfaccia.
 

@@ -261,7 +261,8 @@ test('nucleo: un connettore di terzi si attiva solo con la sua somma, SSRF, pian
   const { mkdtempSync, mkdirSync, writeFileSync } = await import('node:fs'), { join } = await import('node:path'), { tmpdir } = await import('node:os');
   const { apri } = await import('../server/db.js'), { creaServer } = await import('../server/api.js'), { istanze } = await import('../server/moduli/connettori.js');
   const dir = mkdtempSync(join(tmpdir(), 'kubo-conn-')); mkdirSync(join(dir, 'connettori', 'mio'), { recursive: true });
-  writeFileSync(join(dir, 'connettori', 'mio', 'connettore.js'), `export default { id: 'mio', nome: 'Mio', impostazioni: [{ id: 'url', nome: 'Url', tipo: 'url' }], permessi: { clienti: { leggi: true } },
+  writeFileSync(join(dir, 'connettori', 'mio', 'connettore.js'), `globalThis.mioEseguito = (globalThis.mioEseguito || 0) + 1;
+export default { id: 'mio', nome: 'Mio', impostazioni: [{ id: 'url', nome: 'Url', tipo: 'url' }], permessi: { clienti: { leggi: true } },
     pianificati: { conta: { ogni: '1h', async giro(k) { const n = (k.stato.leggi('n') || 0) + 1; k.stato.scrivi('n', n); return { n }; } } } };`);
   const db = apri(join(dir, 'kubo.db')), srv = creaServer(db); await new Promise(r => srv.listen(0, '127.0.0.1', r));
   const base = `http://127.0.0.1:${srv.address().port}`; let biscotto = '';
@@ -270,8 +271,13 @@ test('nucleo: un connettore di terzi si attiva solo con la sua somma, SSRF, pian
     await chiama('POST', '/api/configura', { azienda: 'B', nome: 'T', email: 't@esempio.it', password: 'prova-kubo-1', modelli: ['negozio'] });
     const n = istanze.get(db); await n.pronti;
     const mio = (await chiama('GET', '/api/connettori')).json.find(c => c.id === 'mio'); assert.equal(mio.origine, 'locale'); assert.match(mio.somma, /^[0-9a-f]{64}$/);
+    // finché il titolare non conferma la somma il codice di terzi non gira (nemmeno all'avvio) e la pagina mostra solo la somma
+    assert.equal(globalThis.mioEseguito, undefined); assert.equal(mio.daApprovare, true, JSON.stringify(mio));
+    assert.equal((await chiama('GET', '/api/connettori/mio')).json.daApprovare, true);
+    assert.equal((await chiama('PUT', '/api/connettori/mio', { attivo: true, somma: '0'.repeat(64) })).stato, 409); assert.equal(globalThis.mioEseguito, undefined);
     assert.equal((await chiama('PUT', '/api/connettori/mio', { attivo: true })).stato, 409);
-    assert.equal((await chiama('PUT', '/api/connettori/mio', { attivo: true, somma: mio.somma })).stato, 200);
+    assert.equal((await chiama('PUT', '/api/connettori/mio', { attivo: true, somma: mio.somma })).stato, 200); assert.equal(globalThis.mioEseguito, 1);
+    assert.equal((await chiama('GET', '/api/connettori/mio')).json.permessi.length, 1);
     // SSRF: un indirizzo della rete interna non si salva senza il consenso per questo connettore
     assert.equal((await chiama('PUT', '/api/connettori/mio', { impostazioni: { url: 'http://192.168.1.10/x' } })).stato, 400);
     assert.equal((await chiama('PUT', '/api/connettori/mio', { interni: true, impostazioni: { url: 'http://192.168.1.10/x' } })).stato, 200);
