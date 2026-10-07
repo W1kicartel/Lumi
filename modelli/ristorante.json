@@ -101,10 +101,10 @@
   },
   "ruoli": [
     { "id": "sala", "nome": "Sala", "entita": { "*": { "leggi": true, "crea": false, "modifica": false },
-      "comande": { "leggi": true, "crea": true, "modifica": true }, "prenotazioni": { "leggi": true, "crea": true, "modifica": true }, "tavoli": { "leggi": true, "modifica": true },
+      "comande": { "leggi": true, "crea": true, "modifica": true }, "righe_comanda": { "leggi": true, "crea": true, "modifica": true }, "prenotazioni": { "leggi": true, "crea": true, "modifica": true }, "tavoli": { "leggi": true, "modifica": true },
       "piatti": { "leggi": true, "campi": { "costo": "nascosto", "food_cost": "nascosto" } }, "ingredienti": { "leggi": false }, "fornitori": { "leggi": false } } },
     { "id": "cucina", "nome": "Cucina", "entita": { "*": { "leggi": true, "crea": false, "modifica": false },
-      "comande": { "leggi": true, "modifica": true }, "piatti": { "leggi": true, "modifica": true }, "ingredienti": { "leggi": true, "crea": true, "modifica": true }, "prenotazioni": { "leggi": true } } }
+      "comande": { "leggi": true, "modifica": true }, "righe_comanda": { "leggi": true, "crea": true, "modifica": true }, "piatti": { "leggi": true, "modifica": true }, "ingredienti": { "leggi": true, "crea": true, "modifica": true }, "prenotazioni": { "leggi": true } } }
   ],
   "cruscotto": {
     "widget": [

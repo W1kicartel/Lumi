@@ -91,7 +91,7 @@
   "ruoli": [
     { "id": "tecnico", "nome": "Tecnico", "entita": { "*": { "leggi": true, "crea": false, "modifica": false },
       "interventi": { "leggi": true, "crea": true, "modifica": true, "campi": { "tariffa": "lettura" } }, "mezzi": { "leggi": true, "crea": true, "modifica": true },
-      "ricambi": { "leggi": true, "campi": { "costo": "nascosto" } }, "fornitori": { "leggi": false } } }
+      "righe_ricambi": { "leggi": true, "crea": true, "modifica": true }, "ricambi": { "leggi": true, "campi": { "costo": "nascosto" } }, "fornitori": { "leggi": false } } }
   ],
   "cruscotto": {
     "widget": [

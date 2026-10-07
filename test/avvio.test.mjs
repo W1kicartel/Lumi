@@ -153,6 +153,26 @@ test('campi spenti archiviati, automazioni che li toccano escluse: il magazzino 
   assert.equal(D.modifica(db, 'articoli', x.id, { giacenza: 5 }, ctx).giacenza, 5);
 });
 
+test('i ruoli di settore lavorano davvero: chi crea o modifica un documento ne scrive anche le righe', () => {
+  for (const st of SETTORI) {
+    const ruoli = M.leggi(st.modello).ruoli || []; if (!ruoli.length) continue;
+    const { db, ctx } = prepara({ settore: st.id, persone: 'solo' });
+    for (const r of ruoli) {
+      const u = U.creaUtente(db, { nome: r.nome, email: `${r.id}@prova.it`, password: 'password-lunga', ruolo: r.id }, { utente: ctx.utente.id });
+      const cr = { utente: u, r: P.ruolo(db, r.id) };
+      for (const d of S.elenco(db)) for (const c of d.campi.filter(c => c.tipo === 'righe' && !c.archiviato)) {
+        if (!P.puo(cr, d.id, 'modifica')) continue;
+        const padre = D.elenca(db, d.id, { perPagina: 50 }, ctx).righe.map(x => D.leggi(db, d.id, x.id, cr)).find(x => x[c.id]?.length);
+        if (!padre) continue;
+        const figlia = S.leggi(db, c.entita), scrivibili = figlia.campi.filter(k => !k.archiviato && !['calcolato', 'contatore', 'righe'].includes(k.tipo) && k.id !== c.campo);
+        const copia = Object.fromEntries(scrivibili.filter(k => padre[c.id][0][k.id] != null).map(k => [k.id, padre[c.id][0][k.id]]));
+        const dopo = D.modifica(db, d.id, padre.id, { [c.id]: [...padre[c.id].map(x => ({ id: x.id })), copia] }, cr);
+        assert.equal(dopo[c.id].length, padre[c.id].length + 1, `${st.id}/${r.id}: ${d.id}.${c.id}`);
+      }
+    }
+  }
+});
+
 test('i dati d\'esempio si tolgono con un clic: righe, righe figlie, registro e numerazione', () => {
   const { db, ctx, esempi } = prepara({ settore: 'negozio' });
   assert.equal(quantiEsempi(db), esempi.creati);

@@ -117,7 +117,7 @@
   },
   "ruoli": [
     { "id": "banco", "nome": "Banco", "entita": { "*": { "leggi": true, "crea": false, "modifica": false },
-      "vendite": { "leggi": true, "crea": true, "modifica": true }, "clienti": { "leggi": true, "crea": true, "modifica": true },
+      "vendite": { "leggi": true, "crea": true, "modifica": true }, "righe_vendita": { "leggi": true, "crea": true, "modifica": true }, "clienti": { "leggi": true, "crea": true, "modifica": true },
       "articoli": { "leggi": true, "campi": { "costo": "nascosto", "margine": "nascosto" } }, "ordini": { "leggi": false }, "fornitori": { "leggi": false } } }
   ]
 }

@@ -21,8 +21,10 @@ export default function registra({ r, db, U, P, meta, serve, ErroreHttp, manda }
     if (!String(azienda || '').trim()) throw new ErroreHttp(400, 'Manca il nome dell\'azienda');
     const pl = piano(risposte);
     // tutto o niente: se il titolare non va (password corta, email sbagliata) non resta niente a metà
+    // un errore sul titolare è un 400, non un 401: l'interfaccia altrimenti salterebbe alla pagina d'accesso
     const fatto = transazione(db, () => {
-      const t = U.creaUtente(db, { nome, email, password, ruolo: 'titolare' });
+      let t; try { t = U.creaUtente(db, { nome: String(nome || '').trim(), email: String(email || '').trim(), password: String(password || ''), ruolo: 'titolare' }); }
+      catch (e) { throw e instanceof U.ErroreAccesso ? new ErroreHttp(400, e.message) : e; }
       meta.scrivi(db, 'azienda', String(azienda).trim().slice(0, 120));
       const ctx = { utente: t, r: P.ruolo(db, 'titolare') };
       const esito = installaPiano(db, pl, { utente: t.id });
@@ -30,7 +32,7 @@ export default function registra({ r, db, U, P, meta, serve, ErroreHttp, manda }
       meta.scrivi(db, 'avvio.giro', t.id);
       return esito;
     });
-    const s = U.accedi(db, { email, password }, req.headers['user-agent']);
+    const s = U.accedi(db, { email: String(email).trim(), password: String(password) }, req.headers['user-agent']);
     risposta.intestazioni['Set-Cookie'] = cookie(s.token);
     return { utente: s.utente, sezioni: pl.sezioni, persone: fatto.persone, esempi: fatto.esempi?.creati || 0 };
   });
