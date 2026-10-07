@@ -213,11 +213,17 @@ test('API: impostazioni, prepara, permessi, LIPE da scaricare e pacchetto', asyn
     const z = await chiama('GET', '/api/fisco/pacchetto?da=2026-01-01&a=2026-03-31', null, true);
     assert.equal(z.tipo, 'application/zip'); assert.ok(leggiZip(z.buf).nomi.includes('registro-corrispettivi.csv'));
     assert.equal((await chiama('GET', '/api/fisco/pacchetto?da=2026-04-01&a=2026-03-31')).stato, 400);
-    // un utente senza permessi sulle fatture non vede niente
-    await chiama('POST', '/api/utenti', { nome: 'Banco', email: 'b@prova.it', password: 'password-lunga', ruolo: 'cassa' });
-    biscotto = ''; await chiama('POST', '/api/accedi', { email: 'b@prova.it', password: 'password-lunga' });
-    const ruolo = (await chiama('GET', '/api/fisco/versamenti?anno=2026'));
-    assert.ok([200, 403].includes(ruolo.stato));
+    // un ruolo che non vede le fatture non vede il fisco; un collaboratore lo vede ma non cambia le impostazioni
+    assert.equal((await chiama('PUT', '/api/ruoli/banco', { nome: 'Banco', entita: { clienti: { leggi: true } } })).stato, 200);
+    assert.equal((await chiama('POST', '/api/utenti', { nome: 'Banco', email: 'b@prova.it', password: 'password-lunga-1', ruolo: 'banco' })).stato, 200);
+    assert.equal((await chiama('POST', '/api/utenti', { nome: 'Collab', email: 'c@prova.it', password: 'password-lunga-1', ruolo: 'collaboratore' })).stato, 200);
+    biscotto = ''; assert.equal((await chiama('POST', '/api/accedi', { email: 'b@prova.it', password: 'password-lunga-1' })).stato, 200);
+    assert.equal((await chiama('GET', '/api/fisco/versamenti?anno=2026')).stato, 403);
+    assert.equal((await chiama('GET', '/api/fisco/pacchetto?da=2026-01-01&a=2026-03-31', null, true)).stato, 403);
+    assert.deepEqual((await chiama('GET', '/api/fisco/promemoria')).json, []);
+    biscotto = ''; assert.equal((await chiama('POST', '/api/accedi', { email: 'c@prova.it', password: 'password-lunga-1' })).stato, 200);
+    assert.equal((await chiama('GET', '/api/fisco/versamenti?anno=2026')).stato, 200);
     assert.equal((await chiama('PUT', '/api/fisco/impostazioni', { regime: 'ordinario' })).stato, 403);
+    assert.equal((await chiama('PUT', '/api/fisco/impostazioni', { regime: 'ordinario' }, false)).json.errore, 'Solo chi può personalizzare cambia le impostazioni fiscali');
   } finally { srv.close(); }
 });
