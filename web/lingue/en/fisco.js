@@ -53,7 +53,7 @@ export default {
   'fisco.lipe': "Periodic VAT settlement return (LIPE)",
   'fisco.lipe-passo-1': "Download the quarter's XML file above.",
   'fisco.lipe-passo-2': "Sign in to “Fatture e Corrispettivi” on the Agenzia delle Entrate website with SPID, CIE or CNS.",
-  'fisco.lipe-passo-3': "Go to “Comunicazioni” → “Liquidazioni periodiche IVA” → “Invio file”.",
+  'fisco.lipe-passo-3': "Open the periodic VAT settlements service and choose to send a ready-made file.",
   'fisco.lipe-passo-4': "Upload the file and confirm: the system checks it right away.",
   'fisco.lipe-passo-5': "Download the receipt after a few minutes and keep it.",
   'fisco.lipe-nota': "Deadlines: 31 May, 30 September, 30 November and end of February. If something doesn't match, the Agency's pre-filled return helps you compare.",

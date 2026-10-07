@@ -53,7 +53,7 @@ export default {
   'fisco.lipe': "Comunicazione liquidazioni periodiche (LIPE)",
   'fisco.lipe-passo-1': "Scarica il file XML del trimestre qui sopra.",
   'fisco.lipe-passo-2': "Entra in «Fatture e Corrispettivi» sul sito dell'Agenzia delle Entrate con SPID, CIE o CNS.",
-  'fisco.lipe-passo-3': "Vai su «Comunicazioni» → «Liquidazioni periodiche IVA» → «Invio file».",
+  'fisco.lipe-passo-3': "Apri il servizio delle liquidazioni periodiche IVA e scegli l'invio del file già pronto.",
   'fisco.lipe-passo-4': "Carica il file e conferma: il sistema lo controlla subito.",
   'fisco.lipe-passo-5': "Scarica la ricevuta dopo qualche minuto e conservala.",
   'fisco.lipe-nota': "Scadenze: 31 maggio, 30 settembre, 30 novembre e fine febbraio. Se qualcosa non torna, la precompilata dell'Agenzia aiuta a confrontare.",

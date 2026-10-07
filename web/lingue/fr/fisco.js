@@ -53,7 +53,7 @@ export default {
   'fisco.lipe': "Déclaration des liquidations périodiques (LIPE)",
   'fisco.lipe-passo-1': "Téléchargez ci-dessus le fichier XML du trimestre.",
   'fisco.lipe-passo-2': "Connectez-vous à « Fatture e Corrispettivi » sur le site de l'Agenzia delle Entrate avec SPID, CIE ou CNS.",
-  'fisco.lipe-passo-3': "Allez dans « Comunicazioni » → « Liquidazioni periodiche IVA » → « Invio file ».",
+  'fisco.lipe-passo-3': "Ouvrez le service des liquidations périodiques de TVA et choisissez l'envoi d'un fichier déjà prêt.",
   'fisco.lipe-passo-4': "Chargez le fichier et confirmez : le système le contrôle tout de suite.",
   'fisco.lipe-passo-5': "Téléchargez l'accusé de réception après quelques minutes et conservez-le.",
   'fisco.lipe-nota': "Échéances : 31 mai, 30 septembre, 30 novembre et fin février. Si quelque chose ne colle pas, la déclaration préremplie de l'Agence aide à comparer.",

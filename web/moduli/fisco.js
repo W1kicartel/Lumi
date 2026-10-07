@@ -26,10 +26,13 @@ function pagina(contenuto, k, scheda = '', a, b) {
   contenuto.replaceChildren(h('div.testa', h('h1', t('fisco.titolo')), anni), h('div.fisco-barra', schede), corpo);
   corpo.append(h('p.fisco-responsabilita', t('fisco.responsabilita')));
   const dove = h('div'); corpo.append(dove);
-  const mostra = f => get('/fisco/impostazioni').then(imp => f(dove, k, imp, a, b)).catch(e => dove.replaceChildren(h('div.avviso', e.message)));
+  const mostra = f => get('/fisco/impostazioni').then(imp => f(dove, k, imp, a, b)).catch(e => metti(dove, h('div.avviso', e.message)));
   const viste = { '': riepilogo, iva, forfettario, f24, ritenute, scadenze, commercialista, impostazioni };
   mostra(viste[scheda] || riepilogo);
 }
+
+// riempie un contenitore saltando i pezzi assenti (null, false)
+const metti = (dove, ...x) => dove.replaceChildren(...x.flat().filter(Boolean));
 
 // una tabella semplice: intestazioni e righe di celle (testo o nodi)
 function tabella(k, intest, righe, { destra = [] } = {}) {
@@ -47,7 +50,7 @@ async function riepilogo(dove, k, imp) {
   const prossimi = v.voci.filter(x => annoScelto !== annoOra() || x.data >= oggi());
   const totale = prossimi.reduce((s, x) => s + Math.round(x.importo * 100), 0) / 100;
   const primo = prossimi[0];
-  dove.replaceChildren(
+  metti(dove, 
     h('div.fisco-cifre', cifra(k, t('fisco.da-pagare-anno'), soldi(totale)), cifra(k, t('fisco.prossimo'), primo ? soldi(primo.importo) : '—', primo ? `${data(primo.data)} · ${nomeVoce(primo)}` : t('fisco.niente')),
       cifra(k, t('fisco.regime'), t('fisco.regime-' + imp.regime), imp.regime === 'forfettario' ? t('fisco.coeff', { n: numero(imp.coefficienteUsato) }) : t('fisco.periodicita-' + imp.periodicita))),
     !imp.sezioni.ricevute && k.stato.poteri?.schema ? h('div.fisco-avviso', t('fisco.manca-ricevute'), ' ', h('a', { href: '#/fisco/impostazioni', testo: t('fisco.apri-impostazioni') })) : null,
@@ -65,11 +68,11 @@ function elencoScadenze(k, l) {
 // ---------- IVA ----------
 async function iva(dove, k, imp) {
   const { h, get } = k;
-  if (imp.regime === 'forfettario') return dove.replaceChildren(avviso(k, 'forfettario-niente-iva'));
+  if (imp.regime === 'forfettario') return metti(dove, avviso(k, 'forfettario-niente-iva'));
   const l = await get(`/fisco/liquidazione?anno=${annoScelto}`), mensile = l.periodicita === 'mensile';
   const nomeP = p => (mensile ? t('fisco.mese-n', { n: p.periodo }) : t('fisco.trimestre-n', { n: p.periodo }));
   const lipe = [1, 2, 3, 4].map(q => h('a.btn', { href: `/api/fisco/lipe?anno=${annoScelto}&trimestre=${q}&scarica=1`, download: '', testo: t('fisco.lipe-trimestre', { n: q }) }));
-  dove.replaceChildren(
+  metti(dove, 
     scheda(k, t('fisco.liquidazioni'), tabella(k, [t('fisco.periodo'), t('fisco.iva-vendite'), t('fisco.iva-acquisti'), t('fisco.riporti'), t('fisco.interessi'), t('fisco.da-versare'), t('fisco.codice'), t('fisco.scadenza')],
       l.periodi.map(p => [nomeP(p), soldi(p.ivaEsigibile), soldi(p.ivaDetratta), riporto(p), p.interessi || p.interessiSaldo ? soldi(p.interessi || p.interessiSaldo) : '',
         p.importoACredito ? t('fisco.a-credito', { importo: soldi(p.importoACredito) }) : p.riportato ? t('fisco.riportato') : soldi(p.daVersare), h('span.mono', p.codice), data(p.scadenza)]), { destra: [1, 2, 5] })),
@@ -91,7 +94,7 @@ function riporto(p) {
 // ---------- forfettario ----------
 async function forfettario(dove, k, imp) {
   const { h, get } = k;
-  if (imp.regime !== 'forfettario') return dove.replaceChildren(h('div.fisco-avviso', t('fisco.non-forfettario')));
+  if (imp.regime !== 'forfettario') return metti(dove, h('div.fisco-avviso', t('fisco.non-forfettario')));
   const c = await get(`/fisco/forfettario?anno=${annoScelto}`);
   const barra = h('div.fisco-soglia', h('div', { stile: { width: Math.min(100, c.soglia.usato) + '%' }, class: c.soglia.usato >= 100 ? 'oltre' : c.soglia.usato >= 80 ? 'vicino' : '' }));
   const piu = h('input.campo', { type: 'number', min: 0, step: 100, placeholder: '5000', 'aria-label': t('fisco.sim-quanto') }), esito = h('div.fisco-sim-esito');
@@ -103,7 +106,7 @@ async function forfettario(dove, k, imp) {
   };
   piu.addEventListener('change', simula); piu.addEventListener('keyup', ev => { if (ev.key === 'Enter') simula(); });
   const rate = l => (l?.length ? tabella(k, [t('fisco.data'), t('fisco.codice'), t('fisco.importo')], l.map(x => [data(x.scadenza), h('span.mono', x.codice), soldi(x.importo)]), { destra: [2] }) : h('p.nota', t('fisco.niente-acconti')));
-  dove.replaceChildren(
+  metti(dove, 
     h('div.fisco-cifre', cifra(k, t('fisco.incassato'), soldi(c.incassato), t('fisco.incassato-nota')), cifra(k, t('fisco.reddito'), soldi(c.redditoLordo), t('fisco.coeff', { n: numero(c.coefficiente) })),
       cifra(k, t('fisco.contributi'), soldi(c.inps.totale), t('fisco.gestione-' + (c.inps.gestione || 'nessuna'))), cifra(k, t('fisco.imposta'), soldi(c.imposta), t('fisco.aliquota-n', { n: c.aliquota }))),
     scheda(k, t('fisco.soglia'), barra, h('p.nota', t('fisco.soglia-nota', { usato: numero(c.soglia.usato), margine: soldi(c.soglia.margine) }))),
@@ -117,14 +120,14 @@ async function forfettario(dove, k, imp) {
 async function f24(dove, k, imp, dataScelta) {
   const { h, get } = k;
   const v = await get(`/fisco/versamenti?anno=${dataScelta ? dataScelta.slice(0, 4) : annoScelto}`);
-  if (!v.f24.length) return dove.replaceChildren(h('p.nota', t('fisco.niente')));
+  if (!v.f24.length) return metti(dove, h('p.nota', t('fisco.niente')));
   const blocchi = v.f24.map(g => {
     const stampa = h('button.btn', { testo: t('fisco.stampa-f24'), on: { click: () => apriF24(k, v.anno, g.data) } });
     const righe = g.voci.map(x => [nomeVoce(x), t('fisco.sezione-' + x.sezione), h('span.mono', x.codice || x.causale), x.rateazione || (x.da ? `${x.da} → ${x.a}` : ''), x.anno, soldi(x.importo)]);
     return h('section.fisco-scheda', { id: 'f24-' + g.data, class: g.data === dataScelta ? 'scelta' : '' }, h('div.fisco-riga', h('h2', t('fisco.f24-del', { data: data(g.data) })), h('b', soldi(g.totale)), stampa),
       tabella(k, [t('fisco.cosa'), t('fisco.sezione'), t('fisco.codice'), t('fisco.rateazione'), t('fisco.anno-rif'), t('fisco.importo')], righe, { destra: [5] }));
   });
-  dove.replaceChildren(h('div.fisco-avviso', t('fisco.f24-come')), ...blocchi, ...v.avvisi.map(a => avviso(k, a)));
+  metti(dove, h('div.fisco-avviso', t('fisco.f24-come')), ...blocchi, ...v.avvisi.map(a => avviso(k, a)));
   if (dataScelta) setTimeout(() => document.getElementById('f24-' + dataScelta)?.scrollIntoView({ block: 'start' }), 50);
 }
 async function apriF24(k, anno, dataF24) {
@@ -143,7 +146,7 @@ async function apriF24(k, anno, dataF24) {
 async function ritenute(dove, k) {
   const { h, get } = k;
   const r = await get(`/fisco/ritenute?anno=${annoScelto}`);
-  dove.replaceChildren(
+  metti(dove, 
     scheda(k, t('fisco.registro-ritenute'), r.righe.length ? tabella(k, [t('fisco.pagata-il'), t('fisco.percipiente'), t('fisco.compenso'), t('fisco.ritenuta'), t('fisco.codice'), t('fisco.versare-entro')],
       r.righe.map(x => [data(x.pagata_il), x.fornitore, soldi(x.imponibile), soldi(x.ritenuta), h('span.mono', x.codice), data(x.versamento)]), { destra: [2, 3] }) : h('p.nota', t('fisco.ritenute-vuoto'))),
     scheda(k, t('fisco.riepilogo-cu'), r.cu.length ? tabella(k, [t('fisco.percipiente'), t('fisco.cf'), t('fisco.causale'), t('fisco.compenso'), t('fisco.ritenuta')],
@@ -154,7 +157,7 @@ async function ritenute(dove, k) {
 // ---------- scadenze ----------
 async function scadenze(dove, k) {
   const sc = await k.get(`/fisco/scadenze?anno=${annoScelto}`);
-  dove.replaceChildren(scheda(k, t('fisco.scadenze-anno', { anno: annoScelto }), elencoScadenze(k, sc)), k.h('p.nota', t('fisco.scadenze-nota')));
+  metti(dove, scheda(k, t('fisco.scadenze-anno', { anno: annoScelto }), elencoScadenze(k, sc)), k.h('p.nota', t('fisco.scadenze-nota')));
 }
 
 // ---------- pacchetto per il commercialista ----------
@@ -167,7 +170,7 @@ function commercialista(dove, k, imp) {
   da.addEventListener('change', aggiorna); a.addEventListener('change', aggiorna); aggiorna();
   const rapidi = [1, 2, 3, 4].map(q => h('button.btn.nudo', { testo: t('fisco.trimestre-n', { n: q }), class: y === annoOra() && q === trimestre ? 'si' : '', on: { click: () => {
     da.value = `${y}-${String(q * 3 - 2).padStart(2, '0')}-01`; a.value = `${y}-${String(q * 3).padStart(2, '0')}-${[31, 30, 30, 31][q - 1]}`; aggiorna(); } } }));
-  dove.replaceChildren(scheda(k, t('fisco.pacchetto'), h('p', t('fisco.pacchetto-cosa')), h('div.fisco-riga', h('label.etichetta', t('fisco.dal')), da, h('label.etichetta', t('fisco.al')), a), h('div.fisco-riga', rapidi), link),
+  metti(dove, scheda(k, t('fisco.pacchetto'), h('p', t('fisco.pacchetto-cosa')), h('div.fisco-riga', h('label.etichetta', t('fisco.dal')), da, h('label.etichetta', t('fisco.al')), a), h('div.fisco-riga', rapidi), link),
     scheda(k, t('fisco.quando-professionista'), h('ul.fisco-guida', ['dichiarazioni', 'visto', 'consulenza', ...(imp.regime === 'forfettario' ? [] : ['redditi'])].map(x => h('li', t('fisco.pro-' + x))))));
 }
 
@@ -197,7 +200,7 @@ async function impostazioni(dove, k, imp) {
   } } });
   const prepara = !imp.sezioni.ricevute && puo ? scheda(k, t('fisco.sezioni'), h('p', t('fisco.sezioni-cosa')), h('label.fisco-spunta', h('input', { type: 'checkbox', id: 'fisco-corr' }), ' ', t('fisco.anche-corrispettivi')),
     h('button.btn', { testo: t('fisco.aggiungi-sezioni'), on: { click: async ev => { try { await api('POST', '/fisco/prepara', { corrispettivi: document.getElementById('fisco-corr').checked }); await k.ricaricaSchema(); toast(t('fisco.sezioni-aggiunte')); ev.target.disabled = true; } catch (e) { toast(e.message, true); } } } })) : null;
-  dove.replaceChildren(errore, prepara, ...gruppi.map(([g, ids]) => scheda(k, t('fisco.gruppo-' + g), h('div.fisco-griglia', ids.map(riga)))),
+  metti(dove, errore, prepara, ...gruppi.map(([g, ids]) => scheda(k, t('fisco.gruppo-' + g), h('div.fisco-griglia', ids.map(riga)))),
     !imp.azienda.piva ? h('div.fisco-avviso', t('fisco.manca-piva'), ' ', h('a', { href: '#/documenti', testo: t('fisco.apri-documenti') })) : null,
     h('div.fisco-riga', { stile: { justifyContent: 'flex-end' } }, salva));
 }

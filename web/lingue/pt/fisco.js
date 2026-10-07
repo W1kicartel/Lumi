@@ -53,7 +53,7 @@ export default {
   'fisco.lipe': "Comunicação das apurações periódicas (LIPE)",
   'fisco.lipe-passo-1': "Baixe acima o arquivo XML do trimestre.",
   'fisco.lipe-passo-2': "Entre em «Fatture e Corrispettivi» no site da Agenzia delle Entrate com SPID, CIE ou CNS.",
-  'fisco.lipe-passo-3': "Vá em «Comunicazioni» → «Liquidazioni periodiche IVA» → «Invio file».",
+  'fisco.lipe-passo-3': "Abra o serviço das apurações periódicas de IVA e escolha enviar um arquivo já pronto.",
   'fisco.lipe-passo-4': "Envie o arquivo e confirme: o sistema o verifica na hora.",
   'fisco.lipe-passo-5': "Baixe o recibo depois de alguns minutos e guarde-o.",
   'fisco.lipe-nota': "Prazos: 31 de maio, 30 de setembro, 30 de novembro e fim de fevereiro. Se algo não bater, a pré-preenchida da Agência ajuda a comparar.",

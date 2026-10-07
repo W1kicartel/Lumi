@@ -53,7 +53,7 @@ export default {
   'fisco.lipe': "Meldung der periodischen Abrechnungen (LIPE)",
   'fisco.lipe-passo-1': "Lade oben die XML-Datei des Quartals herunter.",
   'fisco.lipe-passo-2': "Melde dich bei „Fatture e Corrispettivi“ auf der Website der Agenzia delle Entrate mit SPID, CIE oder CNS an.",
-  'fisco.lipe-passo-3': "Gehe zu „Comunicazioni“ → „Liquidazioni periodiche IVA“ → „Invio file“.",
+  'fisco.lipe-passo-3': "Öffne den Dienst für die periodischen MwSt.-Abrechnungen und wähle das Senden einer fertigen Datei.",
   'fisco.lipe-passo-4': "Lade die Datei hoch und bestätige: das System prüft sie sofort.",
   'fisco.lipe-passo-5': "Lade nach ein paar Minuten die Empfangsbestätigung herunter und bewahre sie auf.",
   'fisco.lipe-nota': "Fristen: 31. Mai, 30. September, 30. November und Ende Februar. Wenn etwas nicht passt, hilft die vorausgefüllte Meldung der Agentur beim Vergleichen.",

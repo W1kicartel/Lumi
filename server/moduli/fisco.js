@@ -193,7 +193,7 @@ export function versamenti(k, ctx, anno) {
       inps(R.scadenzaGiugno(anno), euro(intero(cent(ecc) * perc / 100)), anno, 'inps-acconto');
       inps(R.scadenzaNovembre(anno), euro(intero(cent(ecc) * perc / 100)), anno, 'inps-acconto');
       if (['artigiani', 'commercianti'].includes(imp.gestione)) R.rateFisseInps(anno).forEach(d => out.push({ sezione: 'inps', data: d, causale: R.INPS[imp.gestione].causaleFissi, sede, matricola, da: '', a: '', anno, importo: euro(intero(c.inps.fissi * 100 / 4)), chiave: 'inps-fissi' }));
-      avvisi.push('inps-cassetto');
+      if (imp.gestione !== 'separata') avvisi.push('inps-cassetto');
     }
     if (imp.gestione === 'cassa') avvisi.push('cassa-professionale');
   }

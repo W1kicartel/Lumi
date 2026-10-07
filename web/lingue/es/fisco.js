@@ -53,7 +53,7 @@ export default {
   'fisco.lipe': "Comunicación de liquidaciones periódicas (LIPE)",
   'fisco.lipe-passo-1': "Descarga arriba el archivo XML del trimestre.",
   'fisco.lipe-passo-2': "Entra en «Fatture e Corrispettivi» en la web de la Agenzia delle Entrate con SPID, CIE o CNS.",
-  'fisco.lipe-passo-3': "Ve a «Comunicazioni» → «Liquidazioni periodiche IVA» → «Invio file».",
+  'fisco.lipe-passo-3': "Abre el servicio de liquidaciones periódicas de IVA y elige enviar un archivo ya preparado.",
   'fisco.lipe-passo-4': "Sube el archivo y confirma: el sistema lo revisa enseguida.",
   'fisco.lipe-passo-5': "Descarga el acuse a los pocos minutos y guárdalo.",
   'fisco.lipe-nota': "Plazos: 31 de mayo, 30 de septiembre, 30 de noviembre y final de febrero. Si algo no cuadra, la precompilada de la Agencia ayuda a comparar.",
