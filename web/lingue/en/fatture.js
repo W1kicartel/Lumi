@@ -44,7 +44,7 @@ export default {
   'fatture.trascina-nota': "or tap to choose files (.xml, .xml.p7m)",
   'fatture.trimestre': "Quarter",
   'fatture.trimestre-n': "Q{n}",
-  'fatture.troppo-grande': "File too large (5 MB at most)",
+  'fatture.troppo-grande': "File too large (3.5 MB at most)",
   'fatture.tutte-le-ricevute': "All received invoices →",
   'fatture.ultimo': "Last",
   'fatture.vedi': "View invoice",

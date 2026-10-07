@@ -8,7 +8,8 @@ import { t, soldi, data } from '../lingua.js';
 let cssCaricato = false;
 const caricaCss = () => { if (cssCaricato) return; cssCaricato = true; document.head.append(Object.assign(document.createElement('link'), { rel: 'stylesheet', href: '/moduli/fatture.css' })); };
 const RICEVUTE = 'fatture_ricevute';
-const MAX = 5 * 1024 * 1024;
+// il server accetta richieste fino a 5 MB e il file viaggia in base64 (un terzo in più): 3,5 MB di file stanno nel limite
+const MAX = 3.5 * 1024 * 1024;
 const bloccata = r => r.numero && r.stato && r.stato !== 'bozza';
 
 // ---------- la finestra con la fattura ricevuta ----------

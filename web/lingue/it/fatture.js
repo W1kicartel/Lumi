@@ -44,7 +44,7 @@ export default {
   'fatture.trascina-nota': "oppure tocca per scegliere i file (.xml, .xml.p7m)",
   'fatture.trimestre': "Trimestre",
   'fatture.trimestre-n': "{n}° trimestre",
-  'fatture.troppo-grande': "File troppo grande (al massimo 5 MB)",
+  'fatture.troppo-grande': "File troppo grande (al massimo 3,5 MB)",
   'fatture.tutte-le-ricevute': "Tutte le fatture ricevute →",
   'fatture.ultimo': "Ultimo",
   'fatture.vedi': "Vedi la fattura",
