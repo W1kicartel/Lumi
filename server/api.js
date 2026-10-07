@@ -152,12 +152,14 @@ export function creaServer(db) {
       const rotta = rotte.find(x => x.metodo === req.method && x.re.test(percorso));
       if (!rotta) throw new ErroreHttp(404, 'Non trovato');
       const p = Object.fromEntries(Object.entries(percorso.match(rotta.re).groups || {}).map(([k, v]) => [k, decodeURIComponent(v)]));
-      const out = await rotta.f({ req, ctx, token, p, q: url.searchParams, corpo, risposta, ip: req.socket.remoteAddress });
+      const out = await rotta.f({ req, res, ctx, token, p, q: url.searchParams, corpo, risposta, ip: req.socket.remoteAddress });
+      if (res.headersSent) return;   // la rotta ha già risposto da sé (per esempio in streaming: Lumi)
       res.writeHead(200, risposta.intestazioni).end(JSON.stringify(out ?? null));
     } catch (e) {
       const [stato, extra] = e instanceof ErroreHttp ? [e.stato, e.extra] : e instanceof D.ErroreDati ? [422, { campi: e.campi }] : e instanceof S.ErroreSchema ? [422, { dettagli: e.dettagli }]
         : e instanceof P.ErrorePermesso ? [403, {}] : e instanceof U.ErroreAccesso ? [ctx ? 400 : 401, {}] : e instanceof SyntaxError ? [400, {}] : [500, {}];
       if (stato === 500) console.error(e);
+      if (res.headersSent) { res.end(); return; }
       res.writeHead(stato, risposta.intestazioni).end(JSON.stringify({ errore: stato === 500 ? 'Errore interno' : e.message, ...extra }));
     }
   });

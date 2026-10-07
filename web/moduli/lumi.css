@@ -1,0 +1,9 @@
+/* Lumi dentro Kubo: le impostazioni (#/lumi) e lo spazio per la pillola in alto. La pillola ha il suo stile (/lumi/lumi.css). */
+.con-lumi .testa { padding-top: 54px; }
+.lumi-impostazioni .foglio { max-width: 760px; }
+.lumi-impostazioni p { margin: 14px 0; }
+.lumi-riga { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.lumi-riga input.campo.mono { flex: 1; min-width: 220px; }
+.lumi-interruttore { display: inline-flex; gap: 8px; align-items: center; font-size: 14px; margin-right: 14px; }
+.lumi-esempi { margin: 6px 0 0; padding-left: 18px; } .lumi-esempi li { margin: 4px 0; }
+@media (max-width: 860px) { .con-lumi .app { padding-top: 50px; } .con-lumi .testa { padding-top: 18px; } }
