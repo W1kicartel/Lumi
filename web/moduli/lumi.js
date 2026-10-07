@@ -51,9 +51,15 @@ async function contesto() {
   return righe.join('\n');
 }
 
+// i testi di «Da vedere» arrivano dal server in italiano, con i nomi delle sezioni: le due frasi fisse si rimettono nella lingua
+function testoDaVedere(x) {
+  let m = /^(.+): ferme su «(.+)» da più di una settimana$/.exec(x); if (m) return t('moduli.lumi-dv-ferme', { sezione: m[1], stato: m[2] });
+  m = /^(.+) oltre «(.+)»$/.exec(x); if (m) return t('moduli.lumi-dv-oltre', { sezione: m[1], campo: m[2] });
+  return x;
+}
 async function daVedere() {
   const cose = await K.get('/lumi/da-vedere').catch(() => []);
-  return cose.map(x => ({ testo: x.testo, numero: x.numero, livello: x.livello, bottone: t('moduli.lumi-apri'), apri: () => { location.hash = `#/e/${x.entita}`; } }));
+  return cose.map(x => ({ testo: testoDaVedere(x.testo), numero: x.numero, livello: x.livello, bottone: t('moduli.lumi-apri'), apri: () => { location.hash = `#/e/${x.entita}`; } }));
 }
 
 function azioni(vero) {

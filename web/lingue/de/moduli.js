@@ -347,4 +347,6 @@ export default {
   'moduli.api-sezioni': "Bereiche (keiner = alle)",
   'moduli.api-quando-riga': "Wenn eine Zeile",
   'moduli.api-firma': "So prüfst du die Signatur",
+  'moduli.lumi-dv-ferme': "{sezione}: seit über einer Woche auf „{stato}“",
+  'moduli.lumi-dv-oltre': "{sezione}: „{campo}“ überschritten",
 };

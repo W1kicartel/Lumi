@@ -347,4 +347,6 @@ export default {
   'moduli.api-sezioni': "Sections (none = all)",
   'moduli.api-quando-riga': "When a row is",
   'moduli.api-firma': "How to verify the signature",
+  'moduli.lumi-dv-ferme': "{sezione}: stuck on “{stato}” for over a week",
+  'moduli.lumi-dv-oltre': "{sezione} past “{campo}”",
 };

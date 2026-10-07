@@ -348,4 +348,6 @@ export default {
   'moduli.api-sezioni': "Sezioni (nessuna = tutte)",
   'moduli.api-quando-riga': "Quando una riga è",
   'moduli.api-firma': "Come verificare la firma",
+  'moduli.lumi-dv-ferme': "{sezione}: ferme su «{stato}» da più di una settimana",
+  'moduli.lumi-dv-oltre': "{sezione} oltre «{campo}»",
 };

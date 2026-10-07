@@ -347,4 +347,6 @@ export default {
   'moduli.api-sezioni': "Sections (aucune = toutes)",
   'moduli.api-quando-riga': "Quand une ligne est",
   'moduli.api-firma': "Comment vérifier la signature",
+  'moduli.lumi-dv-ferme': "{sezione} : bloqués sur « {stato} » depuis plus d'une semaine",
+  'moduli.lumi-dv-oltre': "{sezione} : date « {campo} » passée",
 };

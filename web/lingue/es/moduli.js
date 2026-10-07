@@ -347,4 +347,6 @@ export default {
   'moduli.api-sezioni': "Secciones (ninguna = todas)",
   'moduli.api-quando-riga': "Cuando una fila se ha",
   'moduli.api-firma': "Cómo verificar la firma",
+  'moduli.lumi-dv-ferme': "{sezione}: paradas en «{stato}» desde hace más de una semana",
+  'moduli.lumi-dv-oltre': "{sezione}: «{campo}» ya pasó",
 };
