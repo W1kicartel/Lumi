@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; img-src 'self' data:">
+<title>Kubo</title>
+<style>
+  :root { --sfondo: #fafafa; --pannello: #fff; --testo: #0a0a0a; --tenue: #6b6b6b; --linea: #e6e6e6; --forte: #0a0a0a; --su-forte: #fff; --errore: #c62828; color-scheme: light; }
+  @media (prefers-color-scheme: dark) { :root { --sfondo: #0a0a0a; --pannello: #121212; --testo: #f2f2f2; --tenue: #9a9a9a; --linea: #262626; --forte: #f2f2f2; --su-forte: #0a0a0a; --errore: #ff6b6b; color-scheme: dark; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: var(--sfondo); color: var(--testo); font: 15px/1.45 Geist, system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; padding: 24px; }
+  main { width: 100%; max-width: 680px; }
+  h1 { font-size: 28px; letter-spacing: -.03em; margin: 0 0 6px; font-weight: 650; }
+  p.sotto { color: var(--tenue); margin: 0 0 26px; }
+  .scelte { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  button.scelta { text-align: left; background: var(--pannello); border: 1px solid var(--linea); border-radius: 14px; padding: 20px; cursor: pointer; font: inherit; color: inherit; transition: border-color .15s, transform .15s; }
+  button.scelta:hover, button.scelta:focus-visible { border-color: var(--forte); transform: translateY(-1px); outline: none; }
+  button.scelta b { display: block; font-size: 17px; letter-spacing: -.02em; margin: 12px 0 6px; }
+  button.scelta span { color: var(--tenue); font-size: 14px; }
+  svg { width: 30px; height: 30px; }
+  form { margin-top: 18px; background: var(--pannello); border: 1px solid var(--linea); border-radius: 14px; padding: 20px; }
+  form[hidden] { display: none; }
+  label { display: block; font-size: 13px; color: var(--tenue); margin-bottom: 6px; }
+  .riga { display: flex; gap: 10px; }
+  input { flex: 1; min-width: 0; font: inherit; color: inherit; background: var(--sfondo); border: 1px solid var(--linea); border-radius: 9px; padding: 10px 12px; }
+  input:focus { outline: none; border-color: var(--forte); }
+  .vai { font: inherit; border: 0; border-radius: 9px; padding: 10px 18px; background: var(--forte); color: var(--su-forte); cursor: pointer; font-weight: 550; }
+  .vai:disabled { opacity: .5; cursor: default; }
+  .nota { color: var(--tenue); font-size: 13px; margin: 10px 0 0; }
+  .errore { color: var(--errore); font-size: 14px; margin: 10px 0 0; }
+  @media (max-width: 620px) { .scelte { grid-template-columns: 1fr; } }
+  @media (prefers-reduced-motion: reduce) { button.scelta { transition: none; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Benvenuto in Kubo</h1>
+  <p class="sotto">Come usiamo questo computer?</p>
+  <div class="scelte">
+    <button class="scelta" id="server" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v6H4zM4 14h16v6H4zM8 7h.01M8 17h.01"/></svg>
+      <b>Questo PC tiene i dati</b>
+      <span>Il gestionale e i dati stanno qui. Gli altri computer e i telefoni dell'ufficio si collegano a questo. Scegli questo se è il primo PC.</span>
+    </button>
+    <button class="scelta" id="cliente" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18v11H3zM8 20h8M12 16v4"/></svg>
+      <b>Collegati a un Kubo in rete</b>
+      <span>Kubo è già acceso su un altro computer dell'ufficio (o su un server): questo PC ci lavora sopra.</span>
+    </button>
+  </div>
+  <form id="collega" hidden>
+    <label for="indirizzo">Indirizzo o codice del Kubo dell'ufficio</label>
+    <div class="riga"><input id="indirizzo" autocomplete="off" spellcheck="false" placeholder="Per esempio R8M0-0A1C-4W oppure 192.168.1.20"><button class="vai" type="submit">Collegati</button></div>
+    <p class="nota">Li trovi sul computer con i dati, in Kubo → «Collega dispositivi».</p>
+    <p class="errore" id="errore" role="alert"></p>
+  </form>
+  <p class="errore" id="errore-server" role="alert"></p>
+</main>
+<script src="scelta.js"></script>
+</body>
+</html>

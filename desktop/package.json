@@ -1,0 +1,41 @@
+{
+  "name": "kubo-desktop",
+  "productName": "Kubo",
+  "version": "0.1.0",
+  "description": "Kubo, il gestionale open source: l'app per il PC che tiene i dati o che si collega a un Kubo in rete",
+  "license": "MIT",
+  "author": "W1kicartel",
+  "private": true,
+  "type": "module",
+  "main": "main.mjs",
+  "scripts": {
+    "start": "electron .",
+    "prova": "electron . --prova",
+    "icona": "node icona.mjs",
+    "dist:mac": "node icona.mjs && electron-builder --mac --publish never",
+    "dist:win": "node icona.mjs && electron-builder --win nsis --publish never",
+    "dist:linux": "node icona.mjs && electron-builder --linux AppImage deb --publish never"
+  },
+  "devDependencies": {
+    "electron": "44.4.5",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "it.kubo.gestionale",
+    "productName": "Kubo",
+    "directories": { "output": "dist", "buildResources": "build" },
+    "files": ["main.mjs", "kubo.mjs", "icona.mjs", "preload.cjs", "scelta.html", "scelta.js", "package.json"],
+    "extraResources": [
+      { "from": "../server", "to": "kubo/server" },
+      { "from": "../web", "to": "kubo/web" },
+      { "from": "../modelli", "to": "kubo/modelli" },
+      { "from": "../package.json", "to": "kubo/package.json" },
+      { "from": "../LICENSE", "to": "kubo/LICENSE" }
+    ],
+    "electronFuses": { "runAsNode": false, "enableNodeOptionsEnvironmentVariable": false, "enableNodeCliInspectArguments": false },
+    "mac": { "category": "public.app-category.business", "target": [{ "target": "dmg", "arch": ["universal"] }], "artifactName": "Kubo-${version}-mac.${ext}" },
+    "win": { "target": "nsis", "artifactName": "Kubo-${version}-windows.${ext}" },
+    "nsis": { "oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": true, "runAfterFinish": true },
+    "linux": { "target": ["AppImage", "deb"], "category": "Office", "artifactName": "Kubo-${version}-linux.${ext}" }
+  }
+}
