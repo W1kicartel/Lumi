@@ -15,7 +15,7 @@ Kubo tiene i dati di un'azienda: clienti, prezzi, costi, fatture. Questa pagina 
 ## Sessioni
 
 - Il cookie è `HttpOnly` e `SameSite=Strict`. Ogni scrittura vuole l'intestazione `X-Kubo: 1`, che una pagina di un altro sito non può aggiungere (CSRF).
-- **Inattività.** Una sessione ferma da più di 12 ore si chiude da sola. Il titolare sceglie il tempo, da 5 minuti a 30 giorni.
+- **Inattività.** Una sessione ferma da più di 12 ore si chiude da sola, anche se la scheda resta aperta (smette di ricevere gli aggiornamenti). Il titolare sceglie il tempo, da 5 minuti a 30 giorni.
 - **Dispositivi.** *Sicurezza → Dispositivi collegati* elenca le proprie sessioni: browser e sistema, ultimo uso, indirizzo. Si può scollegare un dispositivo o tutti gli altri. Il token non esce mai: ogni sessione ha un'impronta.
 - Chi gestisce le persone può scollegare qualcuno da tutti i dispositivi.
 - **Eventi in tempo reale.** A ogni evento la sessione si rilegge: un dispositivo scollegato, una persona disattivata o un ruolo cambiato smettono subito di ricevere aggiornamenti.
