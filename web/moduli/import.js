@@ -3,7 +3,7 @@
 //   #/api                 token personali, documentazione generata dallo schema, webhook (solo il titolare)
 // Nella testa di ogni lista: «Importa» ed «Esporta» (Excel o CSV, con i filtri della lista in quel momento).
 import { carica, peso } from '/campi.js';
-import { t, numero, simbolo, data as dataL, dataOra as dataOraL } from '/lingua.js';
+import { t, numero, simbolo, minuscole, data as dataL, dataOra as dataOraL } from '/lingua.js';
 
 const NON_IMPORTABILI = ['calcolato', 'contatore', 'righe', 'file', 'immagine'];
 // i nomi dei tipi sono quelli di Personalizza (gestione.tipo-<tipo>), nella lingua di chi importa
@@ -79,7 +79,7 @@ function paginaImporta(contenuto, k, entita) {
         scelte[i] = sel.value === '' ? null : sel.value === '__nuovo' ? { nuovo: true, tipo: a.tipi[i].tipo, nome: col } : { campo: sel.value };
         sel.classList.toggle('abbinata', !!scelte[i]); } } },
         h('option', { value: '', testo: t('moduli.im-non-importare') }), campi.map(c => h('option', { value: c.id, testo: c.nome, selected: scelte[i]?.campo === c.id })),
-        puoCreare ? h('option', { value: '__nuovo', testo: t('moduli.im-crea-campo', { nome: col, tipo: nomeTipo(a.tipi[i].tipo).toLowerCase() }) }) : null);
+        puoCreare ? h('option', { value: '__nuovo', testo: t('moduli.im-crea-campo', { nome: col, tipo: minuscole(nomeTipo(a.tipi[i].tipo)) }) }) : null);
       return h('th', h('div.import-colonna', { testo: col }), sel);
     });
     const anteprima = h('div.import-tabella', h('table.tabella', h('thead', h('tr', testa)),
