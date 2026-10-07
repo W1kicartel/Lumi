@@ -39,5 +39,11 @@
   "automazioni": [
     { "id": "seduta_usata", "nome": "Appuntamento fatto da un pacchetto: conta la seduta", "entita": "appuntamenti", "quando": "campo_cambia", "campo": "stato", "a": "fatto", "se": "NON VUOTO(pacchetto)",
       "azioni": [ { "tipo": "aggiorna_collegato", "relazione": "pacchetto", "campo": "usate", "aggiungi": "1" } ] }
+  ],
+  "interruttori": {
+    "appuntamenti": { "entita": ["appuntamenti"] }
+  },
+  "ruoli": [
+    { "id": "operatore", "nome": "Operatore", "entita": { "*": { "leggi": true, "crea": true, "modifica": true }, "pacchetti": { "campi": { "prezzo": "nascosto" } } } }
   ]
 }

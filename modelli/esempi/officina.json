@@ -1,0 +1,32 @@
+{
+  "clienti": [
+    { "#": "rossetti", "nome": "Giorgio Rossetti", "telefono": "348 330 1276", "email": "g.rossetti@esempio.it" },
+    { "#": "valli", "nome": "Valli Trasporti srl", "telefono": "0523 77 1840", "email": "flotta@vallitrasporti.example", "piva": "IT03456789012" },
+    { "#": "carla", "nome": "Carla Benedetti", "telefono": "333 902 4418", "email": "carla.benedetti@esempio.it" }
+  ],
+  "fornitori": [
+    { "#": "f_ricambi", "nome": "Autoricambi Emilia", "telefono": "0521 288 104", "email": "banco@autoricambiemilia.example", "giorni_consegna": 1 }
+  ],
+  "ricambi": [
+    { "#": "filtro_olio", "codice": "FO-210", "nome": "Filtro olio", "prezzo": 14, "costo": 6.5, "giacenza": 12, "soglia": 4, "fornitore": "#f_ricambi" },
+    { "#": "olio", "codice": "OL-5W30", "nome": "Olio motore 5W30 (litro)", "prezzo": 12, "costo": 5.2, "giacenza": 40, "soglia": 15, "fornitore": "#f_ricambi" },
+    { "#": "pastiglie", "codice": "PF-ANT", "nome": "Pastiglie freno anteriori", "prezzo": 58, "costo": 27, "giacenza": 2, "soglia": 3, "fornitore": "#f_ricambi" },
+    { "#": "spazzole", "codice": "TG-55", "nome": "Spazzole tergicristallo (coppia)", "prezzo": 24, "costo": 9, "giacenza": 8, "soglia": 2, "fornitore": "#f_ricambi" },
+    { "#": "batteria", "codice": "BT-70", "nome": "Batteria 70 Ah", "prezzo": 129, "costo": 74, "giacenza": 1, "soglia": 2, "fornitore": "#f_ricambi" }
+  ],
+  "mezzi": [
+    { "#": "m1", "targa": "GF 482 TL", "tipo": "auto", "marca": "Fiat", "modello": "Panda 1.0 Hybrid", "anno": 2021, "cliente": "#rossetti", "km": 48200, "garanzia_fino": "@oggi+20", "revisione": "@oggi+12" },
+    { "#": "m2", "targa": "FX 117 MR", "tipo": "furgone", "marca": "Iveco", "modello": "Daily 35S14", "anno": 2019, "cliente": "#valli", "km": 186400, "revisione": "@oggi+45" },
+    { "#": "m3", "targa": "GK 905 AB", "tipo": "auto", "marca": "Toyota", "modello": "Yaris", "anno": 2022, "cliente": "#carla", "km": 23100, "garanzia_fino": "@oggi+400" },
+    { "#": "m4", "targa": "EZ 330 PC", "tipo": "furgone", "marca": "Ford", "modello": "Transit Custom", "anno": 2017, "cliente": "#valli", "km": 241000, "revisione": "@oggi-3" }
+  ],
+  "interventi": [
+    { "data": "@oggi", "mezzo": "#m1", "cliente": "#rossetti", "problema": "Tagliando dei 50.000 km e rumore ai freni", "fase": "diagnosi", "km": 48210, "consegna_prevista": "@oggi+1" },
+    { "data": "@oggi-1", "mezzo": "#m2", "cliente": "#valli", "problema": "Spia avaria motore accesa", "fase": "attesa_ricambi", "km": 186450, "consegna_prevista": "@oggi+2", "ore": 1.5 },
+    { "data": "@oggi-3", "mezzo": "#m3", "cliente": "#carla", "problema": "Tagliando annuale", "fase": "pronto", "km": 23150, "consegna_prevista": "@oggi", "ore": 1.5, "garanzia": true, "ricambi": [ { "ricambio": "#filtro_olio", "quantita": 1, "prezzo": 14 }, { "ricambio": "#olio", "quantita": 4, "prezzo": 12 } ], "lavoro_fatto": "Sostituiti olio e filtro, controllo livelli e pneumatici." },
+    { "data": "@oggi-4", "mezzo": "#m4", "cliente": "#valli", "problema": "Freni anteriori consumati", "fase": "in_lavorazione", "km": 241020, "consegna_prevista": "@oggi-1", "ore": 2, "ricambi": [ { "ricambio": "#pastiglie", "quantita": 1, "prezzo": 58 } ] },
+    { "data": "@oggi-9", "mezzo": "#m1", "cliente": "#rossetti", "problema": "Batteria scarica", "fase": "consegnato", "ore": 0.5, "ricambi": [ { "ricambio": "#batteria", "quantita": 1, "prezzo": 129 } ] },
+    { "data": "@oggi-16", "mezzo": "#m2", "cliente": "#valli", "problema": "Sostituzione spazzole e controllo luci", "fase": "consegnato", "ore": 0.5, "ricambi": [ { "ricambio": "#spazzole", "quantita": 1, "prezzo": 24 } ] },
+    { "data": "@oggi-30", "mezzo": "#m3", "cliente": "#carla", "problema": "Controllo climatizzatore", "fase": "consegnato", "ore": 1 }
+  ]
+}

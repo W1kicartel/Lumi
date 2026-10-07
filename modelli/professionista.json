@@ -1,0 +1,102 @@
+{
+  "id": "professionista",
+  "ordine": 1,
+  "nome": "Professionista e agenzia",
+  "descrizione": "Clienti, progetti con budget e ore, attività e scadenze per persona, preventivi che diventano progetti quando il cliente accetta.",
+  "entita": [
+    { "id": "clienti", "nome": "Clienti", "icona": "persona", "titolo": "nome", "campi": [
+      { "id": "nome", "nome": "Nome o ragione sociale", "tipo": "testo", "obbligatorio": true },
+      { "id": "referente", "nome": "Referente", "tipo": "testo" },
+      { "id": "telefono", "nome": "Telefono", "tipo": "telefono" },
+      { "id": "email", "nome": "Email", "tipo": "email", "unico": true },
+      { "id": "piva", "nome": "Partita IVA / CF", "tipo": "testo" },
+      { "id": "sito", "nome": "Sito", "tipo": "url" },
+      { "id": "provenienza", "nome": "Come ci ha trovato", "tipo": "scelta", "opzioni": [
+        { "id": "passaparola", "nome": "Passaparola" }, { "id": "sito", "nome": "Sito" }, { "id": "social", "nome": "Social" }, { "id": "altro", "nome": "Altro" } ] },
+      { "id": "note", "nome": "Note", "tipo": "testo_lungo" } ] },
+    { "id": "voci_preventivo", "nome": "Voci di preventivo", "nascosta": true, "titolo": "descrizione", "campi": [
+      { "id": "preventivo", "nome": "Preventivo", "tipo": "relazione", "entita": "preventivi", "obbligatorio": true },
+      { "id": "descrizione", "nome": "Descrizione", "tipo": "testo", "obbligatorio": true },
+      { "id": "quantita", "nome": "Quantità", "tipo": "numero", "predefinito": 1 },
+      { "id": "prezzo", "nome": "Prezzo", "tipo": "valuta" },
+      { "id": "totale", "nome": "Totale", "tipo": "calcolato", "formula": "quantita * prezzo", "formato": "valuta" } ] },
+    { "id": "preventivi", "nome": "Preventivi", "icona": "documento", "titolo": "numero", "campi": [
+      { "id": "numero", "nome": "Numero", "tipo": "contatore", "formato": "P-{AAAA}-{N:3}" },
+      { "id": "data", "nome": "Data", "tipo": "data", "predefinito": "@oggi" },
+      { "id": "cliente", "nome": "Cliente", "tipo": "relazione", "entita": "clienti", "obbligatorio": true },
+      { "id": "oggetto", "nome": "Oggetto", "tipo": "testo" },
+      { "id": "stato", "nome": "Stato", "tipo": "stato", "iniziale": "bozza", "opzioni": [
+        { "id": "bozza", "nome": "Bozza", "colore": "grigio" }, { "id": "inviato", "nome": "Inviato", "colore": "blu" },
+        { "id": "accettato", "nome": "Accettato", "colore": "verde" }, { "id": "rifiutato", "nome": "Rifiutato", "colore": "rosso" } ],
+        "transizioni": { "bozza": ["inviato"], "inviato": ["accettato", "rifiutato", "bozza"], "accettato": [], "rifiutato": ["bozza"] } },
+      { "id": "valido_fino", "nome": "Valido fino al", "tipo": "data" },
+      { "id": "voci", "nome": "Voci", "tipo": "righe", "entita": "voci_preventivo", "campo": "preventivo" },
+      { "id": "imponibile", "nome": "Imponibile", "tipo": "calcolato", "formula": "SOMMA(voci.totale)", "formato": "valuta" },
+      { "id": "iva", "nome": "IVA %", "tipo": "percentuale", "predefinito": 22 },
+      { "id": "totale", "nome": "Totale", "tipo": "calcolato", "formula": "ARROTONDA(imponibile * (1 + iva / 100); 2)", "formato": "valuta" } ] },
+    { "id": "ore", "nome": "Ore lavorate", "icona": "calendario", "titolo": "attivita", "campi": [
+      { "id": "progetto", "nome": "Progetto", "tipo": "relazione", "entita": "progetti", "obbligatorio": true },
+      { "id": "data", "nome": "Data", "tipo": "data", "predefinito": "@oggi", "obbligatorio": true },
+      { "id": "chi", "nome": "Chi", "tipo": "utente", "predefinito": "@utente" },
+      { "id": "ore", "nome": "Ore", "tipo": "numero", "obbligatorio": true },
+      { "id": "attivita", "nome": "Cosa hai fatto", "tipo": "testo" },
+      { "id": "fatturabile", "nome": "Da fatturare", "tipo": "si_no", "predefinito": true } ] },
+    { "id": "progetti", "nome": "Progetti", "icona": "cartella", "titolo": "nome", "campi": [
+      { "id": "nome", "nome": "Progetto", "tipo": "testo", "obbligatorio": true },
+      { "id": "cliente", "nome": "Cliente", "tipo": "relazione", "entita": "clienti" },
+      { "id": "preventivo", "nome": "Dal preventivo", "tipo": "relazione", "entita": "preventivi" },
+      { "id": "stato", "nome": "Stato", "tipo": "stato", "iniziale": "attivo", "opzioni": [
+        { "id": "proposta", "nome": "Proposta", "colore": "grigio" }, { "id": "attivo", "nome": "Attivo", "colore": "blu" }, { "id": "in_pausa", "nome": "In pausa", "colore": "giallo" },
+        { "id": "concluso", "nome": "Concluso", "colore": "verde" }, { "id": "annullato", "nome": "Annullato", "colore": "rosso" } ] },
+      { "id": "responsabile", "nome": "Responsabile", "tipo": "utente", "predefinito": "@utente" },
+      { "id": "inizio", "nome": "Inizio", "tipo": "data", "predefinito": "@oggi" },
+      { "id": "consegna", "nome": "Consegna", "tipo": "data" },
+      { "id": "budget", "nome": "Budget", "tipo": "valuta" },
+      { "id": "tariffa", "nome": "Tariffa oraria", "tipo": "valuta", "predefinito": 60 },
+      { "id": "ore_previste", "nome": "Ore previste", "tipo": "numero" },
+      { "id": "registro", "nome": "Ore lavorate", "tipo": "righe", "entita": "ore", "campo": "progetto" },
+      { "id": "ore_fatte", "nome": "Ore fatte", "tipo": "calcolato", "formula": "SOMMA(registro.ore)" },
+      { "id": "valore", "nome": "Valore delle ore", "tipo": "calcolato", "formula": "ARROTONDA(ore_fatte * tariffa; 2)", "formato": "valuta" },
+      { "id": "residuo", "nome": "Budget rimasto", "tipo": "calcolato", "formula": "SE(budget > 0; budget - valore; \"\")", "formato": "valuta" },
+      { "id": "avanzamento", "nome": "Ore usate", "tipo": "calcolato", "formula": "SE(ore_previste > 0; ARROTONDA(ore_fatte / ore_previste * 100; 0); \"\")", "formato": "percentuale" },
+      { "id": "in_ritardo", "nome": "In ritardo", "tipo": "calcolato", "formula": "NON VUOTO(consegna) E consegna < OGGI() E stato = \"attivo\"" } ] },
+    { "id": "attivita", "nome": "Attività e scadenze", "icona": "attrezzi", "titolo": "titolo", "campi": [
+      { "id": "titolo", "nome": "Attività", "tipo": "testo", "obbligatorio": true },
+      { "id": "progetto", "nome": "Progetto", "tipo": "relazione", "entita": "progetti" },
+      { "id": "cliente", "nome": "Cliente", "tipo": "relazione", "entita": "clienti" },
+      { "id": "chi", "nome": "Chi", "tipo": "utente", "predefinito": "@utente" },
+      { "id": "scadenza", "nome": "Scadenza", "tipo": "data" },
+      { "id": "priorita", "nome": "Priorità", "tipo": "scelta", "opzioni": [ { "id": "alta", "nome": "Alta", "colore": "rosso" }, { "id": "media", "nome": "Media", "colore": "giallo" }, { "id": "bassa", "nome": "Bassa", "colore": "grigio" } ], "predefinito": "media" },
+      { "id": "stato", "nome": "Stato", "tipo": "stato", "iniziale": "da_fare", "opzioni": [
+        { "id": "da_fare", "nome": "Da fare", "colore": "grigio" }, { "id": "in_corso", "nome": "In corso", "colore": "blu" }, { "id": "fatta", "nome": "Fatta", "colore": "verde" } ] },
+      { "id": "scaduta", "nome": "Scaduta", "tipo": "calcolato", "formula": "NON VUOTO(scadenza) E scadenza < OGGI() E stato <> \"fatta\"" },
+      { "id": "note", "nome": "Note", "tipo": "testo_lungo" } ] }
+  ],
+  "automazioni": [
+    { "id": "preventivo_progetto", "nome": "Preventivo accettato: apre il progetto", "entita": "preventivi", "quando": "campo_cambia", "campo": "stato", "a": "accettato",
+      "azioni": [ { "tipo": "crea", "entita": "progetti", "valori": { "nome": "SE(VUOTO(oggetto); numero; oggetto)", "cliente": "cliente", "preventivo": "id", "budget": "imponibile", "stato": "\"attivo\"", "inizio": "OGGI()" } } ] },
+    { "id": "preventivo_promemoria", "nome": "Preventivo inviato: promemoria per risentire il cliente fra 7 giorni", "entita": "preventivi", "quando": "campo_cambia", "campo": "stato", "a": "inviato",
+      "azioni": [ { "tipo": "crea", "entita": "attivita", "valori": { "titolo": "\"Risentire il cliente per \" & numero", "cliente": "cliente", "scadenza": "AGGIUNGIGIORNI(OGGI(); 7)", "priorita": "\"media\"" } } ] }
+  ],
+  "interruttori": {
+    "su_misura": { "entita": ["preventivi", "voci_preventivo"] }
+  },
+  "ruoli": [
+    { "id": "consulente", "nome": "Consulente", "entita": { "*": { "leggi": true, "crea": true, "modifica": true },
+      "progetti": { "campi": { "budget": "nascosto", "tariffa": "nascosto", "valore": "nascosto", "residuo": "nascosto" } }, "preventivi": { "leggi": false, "crea": false, "modifica": false } } }
+  ],
+  "cruscotto": {
+    "widget": [
+      { "tipo": "numero", "titolo": "Ore questa settimana", "entita": "ore", "misura": "somma", "campo": "ore", "campoData": "data", "periodo": "settimana" },
+      { "tipo": "numero", "titolo": "Ore questo mese", "entita": "ore", "misura": "somma", "campo": "ore", "campoData": "data", "periodo": "mese" },
+      { "tipo": "numero", "titolo": "Progetti attivi", "entita": "progetti", "misura": "conta", "filtri": [{ "campo": "stato", "op": "=", "valore": "attivo" }] },
+      { "tipo": "grafico", "titolo": "Ore per settimana", "entita": "ore", "misura": "somma", "campo": "ore", "campoData": "data", "periodo": "ultimi_84", "per": "settimana", "forma": "linea", "largo": true }
+    ],
+    "attenzione": [
+      { "titolo": "Scadenze passate", "entita": "attivita", "filtri": [{ "campo": "scaduta", "op": "=", "valore": true }] },
+      { "titolo": "Scadenze dei prossimi 7 giorni", "entita": "attivita", "filtri": [{ "campo": "scadenza", "op": "tra", "valore": ["@oggi", "@oggi+7"] }, { "campo": "stato", "op": "!=", "valore": "fatta" }] },
+      { "titolo": "Progetti oltre il budget", "entita": "progetti", "filtri": [{ "campo": "residuo", "op": "<", "valore": 0 }] },
+      { "titolo": "Progetti in ritardo", "entita": "progetti", "filtri": [{ "campo": "in_ritardo", "op": "=", "valore": true }] }
+    ]
+  }
+}

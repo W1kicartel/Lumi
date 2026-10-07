@@ -110,5 +110,14 @@
     { "id": "carico_ordine", "nome": "Ordine arrivato: carica il magazzino", "entita": "ordini", "quando": "campo_cambia", "campo": "stato", "a": "arrivato",
       "azioni": [ { "tipo": "aggiorna_collegato", "perOgniRiga": "righe", "relazione": "articolo", "campo": "giacenza", "aggiungi": "quantita" } ] }
   ],
-  "domande": []
+  "domande": [],
+  "interruttori": {
+    "magazzino": { "campi": ["articoli.giacenza", "articoli.soglia", "articoli.da_riordinare"] },
+    "fornitori": { "entita": ["fornitori", "ordini", "righe_ordine"] }
+  },
+  "ruoli": [
+    { "id": "banco", "nome": "Banco", "entita": { "*": { "leggi": true, "crea": false, "modifica": false },
+      "vendite": { "leggi": true, "crea": true, "modifica": true }, "clienti": { "leggi": true, "crea": true, "modifica": true },
+      "articoli": { "leggi": true, "campi": { "costo": "nascosto", "margine": "nascosto" } }, "ordini": { "leggi": false }, "fornitori": { "leggi": false } } }
+  ]
 }

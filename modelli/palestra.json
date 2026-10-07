@@ -1,0 +1,92 @@
+{
+  "id": "palestra",
+  "ordine": 1,
+  "nome": "Palestra e associazione",
+  "descrizione": "Soci con il certificato medico, abbonamenti a tempo o a ingressi con i rinnovi, corsi e lezioni con le presenze, quote e pagamenti.",
+  "entita": [
+    { "id": "soci", "nome": "Soci", "icona": "persona", "titolo": "nome", "campi": [
+      { "id": "nome", "nome": "Nome e cognome", "tipo": "testo", "obbligatorio": true },
+      { "id": "tessera", "nome": "N. tessera", "tipo": "testo", "unico": true },
+      { "id": "telefono", "nome": "Telefono", "tipo": "telefono" },
+      { "id": "email", "nome": "Email", "tipo": "email", "unico": true },
+      { "id": "nascita", "nome": "Data di nascita", "tipo": "data" },
+      { "id": "codice_fiscale", "nome": "Codice fiscale", "tipo": "testo" },
+      { "id": "certificato_fino", "nome": "Certificato medico fino al", "tipo": "data" },
+      { "id": "certificato_ok", "nome": "Certificato valido", "tipo": "calcolato", "formula": "NON VUOTO(certificato_fino) E certificato_fino >= OGGI()" },
+      { "id": "consenso", "nome": "Consenso al trattamento dei dati", "tipo": "si_no" },
+      { "id": "note", "nome": "Note", "tipo": "testo_lungo" } ] },
+    { "id": "abbonamenti", "nome": "Abbonamenti", "icona": "documento", "titolo": "socio", "campi": [
+      { "id": "socio", "nome": "Socio", "tipo": "relazione", "entita": "soci", "obbligatorio": true },
+      { "id": "tipo", "nome": "Tipo", "tipo": "scelta", "opzioni": [
+        { "id": "mensile", "nome": "Mensile", "colore": "blu" }, { "id": "trimestrale", "nome": "Trimestrale", "colore": "viola" }, { "id": "annuale", "nome": "Annuale", "colore": "verde" },
+        { "id": "ingressi", "nome": "A ingressi", "colore": "giallo" } ], "predefinito": "mensile" },
+      { "id": "dal", "nome": "Dal", "tipo": "data", "predefinito": "@oggi", "obbligatorio": true },
+      { "id": "al", "nome": "Al", "tipo": "data" },
+      { "id": "ingressi", "nome": "Ingressi compresi", "tipo": "numero" },
+      { "id": "usati", "nome": "Ingressi usati", "tipo": "numero", "predefinito": 0 },
+      { "id": "rimasti", "nome": "Ingressi rimasti", "tipo": "calcolato", "formula": "SE(ingressi > 0; ingressi - usati; \"\")" },
+      { "id": "prezzo", "nome": "Prezzo", "tipo": "valuta" },
+      { "id": "pagato", "nome": "Pagato", "tipo": "si_no" },
+      { "id": "attivo", "nome": "Attivo", "tipo": "calcolato", "formula": "dal <= OGGI() E (VUOTO(al) O al >= OGGI()) E (VUOTO(ingressi) O ingressi = 0 O usati < ingressi)" },
+      { "id": "giorni_rimasti", "nome": "Giorni alla scadenza", "tipo": "calcolato", "formula": "SE(VUOTO(al); \"\"; GIORNI(OGGI(); al))" } ] },
+    { "id": "corsi", "nome": "Corsi", "icona": "stella", "titolo": "nome", "campi": [
+      { "id": "nome", "nome": "Corso", "tipo": "testo", "obbligatorio": true },
+      { "id": "istruttore", "nome": "Istruttore", "tipo": "utente" },
+      { "id": "giorni", "nome": "Giorni", "tipo": "scelta_multipla", "opzioni": [
+        { "id": "lun", "nome": "Lun" }, { "id": "mar", "nome": "Mar" }, { "id": "mer", "nome": "Mer" }, { "id": "gio", "nome": "Gio" }, { "id": "ven", "nome": "Ven" }, { "id": "sab", "nome": "Sab" }, { "id": "dom", "nome": "Dom" } ] },
+      { "id": "ora", "nome": "Ora", "tipo": "testo" },
+      { "id": "durata", "nome": "Durata (minuti)", "tipo": "durata", "predefinito": 60 },
+      { "id": "posti", "nome": "Posti", "tipo": "numero", "predefinito": 15 },
+      { "id": "livello", "nome": "Livello", "tipo": "scelta", "opzioni": [ { "id": "base", "nome": "Base" }, { "id": "intermedio", "nome": "Intermedio" }, { "id": "avanzato", "nome": "Avanzato" }, { "id": "tutti", "nome": "Per tutti" } ], "predefinito": "tutti" } ] },
+    { "id": "lezioni", "nome": "Lezioni", "icona": "calendario", "titolo": "corso", "campi": [
+      { "id": "corso", "nome": "Corso", "tipo": "relazione", "entita": "corsi", "obbligatorio": true },
+      { "id": "quando", "nome": "Quando", "tipo": "data_ora", "obbligatorio": true },
+      { "id": "istruttore", "nome": "Istruttore", "tipo": "utente", "predefinito": "@utente" },
+      { "id": "stato", "nome": "Stato", "tipo": "stato", "iniziale": "in_programma", "opzioni": [
+        { "id": "in_programma", "nome": "In programma", "colore": "blu" }, { "id": "fatta", "nome": "Fatta", "colore": "verde" }, { "id": "annullata", "nome": "Annullata", "colore": "grigio" } ] },
+      { "id": "presenze", "nome": "Presenti", "tipo": "relazione", "entita": "soci", "molti": true },
+      { "id": "quanti", "nome": "Quanti presenti", "tipo": "calcolato", "formula": "CONTA(presenze)" },
+      { "id": "note", "nome": "Note", "tipo": "testo" } ] },
+    { "id": "quote", "nome": "Quote e pagamenti", "icona": "cassa", "titolo": "socio", "campi": [
+      { "id": "socio", "nome": "Socio", "tipo": "relazione", "entita": "soci", "obbligatorio": true },
+      { "id": "causale", "nome": "Per", "tipo": "scelta", "opzioni": [
+        { "id": "iscrizione", "nome": "Iscrizione", "colore": "viola" }, { "id": "quota_associativa", "nome": "Quota associativa", "colore": "blu" },
+        { "id": "abbonamento", "nome": "Abbonamento", "colore": "verde" }, { "id": "altro", "nome": "Altro" } ], "predefinito": "abbonamento" },
+      { "id": "anno", "nome": "Anno", "tipo": "numero" },
+      { "id": "data", "nome": "Data", "tipo": "data", "predefinito": "@oggi" },
+      { "id": "importo", "nome": "Importo", "tipo": "valuta", "obbligatorio": true },
+      { "id": "pagata", "nome": "Pagata", "tipo": "si_no" },
+      { "id": "metodo", "nome": "Metodo", "tipo": "scelta", "opzioni": [ { "id": "contanti", "nome": "Contanti" }, { "id": "carta", "nome": "Carta" }, { "id": "bonifico", "nome": "Bonifico" } ] },
+      { "id": "ricevuta", "nome": "Ricevuta n.", "tipo": "contatore", "formato": "R-{AAAA}-{N:4}" } ] }
+  ],
+  "automazioni": [
+    { "id": "abbonamento_quota", "nome": "Abbonamento nuovo: prepara la quota da incassare", "entita": "abbonamenti", "quando": "creato", "se": "prezzo > 0",
+      "azioni": [ { "tipo": "crea", "entita": "quote", "valori": { "socio": "socio", "causale": "\"abbonamento\"", "importo": "prezzo", "data": "dal", "pagata": "pagato", "anno": "ANNO(dal)" } } ] },
+    { "id": "abbonamento_scadenza", "nome": "Abbonamento mensile senza fine: scade dopo 30 giorni", "entita": "abbonamenti", "quando": "creato", "se": "VUOTO(al) E tipo = \"mensile\"",
+      "azioni": [ { "tipo": "imposta", "campo": "al", "formula": "AGGIUNGIGIORNI(dal; 30)" } ] }
+  ],
+  "interruttori": {
+    "appuntamenti": { "entita": ["lezioni"] }
+  },
+  "ruoli": [
+    { "id": "istruttore", "nome": "Istruttore", "entita": { "*": { "leggi": true, "crea": false, "modifica": false },
+      "lezioni": { "leggi": true, "crea": true, "modifica": true }, "soci": { "leggi": true, "campi": { "codice_fiscale": "nascosto" } },
+      "abbonamenti": { "leggi": true, "campi": { "prezzo": "nascosto" } }, "quote": { "leggi": false } } },
+    { "id": "reception", "nome": "Reception", "entita": { "*": { "leggi": true, "crea": true, "modifica": true }, "corsi": { "crea": false, "modifica": false } } }
+  ],
+  "cruscotto": {
+    "widget": [
+      { "tipo": "numero", "titolo": "Abbonamenti attivi", "entita": "abbonamenti", "misura": "conta", "filtri": [{ "campo": "attivo", "op": "=", "valore": true }] },
+      { "tipo": "numero", "titolo": "Incassato questo mese", "entita": "quote", "misura": "somma", "campo": "importo", "campoData": "data", "periodo": "mese", "filtri": [{ "campo": "pagata", "op": "=", "valore": true }] },
+      { "tipo": "numero", "titolo": "Lezioni oggi", "entita": "lezioni", "misura": "conta", "campoData": "quando", "periodo": "oggi", "filtri": [{ "campo": "stato", "op": "!=", "valore": "annullata" }] },
+      { "tipo": "numero", "titolo": "Nuovi soci questo mese", "entita": "soci", "misura": "conta", "campoData": "creato", "periodo": "mese" },
+      { "tipo": "grafico", "titolo": "Quote incassate per mese", "entita": "quote", "misura": "somma", "campo": "importo", "campoData": "data", "periodo": "ultimi_365", "per": "mese", "forma": "barre", "filtri": [{ "campo": "pagata", "op": "=", "valore": true }], "largo": true }
+    ],
+    "attenzione": [
+      { "titolo": "Abbonamenti che scadono entro 7 giorni", "entita": "abbonamenti", "filtri": [{ "campo": "al", "op": "tra", "valore": ["@oggi", "@oggi+7"] }] },
+      { "titolo": "Certificati medici scaduti o mancanti", "entita": "soci", "filtri": [{ "campo": "certificato_ok", "op": "=", "valore": false }] },
+      { "titolo": "Quote da incassare", "entita": "quote", "filtri": [{ "campo": "pagata", "op": "=", "valore": false }] },
+      { "titolo": "Lezioni passate da chiudere", "entita": "lezioni", "filtri": [{ "campo": "quando", "op": "<", "valore": "@oggi" }, { "campo": "stato", "op": "=", "valore": "in_programma" }] }
+    ]
+  }
+}

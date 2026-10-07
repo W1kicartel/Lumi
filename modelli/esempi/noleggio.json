@@ -1,0 +1,22 @@
+{
+  "clienti": [
+    { "#": "c1", "nome": "Stefano Marini", "telefono": "347 553 2081", "email": "stefano.marini@esempio.it", "documento": "CI CA12345XY" },
+    { "#": "c2", "nome": "Eventi Riviera srl", "telefono": "0541 77 2093", "email": "logistica@eventiriviera.example", "piva": "IT05678901234" },
+    { "#": "c3", "nome": "Alessia Cattaneo", "telefono": "333 201 7746", "email": "alessia.cattaneo@esempio.it", "documento": "Patente U1A23456" }
+  ],
+  "beni": [
+    { "#": "ebike1", "codice": "EB-01", "nome": "E-bike trekking taglia M", "categoria": "bici", "tariffa_giorno": 35, "cauzione": 200, "valore": 2400 },
+    { "#": "ebike2", "codice": "EB-02", "nome": "E-bike trekking taglia L", "categoria": "bici", "tariffa_giorno": 35, "cauzione": 200, "valore": 2400 },
+    { "#": "gazebo", "codice": "GZ-3x6", "nome": "Gazebo 3x6 bianco", "categoria": "eventi", "tariffa_giorno": 60, "cauzione": 150, "valore": 900, "manutenzione_il": "@oggi+5" },
+    { "#": "sedie", "codice": "SD-PACK", "nome": "Sedie pieghevoli (pacco da 10)", "categoria": "eventi", "tariffa_giorno": 15, "cauzione": 50, "valore": 250 },
+    { "#": "proiettore", "codice": "PJ-4K", "nome": "Proiettore 4K con telo", "categoria": "elettronica", "tariffa_giorno": 45, "cauzione": 300, "valore": 1600 },
+    { "#": "tagliaerba", "codice": "TA-46", "nome": "Tosaerba a scoppio 46 cm", "categoria": "attrezzatura", "tariffa_giorno": 25, "cauzione": 100, "valore": 480, "stato": "manutenzione" }
+  ],
+  "contratti": [
+    { "cliente": "#c1", "dal": "@oggi-20", "al": "@oggi-17", "stato": "riconsegnato", "cauzione": 200, "cauzione_stato": "restituita", "pagato": true, "beni": [ { "bene": "#ebike1", "quantita": 1, "tariffa_giorno": 35 } ] },
+    { "cliente": "#c2", "dal": "@oggi-12", "al": "@oggi-10", "stato": "riconsegnato", "cauzione": 150, "cauzione_stato": "incassata", "pagato": true, "danni": "Un telo laterale strappato", "beni": [ { "bene": "#gazebo", "quantita": 1, "tariffa_giorno": 60 } ] },
+    { "cliente": "#c1", "dal": "@oggi-2", "al": "@oggi+1", "stato": "in_corso", "cauzione": 400, "cauzione_stato": "incassata", "pagato": true, "beni": [ { "bene": "#ebike1", "quantita": 1, "tariffa_giorno": 35 }, { "bene": "#ebike2", "quantita": 1, "tariffa_giorno": 35 } ] },
+    { "cliente": "#c2", "dal": "@oggi-5", "al": "@oggi-1", "stato": "in_corso", "cauzione": 200, "cauzione_stato": "incassata", "beni": [ { "bene": "#gazebo", "quantita": 1, "tariffa_giorno": 60 }, { "bene": "#sedie", "quantita": 4, "tariffa_giorno": 15 } ] },
+    { "cliente": "#c3", "dal": "@oggi", "al": "@oggi+3", "stato": "prenotato", "cauzione": 300, "beni": [ { "bene": "#proiettore", "quantita": 1, "tariffa_giorno": 45 } ], "sconto": 10 }
+  ]
+}

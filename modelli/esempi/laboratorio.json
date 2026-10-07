@@ -1,0 +1,22 @@
+{
+  "clienti": [
+    { "#": "ferri", "nome": "Famiglia Ferri", "telefono": "348 221 7765", "email": "ferri.casa@esempio.it" },
+    { "#": "osteria", "nome": "Osteria del Ponte", "telefono": "0371 55 4410", "email": "info@osteriadelponte.example", "piva": "IT02345678901" },
+    { "#": "lucia", "nome": "Lucia Rinaldi", "telefono": "339 870 1254", "email": "lucia.rinaldi@esempio.it" }
+  ],
+  "materiali": [
+    { "#": "rovere", "nome": "Tavola di rovere 30 mm", "unita": "m", "costo": 42, "giacenza": 18, "soglia": 6 },
+    { "#": "noce", "nome": "Tavola di noce 25 mm", "unita": "m", "costo": 58, "giacenza": 4, "soglia": 5 },
+    { "#": "olio", "nome": "Olio di lino cotto", "unita": "l", "costo": 12, "giacenza": 6, "soglia": 2 },
+    { "#": "viti", "nome": "Viti 4x40 inox", "unita": "pz", "costo": 0.08, "giacenza": 900, "soglia": 200 }
+  ],
+  "preventivi": [
+    { "#": "p_tavolo", "data": "@oggi-20", "cliente": "#ferri", "oggetto": "Tavolo da pranzo in rovere 200x90", "stato": "accettato", "valido_fino": "@oggi+10", "voci": [ { "descrizione": "Piano e gambe in rovere massello", "quantita": 1, "prezzo": 1450 }, { "descrizione": "Finitura a olio naturale", "quantita": 1, "prezzo": 180 } ] },
+    { "data": "@oggi-9", "cliente": "#osteria", "oggetto": "Bancone bar e mensole", "stato": "inviato", "valido_fino": "@oggi+21", "voci": [ { "descrizione": "Bancone in noce con top in rovere", "quantita": 1, "prezzo": 3800 }, { "descrizione": "Mensole a muro", "quantita": 4, "prezzo": 140 }, { "descrizione": "Montaggio in loco", "quantita": 1, "prezzo": 350 } ] },
+    { "data": "@oggi-2", "cliente": "#lucia", "oggetto": "Libreria su misura", "stato": "bozza", "voci": [ { "descrizione": "Libreria a giorno 240x220", "quantita": 1, "prezzo": 2100 } ] }
+  ],
+  "commesse": [
+    { "titolo": "Restauro credenza anni '50", "cliente": "#lucia", "fase": "in_lavorazione", "consegna": "@oggi-1", "ore": 14, "prezzo": 780, "materiali": [ { "materiale": "#olio", "quantita": 1, "costo": 12 }, { "materiale": "#viti", "quantita": 40, "costo": 0.08 } ] },
+    { "titolo": "Porta scorrevole in noce", "cliente": "#ferri", "fase": "da_iniziare", "consegna": "@oggi+25", "prezzo": 1100, "materiali": [ { "materiale": "#noce", "quantita": 3, "costo": 58 } ] }
+  ]
+}

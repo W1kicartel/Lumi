@@ -1,0 +1,39 @@
+{
+  "clienti": [
+    { "#": "c1", "nome": "Valentina Ricci", "telefono": "347 990 1123", "email": "valentina.ricci@esempio.it", "nascita": "1990-02-17", "pelle": "mista", "consenso": true },
+    { "#": "c2", "nome": "Francesca Neri", "telefono": "333 284 7701", "email": "francesca.neri@esempio.it", "pelle": "sensibile", "allergie": "Nichel. Evitare profumi forti.", "consenso": true },
+    { "#": "c3", "nome": "Giorgia Leone", "telefono": "320 615 0089", "email": "giorgia.leone@esempio.it", "nascita": "1983-08-05", "pelle": "secca", "consenso": true },
+    { "#": "c4", "nome": "Matteo Gatti", "telefono": "348 117 6630", "pelle": "grassa", "consenso": true }
+  ],
+  "cabine": [ { "#": "cab1", "nome": "Cabina Rosa", "attrezzatura": "Lettino riscaldato, vapore" }, { "#": "cab2", "nome": "Cabina Salvia", "attrezzatura": "Luce pulsata" }, { "#": "cab3", "nome": "Postazione mani" } ],
+  "trattamenti": [
+    { "#": "pulizia", "nome": "Pulizia viso profonda", "categoria": "viso", "durata": 60, "prezzo": 55 },
+    { "#": "massaggio", "nome": "Massaggio decontratturante", "categoria": "massaggi", "durata": 50, "prezzo": 60 },
+    { "#": "manicure", "nome": "Manicure semipermanente", "categoria": "mani_piedi", "durata": 45, "prezzo": 32 },
+    { "#": "laser", "nome": "Epilazione laser gambe", "categoria": "epilazione", "durata": 40, "prezzo": 90 }
+  ],
+  "pacchetti": [
+    { "#": "pk1", "nome": "6 sedute laser", "cliente": "#c1", "trattamento": "#laser", "sedute": 6, "usate": 2, "scadenza": "@oggi+150", "prezzo": 450, "pagato": true },
+    { "#": "pk2", "nome": "5 massaggi", "cliente": "#c4", "trattamento": "#massaggio", "sedute": 5, "usate": 1, "scadenza": "@oggi+60", "prezzo": 270, "pagato": false }
+  ],
+  "prodotti": [
+    { "nome": "Siero alla vitamina C 30 ml", "marca": "Linea Botanica", "uso": "entrambi", "prezzo": 38, "costo": 15, "giacenza": 6, "soglia": 3 },
+    { "nome": "Crema idratante pelli sensibili", "marca": "Linea Botanica", "uso": "vendita", "prezzo": 29, "costo": 11, "giacenza": 2, "soglia": 3 },
+    { "nome": "Olio da massaggio neutro 1 l", "marca": "ProCabina", "uso": "cabina", "costo": 18, "giacenza": 4, "soglia": 2 },
+    { "nome": "Smalto semipermanente nude", "marca": "ColorLab", "uso": "cabina", "costo": 7, "giacenza": 1, "soglia": 2 }
+  ],
+  "appuntamenti": [
+    { "quando": "@oggi 9:30", "cliente": "#c2", "trattamento": "#pulizia", "cabina": "#cab1", "con": "@utente", "stato": "confermato", "prezzo": 55 },
+    { "quando": "@oggi 11:00", "cliente": "#c1", "trattamento": "#laser", "cabina": "#cab2", "con": "@utente", "stato": "prenotato", "pacchetto": "#pk1", "prezzo": 0 },
+    { "quando": "@oggi 14:30", "cliente": "#c3", "trattamento": "#manicure", "cabina": "#cab3", "con": "@utente", "stato": "prenotato", "prezzo": 32 },
+    { "quando": "@oggi 16:00", "cliente": "#c4", "trattamento": "#massaggio", "cabina": "#cab1", "con": "@utente", "stato": "prenotato", "pacchetto": "#pk2", "prezzo": 0 },
+    { "quando": "@oggi+1 10:00", "cliente": "#c3", "trattamento": "#pulizia", "cabina": "#cab1", "con": "@utente", "stato": "prenotato", "prezzo": 55 },
+    { "quando": "@oggi-1 15:00", "cliente": "#c2", "trattamento": "#manicure", "cabina": "#cab3", "con": "@utente", "stato": "fatto", "prezzo": 32, "pagato": true },
+    { "quando": "@oggi-2 10:00", "cliente": "#c1", "trattamento": "#laser", "cabina": "#cab2", "con": "@utente", "stato": "fatto", "pacchetto": "#pk1", "prezzo": 0, "pagato": true },
+    { "quando": "@oggi-6 17:00", "cliente": "#c4", "trattamento": "#massaggio", "cabina": "#cab1", "con": "@utente", "stato": "fatto", "pacchetto": "#pk2", "prezzo": 0, "pagato": true },
+    { "quando": "@oggi-9 12:00", "cliente": "#c3", "trattamento": "#pulizia", "cabina": "#cab1", "con": "@utente", "stato": "fatto", "prezzo": 55, "pagato": true }
+  ],
+  "schede": [
+    { "cliente": "#c2", "data": "@oggi-30", "trattamento": "#pulizia", "operatrice": "@utente", "prodotti_usati": "Detergente delicato, maschera lenitiva", "esito": "Leggero arrossamento, sparito in giornata.", "richiamo": "@oggi+3" }
+  ]
+}

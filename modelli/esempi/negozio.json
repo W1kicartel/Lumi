@@ -1,0 +1,38 @@
+{
+  "fornitori": [
+    { "#": "forn_carta", "nome": "Cartotecnica Lombarda srl", "referente": "Paolo Brambilla", "telefono": "02 4455 1290", "email": "ordini@cartotecnica-lombarda.example", "giorni_consegna": 3 },
+    { "#": "forn_ceramica", "nome": "Ceramiche del Lago", "referente": "Elisa Conti", "telefono": "031 228 9041", "email": "elisa@ceramichedellago.example", "giorni_consegna": 7 }
+  ],
+  "articoli": [
+    { "#": "quaderno", "codice": "QA5-RIG", "nome": "Quaderno A5 a righe", "categoria": "generale", "prezzo": 4.5, "costo": 1.8, "giacenza": 42, "soglia": 15, "fornitore": "#forn_carta", "barcode": "8001234500017" },
+    { "#": "agenda", "codice": "AG-2027", "nome": "Agenda settimanale 2027", "categoria": "generale", "prezzo": 18, "costo": 7.2, "giacenza": 9, "soglia": 10, "fornitore": "#forn_carta", "barcode": "8001234500024" },
+    { "#": "penna", "codice": "PS-NERA", "nome": "Penna stilografica nera", "categoria": "generale", "prezzo": 32, "costo": 14, "giacenza": 6, "soglia": 3, "fornitore": "#forn_carta" },
+    { "#": "tazza", "codice": "TZ-BLU", "nome": "Tazza in ceramica blu", "categoria": "generale", "prezzo": 14, "costo": 5.5, "giacenza": 3, "soglia": 6, "fornitore": "#forn_ceramica" },
+    { "#": "vaso", "codice": "VS-M", "nome": "Vaso smaltato medio", "categoria": "generale", "prezzo": 38, "costo": 16, "giacenza": 7, "soglia": 2, "fornitore": "#forn_ceramica" },
+    { "#": "biglietto", "codice": "BG-AUG", "nome": "Biglietto d'auguri illustrato", "categoria": "generale", "prezzo": 3.5, "costo": 1.1, "giacenza": 60, "soglia": 20, "fornitore": "#forn_carta" }
+  ],
+  "clienti": [
+    { "#": "giulia", "nome": "Giulia Marchetti", "telefono": "347 112 8890", "email": "giulia.marchetti@esempio.it", "tipo": "privato", "consenso": true },
+    { "#": "studio_r", "nome": "Studio Associato Riva", "telefono": "02 8899 3321", "email": "amministrazione@studioriva.example", "tipo": "azienda", "piva": "IT01234567897" },
+    { "#": "marco", "nome": "Marco Bellini", "telefono": "333 908 1123", "email": "marco.bellini@esempio.it", "tipo": "privato" },
+    { "#": "anna", "nome": "Anna Colombo", "telefono": "320 445 6672", "tipo": "privato", "consenso": true }
+  ],
+  "vendite": [
+    { "data": "@oggi", "cliente": "#giulia", "stato": "pagata", "pagamento": "carta", "righe": [ { "articolo": "#agenda", "quantita": 1, "prezzo": 18 }, { "articolo": "#penna", "quantita": 1, "prezzo": 32 } ] },
+    { "data": "@oggi", "stato": "pagata", "pagamento": "contanti", "righe": [ { "articolo": "#quaderno", "quantita": 3, "prezzo": 4.5 }, { "articolo": "#biglietto", "quantita": 2, "prezzo": 3.5 } ] },
+    { "data": "@oggi", "cliente": "#anna", "stato": "aperta", "righe": [ { "articolo": "#vaso", "quantita": 1, "prezzo": 38 } ] },
+    { "data": "@oggi-1", "cliente": "#studio_r", "stato": "pagata", "pagamento": "bonifico", "righe": [ { "articolo": "#agenda", "quantita": 6, "prezzo": 18, "sconto": 10 } ] },
+    { "data": "@oggi-2", "stato": "pagata", "pagamento": "carta", "righe": [ { "articolo": "#tazza", "quantita": 2, "prezzo": 14 } ] },
+    { "data": "@oggi-4", "cliente": "#marco", "stato": "pagata", "pagamento": "carta", "righe": [ { "articolo": "#vaso", "quantita": 1, "prezzo": 38 }, { "articolo": "#biglietto", "quantita": 1, "prezzo": 3.5 } ] },
+    { "data": "@oggi-6", "stato": "pagata", "pagamento": "contanti", "righe": [ { "articolo": "#quaderno", "quantita": 5, "prezzo": 4.5 } ] },
+    { "data": "@oggi-9", "cliente": "#giulia", "stato": "pagata", "pagamento": "carta", "righe": [ { "articolo": "#penna", "quantita": 1, "prezzo": 32 } ] },
+    { "data": "@oggi-13", "stato": "pagata", "pagamento": "contanti", "righe": [ { "articolo": "#tazza", "quantita": 1, "prezzo": 14 }, { "articolo": "#biglietto", "quantita": 3, "prezzo": 3.5 } ] },
+    { "data": "@oggi-17", "cliente": "#studio_r", "stato": "pagata", "pagamento": "bonifico", "righe": [ { "articolo": "#quaderno", "quantita": 20, "prezzo": 4.5, "sconto": 15 } ] },
+    { "data": "@oggi-22", "stato": "annullata", "righe": [ { "articolo": "#vaso", "quantita": 1, "prezzo": 38 } ] },
+    { "data": "@oggi-26", "cliente": "#marco", "stato": "pagata", "pagamento": "carta", "righe": [ { "articolo": "#agenda", "quantita": 1, "prezzo": 18 } ] }
+  ],
+  "ordini": [
+    { "data": "@oggi-3", "fornitore": "#forn_ceramica", "stato": "inviato", "consegna_prevista": "@oggi+4", "righe": [ { "articolo": "#tazza", "quantita": 12, "costo": 5.5 } ] },
+    { "data": "@oggi-12", "fornitore": "#forn_carta", "stato": "inviato", "consegna_prevista": "@oggi-2", "righe": [ { "articolo": "#agenda", "quantita": 20, "costo": 7.2 } ] }
+  ]
+}

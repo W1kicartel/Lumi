@@ -1,0 +1,112 @@
+{
+  "id": "officina",
+  "ordine": 1,
+  "nome": "Officina e assistenza tecnica",
+  "descrizione": "Veicoli e apparecchi dei clienti, interventi a fasi con ore e ricambi, garanzie e revisioni, magazzino ricambi con lo scarico automatico.",
+  "entita": [
+    { "id": "clienti", "nome": "Clienti", "icona": "persona", "titolo": "nome", "campi": [
+      { "id": "nome", "nome": "Nome", "tipo": "testo", "obbligatorio": true },
+      { "id": "telefono", "nome": "Telefono", "tipo": "telefono" },
+      { "id": "email", "nome": "Email", "tipo": "email", "unico": true },
+      { "id": "piva", "nome": "Partita IVA / CF", "tipo": "testo" },
+      { "id": "indirizzo", "nome": "Indirizzo", "tipo": "indirizzo" },
+      { "id": "note", "nome": "Note", "tipo": "testo_lungo" } ] },
+    { "id": "mezzi", "nome": "Veicoli e apparecchi", "icona": "furgone", "titolo": "targa", "campi": [
+      { "id": "targa", "nome": "Targa o matricola", "tipo": "testo", "obbligatorio": true, "unico": true },
+      { "id": "tipo", "nome": "Tipo", "tipo": "scelta", "opzioni": [
+        { "id": "auto", "nome": "Auto" }, { "id": "moto", "nome": "Moto" }, { "id": "furgone", "nome": "Furgone" }, { "id": "caldaia", "nome": "Caldaia" },
+        { "id": "elettrodomestico", "nome": "Elettrodomestico" }, { "id": "altro", "nome": "Altro" } ] },
+      { "id": "marca", "nome": "Marca", "tipo": "testo" },
+      { "id": "modello", "nome": "Modello", "tipo": "testo" },
+      { "id": "anno", "nome": "Anno", "tipo": "numero" },
+      { "id": "cliente", "nome": "Proprietario", "tipo": "relazione", "entita": "clienti" },
+      { "id": "km", "nome": "Km o ore di funzionamento", "tipo": "numero" },
+      { "id": "garanzia_fino", "nome": "In garanzia fino al", "tipo": "data" },
+      { "id": "in_garanzia", "nome": "In garanzia", "tipo": "calcolato", "formula": "NON VUOTO(garanzia_fino) E garanzia_fino >= OGGI()" },
+      { "id": "revisione", "nome": "Prossima revisione o manutenzione", "tipo": "data" },
+      { "id": "note", "nome": "Note", "tipo": "testo_lungo" } ] },
+    { "id": "fornitori", "nome": "Fornitori", "icona": "furgone", "titolo": "nome", "campi": [
+      { "id": "nome", "nome": "Ragione sociale", "tipo": "testo", "obbligatorio": true },
+      { "id": "telefono", "nome": "Telefono", "tipo": "telefono" },
+      { "id": "email", "nome": "Email", "tipo": "email" },
+      { "id": "piva", "nome": "Partita IVA", "tipo": "testo" },
+      { "id": "giorni_consegna", "nome": "Giorni di consegna", "tipo": "numero" } ] },
+    { "id": "ricambi", "nome": "Ricambi", "icona": "scatola", "titolo": "nome", "campi": [
+      { "id": "codice", "nome": "Codice", "tipo": "testo", "unico": true },
+      { "id": "nome", "nome": "Descrizione", "tipo": "testo", "obbligatorio": true },
+      { "id": "prezzo", "nome": "Prezzo al cliente", "tipo": "valuta" },
+      { "id": "costo", "nome": "Costo", "tipo": "valuta" },
+      { "id": "giacenza", "nome": "Giacenza", "tipo": "numero", "predefinito": 0 },
+      { "id": "soglia", "nome": "Scorta minima", "tipo": "numero", "predefinito": 0 },
+      { "id": "da_riordinare", "nome": "Da riordinare", "tipo": "calcolato", "formula": "giacenza <= soglia" },
+      { "id": "fornitore", "nome": "Fornitore", "tipo": "relazione", "entita": "fornitori" },
+      { "id": "barcode", "nome": "Codice a barre", "tipo": "codice_a_barre" } ] },
+    { "id": "righe_ricambi", "nome": "Ricambi usati", "nascosta": true, "titolo": "ricambio", "campi": [
+      { "id": "intervento", "nome": "Intervento", "tipo": "relazione", "entita": "interventi", "obbligatorio": true },
+      { "id": "ricambio", "nome": "Ricambio", "tipo": "relazione", "entita": "ricambi", "obbligatorio": true },
+      { "id": "quantita", "nome": "Quantità", "tipo": "numero", "predefinito": 1 },
+      { "id": "prezzo", "nome": "Prezzo", "tipo": "valuta" },
+      { "id": "totale", "nome": "Totale", "tipo": "calcolato", "formula": "quantita * prezzo", "formato": "valuta" } ] },
+    { "id": "interventi", "nome": "Interventi", "icona": "attrezzi", "titolo": "numero", "campi": [
+      { "id": "numero", "nome": "Numero", "tipo": "contatore", "formato": "INT-{AAAA}-{N:4}" },
+      { "id": "data", "nome": "Ingresso", "tipo": "data", "predefinito": "@oggi", "obbligatorio": true },
+      { "id": "mezzo", "nome": "Veicolo o apparecchio", "tipo": "relazione", "entita": "mezzi", "obbligatorio": true },
+      { "id": "cliente", "nome": "Cliente", "tipo": "relazione", "entita": "clienti" },
+      { "id": "problema", "nome": "Cosa non va", "tipo": "testo_lungo" },
+      { "id": "fase", "nome": "Fase", "tipo": "stato", "iniziale": "accettato", "opzioni": [
+        { "id": "accettato", "nome": "Accettato", "colore": "grigio" }, { "id": "diagnosi", "nome": "In diagnosi", "colore": "viola" }, { "id": "attesa_ricambi", "nome": "Attesa ricambi", "colore": "giallo" },
+        { "id": "in_lavorazione", "nome": "In lavorazione", "colore": "blu" }, { "id": "pronto", "nome": "Pronto", "colore": "verde" }, { "id": "consegnato", "nome": "Consegnato", "colore": "grigio" },
+        { "id": "annullato", "nome": "Annullato", "colore": "rosso" } ],
+        "transizioni": { "accettato": ["diagnosi", "in_lavorazione", "annullato"], "diagnosi": ["attesa_ricambi", "in_lavorazione", "annullato"], "attesa_ricambi": ["in_lavorazione", "annullato"],
+          "in_lavorazione": ["attesa_ricambi", "pronto"], "pronto": ["consegnato", "in_lavorazione"], "consegnato": [], "annullato": [] } },
+      { "id": "tecnico", "nome": "Tecnico", "tipo": "utente" },
+      { "id": "km", "nome": "Km all'ingresso", "tipo": "numero" },
+      { "id": "consegna_prevista", "nome": "Promesso per il", "tipo": "data" },
+      { "id": "ore", "nome": "Ore di lavoro", "tipo": "numero" },
+      { "id": "tariffa", "nome": "Tariffa oraria", "tipo": "valuta", "predefinito": 45 },
+      { "id": "ricambi", "nome": "Ricambi", "tipo": "righe", "entita": "righe_ricambi", "campo": "intervento" },
+      { "id": "manodopera", "nome": "Manodopera", "tipo": "calcolato", "formula": "ARROTONDA(ore * tariffa; 2)", "formato": "valuta" },
+      { "id": "totale_ricambi", "nome": "Ricambi", "tipo": "calcolato", "formula": "SOMMA(ricambi.totale)", "formato": "valuta" },
+      { "id": "totale", "nome": "Totale", "tipo": "calcolato", "formula": "manodopera + totale_ricambi", "formato": "valuta" },
+      { "id": "garanzia", "nome": "Lavoro in garanzia", "tipo": "si_no" },
+      { "id": "da_pagare", "nome": "Da pagare", "tipo": "calcolato", "formula": "SE(garanzia; 0; totale)", "formato": "valuta" },
+      { "id": "in_ritardo", "nome": "In ritardo", "tipo": "calcolato", "formula": "NON VUOTO(consegna_prevista) E consegna_prevista < OGGI() E fase <> \"consegnato\" E fase <> \"pronto\" E fase <> \"annullato\"" },
+      { "id": "lavoro_fatto", "nome": "Lavoro fatto", "tipo": "testo_lungo" },
+      { "id": "scaricato", "nome": "Ricambi scalati dal magazzino", "tipo": "si_no" } ] }
+  ],
+  "automazioni": [
+    { "id": "scarico_ricambi", "nome": "Intervento in lavorazione: scala i ricambi", "entita": "interventi", "quando": "campo_cambia", "campo": "fase", "a": "in_lavorazione", "se": "NON scaricato",
+      "azioni": [ { "tipo": "aggiorna_collegato", "perOgniRiga": "ricambi", "relazione": "ricambio", "campo": "giacenza", "aggiungi": "-quantita" },
+        { "tipo": "imposta", "campo": "scaricato", "formula": "VERO" } ] },
+    { "id": "km_mezzo", "nome": "Intervento consegnato: aggiorna i km del mezzo", "entita": "interventi", "quando": "campo_cambia", "campo": "fase", "a": "consegnato", "se": "NON VUOTO(km)",
+      "azioni": [ { "tipo": "aggiorna_collegato", "relazione": "mezzo", "campo": "km", "formula": "km" } ] },
+    { "id": "pronto_avvisa", "nome": "Intervento pronto: ricorda di chiamare il cliente", "entita": "interventi", "quando": "campo_cambia", "campo": "fase", "a": "pronto",
+      "azioni": [ { "tipo": "avvisa", "testo": "numero & \" è pronto: chiama il cliente\"" } ] }
+  ],
+  "interruttori": {
+    "magazzino": { "campi": ["ricambi.giacenza", "ricambi.soglia", "ricambi.da_riordinare", "interventi.scaricato"] },
+    "fornitori": { "entita": ["fornitori"] },
+    "prodotti": { "entita": ["ricambi"] }
+  },
+  "ruoli": [
+    { "id": "tecnico", "nome": "Tecnico", "entita": { "*": { "leggi": true, "crea": false, "modifica": false },
+      "interventi": { "leggi": true, "crea": true, "modifica": true, "campi": { "tariffa": "lettura" } }, "mezzi": { "leggi": true, "crea": true, "modifica": true },
+      "ricambi": { "leggi": true, "campi": { "costo": "nascosto" } }, "fornitori": { "leggi": false } } }
+  ],
+  "cruscotto": {
+    "widget": [
+      { "tipo": "numero", "titolo": "Interventi aperti", "entita": "interventi", "misura": "conta", "filtri": [{ "campo": "fase", "op": "in", "valore": ["accettato", "diagnosi", "attesa_ricambi", "in_lavorazione"] }] },
+      { "tipo": "numero", "titolo": "Pronti da consegnare", "entita": "interventi", "misura": "conta", "filtri": [{ "campo": "fase", "op": "=", "valore": "pronto" }] },
+      { "tipo": "numero", "titolo": "Fatturato questo mese", "entita": "interventi", "misura": "somma", "campo": "da_pagare", "campoData": "data", "periodo": "mese", "filtri": [{ "campo": "fase", "op": "=", "valore": "consegnato" }] },
+      { "tipo": "numero", "titolo": "Ore lavorate questo mese", "entita": "interventi", "misura": "somma", "campo": "ore", "campoData": "data", "periodo": "mese" },
+      { "tipo": "grafico", "titolo": "Interventi per settimana", "entita": "interventi", "misura": "conta", "campoData": "data", "periodo": "ultimi_84", "per": "settimana", "forma": "barre", "filtri": [{ "campo": "fase", "op": "!=", "valore": "annullato" }], "largo": true }
+    ],
+    "attenzione": [
+      { "titolo": "Interventi oltre la data promessa", "entita": "interventi", "filtri": [{ "campo": "in_ritardo", "op": "=", "valore": true }] },
+      { "titolo": "In attesa di ricambi", "entita": "interventi", "filtri": [{ "campo": "fase", "op": "=", "valore": "attesa_ricambi" }] },
+      { "titolo": "Ricambi da riordinare", "entita": "ricambi", "filtri": [{ "campo": "da_riordinare", "op": "=", "valore": true }] },
+      { "titolo": "Revisioni nei prossimi 30 giorni", "entita": "mezzi", "filtri": [{ "campo": "revisione", "op": "tra", "valore": ["@oggi", "@oggi+30"] }] },
+      { "titolo": "Garanzie che scadono entro 30 giorni", "entita": "mezzi", "filtri": [{ "campo": "garanzia_fino", "op": "tra", "valore": ["@oggi", "@oggi+30"] }] }
+    ]
+  }
+}

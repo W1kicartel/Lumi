@@ -1,0 +1,124 @@
+{
+  "id": "ristorante",
+  "ordine": 1,
+  "nome": "Ristorante e bar",
+  "descrizione": "Tavoli e sale, comande con il coperto, menù con gli allergeni e il food cost, prenotazioni, fornitori e scorte di cucina.",
+  "entita": [
+    { "id": "tavoli", "nome": "Tavoli", "icona": "griglia", "titolo": "nome", "campi": [
+      { "id": "nome", "nome": "Tavolo", "tipo": "testo", "obbligatorio": true, "unico": true },
+      { "id": "sala", "nome": "Sala", "tipo": "scelta", "opzioni": [
+        { "id": "interna", "nome": "Sala interna", "colore": "grigio" }, { "id": "dehors", "nome": "Dehors", "colore": "verde" }, { "id": "privata", "nome": "Saletta", "colore": "viola" } ], "predefinito": "interna" },
+      { "id": "posti", "nome": "Posti", "tipo": "numero", "predefinito": 4 },
+      { "id": "stato", "nome": "Stato", "tipo": "stato", "iniziale": "libero", "opzioni": [
+        { "id": "libero", "nome": "Libero", "colore": "verde" }, { "id": "occupato", "nome": "Occupato", "colore": "rosso" }, { "id": "da_pulire", "nome": "Da sparecchiare", "colore": "giallo" } ] },
+      { "id": "note", "nome": "Note", "tipo": "testo" } ] },
+    { "id": "piatti", "nome": "Menù", "icona": "stella", "titolo": "nome", "campi": [
+      { "id": "nome", "nome": "Piatto", "tipo": "testo", "obbligatorio": true },
+      { "id": "categoria", "nome": "Portata", "tipo": "scelta", "opzioni": [
+        { "id": "antipasti", "nome": "Antipasti" }, { "id": "primi", "nome": "Primi" }, { "id": "secondi", "nome": "Secondi" }, { "id": "contorni", "nome": "Contorni" },
+        { "id": "pizze", "nome": "Pizze" }, { "id": "dolci", "nome": "Dolci" }, { "id": "bevande", "nome": "Bevande" }, { "id": "vini", "nome": "Vini" } ] },
+      { "id": "descrizione", "nome": "Descrizione", "tipo": "testo_lungo" },
+      { "id": "prezzo", "nome": "Prezzo", "tipo": "valuta" },
+      { "id": "costo", "nome": "Costo delle materie prime", "tipo": "valuta" },
+      { "id": "food_cost", "nome": "Food cost", "tipo": "calcolato", "formula": "SE(prezzo > 0; ARROTONDA(costo / prezzo * 100; 1); \"\")", "formato": "percentuale" },
+      { "id": "allergeni", "nome": "Allergeni", "tipo": "scelta_multipla", "opzioni": [
+        { "id": "glutine", "nome": "Glutine", "colore": "giallo" }, { "id": "crostacei", "nome": "Crostacei", "colore": "rosso" }, { "id": "uova", "nome": "Uova", "colore": "giallo" },
+        { "id": "pesce", "nome": "Pesce", "colore": "blu" }, { "id": "arachidi", "nome": "Arachidi", "colore": "rosso" }, { "id": "soia", "nome": "Soia", "colore": "verde" },
+        { "id": "latte", "nome": "Latte", "colore": "blu" }, { "id": "frutta_guscio", "nome": "Frutta a guscio", "colore": "rosso" }, { "id": "sedano", "nome": "Sedano", "colore": "verde" },
+        { "id": "senape", "nome": "Senape", "colore": "giallo" }, { "id": "sesamo", "nome": "Sesamo", "colore": "giallo" }, { "id": "solfiti", "nome": "Solfiti", "colore": "viola" },
+        { "id": "lupini", "nome": "Lupini", "colore": "verde" }, { "id": "molluschi", "nome": "Molluschi", "colore": "blu" } ] },
+      { "id": "vegetariano", "nome": "Vegetariano", "tipo": "si_no" },
+      { "id": "disponibile", "nome": "Disponibile oggi", "tipo": "si_no", "predefinito": true },
+      { "id": "foto", "nome": "Foto", "tipo": "immagine" } ] },
+    { "id": "fornitori", "nome": "Fornitori", "icona": "furgone", "titolo": "nome", "campi": [
+      { "id": "nome", "nome": "Ragione sociale", "tipo": "testo", "obbligatorio": true },
+      { "id": "cosa", "nome": "Cosa fornisce", "tipo": "testo" },
+      { "id": "telefono", "nome": "Telefono", "tipo": "telefono" },
+      { "id": "email", "nome": "Email", "tipo": "email" },
+      { "id": "piva", "nome": "Partita IVA", "tipo": "testo" },
+      { "id": "giorni", "nome": "Giorni di consegna", "tipo": "scelta_multipla", "opzioni": [
+        { "id": "lun", "nome": "Lun" }, { "id": "mar", "nome": "Mar" }, { "id": "mer", "nome": "Mer" }, { "id": "gio", "nome": "Gio" }, { "id": "ven", "nome": "Ven" }, { "id": "sab", "nome": "Sab" } ] } ] },
+    { "id": "ingredienti", "nome": "Scorte", "icona": "scatola", "titolo": "nome", "campi": [
+      { "id": "nome", "nome": "Ingrediente", "tipo": "testo", "obbligatorio": true },
+      { "id": "unita", "nome": "Unità", "tipo": "scelta", "opzioni": [ { "id": "kg", "nome": "kg" }, { "id": "l", "nome": "litri" }, { "id": "pz", "nome": "pezzi" }, { "id": "bt", "nome": "bottiglie" } ], "predefinito": "kg" },
+      { "id": "giacenza", "nome": "In dispensa", "tipo": "numero", "predefinito": 0 },
+      { "id": "soglia", "nome": "Scorta minima", "tipo": "numero", "predefinito": 0 },
+      { "id": "da_riordinare", "nome": "Da riordinare", "tipo": "calcolato", "formula": "giacenza <= soglia" },
+      { "id": "costo", "nome": "Costo per unità", "tipo": "valuta" },
+      { "id": "valore", "nome": "Valore in dispensa", "tipo": "calcolato", "formula": "ARROTONDA(giacenza * costo; 2)", "formato": "valuta" },
+      { "id": "fornitore", "nome": "Fornitore", "tipo": "relazione", "entita": "fornitori" },
+      { "id": "scadenza", "nome": "Scade il", "tipo": "data" } ] },
+    { "id": "righe_comanda", "nome": "Righe della comanda", "nascosta": true, "titolo": "piatto", "campi": [
+      { "id": "comanda", "nome": "Comanda", "tipo": "relazione", "entita": "comande", "obbligatorio": true },
+      { "id": "piatto", "nome": "Piatto", "tipo": "relazione", "entita": "piatti", "obbligatorio": true },
+      { "id": "quantita", "nome": "Quantità", "tipo": "numero", "predefinito": 1 },
+      { "id": "prezzo", "nome": "Prezzo", "tipo": "valuta" },
+      { "id": "uscita", "nome": "Uscita", "tipo": "scelta", "opzioni": [ { "id": "subito", "nome": "Subito" }, { "id": "prima", "nome": "Prima uscita" }, { "id": "seconda", "nome": "Seconda uscita" } ], "predefinito": "subito" },
+      { "id": "note", "nome": "Note per la cucina", "tipo": "testo" },
+      { "id": "totale", "nome": "Totale", "tipo": "calcolato", "formula": "quantita * prezzo", "formato": "valuta" } ] },
+    { "id": "comande", "nome": "Comande", "icona": "cassa", "titolo": "numero", "campi": [
+      { "id": "numero", "nome": "Comanda", "tipo": "contatore", "formato": "C-{AAAA}-{N:5}" },
+      { "id": "data", "nome": "Data", "tipo": "data", "predefinito": "@oggi", "obbligatorio": true },
+      { "id": "tavolo", "nome": "Tavolo", "tipo": "relazione", "entita": "tavoli" },
+      { "id": "coperti", "nome": "Coperti", "tipo": "numero", "predefinito": 2 },
+      { "id": "prezzo_coperto", "nome": "Coperto a persona", "tipo": "valuta", "predefinito": 2.5 },
+      { "id": "stato", "nome": "Stato", "tipo": "stato", "iniziale": "aperta", "opzioni": [
+        { "id": "aperta", "nome": "Aperta", "colore": "grigio" }, { "id": "in_cucina", "nome": "In cucina", "colore": "blu" }, { "id": "servita", "nome": "Servita", "colore": "viola" },
+        { "id": "pagata", "nome": "Pagata", "colore": "verde" }, { "id": "annullata", "nome": "Annullata", "colore": "rosso" } ],
+        "transizioni": { "aperta": ["in_cucina", "annullata"], "in_cucina": ["servita", "annullata"], "servita": ["pagata", "in_cucina"], "pagata": [], "annullata": [] } },
+      { "id": "righe", "nome": "Piatti", "tipo": "righe", "entita": "righe_comanda", "campo": "comanda" },
+      { "id": "consumato", "nome": "Consumato", "tipo": "calcolato", "formula": "SOMMA(righe.totale)", "formato": "valuta" },
+      { "id": "totale", "nome": "Totale", "tipo": "calcolato", "formula": "ARROTONDA(consumato + coperti * prezzo_coperto; 2)", "formato": "valuta" },
+      { "id": "a_testa", "nome": "A testa", "tipo": "calcolato", "formula": "SE(coperti > 0; ARROTONDA(totale / coperti; 2); \"\")", "formato": "valuta" },
+      { "id": "pagamento", "nome": "Pagamento", "tipo": "scelta", "opzioni": [ { "id": "contanti", "nome": "Contanti" }, { "id": "carta", "nome": "Carta" }, { "id": "buoni", "nome": "Buoni pasto" } ] },
+      { "id": "cameriere", "nome": "Cameriere", "tipo": "utente", "predefinito": "@utente" } ] },
+    { "id": "prenotazioni", "nome": "Prenotazioni", "icona": "calendario", "titolo": "nome", "campi": [
+      { "id": "quando", "nome": "Quando", "tipo": "data_ora", "obbligatorio": true },
+      { "id": "nome", "nome": "A nome di", "tipo": "testo", "obbligatorio": true },
+      { "id": "telefono", "nome": "Telefono", "tipo": "telefono" },
+      { "id": "persone", "nome": "Persone", "tipo": "numero", "predefinito": 2 },
+      { "id": "tavolo", "nome": "Tavolo", "tipo": "relazione", "entita": "tavoli" },
+      { "id": "stato", "nome": "Stato", "tipo": "stato", "iniziale": "richiesta", "opzioni": [
+        { "id": "richiesta", "nome": "Da confermare", "colore": "giallo" }, { "id": "confermata", "nome": "Confermata", "colore": "blu" }, { "id": "arrivati", "nome": "Arrivati", "colore": "verde" },
+        { "id": "non_venuti", "nome": "Non venuti", "colore": "rosso" }, { "id": "annullata", "nome": "Annullata", "colore": "grigio" } ] },
+      { "id": "canale", "nome": "Arrivata da", "tipo": "scelta", "opzioni": [ { "id": "telefono", "nome": "Telefono" }, { "id": "sito", "nome": "Sito" }, { "id": "di_persona", "nome": "Di persona" } ], "predefinito": "telefono" },
+      { "id": "allergie", "nome": "Allergie e richieste", "tipo": "testo_lungo" } ] }
+  ],
+  "automazioni": [
+    { "id": "comanda_tavolo_occupato", "nome": "Comanda aperta: il tavolo è occupato", "entita": "comande", "quando": "creato", "se": "NON VUOTO(tavolo)",
+      "azioni": [ { "tipo": "aggiorna_collegato", "relazione": "tavolo", "campo": "stato", "formula": "\"occupato\"" } ] },
+    { "id": "comanda_pagata_tavolo", "nome": "Comanda pagata: il tavolo è da sparecchiare", "entita": "comande", "quando": "campo_cambia", "campo": "stato", "a": "pagata", "se": "NON VUOTO(tavolo)",
+      "azioni": [ { "tipo": "aggiorna_collegato", "relazione": "tavolo", "campo": "stato", "formula": "\"da_pulire\"" } ] },
+    { "id": "prenotazione_arrivati", "nome": "Prenotazione arrivata: il tavolo è occupato", "entita": "prenotazioni", "quando": "campo_cambia", "campo": "stato", "a": "arrivati", "se": "NON VUOTO(tavolo)",
+      "azioni": [ { "tipo": "aggiorna_collegato", "relazione": "tavolo", "campo": "stato", "formula": "\"occupato\"" } ] },
+    { "id": "prenotazione_allergie", "nome": "Prenotazione con allergie: avvisa la cucina", "entita": "prenotazioni", "quando": "creato", "se": "NON VUOTO(allergie)",
+      "azioni": [ { "tipo": "avvisa", "testo": "\"Allergie per \" & nome & \": \" & allergie" } ] }
+  ],
+  "interruttori": {
+    "magazzino": { "entita": ["ingredienti"] },
+    "fornitori": { "entita": ["fornitori"] },
+    "appuntamenti": { "entita": ["prenotazioni"] }
+  },
+  "ruoli": [
+    { "id": "sala", "nome": "Sala", "entita": { "*": { "leggi": true, "crea": false, "modifica": false },
+      "comande": { "leggi": true, "crea": true, "modifica": true }, "prenotazioni": { "leggi": true, "crea": true, "modifica": true }, "tavoli": { "leggi": true, "modifica": true },
+      "piatti": { "leggi": true, "campi": { "costo": "nascosto", "food_cost": "nascosto" } }, "ingredienti": { "leggi": false }, "fornitori": { "leggi": false } } },
+    { "id": "cucina", "nome": "Cucina", "entita": { "*": { "leggi": true, "crea": false, "modifica": false },
+      "comande": { "leggi": true, "modifica": true }, "piatti": { "leggi": true, "modifica": true }, "ingredienti": { "leggi": true, "crea": true, "modifica": true }, "prenotazioni": { "leggi": true } } }
+  ],
+  "cruscotto": {
+    "widget": [
+      { "tipo": "numero", "titolo": "Incassato oggi", "entita": "comande", "misura": "somma", "campo": "totale", "campoData": "data", "periodo": "oggi", "filtri": [{ "campo": "stato", "op": "=", "valore": "pagata" }] },
+      { "tipo": "numero", "titolo": "Coperti oggi", "entita": "comande", "misura": "somma", "campo": "coperti", "campoData": "data", "periodo": "oggi", "filtri": [{ "campo": "stato", "op": "!=", "valore": "annullata" }] },
+      { "tipo": "numero", "titolo": "Prenotati per oggi", "entita": "prenotazioni", "misura": "somma", "campo": "persone", "campoData": "quando", "periodo": "oggi", "filtri": [{ "campo": "stato", "op": "in", "valore": ["richiesta", "confermata", "arrivati"] }] },
+      { "tipo": "numero", "titolo": "Incassato questo mese", "entita": "comande", "misura": "somma", "campo": "totale", "campoData": "data", "periodo": "mese", "filtri": [{ "campo": "stato", "op": "=", "valore": "pagata" }] },
+      { "tipo": "grafico", "titolo": "Incassi degli ultimi 30 giorni", "entita": "comande", "misura": "somma", "campo": "totale", "campoData": "data", "periodo": "ultimi_30", "per": "giorno", "forma": "barre", "filtri": [{ "campo": "stato", "op": "=", "valore": "pagata" }], "largo": true }
+    ],
+    "attenzione": [
+      { "titolo": "Prenotazioni da confermare", "entita": "prenotazioni", "filtri": [{ "campo": "stato", "op": "=", "valore": "richiesta" }, { "campo": "quando", "op": ">=", "valore": "@oggi" }] },
+      { "titolo": "Comande ancora aperte", "entita": "comande", "filtri": [{ "campo": "stato", "op": "in", "valore": ["aperta", "in_cucina", "servita"] }] },
+      { "titolo": "Scorte da riordinare", "entita": "ingredienti", "filtri": [{ "campo": "da_riordinare", "op": "=", "valore": true }] },
+      { "titolo": "Ingredienti in scadenza", "entita": "ingredienti", "filtri": [{ "campo": "scadenza", "op": "<=", "valore": "@oggi+3" }] }
+    ]
+  }
+}
