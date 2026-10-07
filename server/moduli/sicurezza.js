@@ -23,6 +23,7 @@ const VIETATE = new Set(['.exe', '.msi', '.bat', '.cmd', '.com', '.scr', '.pif',
   '.hta', '.html', '.htm', '.xhtml', '.shtml', '.svg', '.svgz', '.xml', '.php', '.jsp', '.asp', '.aspx', '.sh', '.bash', '.command', '.app', '.dll', '.jar', '.lnk', '.reg', '.dmg', '.pkg', '.deb', '.rpm', '.apk']);
 const PAROLE_COMUNI = new Set(['password', 'password1', 'password123', '12345678', '123456789', '1234567890', 'qwertyuiop', 'qwerty123', 'iloveyou', 'abc12345', 'admin123',
   'administrator', 'benvenuto', 'benvenuto1', 'ciao1234', 'cambiami', 'passw0rd', 'letmein1', 'kubo1234', 'kubokubo', 'gestionale', '11111111', '00000000', 'juventus', 'forzainter', 'forzamilan']);
+const decodifica = x => { try { return decodeURIComponent(x); } catch { return ''; } };
 export const impronta = t => createHash('sha256').update(String(t)).digest('hex').slice(0, 24);
 
 // una password robusta: almeno 8 caratteri, non fra le più usate, non il proprio nome o la propria email, non tutta uguale,
@@ -93,14 +94,14 @@ export default function registra({ r, db, D, P, U, meta, serve, ErroreHttp, cont
     // 3. password robuste ovunque se ne sceglie una
     // (anche il PIN del banco: chi lo imposta per un altro entra al suo posto)
     const proprio = /^\/api\/utenti\/([^/]+)$/.exec(percorso);
-    if (metodo === 'PATCH' && proprio && ctx && !ctx.viaToken && corpo?.pin != null && corpo.pin !== '' && decodeURIComponent(proprio[1]) === ctx.utente.id && !attualeGiusta(ctx.utente.id, corpo.attuale))
+    if (metodo === 'PATCH' && proprio && ctx && !ctx.viaToken && corpo?.pin != null && corpo.pin !== '' && decodifica(proprio[1]) === ctx.utente.id && !attualeGiusta(ctx.utente.id, corpo.attuale))
       throw new ErroreHttp(400, 'Per cambiare il PIN serve la password attuale');
     if (metodo !== 'GET' && !ctx?.viaToken && corpo && corpo.password != null && corpo.password !== '' && (/^\/api\/(configura|utenti)$/.test(percorso) || /^\/api\/utenti\/[^/]+$/.test(percorso))) {
       let nome = corpo.nome, email = corpo.email;
-      const m = /^\/api\/utenti\/([^/]+)$/.exec(percorso); if (m) { const u = db.prepare('SELECT nome, email FROM _utenti WHERE id = ?').get(decodeURIComponent(m[1])); nome ??= u?.nome; email ??= u?.email; }
+      const m = /^\/api\/utenti\/([^/]+)$/.exec(percorso); if (m) { const u = db.prepare('SELECT nome, email FROM _utenti WHERE id = ?').get(decodifica(m[1])); nome ??= u?.nome; email ??= u?.email; }
       const no = robustezza(corpo.password, { nome, email }); if (no) throw new ErroreHttp(400, no);
       // la propria password si cambia solo conoscendo quella attuale (chi trova il PC acceso non se la prende)
-      if (m && ctx && decodeURIComponent(m[1]) === ctx.utente.id && !attualeGiusta(ctx.utente.id, corpo.attuale)) throw new ErroreHttp(400, 'La password attuale non è giusta');
+      if (m && ctx && decodifica(m[1]) === ctx.utente.id && !attualeGiusta(ctx.utente.id, corpo.attuale)) throw new ErroreHttp(400, 'La password attuale non è giusta');
     }
     // 4. tentativi di accesso per account (o per PIN), oltre a quelli per indirizzo che conta già il server
     if (metodo === 'POST' && percorso === '/api/accedi') {

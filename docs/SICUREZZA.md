@@ -101,3 +101,4 @@ L'impostazione `fuso` (predefinito `Europe/Rome`, in *Sicurezza → Impostazioni
 - I titoli delle righe collegate (es. il nome del fornitore in un articolo) si vedono anche da chi non può leggere quella sezione: fanno parte della riga che li cita.
 - Il backup scaricabile contiene tutto il database. È solo del titolare, ma non è cifrato.
 - Non c'è l'accesso a due fattori.
+- Il blocco per account dopo 5 tentativi sbagliati si può usare per tenere fuori qualcuno per 15 minuti, sbagliando apposta la sua password. È il prezzo di fermare chi prova a indovinarla; il blocco per indirizzo resta separato.
