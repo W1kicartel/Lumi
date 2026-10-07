@@ -126,14 +126,14 @@ test('registri, liquidazione e LIPE dalle fatture emesse e ricevute', () => {
   const l = F.liquidazione(k, null, 2026);
   assert.equal(l.periodi[0].ivaEsigibile, 330); assert.equal(l.periodi[0].daVersare, Math.round((330 - 52.8) * 101) / 100);
   const f = F.fileLipe(k, null, 2026, 1);
-  assert.ok(f.nome.endsWith('_2026_T1.xml') && f.xml.includes('<iv:IvaDetratta>52,80<'));
+  assert.match(f.nome, /^IT[0-9A-Z]{11,16}_LI_26T10\.xml$/); assert.ok(f.nome.endsWith('_LI_26T10.xml') && f.xml.includes('<iv:IvaDetratta>52,80<'));
   const v = F.versamenti(k, null, 2026);
   assert.ok(v.voci.some(x => x.codice === '6031' && x.data === '2026-05-18'));
   assert.ok(v.avvisi.includes('redditi-professionista'));
 });
 
 test('forfettario dal gestionale: incassato per cassa, bollo, versamenti di giugno e novembre', () => {
-  const { db, k, fattura } = gestionale({ regime: 'RF19', fisco: { regime: 'forfettario', ateco: '74.10.10', gestione: 'separata', impostaAnnoPrecedente: 1200 } });
+  const { db, k, fattura } = gestionale({ regime: 'RF19', fisco: { regime: 'forfettario', ateco: '74.10.10', gestione: 'separata', impostaAnnoPrecedente: 1200, annoRiferimento: 2026 } });
   fattura('2025-12-20', 2000, { pagata_il: '2026-01-10', bollo: true });   // fatturata nel 2025, incassata nel 2026
   fattura('2026-04-02', 3000, { pagata_il: '2026-04-30', bollo: true });
   fattura('2026-05-02', 1000, { bollo: true });                              // non ancora incassata
@@ -144,6 +144,8 @@ test('forfettario dal gestionale: incassato per cassa, bollo, versamenti di giug
   assert.deepEqual(v.voci.filter(x => x.chiave === 'forf-acconto').map(x => [x.codice, x.importo, x.anno]), [['1790', 600, 2026], ['1791', 600, 2026]]);
   assert.ok(v.voci.some(x => x.codice === '2522' && x.importo === 4));   // due bolli nel secondo trimestre
   assert.throws(() => F.fileLipe(k, null, 2026, 1), /forfettario/);
+  // l'imposta «dell'anno scorso» delle impostazioni vale solo per il 2026: per il 2027 Kubo riparte dai dati
+  assert.equal(F.cruscottoForfettario(k, null, 2027).fonteImpostaPrecedente, 'calcolo');
   const f = F.f24(k, null, 2026, '2026-07-20');
   assert.ok(f.html.includes('1790') && f.html.includes('home banking') && !f.html.includes('<script'));
 });
@@ -226,4 +228,15 @@ test('API: impostazioni, prepara, permessi, LIPE da scaricare e pacchetto', asyn
     assert.equal((await chiama('PUT', '/api/fisco/impostazioni', { regime: 'ordinario' })).stato, 403);
     assert.equal((await chiama('PUT', '/api/fisco/impostazioni', { regime: 'ordinario' }, false)).json.errore, 'Solo chi può personalizzare cambia le impostazioni fiscali');
   } finally { srv.close(); }
+});
+
+test('acconto IVA previsionale: mai dai dati parziali di un periodo ancora aperto; impostazioni legate al loro anno', () => {
+  const { k, fattura } = gestionale({ fisco: { regime: 'ordinario', periodicita: 'trimestrale', accontoIvaStorico: 5000, annoRiferimento: 2099 } });
+  fattura('2099-10-05', 1000);   // quarto trimestre 2099 appena iniziato: 220 € di IVA, ma il trimestre non è finito
+  const l = F.liquidazione(k, null, 2099);
+  assert.deepEqual(l.acconto.metodi.map(m => m.metodo), ['storico']); assert.equal(l.acconto.importo, 4400);
+  fattura('2025-10-05', 1000);   // un anno chiuso: il calcolo dell'ultimo periodo vale come previsionale; lo storico del 2099 non si usa
+  const l25 = F.liquidazione(k, null, 2025);
+  assert.deepEqual(l25.acconto.metodi.map(m => m.metodo), ['previsionale']);
+  assert.equal(F.perAnno(F.impostazioni(k.db, k.meta), 2025).accontoIvaStorico, null);
 });

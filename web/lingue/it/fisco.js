@@ -162,7 +162,7 @@ export default {
   'fisco.imp-accontoivastorico': "Versato per l'ultimo periodo dell'anno scorso (€)",
   'fisco.impn-accontoivastorico': "Per l'acconto con il metodo storico.",
   'fisco.imp-accontoivaprevisto': "Previsto per l'ultimo periodo di quest'anno (€)",
-  'fisco.impn-accontoivaprevisto': "Per il metodo previsionale. Vuoto: la stima di Kubo.",
+  'fisco.impn-accontoivaprevisto': "Per il metodo previsionale. Vuoto: solo lo storico finché l'ultimo periodo non è chiuso.",
   'fisco.imp-camerale': "Diritto camerale annuo (€)",
   'fisco.impn-camerale': "L'importo lo comunica la tua Camera di commercio.",
   'fisco.imp-provinciacciaa': "Provincia della Camera di commercio",
@@ -214,4 +214,5 @@ export default {
   'fisco.av-inps-cassetto': "Le rate fisse INPS sono una stima: l'F24 ufficiale è nel Cassetto previdenziale.",
   'fisco.av-cu-intermediario': "Con 20 o più CU non bastano le tue credenziali: serve Entratel o un intermediario.",
   'fisco.av-cu-fisconline': "Con meno di 20 CU puoi inviarle da solo con le tue credenziali.",
+  'fisco.imp-anno-rif': "I valori «dell'anno scorso» valgono per i conti del {anno}: aggiornali a inizio anno. Per gli altri anni Kubo usa i dati.",
 };

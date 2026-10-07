@@ -162,7 +162,7 @@ export default {
   'fisco.imp-accontoivastorico': "Versé pour la dernière période de l'an dernier (€)",
   'fisco.impn-accontoivastorico': "Pour l'acompte selon la méthode historique.",
   'fisco.imp-accontoivaprevisto': "Prévu pour la dernière période de cette année (€)",
-  'fisco.impn-accontoivaprevisto': "Pour la méthode prévisionnelle. Vide : l'estimation de Kubo.",
+  'fisco.impn-accontoivaprevisto': "Pour la méthode prévisionnelle. Vide : méthode historique seule tant que la dernière période n'est pas close.",
   'fisco.imp-camerale': "Droit annuel de la Chambre de commerce (€)",
   'fisco.impn-camerale': "Votre Chambre de commerce vous indique le montant.",
   'fisco.imp-provinciacciaa': "Province de la Chambre de commerce",
@@ -214,4 +214,5 @@ export default {
   'fisco.av-inps-cassetto': "Les échéances fixes INPS sont une estimation : le F24 officiel est dans le Cassetto previdenziale.",
   'fisco.av-cu-intermediario': "Avec 20 CU ou plus, vos identifiants ne suffisent pas : il faut Entratel ou un intermédiaire.",
   'fisco.av-cu-fisconline': "Avec moins de 20 CU, vous pouvez les envoyer vous-même avec vos identifiants.",
+  'fisco.imp-anno-rif': "Les valeurs « de l'an dernier » valent pour les comptes de {anno} : mets-les à jour en début d'année. Pour les autres années, Kubo utilise les données.",
 };

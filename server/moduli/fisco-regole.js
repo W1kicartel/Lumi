@@ -175,7 +175,7 @@ export const scadenzaNovembre = anno => scad(anno, 11, 30);
 
 export function accontiForfettario(base, anno) {
   const b = cent(base);
-  if (b < cent(ACCONTO_FORF_MIN)) return [];
+  if (b <= cent(ACCONTO_FORF_MIN)) return [];   // dovuto solo se supera 51,65 €
   if (b <= cent(ACCONTO_FORF_UNICO)) return [{ codice: COD_FORF.acconto2, importo: euro(b), scadenza: scadenzaNovembre(anno), rata: 'unica' }];
   const primo = intero(b / 2);
   return [{ codice: COD_FORF.acconto1, importo: euro(primo), scadenza: scadenzaGiugno(anno), rata: 'prima' }, { codice: COD_FORF.acconto2, importo: euro(b - primo), scadenza: scadenzaNovembre(anno), rata: 'seconda' }];

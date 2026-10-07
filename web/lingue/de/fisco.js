@@ -162,7 +162,7 @@ export default {
   'fisco.imp-accontoivastorico': "Für den letzten Zeitraum des Vorjahres gezahlt (€)",
   'fisco.impn-accontoivastorico': "Für die Vorauszahlung nach der historischen Methode.",
   'fisco.imp-accontoivaprevisto': "Erwartet für den letzten Zeitraum dieses Jahres (€)",
-  'fisco.impn-accontoivaprevisto': "Für die Prognosemethode. Leer: Kubos Schätzung.",
+  'fisco.impn-accontoivaprevisto': "Für die Prognosemethode. Leer: nur die historische Methode, bis der letzte Zeitraum abgeschlossen ist.",
   'fisco.imp-camerale': "Jahresgebühr der Handelskammer (€)",
   'fisco.impn-camerale': "Den Betrag teilt dir deine Handelskammer mit.",
   'fisco.imp-provinciacciaa': "Provinz der Handelskammer",
@@ -214,4 +214,5 @@ export default {
   'fisco.av-inps-cassetto': "Die festen INPS-Raten sind eine Schätzung: das amtliche F24 liegt im Cassetto previdenziale.",
   'fisco.av-cu-intermediario': "Ab 20 CU reichen deine Zugangsdaten nicht: es braucht Entratel oder einen Vermittler.",
   'fisco.av-cu-fisconline': "Mit weniger als 20 CU kannst du sie selbst mit deinen Zugangsdaten einreichen.",
+  'fisco.imp-anno-rif': "Die Werte „des Vorjahres“ gelten für die Zahlen von {anno}: aktualisiere sie zu Jahresbeginn. Für andere Jahre nutzt Kubo die Daten.",
 };

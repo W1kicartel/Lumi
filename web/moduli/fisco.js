@@ -201,6 +201,7 @@ async function impostazioni(dove, k, imp) {
   const prepara = !imp.sezioni.ricevute && puo ? scheda(k, t('fisco.sezioni'), h('p', t('fisco.sezioni-cosa')), h('label.fisco-spunta', h('input', { type: 'checkbox', id: 'fisco-corr' }), ' ', t('fisco.anche-corrispettivi')),
     h('button.btn', { testo: t('fisco.aggiungi-sezioni'), on: { click: async ev => { try { await api('POST', '/fisco/prepara', { corrispettivi: document.getElementById('fisco-corr').checked }); await k.ricaricaSchema(); toast(t('fisco.sezioni-aggiunte')); ev.target.disabled = true; } catch (e) { toast(e.message, true); } } } })) : null;
   metti(dove, errore, prepara, ...gruppi.map(([g, ids]) => scheda(k, t('fisco.gruppo-' + g), h('div.fisco-griglia', ids.map(riga)))),
+    h('p.nota', t('fisco.imp-anno-rif', { anno: imp.annoRiferimento || annoOra() })),
     !imp.azienda.piva ? h('div.fisco-avviso', t('fisco.manca-piva'), ' ', h('a', { href: '#/documenti', testo: t('fisco.apri-documenti') })) : null,
     h('div.fisco-riga', { stile: { justifyContent: 'flex-end' } }, salva));
 }

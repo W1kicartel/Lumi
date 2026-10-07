@@ -33,7 +33,8 @@ export function lipe({ cf, piva, anno, periodicita, trimestre, periodi, metodoAc
     righe.push('      </iv:Modulo>');
   });
   righe.push('    </iv:DatiContabili>', '  </iv:Comunicazione>', '</iv:Fornitura>', '');
-  const nome = `IT${piva}_LI_${anno}${periodicita === 'mensile' ? 'T' : 'T'}${trimestre}.xml`;
+  // IT + codice fiscale di chi trasmette + _LI_ + progressivo univoco di 5 caratteri alfanumerici (qui: anno a due cifre, T, trimestre, 0)
+  const nome = `IT${String(cf).toUpperCase()}_LI_${String(anno).slice(2)}T${trimestre}0.xml`;
   return { nome, xml: righe.join('\n') };
 }
 

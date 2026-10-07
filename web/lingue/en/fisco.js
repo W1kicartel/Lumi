@@ -162,7 +162,7 @@ export default {
   'fisco.imp-accontoivastorico': "Paid for last year's final period (€)",
   'fisco.impn-accontoivastorico': "For the advance with the historical method.",
   'fisco.imp-accontoivaprevisto': "Expected for this year's final period (€)",
-  'fisco.impn-accontoivaprevisto': "For the forecast method. Empty: Kubo's estimate.",
+  'fisco.impn-accontoivaprevisto': "For the forecast method. Empty: historical method only until the last period has closed.",
   'fisco.imp-camerale': "Annual chamber of commerce fee (€)",
   'fisco.impn-camerale': "Your Chamber of Commerce tells you the amount.",
   'fisco.imp-provinciacciaa': "Chamber of Commerce province",
@@ -214,4 +214,5 @@ export default {
   'fisco.av-inps-cassetto': "Fixed INPS instalments are an estimate: the official F24 is in the Cassetto previdenziale.",
   'fisco.av-cu-intermediario': "With 20 or more CUs your own credentials are not enough: you need Entratel or an intermediary.",
   'fisco.av-cu-fisconline': "With fewer than 20 CUs you can file them yourself with your credentials.",
+  'fisco.imp-anno-rif': "The “last year” values apply to the {anno} figures: update them at the start of each year. For other years Kubo uses the data.",
 };

@@ -162,7 +162,7 @@ export default {
   'fisco.imp-accontoivastorico': "Pago pelo último período do ano passado (€)",
   'fisco.impn-accontoivastorico': "Para a antecipação pelo método histórico.",
   'fisco.imp-accontoivaprevisto': "Previsto para o último período deste ano (€)",
-  'fisco.impn-accontoivaprevisto': "Para o método previsional. Vazio: a estimativa do Kubo.",
+  'fisco.impn-accontoivaprevisto': "Para o método previsional. Vazio: só o histórico até o último período fechar.",
   'fisco.imp-camerale': "Taxa anual da Câmara de Comércio (€)",
   'fisco.impn-camerale': "O valor é informado pela sua Câmara de Comércio.",
   'fisco.imp-provinciacciaa': "Província da Câmara de Comércio",
@@ -214,4 +214,5 @@ export default {
   'fisco.av-inps-cassetto': "As parcelas fixas do INPS são uma estimativa: o F24 oficial está no Cassetto previdenziale.",
   'fisco.av-cu-intermediario': "Com 20 CU ou mais suas credenciais não bastam: é preciso Entratel ou um intermediário.",
   'fisco.av-cu-fisconline': "Com menos de 20 CU você pode enviá-las sozinho com suas credenciais.",
+  'fisco.imp-anno-rif': "Os valores «do ano passado» valem para as contas de {anno}: atualiza-os no início do ano. Para outros anos o Kubo usa os dados.",
 };

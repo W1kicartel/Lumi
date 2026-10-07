@@ -41,7 +41,14 @@ export const SEZIONE_CORRISPETTIVI = { id: CORRISPETTIVI, nome: 'Corrispettivi',
 // ---------- impostazioni ----------
 const PREDEFINITE = { regime: null, periodicita: 'trimestrale', ateco: '', coefficiente: null, gestione: 'nessuna', riduzione35: false, aliquotaRidotta: false,
   annoInizio: null, creditoAnnoPrecedente: 0, accontoIvaStorico: null, accontoIvaPrevisto: null, impostaAnnoPrecedente: null, accontiVersatiAnnoPrecedente: null,
-  contributiVersati: null, sedeInps: '', matricolaInps: '', camerale: null, provinciaCciaa: '', sostituto: false, bollo: false };
+  contributiVersati: null, sedeInps: '', matricolaInps: '', camerale: null, provinciaCciaa: '', sostituto: false, bollo: false, annoRiferimento: null };
+// i valori «dell'anno scorso» (crediti, acconti, imposta, contributi versati) valgono solo per l'anno in cui sono stati inseriti:
+// per gli altri anni Kubo li ricava dai dati, così un'impostazione del 2026 non finisce nei conti del 2027
+const DELL_ANNO = ['creditoAnnoPrecedente', 'accontoIvaStorico', 'accontoIvaPrevisto', 'impostaAnnoPrecedente', 'accontiVersatiAnnoPrecedente', 'contributiVersati'];
+export function perAnno(imp, anno) {
+  if (!imp.annoRiferimento || Number(imp.annoRiferimento) === Number(anno)) return imp;
+  return { ...imp, ...Object.fromEntries(DELL_ANNO.map(c => [c, c === 'creditoAnnoPrecedente' ? 0 : null])) };
+}
 export function impostazioni(db, meta) {
   let s = {}; try { s = JSON.parse(meta.leggi(db, 'fisco.impostazioni') || '{}'); } catch { s = {}; }
   const out = { ...PREDEFINITE, ...s };
@@ -59,10 +66,12 @@ export function salvaImpostazioni(db, meta, corpo = {}) {
   if (!['mensile', 'trimestrale'].includes(s.periodicita)) sbagliato('periodicita');
   if (!GESTIONI.includes(s.gestione)) sbagliato('gestione');
   s.ateco = String(s.ateco || '').trim().slice(0, 12); if (s.ateco && !/^\d{2}(\.?\d{1,2}){0,2}$/.test(s.ateco)) sbagliato('ateco');
-  for (const k of ['coefficiente', 'creditoAnnoPrecedente', 'accontoIvaStorico', 'accontoIvaPrevisto', 'impostaAnnoPrecedente', 'accontiVersatiAnnoPrecedente', 'contributiVersati', 'camerale', 'annoInizio']) {
+  for (const k of ['coefficiente', 'creditoAnnoPrecedente', 'accontoIvaStorico', 'accontoIvaPrevisto', 'impostaAnnoPrecedente', 'accontiVersatiAnnoPrecedente', 'contributiVersati', 'camerale', 'annoInizio', 'annoRiferimento']) {
     s[k] = numOpz(s[k]); if (s[k] != null && (!Number.isFinite(s[k]) || s[k] < 0 || s[k] > 1e9)) sbagliato(k);
   }
   if (s.coefficiente != null && (s.coefficiente <= 0 || s.coefficiente > 100)) sbagliato('coefficiente');
+  if (!('annoRiferimento' in corpo) || s.annoRiferimento == null) s.annoRiferimento = new Date().getFullYear();
+  if (!Number.isInteger(s.annoRiferimento) || s.annoRiferimento < 2000 || s.annoRiferimento > 2100) sbagliato('annoRiferimento');
   for (const k of ['riduzione35', 'aliquotaRidotta', 'sostituto', 'bollo']) s[k] = !!s[k];
   for (const k of ['sedeInps', 'matricolaInps', 'provinciaCciaa']) s[k] = String(s[k] || '').trim().toUpperCase().slice(0, 20);
   meta.scrivi(db, 'fisco.impostazioni', JSON.stringify(s));
@@ -113,16 +122,18 @@ export function registri(k, ctx, da, a) {
     totali: { vendite: { imponibile: somma(v, 'imponibile'), imposta: somma(v, 'imposta') }, corrispettivi: { imponibile: somma(co, 'imponibile'), imposta: somma(co, 'imposta') },
       acquisti: { imponibile: somma(ac, 'imponibile'), imposta: somma(ac, 'imposta'), detraibile: somma(ac, 'detraibile') } } };
 }
-export function liquidazione(k, ctx, anno, imp = impostazioni(k.db, k.meta)) {
-  const n = R.periodiDi(imp.periodicita), periodi = [];
+export function liquidazione(k, ctx, anno, imp0 = impostazioni(k.db, k.meta)) {
+  const imp = perAnno(imp0, anno), n = R.periodiDi(imp.periodicita), periodi = [];
   for (let p = 1; p <= n; p++) {
     const { da, a } = R.limitiPeriodo(imp.periodicita, anno, p), g = registri(k, ctx, da, a), t = g.totali;
     periodi.push({ ivaVendite: euro(cent(t.vendite.imposta) + cent(t.corrispettivi.imposta)), ivaAcquisti: t.acquisti.detraibile,
       attive: euro(cent(t.vendite.imponibile) + cent(t.corrispettivi.imponibile)), passive: t.acquisti.imponibile });
   }
-  // l'acconto di dicembre: storico (dalle impostazioni) o previsionale (stima dell'ultimo periodo, se non c'è si usa il calcolo)
+  // l'acconto di dicembre: storico (dalle impostazioni) o previsionale. Il previsionale lo dà chi lo prevede; Kubo usa il
+  // calcolo dell'ultimo periodo solo a periodo chiuso, perché con il periodo in corso i dati sono parziali e l'acconto verrebbe basso
   const prova = R.liquida({ periodicita: imp.periodicita, anno, periodi, creditoAnnoPrecedente: imp.creditoAnnoPrecedente });
-  const ultimo = prova.periodi.at(-1), previsto = imp.accontoIvaPrevisto ?? (ultimo.importoDaVersare || null);
+  const ultimo = prova.periodi.at(-1), chiuso = new Date().toISOString().slice(0, 10) > ultimo.a;
+  const previsto = imp.accontoIvaPrevisto ?? (chiuso ? ultimo.importoDaVersare || null : null);
   const acconto = R.accontoIva({ periodicita: imp.periodicita, anno, storico: imp.accontoIvaStorico, previsto });
   const l = R.liquida({ periodicita: imp.periodicita, anno, periodi, creditoAnnoPrecedente: imp.creditoAnnoPrecedente, acconto: acconto.importo });
   const avvisi = [];
@@ -137,7 +148,8 @@ export function fileLipe(k, ctx, anno, trimestre) {
   const l = liquidazione(k, ctx, anno, imp);
   const periodi = imp.periodicita === 'mensile' ? l.periodi.slice((trimestre - 1) * 3, trimestre * 3) : [l.periodi[trimestre - 1]];
   const f = lipe({ cf: az.codice_fiscale || az.piva, piva: az.piva, anno, periodicita: imp.periodicita, trimestre, periodi, metodoAcconto: l.acconto.scelto?.codiceMetodo });
-  return { ...f, nome: `LIPE_${az.piva}_${anno}_T${trimestre}.xml` };
+  // nome del file come vuole il caricamento: IT + codice fiscale di chi trasmette + _LI_ + progressivo di 5 caratteri (anno, T, trimestre)
+  return { ...f, nome: `IT${String(az.codice_fiscale || az.piva).toUpperCase()}_LI_${String(anno).slice(2)}T${trimestre}0.xml` };
 }
 
 // ---------- forfettario ----------
@@ -153,7 +165,7 @@ export function incassato(k, ctx, anno) {
   return { incassato: euro(tot), senzaData };
 }
 export function cruscottoForfettario(k, ctx, anno, { piu = 0 } = {}) {
-  const imp = impostazioni(k.db, k.meta), { incassato: inc, senzaData } = incassato(k, ctx, anno), prima = incassato(k, ctx, anno - 1);
+  const imp = perAnno(impostazioni(k.db, k.meta), anno), { incassato: inc, senzaData } = incassato(k, ctx, anno), prima = incassato(k, ctx, anno - 1);
   const base = { coefficiente: imp.coefficienteUsato, gestione: imp.gestione, riduzione35: imp.riduzione35, aliquotaRidotta: imp.aliquotaRidotta, anno };
   const precedente = R.forfettario({ ...base, anno: anno - 1, incassato: prima.incassato });
   const impostaPrec = imp.impostaAnnoPrecedente ?? precedente.imposta;
@@ -182,7 +194,7 @@ export function versamenti(k, ctx, anno) {
   } else {
     // giugno: saldo dell'anno prima + primo acconto; novembre: secondo acconto (o unico)
     const prec = cruscottoForfettario(k, ctx, anno - 1), c = cruscottoForfettario(k, ctx, anno);
-    const accPrec = imp.accontiVersatiAnnoPrecedente ?? (prec.accontiQuestAnno || []).reduce((s, x) => s + x.importo, 0);
+    const accPrec = perAnno(imp, anno).accontiVersatiAnnoPrecedente ?? (prec.accontiQuestAnno || []).reduce((s, x) => s + x.importo, 0);
     const saldo = euro(cent(c.impostaAnnoPrecedente) - cent(accPrec));
     add({ data: R.scadenzaGiugno(anno), codice: R.COD_FORF.saldo, anno: anno - 1, rateazione: '0101', importo: Math.max(0, saldo), chiave: 'forf-saldo' });
     for (const x of c.accontiQuestAnno || []) add({ data: x.scadenza, codice: x.codice, anno, rateazione: x.codice === R.COD_FORF.acconto1 ? '0101' : '', importo: x.importo, chiave: 'forf-acconto' });
@@ -275,8 +287,8 @@ export function pacchetto(k, ctx, da, a) {
   if (imp.regime !== 'forfettario') tabella('liquidazioni-iva', ['Anno', 'Periodo', 'IVA esigibile', 'IVA detratta', 'Debito precedente', 'Credito precedente', 'Credito anno prec.', 'Interessi', 'Acconto', 'Da versare', 'A credito', 'Codice', 'Scadenza'],
     anni.flatMap(y => liquidazione(k, ctx, y, imp).periodi.filter(p => p.a >= da && p.da <= a).map(p => [y, p.periodo, e(p.ivaEsigibile), e(p.ivaDetratta), e(p.debitoPrecedente), e(p.creditoPeriodoPrecedente), e(p.creditoAnnoPrecedente), e(p.interessi), e(p.acconto), e(p.daVersare), e(p.importoACredito), p.codice, d(p.scadenza)])));
   // prima nota per cassa: incassi delle fatture e pagamenti ai fornitori
-  const prima = [...vendite(k, ctx, '0000-01-01', '9999-12-31').filter(v => v.pagata_il >= da && v.pagata_il <= a).map(v => [d(v.pagata_il), `Incasso fattura ${v.numero} - ${v.cliente}`, e(v.totale - v.ritenuta), null]),
-    ...acquisti(k, ctx, '0000-01-01', '9999-12-31').filter(x => x.pagata_il >= da && x.pagata_il <= a).map(x => [d(x.pagata_il), `Pagamento fattura ${x.numero} - ${x.fornitore}`, null, e(x.totale - x.ritenuta)])]
+  const prima = [...vendite(k, ctx, '0000-01-01', '9999-12-31').filter(v => v.pagata_il >= da && v.pagata_il <= a).map(v => [d(v.pagata_il), `Incasso fattura ${v.numero} - ${v.cliente}`, e(euro(cent(v.totale) - cent(v.ritenuta))), null]),
+    ...acquisti(k, ctx, '0000-01-01', '9999-12-31').filter(x => x.pagata_il >= da && x.pagata_il <= a).map(x => [d(x.pagata_il), `Pagamento fattura ${x.numero} - ${x.fornitore}`, null, e(euro(cent(x.totale) - cent(x.ritenuta)))])]
     .sort((x, y) => x[0].data.localeCompare(y[0].data));
   tabella('prima-nota', ['Data', 'Descrizione', 'Entrate', 'Uscite'], prima);
   const rit = anni.flatMap(y => ritenute(k, ctx, y).righe).filter(r => r.pagata_il >= da && r.pagata_il <= a);
