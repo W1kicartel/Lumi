@@ -16,6 +16,7 @@ import { testoXml, leggiFattura, vistaHtml } from './fatture-passive.js';
 import { bolloTrimestri, buchiNumerazione } from './fatture-regole.js';
 import { tipoIntegrazione, PAESI_UE, AUTOFATTURE } from './fatture-codici.js';
 import { azienda } from './documenti.js';
+import * as A from '../automazioni.js';
 
 const RICEVUTE = 'fatture_ricevute', FATTURE = 'fatture';
 const MODELLO = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'modelli', 'fatture.json');
@@ -125,9 +126,15 @@ export function integrazione(db, { S, D, P, ErroreHttp }, id, { tipo = null, ali
 export function aggiornaModello(db, S, { utente = null } = {}) {
   const m = JSON.parse(readFileSync(MODELLO, 'utf8')), fatto = [];
   if (!S.leggi(db, FATTURE)) return { fatto };   // il modello fatture non c'è: si aggiunge da Personalizza
+  // le sezioni che mancano entrano tutte insieme (fatture ↔ fatture_ricevute si citano a vicenda), con le loro automazioni
+  const nuove = m.entita.filter(e => !S.leggi(db, e.id));
+  if (nuove.length) {
+    S.applicaTutte(db, nuove, { utente }); fatto.push(...nuove.map(e => e.id));
+    for (const a of m.automazioni || []) if (nuove.some(e => e.id === a.entita)) A.salva(db, a, { utente });
+  }
   for (const e of m.entita) {
+    if (nuove.includes(e)) continue;
     const v = S.leggi(db, e.id);
-    if (!v) { S.applica(db, e, { utente }); fatto.push(e.id); continue; }
     if (v.archiviata) continue;
     const { archiviata, ...def } = v; let cambiato = false;
     def.campi = def.campi.map(c => {
@@ -143,7 +150,10 @@ export function aggiornaModello(db, S, { utente = null } = {}) {
     const mancanti = e.campi.filter(n => !def.campi.some(c => c.id === n.id));
     if (mancanti.length) { def.campi.push(...mancanti); cambiato = true; }
     const ritenutaNuova = e.id === FATTURE && v.campi.some(c => c.id === 'importo_ritenuta' && c.tipo === 'calcolato');
+    const bolloNuovo = e.id === FATTURE && mancanti.some(c => c.id === 'bollo_tuo');
     if (cambiato) { S.applica(db, def, { utente }); fatto.push(e.id); }
+    // prima il bollo non entrava nei totali: le fatture già emesse col bollo restano com'erano uscite («il bollo lo paghi tu»)
+    if (bolloNuovo) db.prepare(`UPDATE d_${FATTURE} SET c_bollo_tuo = 1 WHERE c_bollo = 1 AND IFNULL(c_stato, 'bozza') <> 'bozza' AND c_numero IS NOT NULL`).run();
     // la ritenuta era un calcolato su tutto l'imponibile: ora è un campo vero (in centesimi). Le fatture già emesse tengono l'importo
     // con cui sono uscite (la formula di prima; il prezzo è già passato a euro con 8 decimali), le bozze lo ricalcolano alla prossima modifica
     if (ritenutaNuova) db.prepare(`UPDATE d_${FATTURE} SET c_importo_ritenuta = (SELECT CAST(ROUND(IFNULL(SUM(ROUND(IFNULL(r.c_quantita, 1) * IFNULL(r.c_prezzo, 0) * (1 - IFNULL(r.c_sconto, 0) / 100.0) * 100, 0)), 0) * IFNULL(d_${FATTURE}.c_ritenuta, 0) / 100.0) AS INTEGER) FROM d_righe_fattura r WHERE r.c_fattura = d_${FATTURE}.id AND r.archiviato = 0)`).run();

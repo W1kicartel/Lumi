@@ -239,3 +239,18 @@ test('cassa con IVA a 0: la natura viene dalle righe senza IVA, così la fattura
   const e = controlla(NOI, f, { nome: 'Rossi', piva: '00743110157', codice_destinatario: 'ABC1234', via: 'Via Verdi 2', cap: '00184', comune: 'Roma' });
   assert.ok(!e.some(x => /cassa previdenziale è senza IVA/.test(x)), e.join(' | ')); assert.ok(e.some(x => /77,47/.test(x)));
 });
+
+test('aggiornamento dal modello fatture vero di prima (2af0779): niente errori, le emesse col bollo restano com\'erano', () => {
+  const vecchio = JSON.parse(readFileSync(join(QUI, 'fatture', 'modello-2af0779.json'), 'utf8'));
+  const db = apri(); S.applicaTutte(db, vecchio.entita); for (const a of vecchio.automazioni || []) A.salva(db, a);
+  const cl = D.crea(db, 'clienti', { nome: 'Rossi' });
+  const em = D.crea(db, 'fatture', { cliente: cl.id, bollo: true, ritenuta: 20, righe: [{ descrizione: 'Corso', prezzo: 100, aliquota: 0, natura: 'N4' }] });
+  D.modifica(db, 'fatture', em.id, { stato: 'emessa' });
+  // fatture e fatture_ricevute si citano a vicenda: entrano insieme, con l'automazione della data di pagamento
+  const r = aggiornaModello(db, S); assert.ok(['fatture_ricevute', 'ddt_fattura', 'fatture', 'righe_fattura'].every(x => r.fatto.includes(x)), JSON.stringify(r));
+  const dopo = D.leggi(db, 'fatture', em.id);
+  assert.equal(dopo.totale, 100); assert.equal(dopo.netto, 80); assert.equal(dopo.importo_ritenuta, 20); assert.equal(dopo.bollo_tuo, true);
+  const fo = D.crea(db, 'fornitori', { nome: 'Carta srl' }), fr = D.crea(db, 'fatture_ricevute', { fornitore: fo.id, numero: 'A1', data: '2026-01-10', totale: 10 }); D.modifica(db, 'fatture_ricevute', fr.id, { stato: 'pagata' });
+  assert.match(D.leggi(db, 'fatture_ricevute', fr.id).pagata_il || '', /^\d{4}-/);
+  assert.deepEqual(aggiornaModello(db, S).fatto, []);
+});
