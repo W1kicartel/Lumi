@@ -172,7 +172,8 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
     }
     return out;
   }
-  const mancanti = id => statoMappe(id).flatMap(m => !m.entita ? [m.sem] : m.campi.filter(c => !c.campo && !c.facoltativo).map(c => `${m.sem}.${c.sem}`));
+  // una sezione con tutti i campi facoltativi è facoltativa anche lei (le fatture per Stripe: ci sono solo con il modello «fatture»)
+  const mancanti = id => statoMappe(id).flatMap(m => !m.entita ? (m.campi.every(c => c.facoltativo) ? [] : [m.sem]) : m.campi.filter(c => !c.campo && !c.facoltativo).map(c => `${m.sem}.${c.sem}`));
   const prendi = (o, via) => String(via).split('.').reduce((x, k) => x?.[k], o);
 
   // ---------- il k di un connettore ----------

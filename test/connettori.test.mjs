@@ -176,6 +176,10 @@ test('Openapi SDI: invio dell\'XML di Kubo, notifica di scarto dal callback con 
     assert.match((await manda(K, `/api/connettori/openapi-sdi/in/${codice}`, JSON.stringify({ event: 'supplier-invoice', data: { uuid: 'p-1', invoice: { sender: { business_name: 'Fornitore spa' } } } }))).json.esito, /passiva/);
     // una persona in sola lettura non può inviare
     await K.chiama('POST', '/api/utenti', { nome: 'Lia', email: 'lia@esempio.it', password: 'password-lunga', ruolo: 'lettura' });
+    await K.chiama('POST', '/api/esci'); await K.chiama('POST', '/api/accedi', { email: 'lia@esempio.it', password: 'password-lunga' });
+    assert.equal((await K.chiama('POST', '/api/connettori/openapi-sdi/azioni/invia', { args: { fattura: f.id } })).stato, 403);
+    assert.deepEqual((await K.chiama('GET', '/api/connettori/azioni')).json, []);
+    assert.equal((await K.chiama('GET', '/api/connettori/openapi-sdi')).stato, 403);
   } finally { await K.chiudi(); await S.chiudi(); }
 });
 

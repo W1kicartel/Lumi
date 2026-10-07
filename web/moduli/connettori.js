@@ -114,9 +114,9 @@ function collegamenti(k, c, ricarica) {
 function mappe(k, c, salva) {
   const { h } = k, scelte = {};
   return h('section.foglio', h('h2', t('connettori.abbinamenti')), h('p.nota', t('connettori.abbinamenti-aiuto')),
-    c.mappe.map(m => h('div.conn-mappa', h('b', m.nome), !m.entita ? h('div.avviso', t('connettori.sezione-manca', { nome: m.sem })) : h('div.conn-campi', m.campi.map(x => {
+    c.mappe.map(m => h('div.conn-mappa', h('b', m.nome), !m.entita ? h('p.nota', t('connettori.sezione-manca', { nome: m.sem })) : h('div.conn-campi', m.campi.map(x => {
       const s = scelte[`${m.sem}.${x.sem}`] = h('select.campo', h('option', { value: '', testo: '—' }), x.possibili.map(p => h('option', { value: p.id, testo: p.nome, selected: p.id === x.campo })));
-      return h('label', h('span.etichetta', x.sem, x.facoltativo ? ` (${t('connettori.facoltativo')})` : ''), s);
+      return h('label', h('span.etichetta', x.sem.replace(/_/g, ' ').replace(/^./, l => l.toUpperCase()), x.facoltativo ? ` (${t('connettori.facoltativo')})` : ''), s);
     })))),
     h('button.btn', { on: { click: () => salva({ mappe: { campi: Object.fromEntries(Object.entries(scelte).map(([x, s]) => [x, s.value || null])) } }) } }, t('connettori.salva-abbinamenti')));
 }
