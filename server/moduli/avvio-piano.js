@@ -160,7 +160,7 @@ export function installaPiano(db, pl, { utente = null } = {}) {
     for (const r of pl.ruoli || []) P.salvaRuolo(db, r);
     const persone = [];
     for (const p of pl.persone || []) {
-      const password = 'kubo-' + randomBytes(6).toString('base64url');   // provvisoria: la persona la cambia al primo accesso
+      const password = 'kubo-' + randomBytes(6).toString('base64url');   // provvisoria: il titolare la vede una volta sola, alla fine dell'avvio
       try { persone.push({ ...U.creaUtente(db, { ...p, password }, { utente }), password }); }
       catch (e) { if (e instanceof U.ErroreAccesso) persone.push({ ...p, errore: e.message }); else throw e; }
     }

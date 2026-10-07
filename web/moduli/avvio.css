@@ -47,7 +47,7 @@
 /* il promemoria dei dati d'esempio */
 .avvio-esempi { position: fixed; left: 12px; bottom: 58px; z-index: 30; display: flex; gap: 10px; align-items: center; font-size: 12.5px; background: var(--pannello); border: 1px dashed var(--linea-forte); border-radius: 10px; padding: 7px 11px; max-width: 212px; }
 .avvio-esempi span { color: var(--tenue); } .avvio-esempi a { font-weight: 600; white-space: nowrap; }
-.avvio-pagina { max-width: 640px; } .avvio-pagina hr { border: 0; border-top: 1px solid var(--linea); margin: 22px 0; }
+.avvio-pagina { max-width: 640px; } .avvio-pagina > p:first-child { margin-top: 0; } .avvio-pagina hr { border: 0; border-top: 1px solid var(--linea); margin: 22px 0; }
 
 @media (max-width: 860px) {
   .avvio-cima { padding: 16px; } .avvio-scatola { padding-top: 3vh; }

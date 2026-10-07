@@ -41,7 +41,7 @@ export async function primoAvvio(app) {
     if (i < p.length) {
       const d = p[i];
       if (d.tipo === 'persone') return persone(d);
-      const opz = d.opzioni.map(o => h('button.avvio-opzione', { type: 'button', class: r[d.id] === o.id ? 'scelta' : '', on: { click: () => scegli(d, o.id) } },
+      const opz = d.opzioni.map(o => h('button.avvio-opzione', { type: 'button', class: r[d.id] === o.id ? 'scelta' : '', 'aria-pressed': String(r[d.id] === o.id), on: { click: () => scegli(d, o.id) } },
         h('b', o.nome), o.descrizione ? h('span', o.descrizione) : null));
       return schermata(d.testo, d.aiuto, h('div', { class: `avvio-opzioni ${d.tipo === 'settore' ? 'avvio-settori' : d.tipo === 'si_no' ? 'avvio-due' : ''}` }, opz), () => { if (r[d.id] != null) vai(1); });
     }
@@ -93,7 +93,7 @@ export async function primoAvvio(app) {
   function consegne(persone) {
     barra.firstChild.style.width = '100%';
     scatola.replaceChildren(h('div.avvio-passo', h('h1', 'Kubo è pronto'),
-      h('p.avvio-aiuto', 'Dai a ognuno la sua password provvisoria: la cambia dopo il primo accesso. Questa schermata non si rivede, quindi copiale ora.'),
+      h('p.avvio-aiuto', 'Dai a ognuno la sua password provvisoria. Questa schermata non si rivede: copiale ora.'),
       h('table.tabella.avvio-consegne', h('tbody', persone.map(p => h('tr', h('td', p.nome), h('td', p.email), h('td.mono', p.errore ? h('span.avviso', p.errore) : p.password))))),
       h('div.avvio-piede', h('span'), h('button.btn.pieno', { type: 'button', on: { click: () => { location.hash = ''; location.reload(); } } }, 'Entra in Kubo'))));
   }
@@ -101,8 +101,9 @@ export async function primoAvvio(app) {
 }
 
 // ---------- il giro guidato: quattro tappe sopra l'interfaccia vera ----------
+const nomi = k => { const l = k.schema.filter(e => !e.nascosta).slice(0, 3).map(e => e.nome.toLowerCase()); return l.length ? `: ${l.join(', ')}…` : ''; };
 const TAPPE = [
-  { dove: () => document.querySelector('.lato nav'), titolo: 'Le tue sezioni', testo: 'Qui a sinistra c\'è tutto il gestionale: clienti, vendite, agenda… Ogni sezione è una lista che puoi filtrare, ordinare e vedere a colonne.' },
+  { dove: () => document.querySelector('.lato nav'), titolo: 'Le tue sezioni', testo: k => `Qui c'è tutto il gestionale${nomi(k)}. Ogni sezione è una lista che puoi cercare, filtrare, ordinare e vedere a colonne.` },
   { prima: k => { const e = k.schema.find(x => !x.nascosta); if (e) location.hash = `#/e/${e.id}`; }, dove: () => document.querySelector('.testa a[href^="#/personalizza/"]'),
     titolo: 'Personalizza', testo: 'Manca un campo? Ne avanza uno? Da qui aggiungi, rinomini e sposti i campi, senza perdere mai un dato. Le sezioni nuove le crei da «Nuova sezione».' },
   { dove: () => document.querySelector('.lumi-pill')?.parentElement, titolo: 'Lumi', testo: 'Chiedi a parole: «quanto ho incassato questa settimana?», «aggiungi la taglia agli articoli». Lumi legge con i tuoi permessi e propone; decidi tu.' },
@@ -116,7 +117,7 @@ function giro(k, n = 0) {
   setTimeout(() => {
     const el = t.dove(), rq = el?.getBoundingClientRect();
     const buco = h('div.avvio-buco'), fumetto = h('div.avvio-fumetto', { role: 'dialog', 'aria-label': t.titolo },
-      h('small', `${n + 1} di ${TAPPE.length}`), h('b', t.titolo), h('p', t.testo),
+      h('small', `${n + 1} di ${TAPPE.length}`), h('b', t.titolo), h('p', typeof t.testo === 'function' ? t.testo(k) : t.testo),
       h('div', h('button.btn.nudo.piccolo', { type: 'button', on: { click: () => giro(k, TAPPE.length) } }, 'Salta'),
         h('button.btn.pieno.piccolo', { type: 'button', on: { click: () => giro(k, n + 1) } }, n === TAPPE.length - 1 ? 'Ho capito' : 'Avanti')));
     const strato = h('div.avvio-giro', buco, fumetto);
@@ -154,7 +155,7 @@ async function pagina(contenuto, k) {
   } } }, 'Rimetti i dati d\'esempio');
   contenuto.replaceChildren(h('div.testa', h('h1', 'Dati d\'esempio e giro guidato')),
     h('div.corpo', h('div.foglio.avvio-pagina',
-      stato.esempi ? [h('p', `Ci sono ${stato.esempi} righe d'esempio: clienti, movimenti e appuntamenti finti, per provare Kubo senza paura. Quando sei pronto toglile: spariscono tutte, la numerazione riparte da 1 e quello che hai inserito tu resta.`), stato.titolare ? togli : h('p.nota', 'Solo il titolare può toglierli.')]
+      stato.esempi ? [h('p', `Ci sono ${stato.esempi} righe d'esempio: clienti, movimenti e appuntamenti finti, per provare Kubo senza paura. Quando sei pronto toglile: spariscono tutte (anche quelle che hai ritoccato), la numerazione riparte da 1 e quello che hai inserito tu resta.`), stato.titolare ? togli : h('p.nota', 'Solo il titolare può toglierli.')]
         : [h('p', 'Non ci sono dati d\'esempio.'), stato.titolare ? metti : null],
       h('hr'), h('p', 'Vuoi rivedere dove sono le cose?'), h('button.btn', { type: 'button', on: { click: () => giro(k) } }, 'Rifai il giro guidato'))));
 }
