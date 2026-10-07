@@ -22,7 +22,7 @@ Kubo tiene i dati di un'azienda: clienti, prezzi, costi, fatture. Questa pagina 
 
 ## Permessi
 
-- **Calcolati che svelano un campo nascosto.** Se il costo è nascosto a un ruolo, anche `margine = (prezzo - costo) / prezzo` lo è: altrimenti il costo si ricava. Vale anche per le righe figlie (`SOMMA(righe.costo)`) e per le righe collegate (`fornitore.sconto`). La regola sta in `permessi.js` (`nascondiDerivati`), quindi vale ovunque: liste, schede, aggregati, esportazioni, stampe, Lumi, OpenAPI.
+- **Calcolati che svelano un campo nascosto.** Se il costo è nascosto a un ruolo, anche `margine = (prezzo - costo) / prezzo` lo è: altrimenti il costo si ricava. Vale anche per le righe figlie (`SOMMA(righe.costo)`) e per le righe collegate (`fornitore.sconto`), anche a catena (il totale della riga nascosto nasconde il totale della vendita). Se un ruolo non può leggere una sezione, i calcolati che ne leggono le righe o la riga collegata si nascondono anche loro. La regola sta in `permessi.js` (`nascondiDerivati`), quindi vale ovunque: liste, schede, aggregati, esportazioni, stampe, Lumi, OpenAPI.
 - **Storia di una riga.** Vale «solo i propri», e i valori dei campi nascosti non compaiono, nemmeno dentro le righe figlie.
 - **Ordinamento.** Ordinare per un campo nascosto non ha effetto: l'ordine lo rivelerebbe.
 - **Ripristino.** Rispetta «solo i propri».
@@ -50,16 +50,16 @@ Il vecchio campo si **archivia**: la colonna e i valori restano e si ripristina 
 
 Un webhook verso `127.0.0.1`, `192.168.x.x`, `10.x`, `169.254.169.254` (i metadati dei cloud), `::1` o un nome come `router.lan` farebbe di Kubo un ponte verso i servizi dell'ufficio. Per questo:
 
-- **al salvataggio** si rifiuta l'indirizzo, e anche i numeri scritti in forme strane come `0x7f000001` o `2130706433`;
+- **al salvataggio** si rifiuta l'indirizzo, e anche i numeri scritti in forme strane come `0x7f000001`, `2130706433` o `[::ffff:7f00:1]` (un IPv4 dentro IPv6);
 - **all'invio** si controlla l'indirizzo vero a cui ci si collega, dentro la connessione: un DNS che cambia risposta fra il controllo e l'invio (DNS rebinding) non passa;
-- i redirect non si seguono.
+- i redirect non si seguono, e ogni invio ha un limite di tempo totale di 10 secondi (un ricevitore lento non ferma la coda).
 
 Se serve davvero un webhook interno, il titolare lo permette in *Sicurezza* (o con `KUBO_WEBHOOK_INTERNI=1`).
 
 ## Allegati
 
-- Niente programmi, script e pagine web: `.exe`, `.bat`, `.ps1`, `.js`, `.html`, `.svg`, `.php`, `.sh`, `.jar`… si rifiutano al caricamento.
-- Il limite di dimensione lo sceglie il titolare: da 1 a 25 MB.
+- Niente programmi, script e pagine web: `.exe`, `.bat`, `.ps1`, `.js`, `.html`, `.svg`, `.php`, `.sh`, `.jar`… si rifiutano al caricamento, e di nuovo al salvataggio della riga (il nome nel campo lo manda il browser).
+- Il limite di dimensione lo sceglie il titolare: da 1 a 25 MB. Vale anche al salvataggio della riga, quindi un file annunciato come import (fino a 50 MB) non diventa un allegato.
 - I file si servono già con `Content-Disposition`, `nosniff` e una CSP `sandbox`. Le immagini e i PDF si vedono nel browser, tutto il resto si scarica.
 
 ## Intestazioni

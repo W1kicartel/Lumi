@@ -133,6 +133,19 @@ test('poteri espliciti: FatturaPA e Lumi per ruolo, budget mensile dei token, al
     for (const nome of ['virus.exe', 'pagina.html', 'disegno.svg', 'script.ps1']) assert.equal((await k.t('POST', '/api/file/carica', { nome, dimensione: 10 })).stato, 415, nome);
     await k.t('PUT', '/api/sicurezza/impostazioni', { allegatoMb: 2 });
     assert.equal((await k.t('POST', '/api/file/carica', { nome: 'foto.png', dimensione: 3 * 1048576 })).stato, 413);
+    // né rinominandolo nella riga, né annunciandolo come un import: il controllo si rifà al salvataggio
+    const campoFile = { id: 'scheda', nome: 'Scheda', tipo: 'file' }, art = (await k.t('GET', '/api/schema')).json.find(e => e.id === 'articoli');
+    assert.equal((await k.t('PUT', '/api/schema/articoli', { ...art, campi: [...art.campi, campoFile] })).stato, 200);
+    const piccolo = (await k.t('POST', '/api/file/carica', { nome: 'nota.txt', dimensione: 4 })).json;
+    await k.t('POST', `/api/file/carica/${piccolo.id}`, { da: 0, pezzo: Buffer.from('ciao').toString('base64') });
+    const html = await k.t('POST', '/api/dati/articoli', { nome: 'X', scheda: [{ id: piccolo.id, nome: 'nota.html', tipo: 'text/html', dimensione: 4 }] });
+    assert.equal(html.stato, 422); assert.match(JSON.stringify(html.json), /non si può allegare/);
+    assert.equal((await k.t('POST', '/api/dati/articoli', { nome: 'X', scheda: [{ id: piccolo.id, nome: 'nota.txt', tipo: 'text/plain', dimensione: 4 }] })).stato, 200);
+    const grande = (await k.t('POST', '/api/file/carica', { nome: 'foto.png', dimensione: 3 * 1048576, max: 50 })).json;
+    assert.ok(grande.id);
+    for (let da = 0; da < 3 * 1048576; da += 1048576) assert.equal((await k.t('POST', `/api/file/carica/${grande.id}`, { da, pezzo: Buffer.alloc(1048576, 1).toString('base64') })).stato, 200);
+    const no = await k.t('POST', '/api/dati/articoli', { nome: 'Y', scheda: [{ id: grande.id, nome: 'foto.png', tipo: 'image/png', dimensione: 3 * 1048576 }] });
+    assert.equal(no.stato, 422); assert.match(JSON.stringify(no.json), /al massimo 2 MB/);
     assert.equal((await k.t('POST', '/api/file/carica', { nome: 'foto.png', dimensione: 1048576 })).stato, 200);
   } finally { k.chiudi(); }
 });

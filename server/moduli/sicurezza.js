@@ -44,7 +44,7 @@ export function robustezza(pw, { nome = '', email = '' } = {}) {
 export function puoFatturaPA(ctx, P) { if (!ctx) return false; if (ctx.r.id === 'titolare') return true; return ctx.r.fatturapa ?? P.puo(ctx, 'fatture', 'modifica'); }
 export const puoLumi = ctx => !!ctx && (ctx.r.id === 'titolare' || ctx.r.lumi !== false);
 
-export default function registra({ r, db, D, P, U, meta, serve, ErroreHttp, controllo }) {
+export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, controllo }) {
   db.exec(`CREATE TABLE IF NOT EXISTS _sicurezza_utenti (utente TEXT PRIMARY KEY, cambia_hash TEXT);
     CREATE TABLE IF NOT EXISTS _sicurezza_tentativi (chiave TEXT NOT NULL, quando INTEGER NOT NULL);
     CREATE INDEX IF NOT EXISTS _sicurezza_tentativi_k ON _sicurezza_tentativi(chiave, quando);
@@ -129,6 +129,21 @@ export default function registra({ r, db, D, P, U, meta, serve, ErroreHttp, cont
       if (Number(corpo?.max) !== 50 && Number(corpo?.dimensione) > imp.allegatoMb() * 1048576) throw new ErroreHttp(413, `Il file è troppo grande: al massimo ${imp.allegatoMb()} MB`);
     }
     return nuovoCtx;
+  });
+  // 7 bis. anche salvando la riga: il nome del file nel campo lo sceglie il browser (un «.txt» caricato non diventa «.html») e
+  // l'annuncio { max: 50 } dell'import non porta un allegato oltre il limite del titolare
+  D.ascolta((ev, dbEv, ctx) => {
+    if (dbEv !== db || !ctx || !['crea', 'modifica'].includes(ev.tipo) || !ev.dopo) return;
+    const def = S.leggi(db, ev.entita); if (!def) return;
+    for (const c of S.campiAttivi(def).filter(c => ['file', 'immagine'].includes(c.tipo))) {
+      const prima = new Set((Array.isArray(ev.prima?.[c.id]) ? ev.prima[c.id] : []).map(x => x?.id));
+      for (const x of Array.isArray(ev.dopo[c.id]) ? ev.dopo[c.id] : []) {
+        if (!x || prima.has(x.id)) continue;
+        if (VIETATE.has(extname(String(x.nome || '')).toLowerCase())) { const m = `«${c.nome}»: questo tipo di file non si può allegare (programmi, script e pagine web)`; throw new D.ErroreDati(m, { [c.id]: m }); }
+        const k = db.prepare('SELECT dimensione FROM _import_caricamenti WHERE id = ?').get(String(x.id));
+        if (k && k.dimensione > imp.allegatoMb() * 1048576) { const m = `«${c.nome}»: il file è troppo grande, al massimo ${imp.allegatoMb()} MB`; throw new D.ErroreDati(m, { [c.id]: m }); }
+      }
+    }
   });
   // i token che Claude dice di aver usato arrivano nell'evento «fine» dello streaming: si sommano mentre passano
   function contaToken(res, utente) {
