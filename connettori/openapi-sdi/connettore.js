@@ -11,6 +11,8 @@ import { azienda } from '../../server/moduli/documenti.js';
 export function xmlDi(k, f) {
   const az = azienda(k.db, { leggi: (db, c) => db.prepare('SELECT valore FROM _meta WHERE chiave = ?').get(c)?.valore ?? null });
   let cliente = {}; if (f.cliente?.id) { try { cliente = k.dati.leggi('clienti', f.cliente.id); } catch { cliente = {}; } }
+  // una nota di credito (TD04) porta i dati della fattura che corregge (DatiFattureCollegate), come nell'esportazione
+  if (f.collegata?.id && !f.collegata_dati) { try { const c = k.dati.leggi('fatture', f.collegata.id); f = { ...f, collegata_dati: { numero: c.numero, data: c.data } }; } catch { /* non leggibile: si invia senza */ } }
   const errori = X.controlla(az, f, cliente); if (errori.length) throw new Error(errori[0]);
   const progressivo = X.progressivoDa(Number(k.D.prossimoNumero(k.db, 'fatturapa', '{N}')));
   return X.xml(az, f, cliente, { progressivo });   // → { nome, xml }

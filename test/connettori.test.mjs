@@ -181,6 +181,11 @@ test('Openapi SDI: invio dell\'XML di Kubo, notifica di scarto dal callback con 
     assert.equal(r.stato, 200, JSON.stringify(r.json)); assert.equal(r.json.uuid, 'u-1'); assert.match(r.json.file, /^IT12345678903_\w{5}\.xml$/);
     assert.equal(S.chiamate[0].intestazioni.authorization, 'Bearer tok_x'); assert.equal(S.chiamate[0].intestazioni['content-type'], 'application/xml');
     assert.equal((await K.chiama('POST', '/api/connettori/openapi-sdi/azioni/invia', { args: { fattura: f.id } })).stato, 502);   // già inviata
+    // la nota di credito porta il riferimento alla fattura che corregge (DatiFattureCollegate)
+    const nc = (await K.chiama('POST', `/api/documenti/nota-di-credito/${f.id}`)).json; assert.ok(nc?.id, JSON.stringify(nc));
+    assert.equal((await K.chiama('PATCH', `/api/dati/fatture/${nc.id}`, { stato: 'emessa' })).stato, 200);
+    await K.chiama('POST', '/api/connettori/openapi-sdi/azioni/invia', { args: { fattura: nc.id } });
+    assert.match(S.chiamate.at(-1).corpo, /<TipoDocumento>TD04<[\s\S]*<DatiFattureCollegate>\s*<IdDocumento>/);
     const ns = JSON.stringify({ event: 'customer-notification', data: { invoice_uuid: 'u-1', notification: { type: 'NS', message: 'Codice destinatario errato' } } });
     assert.equal((await manda(K, '/api/connettori/openapi-sdi/in/sbagliato', ns)).stato, 401);
     assert.equal((await manda(K, '/api/connettori/openapi-sdi/in', ns)).stato, 401);
