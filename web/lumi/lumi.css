@@ -160,6 +160,9 @@
 .lumi-conf .tempo{height:1px;background:rgba(255,255,255,.1)}
 .lumi-conf .tempo i{display:block;height:1px;width:100%;background:rgba(255,255,255,.55);transform-origin:0 50%;transform:scaleX(0)}
 .lumi-nota{margin:0;font-size:12.5px;color:var(--lumi-tenue)}
+/* gli avvisi della proposta (i controlli prima della conferma): leggibili, non allarmati */
+.lumi-avvisi{margin:0;padding:8px 12px 8px 26px;border-radius:10px;font-size:12.5px;line-height:1.45;color:var(--lumi-ink);box-shadow:inset 0 0 0 1px var(--lumi-filo)}
+.lumi-avvisi li+li{margin-top:4px}
 .lumi-fatto{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--lumi-ink)}
 .lumi-fatto svg{width:15px;height:15px;stroke:var(--lumi-ink);stroke-width:2;fill:none;flex:none}
 .lumi-fatto span{color:var(--lumi-muted)}

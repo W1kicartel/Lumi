@@ -312,7 +312,7 @@ export function notaDiCredito(db, { S, D, P, ErroreHttp }, id, ctx) {
   return D.crea(db, FATTURE, valori, ctx);
 }
 
-function preparaXml(db, { S, D, meta }, id, ctx) {
+export function preparaXml(db, { S, D, meta }, id, ctx) {
   const f = D.leggi(db, FATTURE, id, ctx), az = azienda(db, meta);
   const fdef = S.leggi(db, FATTURE), entCliente = S.campo(fdef, 'cliente').entita;
   let cliente = {};

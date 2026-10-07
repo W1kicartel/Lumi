@@ -39,6 +39,8 @@ Gli strumenti si generano dallo schema: nessuno è scritto a mano per una sezion
   - creare una sezione nuova.
 - **`proponi_automazione`**, sempre per chi può personalizzare: «quando… allora…».
 
+I moduli del server aggiungono i loro strumenti con `k.lumi` (contratto e strumenti delle fatture in [LUMIDOC.md](LUMIDOC.md)): `fattura_nuova`, `fattura_emetti`, `fattura_nota_di_credito`, `fattura_controlla`, `fattura_esporta_xml`, `fattura_stampa`, `fatture_da_incassare`, `fatture_da_pagare`.
+
 Le modifiche dello schema e le automazioni, prima di arrivare alla scheda di conferma, si **provano davvero** sul database (`POST /api/lumi/verifica`, dentro un SAVEPOINT annullato). Così una formula sbagliata o un cambio che perderebbe dati si ferma prima. Dopo il Conferma si applicano con `PUT /api/schema/:id` e `PUT /api/automazioni/:id`, come dall'editor visuale.
 
 Esempi che funzionano (nelle prove):

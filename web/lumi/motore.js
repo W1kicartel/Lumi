@@ -1,5 +1,6 @@
 // Copiato da github.com/W1kicartel/lumi (MIT, © W1kicartel). Adattamento per Kubo: «strumenti» può essere una funzione,
-// riletta a ogni giro (lo schema cambia mentre si parla: una sezione nuova porta i suoi strumenti).
+// riletta a ogni giro (lo schema cambia mentre si parla: una sezione nuova porta i suoi strumenti); la proposta può avere
+// «avvisi» (i controlli prima della conferma, per esempio quelli dello SDI su una fattura), mostrati nella scheda.
 // Il motore di Lumi, senza DOM: la conversazione con Claude (in streaming, attraverso il server dell'azienda), gli
 // strumenti dell'host, le proposte con «Conferma / Annulla», i file, lo schermo condiviso. L'interfaccia (interfaccia.js)
 // gli passa un adattatore `ui` e lui la chiama; le prove (test/motore.mjs) gli passano un adattatore finto e un fetch finto.
@@ -269,7 +270,7 @@ export function creaMotore(op, ui = {}) {
       const p = await s.proponi(input ?? {});
       if (!p || p.errore) return { errore: true, dati: { errore: p?.errore || 'proposal not possible' } };
       raccogliNomi(p, nomiSensibili);
-      const scheda = U.proposta({ titolo: p.titolo || t('conferma.titolo'), righe: (p.righe || []).slice(0, 12), nota: p.nota || '' }) || {};
+      const scheda = U.proposta({ titolo: p.titolo || t('conferma.titolo'), righe: (p.righe || []).slice(0, 12), nota: p.nota || '', avvisi: (p.avvisi || []).slice(0, 6) }) || {};
       const decisione = await new Promise(res => { M.attesa = { scheda, risolvi: x => { M.attesa = null; res(x); }, esegui: () => s.esegui(input ?? {}) }; M.proponendo = false; });
       return { dati: decisione, mostrato: true };
     } finally { M.proponendo = false; }

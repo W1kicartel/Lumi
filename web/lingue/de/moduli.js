@@ -3,6 +3,7 @@ export default {
   'moduli.lumi-serve-chiave-spento': "Zum Antworten brauche ich den Claude-Schlüssel, und du musst mich wieder einschalten. Ich öffne dir **Verwaltung → Lumi**: Das dauert eine Minute.",
   'moduli.lumi-chiedi-titolare': "Zum Antworten brauche ich den Claude-Schlüssel: Bitte den Inhaber, ihn unter **Verwaltung → Lumi** einzutragen.",
   'moduli.lumi-spento': "Lumi ist aus: Unter Verwaltung → Lumi schaltest du es wieder ein.",
+  'moduli.lumi-file-pronto': 'Datei bereit: {nome}',
   'moduli.lumi-quasi-pronto': "Lumi ist fast bereit: Der Claude-Schlüssel fehlt.",
   'moduli.lumi-apri': "Öffnen",
   'moduli.lumi-settimana': "Wie läuft die Woche",

@@ -7,6 +7,16 @@ import { strumenti, istruzioni } from './lumi/strumenti.js';
 import { t, lingua, minuscole } from '../lingua.js';
 
 let K = null, schema = [], lumi = null;
+// gli strumenti che arrivano dai moduli del server (k.lumi): si rileggono a ogni domanda, con i permessi di chi è collegato
+let moduli = { strumenti: [], istruzioni: [], sostituiti: [] };
+const caricaModuli = async () => { moduli = await K.api('GET', '/lumi/strumenti').catch(() => moduli); };
+// un file preparato da uno strumento (l'XML di una fattura, una stampa): si salva come un download normale
+function scarica({ nome, tipo, contenuto }) {
+  const url = URL.createObjectURL(new Blob([contenuto], { type: tipo || 'application/octet-stream' }));
+  const a = K.h('a', { href: url, download: String(nome || 'file').replace(/[\\/:*?"<>|]+/g, '-') }); document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+  K.toast(t('moduli.lumi-file-pronto', { nome }));
+}
 const ICONA = { persona: 'cliente', calendario: 'agenda', cassa: 'ordine', scatola: 'magazzino', documento: 'documento', furgone: 'ordine', attrezzi: 'documento' };
 const titolare = () => K?.stato.utente?.ruolo === 'titolare';
 
@@ -14,13 +24,14 @@ async function accendi(k) {
   K = k; schema = k.schema;
   if (!document.querySelector('link[data-kubo-lumi]')) document.head.append(k.h('link', { rel: 'stylesheet', href: '/moduli/lumi.css', 'data-kubo-lumi': '' }));
   const s = await k.api('POST', '/lumi', { azione: 'stato' }).catch(() => null), vero = !!s?.claude;
+  await caricaModuli();
   document.documentElement.classList.add('con-lumi');
   lumi = Lumi.avvia({
     nome: k.stato.azienda || '', lingua, utente: k.stato.utente.nome,
     server: vero ? '/api/lumi' : null, intestazioni: { 'X-Kubo': '1' },
     tema: matchMedia('(prefers-color-scheme: dark)').matches ? undefined : 'chiaro',
-    strumenti: () => strumenti({ schema, api: k.api, poteri: k.stato.poteri || {}, dopoSchema, apri: aggiornaVista }),
-    istruzioni: istruzioni({ poteri: k.stato.poteri || {} }),
+    strumenti: () => strumenti({ schema, api: k.api, poteri: k.stato.poteri || {}, dopoSchema, apri: aggiornaVista, moduli, scarica, lingua }),
+    istruzioni: istruzioni({ poteri: k.stato.poteri || {}, moduli }),
     contesto, daVedere, azioni: azioni(vero), aggiorna: 60000,
     ...(vero ? {} : {
       locale: async () => {
@@ -44,7 +55,7 @@ function aggiornaVista(entita) {
 }
 
 async function contesto() {
-  schema = await K.get('/schema').catch(() => schema);
+  [schema] = await Promise.all([K.get('/schema').catch(() => schema), caricaModuli()]);
   const u = K.stato.utente, righe = [`Chi chiede: ${u.nome} (${u.ruolo}).`, `Sezioni: ${schema.filter(e => !e.nascosta).map(e => `${e.nome} (${e.id})`).join(', ') || 'nessuna'}.`];
   const [, tipo, a, b] = location.hash.replace(/^#/, '').split('/'), def = schema.find(e => e.id === a);
   if (tipo === 'e' && def) righe.push(b && b !== 'nuovo' ? `Sta guardando la scheda ${b} in ${def.nome} (${def.id}).` : b === 'nuovo' ? `Sta creando un elemento in ${def.nome}.` : `Sta guardando la lista di ${def.nome}.`);
