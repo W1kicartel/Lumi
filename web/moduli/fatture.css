@@ -1,0 +1,30 @@
+/* Fatture elettroniche: import delle ricevute, bollo, numerazione, vista della fattura ricevuta. Stesse variabili di stile.css. */
+.fatture-schede { display: flex; gap: 4px; background: var(--sopra); padding: 3px; border-radius: 9px; flex-wrap: wrap; }
+.fatture-schede a { text-decoration: none; padding: 5px 12px; border-radius: 7px; color: var(--tenue); font-size: 14px; }
+.fatture-schede a.si { background: var(--pannello); color: var(--testo); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.fatture-zona { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 28px 16px; border: 1.5px dashed var(--linea-forte); border-radius: var(--raggio); cursor: pointer; text-align: center; transition: border-color .15s, background .15s; }
+.fatture-zona:hover, .fatture-zona:focus-visible, .fatture-zona.sopra { border-color: var(--testo); background: var(--sopra); outline: none; }
+.fatture-zona svg { width: 22px; height: 22px; }
+.fatture-esito { list-style: none; padding: 0; margin: 12px 0 0; display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+.fatture-esito li { display: flex; gap: 10px; flex-wrap: wrap; padding: 8px 10px; border-radius: 8px; background: var(--sopra); }
+.fatture-esito li.ok { border-left: 3px solid var(--ok); }
+.fatture-nome { font-family: "Geist Mono", ui-monospace, monospace; font-size: 12.5px; color: var(--tenue); overflow-wrap: anywhere; }
+.fatture-nuovo { margin-left: 6px; font-size: 11px; padding: 1px 6px; border-radius: 99px; border: 1px solid var(--linea-forte); color: var(--tenue); }
+.fatture-no { color: var(--errore); } .fatture-si { color: var(--ok); }
+.fatture-sotto { font-size: 15px; font-weight: 600; margin: 22px 0 8px; letter-spacing: -.01em; }
+.fatture-anni { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; } .fatture-anni b { font-variant-numeric: tabular-nums; }
+.fatture-bloccata { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--tenue); padding: 4px 10px; border: 1px solid var(--linea); border-radius: 99px; }
+.fatture-bloccata::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--testo); }
+.fatture-velo { position: fixed; inset: 0; z-index: 50; background: color-mix(in srgb, #000 45%, transparent); display: grid; place-items: center; padding: 24px; animation: fatture-entra .14s ease-out; }
+@keyframes fatture-entra { from { opacity: 0; } }
+.fatture-finestra { width: min(980px, 100%); max-height: calc(100vh - 48px); display: flex; flex-direction: column; background: var(--pannello); border: 1px solid var(--linea); border-radius: 14px; box-shadow: 0 30px 80px rgba(0,0,0,.3); overflow: hidden; }
+.fatture-barra { display: flex; align-items: center; gap: 10px; padding: 12px 14px 12px 20px; border-bottom: 1px solid var(--linea); }
+.fatture-barra b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fatture-spazio { flex: 1; }
+.fatture-tavolo { background: var(--sopra); padding: 20px; overflow: auto; flex: 1; min-height: 0; display: flex; justify-content: center; }
+.fatture-foglio { width: 210mm; max-width: 100%; height: 70vh; border: 0; background: #fff; border-radius: 2px; box-shadow: 0 1px 3px rgba(0,0,0,.12), 0 12px 32px rgba(0,0,0,.10); }
+.fatture-piede { display: flex; justify-content: flex-end; padding: 10px 14px; border-top: 1px solid var(--linea); }
+@media (max-width: 640px) { .fatture-velo { padding: 0; } .fatture-finestra { max-height: 100vh; border-radius: 0; } .fatture-tavolo { padding: 8px; } }
+.fatture-scorre { overflow-x: auto; max-width: 100%; } .fatture-scorre .tabella td { white-space: nowrap; }
+.fatture-chiusa .griglia :is(input, select, textarea):disabled { background: var(--sopra); color: var(--tenue); border-color: transparent; }
+.griglia > div:has(table.righe) { min-width: 0; overflow-x: auto; }

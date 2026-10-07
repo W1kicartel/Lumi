@@ -9,6 +9,9 @@ import { join, dirname } from 'node:path';
 import { VALIDATORI } from './documenti-italia.js';
 import { totali, cent } from './documenti-calcoli.js';
 import { controlla, xml, contiFattura, progressivoDa, REGIMI } from './documenti-xml.js';
+import { bloccata, cambiVietati, DERIVATI, normValore } from './fatture-regole.js';
+import { AUTOFATTURE } from './fatture-codici.js';
+import * as Schema from '../schema.js';   // l'ascoltatore delle scritture riceve solo il database
 import { unificaIndirizzo } from './sicurezza-migrazioni.js';
 import { modelloPredefinito, pulisciModello, documentoHtml, singolare, rendi } from './documenti-stampa.js';
 
@@ -24,7 +27,7 @@ const CAMPI_FISCALI = [
 const LOGO_MAX = 300 * 1024;
 
 // ---------- formati per la stampa ----------
-const eur = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }), nf = new Intl.NumberFormat('it-IT', { maximumFractionDigits: 4 });
+const eur = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }), eurPrezzo = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 8 }), nf = new Intl.NumberFormat('it-IT', { maximumFractionDigits: 4 });
 const dataIt = v => (/^\d{4}-\d{2}-\d{2}/.test(String(v)) ? `${v.slice(8, 10)}/${v.slice(5, 7)}/${v.slice(0, 4)}` : String(v ?? ''));
 export function formatta(c, v) {
   if (v == null || v === '' || (Array.isArray(v) && !v.length)) return '';
@@ -171,8 +174,9 @@ export function stampa(db, { S, D, meta }, e, id, ctx, modello = null) {
   const riga = D.leggi(db, e, id, ctx);   // con i permessi di chi stampa: i campi nascosti non escono nemmeno su carta
   const m = modello || modelloDi(db, meta, S, e), az = azienda(db, meta);
   const fattura = e === FATTURE;
-  const linee = fattura ? (riga.righe || []).map(r => ({ descrizione: r.descrizione, quantita: r.quantita, prezzo: r.prezzo, sconto: r.sconto, aliquota: r.aliquota, natura: r.natura, riga: {} })) : lineeDi(db, { S, D }, def, riga, ctx, az);
-  const conti = totali(linee, { prezziIvati: !fattura && m.prezziIvati, ritenuta: fattura ? riga.ritenuta : 0, bollo: fattura && riga.bollo });
+  // le fatture con i loro conti completi (ritenuta sulle righe soggette, cassa, bollo addebitato); gli altri documenti dalle righe
+  const conti = fattura ? contiFattura(riga) : totali(lineeDi(db, { S, D }, def, riga, ctx, az), { prezziIvati: m.prezziIvati });
+  conti.linee.forEach(l => { l.riga ??= {}; });
   const dati = valori(def, riga);
   const t = S.campoTitolo(def); dati._titolo = t ? formatta(t, riga[t.id]) : '';
   for (const c of S_attivi(def).filter(c => c.tipo === 'relazione' && !c.molti && riga[c.id]?.id)) {
@@ -181,7 +185,7 @@ export function stampa(db, { S, D, meta }, e, id, ctx, modello = null) {
     dati[c.id] = { _: riga[c.id].titolo, ...(coll ? valori(dc, coll) : {}) };
   }
   const pct = n => `${String(n).replace('.', ',')}%`;
-  const lineeF = conti.linee.map(l => ({ descrizione: l.descrizione, quantita: nf.format(l.quantita), prezzo: eur.format(l.prezzo), sconto: l.sconto ? pct(l.sconto) : '',
+  const lineeF = conti.linee.map(l => ({ descrizione: l.descrizione, quantita: nf.format(l.quantita), prezzo: eurPrezzo.format(l.prezzo), sconto: l.sconto ? pct(l.sconto) : '',
     iva: l.aliquota ? pct(l.aliquota) : l.natura || '0%', aliquota: pct(l.aliquota), natura: l.natura || '', totale: eur.format(l.totale), riga: l.riga }));
   const riepilogo = conti.riepilogo.map(g => ({ etichetta: g.aliquota ? pct(g.aliquota) : `0% ${g.natura || ''}`.trim(), imponibile: eur.format(g.imponibile), imposta: eur.format(g.imposta) }));
   const T = { imponibile: eur.format(conti.imponibile), imposta: eur.format(conti.imposta), totale: eur.format(conti.totale), ritenuta: conti.ritenuta ? eur.format(conti.ritenuta) : '', netto: eur.format(conti.netto) };
@@ -209,13 +213,37 @@ export function numeroFattura(D, db, serie, data) {
   const n = D.prossimoNumero(db, `fatture:${serie || ''}`, '{AAAA}/{N}', new Date(`${data}T12:00:00`)).split('/')[1];
   return serie ? `${n}/${serie}` : n;
 }
-const NOMI_TIPO = { TD04: 'Nota di credito', TD05: 'Nota di debito', TD06: 'Parcella' };
+const NOMI_TIPO = { TD04: 'Nota di credito', TD05: 'Nota di debito', TD06: 'Parcella', TD02: 'Acconto', TD03: 'Acconto', TD16: 'Integrazione', TD17: 'Autofattura', TD18: 'Integrazione', TD19: 'Autofattura' };
 export const nomeDocumento = f => `${NOMI_TIPO[f.tipo] || 'Fattura'} ${f.numero ? f.numero : 'in bozza'}`;
 let attivo = false;
 export function attivaFatture(D) {
   if (attivo) return; attivo = true;
   D.ascolta((ev, db) => {
-    if (ev.entita !== FATTURE || !['crea', 'modifica'].includes(ev.tipo) || !ev.dopo) return;
+    // le righe, le rate e i DDT di una fattura emessa non si toccano, da nessuna strada: API delle sezioni nascoste, import da file
+    // (che scrive «interno»), ripristino, spostamento di una riga su un'altra fattura (si guarda il padre di prima e quello di dopo).
+    // Passano le riscritture senza cambi che fa la fattura quando si salva (i suoi cambi li controlla il blocco qui sotto), «pagata»
+    // sulle rate e le righe scritte mentre la fattura nasce già emessa (non ha ancora la voce «crea» nel registro).
+    if (['righe_fattura', 'rate_fattura', 'ddt_fattura'].includes(ev.entita)) {
+      const padreDi = r => { const id = r?.fattura?.id ?? r?.fattura; return id ? { id: String(id), ...db.prepare(`SELECT c_stato AS stato, c_numero AS numero, creato, modificato FROM d_${FATTURE} WHERE id = ?`).get(String(id)) } : null; };
+      const campi = (Schema.leggi(db, ev.entita) || { campi: [] }).campi.filter(c => !c.archiviato && c.tipo !== 'calcolato' && !(ev.entita === 'rate_fattura' && c.id === 'pagata'));
+      if (ev.tipo === 'modifica' && campi.every(c => JSON.stringify(normValore(ev.prima?.[c.id])) === JSON.stringify(normValore(ev.dopo?.[c.id])))) return;
+      for (const padre of [padreDi(ev.prima), padreDi(ev.dopo)]) {
+        if (!bloccata(padre)) continue;
+        const nascente = ev.tipo === 'crea' && ev.interno && padre.creato === padre.modificato && !db.prepare("SELECT 1 FROM _registro WHERE entita = ? AND riga = ? AND tipo = 'crea'").get(FATTURE, padre.id);
+        if (!nascente) throw new D.ErroreDati(`La fattura ${padre.numero} è emessa: non si modifica più. Correggila con una nota di credito o di debito.`);
+      }
+      return;
+    }
+    if (ev.entita !== FATTURE) return;
+    // emessa = bloccata: niente modifiche (salvo pagamento, invio e note interne) e niente eliminazione
+    if (bloccata(ev.prima)) {
+      if (ev.tipo === 'elimina') throw new D.ErroreDati(`La fattura ${ev.prima.numero} è emessa: non si elimina, lascerebbe un buco nella numerazione. Stornala con una nota di credito.`);
+      if (ev.tipo === 'modifica') {
+        const vietati = cambiVietati(Schema.leggi(db, FATTURE) || { campi: [] }, ev.prima, ev.dopo, id => Schema.leggi(db, id));
+        if (vietati.length) throw new D.ErroreDati(`La fattura ${ev.prima.numero} è emessa: non si modifica più. Correggila con una nota di credito o di debito.`, Object.fromEntries(vietati.map(k => [k, 'Bloccato dopo l\'emissione'])));
+      }
+    }
+    if (!['crea', 'modifica'].includes(ev.tipo) || !ev.dopo) return;
     const f = ev.dopo, cambi = {};
     const doppia = (numero, data) => !!db.prepare(`SELECT 1 FROM d_${FATTURE} WHERE archiviato = 0 AND id <> ? AND c_numero = ? AND IFNULL(c_serie, '') = ? AND substr(c_data, 1, 4) = ?`)
       .get(f.id, String(numero), f.serie || '', String(data || '').slice(0, 4));
@@ -229,12 +257,17 @@ export function attivaFatture(D) {
     }
     // il nome con cui la fattura compare nei titoli e nelle relazioni (un campo vero, così lo trova anche la ricerca)
     if ('nome_documento' in f) { const n = nomeDocumento({ ...f, ...cambi }); if (n !== f.nome_documento) cambi.nome_documento = n; }
-    // l'IVA si calcola per aliquota sul totale delle righe, non riga per riga (come vuole la FatturaPA)
-    if ('imposta' in f) { const imposta = contiFattura(f).imposta; if (cent(imposta) !== cent(f.imposta)) cambi.imposta = imposta; }
+    // i conti che scrive il server: l'IVA per aliquota sul totale delle righe (come vuole la FatturaPA), la ritenuta solo
+    // sulle righe soggette, il contributo della cassa. Su una fattura bloccata restano quelli dell'emissione.
+    if (!bloccata(ev.prima)) {
+      // (solo nei campi veri: in un gestionale non ancora aggiornato «importo_ritenuta» è ancora un calcolato)
+      const conti = contiFattura(f), veri = new Set((Schema.leggi(db, FATTURE)?.campi || []).filter(c => !c.archiviato && c.tipo === 'valuta').map(c => c.id));
+      for (const [k, v] of [['imposta', conti.imposta], ['importo_ritenuta', conti.ritenuta], ['contributo_cassa', conti.cassa?.importo ?? 0]])
+        if (DERIVATI.has(k) && veri.has(k) && cent(v) !== cent(f[k])) cambi[k] = v;
+    }
     if (Object.keys(cambi).length) D.modifica(db, FATTURE, f.id, cambi, null, { interno: true });
   });
 }
-
 export function fatturaDa(db, { S, D, P, meta, ErroreHttp }, e, id, ctx) {
   const fdef = S.leggi(db, FATTURE);
   if (!fdef || fdef.archiviata) throw new ErroreHttp(409, 'Aggiungi prima il modello «Fatture e fattura elettronica» (Personalizza → modelli).');
@@ -270,9 +303,12 @@ export function notaDiCredito(db, { S, D, P, ErroreHttp }, id, ctx) {
   if (!f.numero || f.stato === 'bozza') throw new ErroreHttp(400, 'Si storna solo una fattura emessa: questa è ancora in bozza');
   if (f.tipo === 'TD04') throw new ErroreHttp(400, 'È già una nota di credito');
   const valori = { tipo: 'TD04', cliente: f.cliente?.id ?? null, collegata: f.id, riferimento: `Storno della fattura ${f.numero} del ${String(f.data).split('-').reverse().join('/')}`,
-    ritenuta: f.ritenuta, ritenuta_tipo: f.ritenuta_tipo, ritenuta_causale: f.ritenuta_causale, bollo: f.bollo, modalita: f.modalita,
-    righe: (f.righe || []).map(r => ({ descrizione: r.descrizione, quantita: r.quantita, prezzo: r.prezzo, sconto: r.sconto, aliquota: r.aliquota, natura: r.natura })) };
+    ritenuta: f.ritenuta, ritenuta_tipo: f.ritenuta_tipo, ritenuta_causale: f.ritenuta_causale, bollo: f.bollo, bollo_tuo: f.bollo_tuo, modalita: f.modalita,
+    cassa_tipo: f.cassa_tipo, cassa: f.cassa, cassa_iva: f.cassa_iva, esigibilita: f.esigibilita,
+    pa_documento: f.pa_documento, pa_documento_id: f.pa_documento_id, pa_documento_data: f.pa_documento_data, cig: f.cig, cup: f.cup,
+    righe: (f.righe || []).map(r => ({ descrizione: r.descrizione, quantita: r.quantita, prezzo: r.prezzo, sconto: r.sconto, sconto_importo: r.sconto_importo, aliquota: r.aliquota, natura: r.natura, no_ritenuta: r.no_ritenuta })) };
   for (const k of Object.keys(valori)) if (!S.campo(fdef, k) || S.campo(fdef, k).archiviato) delete valori[k];
+  for (const r of valori.righe || []) for (const k of Object.keys(r)) if (r[k] === undefined) delete r[k];
   return D.crea(db, FATTURE, valori, ctx);
 }
 
@@ -282,5 +318,10 @@ function preparaXml(db, { S, D, meta }, id, ctx) {
   let cliente = {};
   if (f.cliente?.id) { try { cliente = D.leggi(db, entCliente, f.cliente.id, ctx, { conRighe: false }); } catch { cliente = {}; } }
   if (f.collegata?.id) { try { const c = D.leggi(db, FATTURE, f.collegata.id, ctx, { conRighe: false }); f.collegata_dati = { numero: c.numero, data: c.data }; } catch { /* non visibile: si esporta senza */ } }
+  // le autofatture: il fornitore è il cedente e la fattura integrata è la sua (fatture.js le crea dalle fatture ricevute)
+  if (AUTOFATTURE.includes(f.tipo)) {
+    if (f.fornitore?.id) { try { f.fornitore_dati = D.leggi(db, S.campo(fdef, 'fornitore')?.entita || 'fornitori', f.fornitore.id, ctx, { conRighe: false }); } catch { /* niente */ } }
+    if (f.ricevuta?.id) { try { const r = D.leggi(db, S.campo(fdef, 'ricevuta')?.entita || 'fatture_ricevute', f.ricevuta.id, ctx, { conRighe: false }); f.collegata_dati = { numero: r.numero, data: r.data }; } catch { /* niente */ } }
+  }
   return { errori: controlla(az, f, cliente), az, f, cliente };
 }

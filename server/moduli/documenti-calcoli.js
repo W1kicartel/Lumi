@@ -9,30 +9,61 @@ export const cent = euro => intero(Number(euro || 0) * 100);
 export const euro = c => c / 100;
 const num = (x, d = 0) => { const n = typeof x === 'number' ? x : Number(String(x ?? '').replace(',', '.')); return Number.isFinite(n) && String(x ?? '').trim() !== '' ? n : d; };
 
-// linee: [{ descrizione, quantita, prezzo (euro), sconto (%), aliquota (%), natura }]
-export function totali(linee, { prezziIvati = false, ritenuta = 0, bollo = false } = {}) {
+// Le nature IVA per cui il bollo da 2 € è dovuto sopra 77,47 € (l'«Elenco B» con cui l'Agenzia integra il bollo non messo).
+// Fonte: Agenzia delle Entrate, «L'imposta di bollo sulle fatture elettroniche», guida di gennaio 2024, criteri dell'Elenco B
+// (N2.1, N2.2, N3.5, N3.6, N4); niente bollo su esportazioni e cessioni UE (N3.1-N3.4), reverse charge (N6.x), N7.
+export const NATURE_BOLLO = ['N2.1', 'N2.2', 'N3.5', 'N3.6', 'N4'];
+export const SOGLIA_BOLLO = 7747, IMPORTO_BOLLO = 2;   // centesimi; euro (art. 13 tariffa all. A DPR 642/72, guida AdE 2024)
+// il prezzo unitario tiene fino a 8 decimali, come Amount8DecimalType della FatturaPA (0,125 € resta 0,125 €)
+export const prezzo8 = x => Number(num(x).toFixed(8));
+// una riga è soggetta a ritenuta se non lo dici tu (ritenuta: false) e non è una spesa anticipata esclusa art. 15 (N1)
+export const soggettaRitenuta = l => l.ritenuta !== false && l.ritenuta !== 0 && !(!num(l.aliquota) && l.natura === 'N1') && !l.bollo;
+
+// linee: [{ descrizione, quantita, prezzo (euro, fino a 8 decimali), sconto (%), sconto_importo (€ sul prezzo unitario),
+//           aliquota (%), natura, ritenuta (false = esclusa) }]
+// cassa: { tipo, aliquota (%), aliquotaIva, natura, ritenuta (si applica anche al contributo) } · bolloCliente: i 2 € in fattura
+export function totali(linee, { prezziIvati = false, ritenuta = 0, bollo = false, bolloCliente = false, cassa = null, esigibilita = 'I' } = {}) {
   const out = [], gruppi = new Map();
-  linee.forEach((l, i) => {
-    const quantita = num(l.quantita, 1), prezzo = cent(l.prezzo), sconto = num(l.sconto), aliquota = num(l.aliquota);
+  const gruppo = (aliquota, natura) => { const k = `${aliquota}|${natura || ''}`; if (!gruppi.has(k)) gruppi.set(k, { aliquota, natura, lordo: 0 }); return gruppi.get(k); };
+  const tutte = bollo && bolloCliente ? [...linee, { descrizione: 'Imposta di bollo', quantita: 1, prezzo: IMPORTO_BOLLO, aliquota: 0, natura: 'N1', bollo: true }] : linee;
+  let soggetto = 0, perCassa = 0, perBollo = 0;
+  tutte.forEach((l, i) => {
+    const quantita = num(l.quantita, 1), sconto = num(l.sconto), scontoImp = prezzo8(l.sconto_importo), aliquota = num(l.aliquota);
+    const prezzo = prezziIvati ? euro(cent(l.prezzo)) : prezzo8(l.prezzo);
     const natura = aliquota ? null : (l.natura || null);
-    const totale = intero(prezzo * quantita * (1 - sconto / 100));
-    out.push({ ...l, n: i + 1, quantita, prezzo: euro(prezzo), sconto, aliquota, natura, totale: euro(totale) });
-    const k = `${aliquota}|${natura || ''}`;
-    if (!gruppi.has(k)) gruppi.set(k, { aliquota, natura, lordo: 0 });
-    gruppi.get(k).lordo += totale;
+    // gli sconti si applicano a cascata sul prezzo unitario (prima la percentuale, poi l'importo), come li legge lo SDI (00423)
+    const unitario = prezzo * (1 - sconto / 100) - scontoImp;
+    const totale = intero(unitario * quantita * 100);
+    out.push({ ...l, n: i + 1, quantita, prezzo, sconto, sconto_importo: scontoImp, aliquota, natura, totale: euro(totale), ritenuta: soggettaRitenuta(l) });
+    gruppo(aliquota, natura).lordo += totale;
+    if (soggettaRitenuta(l)) soggetto += totale;
+    if (!l.bollo && !(natura === 'N1')) perCassa += totale;
+    if (NATURE_BOLLO.includes(natura)) perBollo += totale;
   });
+  // la cassa previdenziale: un contributo in percentuale sui compensi (non sulle spese N1), con la sua aliquota IVA
+  let contributo = null;
+  if (cassa && num(cassa.aliquota)) {
+    const importo = intero(perCassa * num(cassa.aliquota) / 100), aliquota = num(cassa.aliquotaIva), natura = aliquota ? null : (cassa.natura || null);
+    contributo = { tipo: cassa.tipo, aliquota: num(cassa.aliquota), imponibile: euro(perCassa), importo: euro(importo), aliquotaIva: aliquota, natura, ritenuta: !!cassa.ritenuta };
+    gruppo(aliquota, natura).lordo += importo;
+    if (cassa.ritenuta) soggetto += importo;
+    // il contributo senza IVA conta per la soglia del bollo (forfettario: 75 € di compenso + 3 € di rivalsa INPS = 78 €, bollo dovuto)
+    if (NATURE_BOLLO.includes(natura)) perBollo += importo;
+  }
   const riepilogo = [...gruppi.values()].sort((a, b) => b.aliquota - a.aliquota || String(a.natura).localeCompare(String(b.natura))).map(g => {
     const imponibile = prezziIvati ? intero(g.lordo / (1 + g.aliquota / 100)) : g.lordo;
     const imposta = prezziIvati ? g.lordo - imponibile : intero(imponibile * g.aliquota / 100);
     return { aliquota: g.aliquota, natura: g.natura, imponibile: euro(imponibile), imposta: euro(imposta) };
   });
   const imponibile = riepilogo.reduce((s, g) => s + cent(g.imponibile), 0), imposta = riepilogo.reduce((s, g) => s + cent(g.imposta), 0);
-  const rit = num(ritenuta) ? intero(imponibile * num(ritenuta) / 100) : 0;
+  const rit = num(ritenuta) ? intero(soggetto * num(ritenuta) / 100) : 0;
   const esenti = riepilogo.filter(g => !g.aliquota).reduce((s, g) => s + cent(g.imponibile), 0);
+  // con la scissione dei pagamenti (split payment, EsigibilitaIVA S) l'IVA la versa la PA: il cliente paga solo l'imponibile
+  const daPagare = imponibile + imposta - rit - (esigibilita === 'S' ? imposta : 0);
   return {
     linee: out, riepilogo, imponibile: euro(imponibile), imposta: euro(imposta), totale: euro(imponibile + imposta),
-    ritenuta: euro(rit), netto: euro(imponibile + imposta - rit), esenti: euro(esenti),
-    bollo: bollo ? 2 : 0, serveBollo: esenti > 7747,   // bollo da 2 € sopra 77,47 € di operazioni senza IVA
+    ritenuta: euro(rit), baseRitenuta: euro(soggetto), netto: euro(daPagare), esenti: euro(esenti), cassa: contributo,
+    bollo: bollo ? IMPORTO_BOLLO : 0, serveBollo: perBollo > SOGLIA_BOLLO,
   };
 }
 

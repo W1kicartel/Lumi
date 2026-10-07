@@ -107,8 +107,8 @@ test('inventario: cosa vede Lumi per i documenti', () => {
   // gli strumenti passano il controllo del server di Lumi (al massimo 128, schema ≤ 12.000 caratteri)
   assert.ok(strumentiAnthropic(lista.map(s => ({ nome: s.nome, descrizione: s.descrizione, schema: s.schema }))), 'il server rifiuterebbe gli strumenti');
   const crea = lista.find(s => s.nome === 'crea_fatture').schema.properties.valori.properties;
-  assert.deepEqual(Object.keys(crea.righe.items.properties).sort(), ['aliquota', 'descrizione', 'natura', 'prezzo', 'quantita', 'sconto']);
-  assert.deepEqual(crea.tipo.enum, ['TD01', 'TD24', 'TD04', 'TD05', 'TD06']);
+  assert.deepEqual(Object.keys(crea.righe.items.properties).sort(), ['aliquota', 'descrizione', 'natura', 'no_ritenuta', 'prezzo', 'quantita', 'sconto', 'sconto_importo']);
+  assert.deepEqual(crea.tipo.enum, ['TD01', 'TD24', 'TD02', 'TD03', 'TD04', 'TD05', 'TD06', 'TD16', 'TD17', 'TD18', 'TD19']);
   // NON ci sono strumenti per le azioni dei documenti: emettere (c'è solo modifica stato), nota di credito, FatturaPA, stampa/PDF, controlli
   const documentali = nomi.filter(n => /fatturapa|xml|stampa|pdf|nota|storna|emetti|controlla|documenti/.test(n));
   console.log(`  strumenti totali: ${nomi.length}; dedicati ai documenti: ${documentali.length ? documentali.join(', ') : 'nessuno'}`);
@@ -179,13 +179,12 @@ test('i rischi del fare a parole con gli strumenti generici (nessun controllo fi
   await k.api('PATCH', `/dati/fatture/${fatta.id}`, { stato: 'emessa' });
   const c = await k.api('GET', `/documenti/fatturapa/${fatta.id}`);
   assert.ok(c.errori.some(e => /natura/.test(e)), 'il problema emerge solo all\'esportazione');
-  // 2) una fattura già emessa si cambia a parole (prezzo), senza nota di credito: nessun blocco dopo l'emissione
+  // 2) una fattura già emessa NON si cambia più, nemmeno a parole: il blocco sta nel motore dei dati (giro 3, fatture-regole.js)
   const mod = lista.find(s => s.nome === 'modifica_fatture'), m = { id: fatta.id, valori: { righe: [{ descrizione: 'Consulenza', quantita: 1, prezzo: 150, aliquota: 22 }] } };
-  assert.ok(!(await mod.proponi(m)).errore); assert.match((await mod.esegui(m)).testo, /Fatto/);
-  assert.equal((await k.api('GET', `/dati/fatture/${fatta.id}`)).imponibile, 150);
-  // 3) il numero si può scrivere a mano anche da Lumi: Kubo rifiuta solo i doppioni dello stesso anno
-  const doppio = await mod.esegui({ id: fatta.id, valori: { numero: '12' } });
-  assert.match(doppio.errore, /già una fattura numero 12/);
+  assert.match((await mod.esegui(m)).errore, /è emessa: non si modifica più/);
+  assert.equal((await k.api('GET', `/dati/fatture/${fatta.id}`)).imponibile, 100);
+  // 3) nemmeno il numero
+  assert.match((await mod.esegui({ id: fatta.id, valori: { numero: '12' } })).errore, /è emessa: non si modifica più/);
 });
 
 test('la scheda di conferma mostra righe con importi, IVA e totale prima di creare la fattura', { todo: 'oggi mostra solo «Righe: 1 riga»: la persona conferma senza vedere prezzi né totale' }, async () => {

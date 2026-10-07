@@ -1,0 +1,90 @@
+{
+  "id": "fatture",
+  "ordine": 10,
+  "nome": "Fatture e fattura elettronica",
+  "descrizione": "Si aggiunge a qualsiasi modello: fatture e note di credito numerate per anno e serie, IVA per aliquota e natura, ritenuta, bollo, scadenze, file FatturaPA da mandare allo SDI.",
+  "entita": [
+    { "id": "clienti", "nome": "Clienti", "icona": "persona", "titolo": "nome", "campi": [
+      { "id": "nome", "nome": "Ragione sociale o nome", "tipo": "testo", "obbligatorio": true },
+      { "id": "tipo", "nome": "Tipo", "tipo": "scelta", "opzioni": [
+        { "id": "privato", "nome": "Privato", "colore": "grigio" }, { "id": "azienda", "nome": "Azienda", "colore": "blu" } ], "predefinito": "azienda" },
+      { "id": "piva", "nome": "Partita IVA", "tipo": "testo", "valida": "piva" },
+      { "id": "codice_fiscale", "nome": "Codice fiscale", "tipo": "testo", "valida": "codice_fiscale" },
+      { "id": "codice_destinatario", "nome": "Codice destinatario (SDI)", "tipo": "testo" },
+      { "id": "pec", "nome": "PEC", "tipo": "email" },
+      { "id": "email", "nome": "Email", "tipo": "email" },
+      { "id": "telefono", "nome": "Telefono", "tipo": "telefono" },
+      { "id": "via", "nome": "Indirizzo (via e civico)", "tipo": "testo" },
+      { "id": "cap", "nome": "CAP", "tipo": "testo" },
+      { "id": "comune", "nome": "Comune", "tipo": "testo" },
+      { "id": "provincia", "nome": "Provincia (sigla)", "tipo": "testo" },
+      { "id": "nazione", "nome": "Nazione", "tipo": "testo", "predefinito": "IT" },
+      { "id": "note", "nome": "Note", "tipo": "testo_lungo" } ] },
+    { "id": "righe_fattura", "nome": "Righe di fattura", "nascosta": true, "titolo": "descrizione", "campi": [
+      { "id": "fattura", "nome": "Fattura", "tipo": "relazione", "entita": "fatture", "obbligatorio": true },
+      { "id": "descrizione", "nome": "Descrizione", "tipo": "testo", "obbligatorio": true },
+      { "id": "quantita", "nome": "Quantità", "tipo": "numero", "predefinito": 1 },
+      { "id": "prezzo", "nome": "Prezzo", "tipo": "valuta" },
+      { "id": "sconto", "nome": "Sconto %", "tipo": "percentuale", "predefinito": 0 },
+      { "id": "aliquota", "nome": "IVA %", "tipo": "percentuale", "predefinito": 22 },
+      { "id": "natura", "nome": "Natura (IVA 0)", "tipo": "scelta", "opzioni": [
+        { "id": "N1", "nome": "N1 escluse art. 15" }, { "id": "N2.1", "nome": "N2.1 non soggette artt. 7" }, { "id": "N2.2", "nome": "N2.2 non soggette (forfettario)" },
+        { "id": "N3.1", "nome": "N3.1 esportazioni" }, { "id": "N3.2", "nome": "N3.2 cessioni intra UE" }, { "id": "N3.3", "nome": "N3.3 verso San Marino" },
+        { "id": "N3.4", "nome": "N3.4 assimilate all'export" }, { "id": "N3.5", "nome": "N3.5 dichiarazione d'intento" }, { "id": "N3.6", "nome": "N3.6 altre non imponibili" },
+        { "id": "N4", "nome": "N4 esenti art. 10" }, { "id": "N5", "nome": "N5 regime del margine" },
+        { "id": "N6.1", "nome": "N6.1 reverse charge rottami" }, { "id": "N6.2", "nome": "N6.2 reverse charge oro" }, { "id": "N6.3", "nome": "N6.3 reverse charge subappalto edile" },
+        { "id": "N6.4", "nome": "N6.4 reverse charge fabbricati" }, { "id": "N6.5", "nome": "N6.5 reverse charge cellulari" }, { "id": "N6.6", "nome": "N6.6 reverse charge elettronica" },
+        { "id": "N6.7", "nome": "N6.7 reverse charge edilizia" }, { "id": "N6.8", "nome": "N6.8 reverse charge energia" }, { "id": "N6.9", "nome": "N6.9 reverse charge altri casi" },
+        { "id": "N7", "nome": "N7 IVA assolta in altro stato UE" } ] },
+      { "id": "totale", "nome": "Totale", "tipo": "calcolato", "formula": "ARROTONDA(quantita * prezzo * (1 - sconto / 100); 2)", "formato": "valuta" } ] },
+    { "id": "rate_fattura", "nome": "Rate di pagamento", "nascosta": true, "titolo": "data", "campi": [
+      { "id": "fattura", "nome": "Fattura", "tipo": "relazione", "entita": "fatture", "obbligatorio": true },
+      { "id": "data", "nome": "Scadenza", "tipo": "data", "obbligatorio": true },
+      { "id": "importo", "nome": "Importo", "tipo": "valuta" },
+      { "id": "pagata", "nome": "Pagata", "tipo": "si_no" } ] },
+    { "id": "fatture", "nome": "Fatture", "icona": "documento", "titolo": "nome_documento", "campi": [
+      { "id": "tipo", "nome": "Documento", "tipo": "scelta", "predefinito": "TD01", "opzioni": [
+        { "id": "TD01", "nome": "Fattura" }, { "id": "TD24", "nome": "Fattura differita" }, { "id": "TD04", "nome": "Nota di credito" },
+        { "id": "TD05", "nome": "Nota di debito" }, { "id": "TD06", "nome": "Parcella" } ] },
+      { "id": "numero", "nome": "Numero", "tipo": "testo" },
+      { "id": "serie", "nome": "Serie", "tipo": "testo" },
+      { "id": "data", "nome": "Data", "tipo": "data", "predefinito": "@oggi", "obbligatorio": true },
+      { "id": "cliente", "nome": "Cliente", "tipo": "relazione", "entita": "clienti", "obbligatorio": true },
+      { "id": "stato", "nome": "Stato", "tipo": "stato", "iniziale": "bozza", "opzioni": [
+        { "id": "bozza", "nome": "Bozza", "colore": "grigio" }, { "id": "emessa", "nome": "Emessa", "colore": "blu" },
+        { "id": "pagata", "nome": "Pagata", "colore": "verde" }, { "id": "annullata", "nome": "Annullata", "colore": "rosso" } ],
+        "transizioni": { "bozza": ["emessa"], "emessa": ["pagata", "annullata"], "pagata": ["emessa"], "annullata": [] } },
+      { "id": "scadenza", "nome": "Scadenza", "tipo": "data" },
+      { "id": "scaduta", "nome": "Scaduta", "tipo": "calcolato", "formula": "stato = \"emessa\" E NON VUOTO(scadenza) E scadenza < OGGI()" },
+      { "id": "riferimento", "nome": "Riferimento", "tipo": "testo" },
+      { "id": "collegata", "nome": "Fattura stornata o collegata", "tipo": "relazione", "entita": "fatture" },
+      { "id": "righe", "nome": "Righe", "tipo": "righe", "entita": "righe_fattura", "campo": "fattura" },
+      { "id": "imponibile", "nome": "Imponibile", "tipo": "calcolato", "formula": "SOMMA(righe.totale)", "formato": "valuta" },
+      { "id": "imposta", "nome": "IVA (si calcola da sola)", "tipo": "valuta" },
+      { "id": "totale", "nome": "Totale documento", "tipo": "calcolato", "formula": "ARROTONDA(imponibile + imposta; 2)", "formato": "valuta" },
+      { "id": "ritenuta", "nome": "Ritenuta d'acconto %", "tipo": "percentuale", "predefinito": 0 },
+      { "id": "ritenuta_tipo", "nome": "Tipo di ritenuta", "tipo": "scelta", "predefinito": "RT01", "opzioni": [
+        { "id": "RT01", "nome": "Persone fisiche" }, { "id": "RT02", "nome": "Persone giuridiche" } ] },
+      { "id": "ritenuta_causale", "nome": "Causale della ritenuta", "tipo": "scelta", "predefinito": "A", "opzioni": [
+        { "id": "A", "nome": "A · lavoro autonomo abituale" }, { "id": "M", "nome": "M · lavoro autonomo occasionale" },
+        { "id": "Q", "nome": "Q · provvigioni agenti monomandatari" }, { "id": "R", "nome": "R · provvigioni agenti plurimandatari" } ] },
+      { "id": "importo_ritenuta", "nome": "Ritenuta", "tipo": "calcolato", "formula": "ARROTONDA(imponibile * ritenuta / 100; 2)", "formato": "valuta" },
+      { "id": "netto", "nome": "Netto a pagare", "tipo": "calcolato", "formula": "ARROTONDA(totale - importo_ritenuta; 2)", "formato": "valuta" },
+      { "id": "bollo", "nome": "Bollo virtuale da 2 €", "tipo": "si_no" },
+      { "id": "condizioni", "nome": "Condizioni di pagamento", "tipo": "scelta", "predefinito": "TP02", "opzioni": [
+        { "id": "TP02", "nome": "Pagamento completo" }, { "id": "TP01", "nome": "A rate" }, { "id": "TP03", "nome": "Anticipo" } ] },
+      { "id": "modalita", "nome": "Modalità di pagamento", "tipo": "scelta", "predefinito": "MP05", "opzioni": [
+        { "id": "MP05", "nome": "Bonifico" }, { "id": "MP01", "nome": "Contanti" }, { "id": "MP02", "nome": "Assegno" },
+        { "id": "MP08", "nome": "Carta di pagamento" }, { "id": "MP12", "nome": "RIBA" }, { "id": "MP19", "nome": "SEPA Direct Debit" }, { "id": "MP23", "nome": "PagoPA" } ] },
+      { "id": "rate", "nome": "Rate (se a rate)", "tipo": "righe", "entita": "rate_fattura", "campo": "fattura" },
+      { "id": "pagata_il", "nome": "Pagata il", "tipo": "data" },
+      { "id": "causale", "nome": "Causale", "tipo": "testo_lungo" },
+      { "id": "note", "nome": "Note in fattura", "tipo": "testo_lungo" },
+      { "id": "nome_documento", "nome": "Nome del documento (si scrive da solo)", "tipo": "testo", "nascosto_in_lista": true } ] }
+  ],
+  "automazioni": [
+    { "id": "fattura_pagata", "nome": "Fattura pagata: segna la data", "entita": "fatture", "quando": "campo_cambia", "campo": "stato", "a": "pagata", "se": "VUOTO(pagata_il)",
+      "azioni": [ { "tipo": "imposta", "campo": "pagata_il", "formula": "OGGI()" } ] }
+  ],
+  "domande": []
+}

@@ -70,7 +70,7 @@ const AZ = { ragione_sociale: 'Bottega Prova srl', piva: '12345678903', codice_f
   email: 'info@bottega.example', iban: 'IT60X0542811101000000123456', aliquota: 22 };
 const CLIENTE = { nome: 'Rossi & Figli S.p.A.', tipo: 'azienda', piva: '00743110157', codice_destinatario: 'abc1234', via: 'Corso Italia 5', cap: '10121', comune: 'Torino', provincia: 'to', nazione: 'IT' };
 const FATTURA = { tipo: 'TD01', numero: '7', data: '2026-03-15', stato: 'emessa', causale: 'Fornitura “marzo” – lotto 3', modalita: 'MP05', condizioni: 'TP02', scadenza: '2026-04-14',
-  ritenuta: 0, bollo: true, righe: [
+  ritenuta: 0, bollo: true, bollo_tuo: true, righe: [
     { descrizione: 'Vaso in ceramica <grande>', quantita: 3, prezzo: 1.15, sconto: 10, aliquota: 22 },
     { descrizione: 'Libro', quantita: 1, prezzo: 10, aliquota: 4 },
     { descrizione: 'Corso esente', quantita: 2, prezzo: 45, aliquota: 0, natura: 'N4' }] };
@@ -123,10 +123,11 @@ test('fatture: numero all\'emissione, per anno e per serie, niente doppioni', ()
   assert.equal(numero(nuova({ data: '2026-01-03', stato: 'emessa', serie: 'B' })), '1/B');
   assert.equal(numero(nuova({ data: '2026-01-04', stato: 'emessa' })), '2');
   assert.throws(() => nuova({ data: '2026-05-01', numero: '2' }), /già una fattura numero 2 nel 2026/);
-  // l'IVA segue le righe a ogni salvataggio
-  const f = D.leggi(db, 'fatture', b.id);
-  D.modifica(db, 'fatture', b.id, { righe: [{ id: f.righe[0].id, descrizione: 'x', prezzo: 10, aliquota: 22 }, { descrizione: 'y', prezzo: 5, aliquota: 10 }] });
-  assert.equal(D.leggi(db, 'fatture', b.id).imposta, 2.7);
+  // l'IVA segue le righe a ogni salvataggio (finché è in bozza: dopo l'emissione la fattura è bloccata, vedi fatture.test.mjs)
+  const bz = nuova({ data: '2026-02-01' }), f = D.leggi(db, 'fatture', bz.id);
+  D.modifica(db, 'fatture', bz.id, { righe: [{ id: f.righe[0].id, descrizione: 'x', prezzo: 10, aliquota: 22 }, { descrizione: 'y', prezzo: 5, aliquota: 10 }] });
+  assert.equal(D.leggi(db, 'fatture', bz.id).imposta, 2.7);
+  assert.throws(() => D.modifica(db, 'fatture', b.id, { righe: [{ descrizione: 'y', prezzo: 5, aliquota: 10 }] }), /è emessa: non si modifica più/);
   // pagata: la data si mette da sola
   D.modifica(db, 'fatture', b.id, { stato: 'pagata' }); assert.match(D.leggi(db, 'fatture', b.id).pagata_il, /^\d{4}-\d{2}-\d{2}$/);
 });
