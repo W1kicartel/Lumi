@@ -30,6 +30,8 @@ npm test
 
 Al primo avvio si sceglie il nome dell'azienda, si crea il titolare e si sceglie da quali modelli partire.
 
+C'è anche l'app per il computer, che tiene i dati o si collega a un Kubo in rete, e c'è Docker per un VPS con HTTPS. Tutte e tre le strade sono in [docs/INSTALLARE.md](docs/INSTALLARE.md). I backup sono automatici: ogni giorno e prima di ogni modifica alla struttura.
+
 ## Modelli inclusi
 
 | | sezioni | automazioni |
