@@ -163,9 +163,13 @@ function leggiMolte(db, entita, ids) {
 }
 
 // ---------- leggere ----------
+// estensioni del motore: un modulo può tradurre i calcolati in SQL (→ { sql, tipo: 'n'|'t'|'b' } o null) e creare gli indici
+// che servono (server/moduli/sicurezza-sql.js). Senza, filtri e ordinamenti sui calcolati si fanno in memoria come prima.
+export const estensioni = { sqlCalcolato: null, indici: null };
 const OP = { '=': '=', '!=': '<>', '<>': '<>', '<': '<', '<=': '<=', '>': '>', '>=': '>=' };
-export function elenca(db, entita, { filtri = [], cerca = '', ordina = [], pagina = 1, perPagina = 50, archiviati = false } = {}, ctx = null) {
+export function elenca(db, entita, { filtri = [], cerca = '', ordina = [], pagina = 1, perPagina = 50, archiviati = false, leggero = null, limite = 20000 } = {}, ctx = null) {
   const def = defDi(db, entita); P.verifica(ctx, entita, 'leggi');
+  estensioni.indici?.(db, def);
   const where = [archiviati ? 'archiviato = 1' : 'archiviato = 0'], par = [];
   if (P.soloPropri(ctx, entita)) { where.push('creato_da = ?'); par.push(ctx.utente.id); }
   const dopo = [];   // filtri sui calcolati: si applicano dopo il calcolo
@@ -173,9 +177,14 @@ export function elenca(db, entita, { filtri = [], cerca = '', ordina = [], pagin
     const c = S.campo(def, f.campo);
     if (!c && !['id', 'creato', 'modificato', 'creato_da'].includes(f.campo)) throw new ErroreDati(`Filtro su un campo sconosciuto «${f.campo}»`);
     if (c && P.statoCampo(ctx, entita, c.id) === 'nascosto') throw new ErroreDati(`Filtro su un campo sconosciuto «${f.campo}»`);
-    if (c && !S.haColonna(c)) { dopo.push(f); continue; }
-    const col = c ? S.colonna(c.id) : f.campo;
-    const val = x => (c?.tipo === 'valuta' && x != null && x !== '' ? Math.round(Number(x) * 100) : c?.tipo === 'si_no' ? (x === true || x === 'true' || x === 1 ? 1 : 0) : x);
+    // un calcolato che si traduce in SQL resta nel database; gli altri si filtrano dopo il calcolo
+    const sq = c && !S.haColonna(c) && c.tipo === 'calcolato' ? estensioni.sqlCalcolato?.(db, def, c) : null;
+    if (c && !S.haColonna(c) && (!sq || (sq.tipo !== 't' && ['contiene', 'inizia'].includes(f.op)))) { dopo.push(f); continue; }
+    const col = sq ? (sq.tipo === 'n' && ['<', '<=', '>', '>=', 'tra'].includes(f.op) ? `COALESCE(${sq.sql}, 0)` : sq.sql) : c ? S.colonna(c.id) : f.campo;
+    const val = sq ? (x => (x == null ? x : sq.tipo === 'n' ? Number(x) : sq.tipo === 'b' ? (x === true || x === 'true' || x === 1 || x === '1' ? 1 : 0) : String(x)))
+      : x => (c?.tipo === 'valuta' && x != null && x !== '' ? Math.round(Number(x) * 100) : c?.tipo === 'si_no' ? (x === true || x === 'true' || x === 1 ? 1 : 0) : x);
+    if (sq && f.op === '!=') { where.push(`(${col} IS NULL OR ${col} <> ?)`); par.push(val(f.valore)); continue; }
+    if (sq && sq.tipo === 'b' && (f.op || '=') === '=' && f.valore != null && !val(f.valore)) { where.push(`(${col} = 0 OR ${col} IS NULL)`); continue; }
     switch (f.op) {
       case 'vuoto': where.push(`(${col} IS NULL OR ${col} = '')`); break;
       case 'nonvuoto': where.push(`(${col} IS NOT NULL AND ${col} <> '')`); break;
@@ -201,13 +210,15 @@ export function elenca(db, entita, { filtri = [], cerca = '', ordina = [], pagin
   const ord = []; let ordDopo = null;
   for (const o of ordina) {
     const c = S.campo(def, o.campo), dir = o.dir === 'disc' || o.dir === 'desc' ? 'DESC' : 'ASC';
-    if (c && !S.haColonna(c)) { ordDopo = { campo: c.id, dir }; continue; }
+    if (c && P.statoCampo(ctx, entita, c.id) === 'nascosto') continue;   // ordinare per un campo nascosto lo rivelerebbe
+    if (c && !S.haColonna(c)) { const sq = c.tipo === 'calcolato' && estensioni.sqlCalcolato?.(db, def, c); if (sq) ord.push(`${sq.sql} ${dir}`); else ordDopo = { campo: c.id, dir }; continue; }
     if (c) ord.push(`${S.colonna(c.id)} ${dir}`); else if (['creato', 'modificato', 'id'].includes(o.campo)) ord.push(`${o.campo} ${dir}`);
   }
   ord.push('creato DESC', 'id DESC');
   const per = Math.max(1, Math.min(500, Number(perPagina) || 50)), pag = Math.max(1, Number(pagina) || 1);
   const W = `WHERE ${where.join(' AND ')}`, T = S.tabella(entita);
   let righe, totale;
+  if (leggero) return elencaLeggero(db, def, leggero, { W, par, ord, dopo, limite }, ctx);
   if (dopo.length || ordDopo) {   // servono i calcolati: si legge tutto (fino a 5000), si filtra e si ordina qui
     righe = completa(db, def, db.prepare(`SELECT * FROM ${T} ${W} ORDER BY ${ord.join(', ')} LIMIT 5000`).all(...par).map(r => grezzo(def, r)), ctx);
     righe = righe.filter(r => dopo.every(f => confrontaFiltro(r[f.campo], f)));
@@ -218,6 +229,30 @@ export function elenca(db, entita, { filtri = [], cerca = '', ordina = [], pagin
     righe = completa(db, def, db.prepare(`SELECT * FROM ${T} ${W} ORDER BY ${ord.join(', ')} LIMIT ? OFFSET ?`).all(...par, per, (pag - 1) * per).map(r => grezzo(def, r)), ctx);
   }
   return { righe, totale, pagina: pag, perPagina: per };
+}
+// la lettura «leggera» degli aggregati: solo le colonne chieste (anche i calcolati tradotti in SQL), senza titoli delle righe
+// figlie né calcoli in memoria. → { righe, totale, troncato } oppure null se qualcosa non si traduce (allora si legge tutto)
+function elencaLeggero(db, def, campi, { W, par, ord, dopo, limite }, ctx) {
+  if (dopo.length || !estensioni.sqlCalcolato) return null;
+  const sel = ['id', 'creato', 'modificato', 'creato_da'], usati = [];
+  for (const id of new Set(campi.filter(x => x && !['id', 'creato', 'modificato', 'creato_da'].includes(x)))) {
+    const c = S.campo(def, id); if (!c || c.archiviato || P.statoCampo(ctx, def.id, c.id) === 'nascosto') return null;
+    if (S.haColonna(c)) { sel.push(`${S.colonna(c.id)} AS "${c.id}"`); usati.push({ c }); continue; }
+    const sq = c.tipo === 'calcolato' && estensioni.sqlCalcolato(db, def, c); if (!sq) return null;
+    sel.push(`${sq.sql} AS "${c.id}"`); usati.push({ c, sq });
+  }
+  const T = S.tabella(def.id), max = Math.max(1, Math.min(200000, Number(limite) || 20000));
+  const totale = db.prepare(`SELECT COUNT(*) n FROM ${T} ${W}`).get(...par).n;
+  const righe = db.prepare(`SELECT ${sel.join(', ')} FROM ${T} ${W} ORDER BY ${ord.join(', ')} LIMIT ?`).all(...par, max);
+  for (const { c, sq } of usati) {
+    if (sq) { if (sq.tipo === 'b') for (const r of righe) r[c.id] = r[c.id] == null ? null : !!r[c.id]; continue; }
+    if (c.tipo === 'valuta') for (const r of righe) r[c.id] = r[c.id] == null ? null : Number(r[c.id]) / 100;
+    else if (['numero', 'percentuale', 'durata'].includes(c.tipo)) for (const r of righe) r[c.id] = r[c.id] == null ? null : Number(r[c.id]);
+    else if (c.tipo === 'si_no') for (const r of righe) r[c.id] = !!r[c.id];
+    else if (c.tipo === 'relazione') { const t = titoli(db, c.entita, righe.map(r => r[c.id]).filter(Boolean)); for (const r of righe) if (r[c.id]) r[c.id] = { id: r[c.id], titolo: t.get(r[c.id]) ?? r[c.id] }; }
+    else if (['scelta_multipla', 'file', 'immagine'].includes(c.tipo)) for (const r of righe) { try { r[c.id] = r[c.id] == null ? [] : JSON.parse(r[c.id]); } catch { r[c.id] = []; } }
+  }
+  return { righe, totale, troncato: totale > righe.length };
 }
 function confrontaFiltro(v, f) {
   const x = v, y = f.valore;
@@ -347,6 +382,8 @@ export function elimina(db, entita, id, ctx = null, { interno = false } = {}) {
 export function ripristina(db, entita, id, ctx = null) {
   const def = defDi(db, entita); P.verifica(ctx, entita, 'elimina');
   return transazione(db, () => {
+    const r = db.prepare(`SELECT creato_da FROM ${S.tabella(entita)} WHERE id = ?`).get(String(id));
+    if (!r || (P.soloPropri(ctx, entita) && r.creato_da !== ctx.utente.id)) throw new ErroreDati('Non trovato');
     db.prepare(`UPDATE ${S.tabella(entita)} SET archiviato = 0, modificato = ? WHERE id = ?`).run(ora(), String(id));
     for (const c of S.campiAttivi(def).filter(c => c.tipo === 'righe')) db.prepare(`UPDATE ${S.tabella(c.entita)} SET archiviato = 0 WHERE ${S.colonna(c.campo)} = ?`).run(String(id));
     const dopo = leggi(db, entita, id, ctx);
@@ -370,8 +407,18 @@ function diff(a, b) {
   return { prima, dopo };
 }
 
+// la storia di una riga con gli stessi permessi della riga: «solo i propri» e niente valori dei campi nascosti
 export function storia(db, entita, id, ctx = null) {
-  P.verifica(ctx, entita, 'leggi');
+  const def = defDi(db, entita); P.verifica(ctx, entita, 'leggi');
+  if (P.soloPropri(ctx, entita)) { const r = db.prepare(`SELECT creato_da FROM ${S.tabella(entita)} WHERE id = ?`).get(String(id)); if (!r || r.creato_da !== ctx.utente.id) throw new ErroreDati('Non trovato'); }
+  const via = (o, d = def) => {
+    if (!o || typeof o !== 'object') return o; const x = { ...o };
+    for (const c of d.campi) {
+      if (P.statoCampo(ctx, d.id, c.id) === 'nascosto') delete x[c.id];
+      else if (c.tipo === 'righe' && Array.isArray(x[c.id])) { const f = S.leggi(db, c.entita); if (f) x[c.id] = x[c.id].map(r => via(r, f)); }
+    }
+    return x;
+  };
   return db.prepare('SELECT r.quando, r.tipo, r.prima, r.dopo, u.nome AS chi FROM _registro r LEFT JOIN _utenti u ON u.id = r.utente WHERE r.entita = ? AND r.riga = ? ORDER BY r.id DESC LIMIT 200')
-    .all(entita, String(id)).map(r => ({ ...r, prima: r.prima && JSON.parse(r.prima), dopo: r.dopo && JSON.parse(r.dopo) }));
+    .all(entita, String(id)).map(r => ({ ...r, prima: via(r.prima && JSON.parse(r.prima)), dopo: via(r.dopo && JSON.parse(r.dopo)) }));
 }

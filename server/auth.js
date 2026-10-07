@@ -70,3 +70,5 @@ export function modificaUtente(db, id, { nome, ruolo: r, attivo, password, pin }
   registra(db, { utente, tipo: 'utente', riga: id, dopo: { nome, ruolo: r, attivo } });
   return pubblico(db.prepare('SELECT * FROM _utenti WHERE id = ?').get(id));
 }
+// la password attuale di un utente è giusta? (per cambiarla serve quella vecchia: server/moduli/sicurezza.js)
+export function verificaPassword(db, id, pw) { const u = db.prepare('SELECT hash FROM _utenti WHERE id = ?').get(String(id)); return !!u && verifica(pw, u.hash); }

@@ -8,6 +8,7 @@
 // risponde 2xx si riprova con attese crescenti (ATTESE). Il registro delle consegne resta consultabile.
 import { createHash, createHmac, randomBytes } from 'node:crypto';
 import { nuovoId } from '../db.js';
+import { controllaUrl, invia } from './sicurezza-rete.js';
 
 export const ATTESE = [30, 120, 600, 1800, 7200];   // secondi prima dei tentativi 2, 3, 4…; poi la consegna è «fallita»
 const impronta = t => createHash('sha256').update(String(t)).digest('hex');
@@ -15,7 +16,9 @@ export const firma = (segreto, tempo, corpo) => 'sha256=' + createHmac('sha256',
 const EVENTI = ['crea', 'modifica', 'elimina', 'ripristina'];
 let verificatoreAggiunto = false;
 
-export default function registra({ r, db, S, D, P, U, serve, ErroreHttp }) {
+export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp }) {
+  // verso la rete interna solo se il titolare l'ha permesso (server/moduli/sicurezza-rete.js)
+  const interni = () => process.env.KUBO_WEBHOOK_INTERNI === '1' || meta?.leggi(db, 'sicurezza.webhook_interni') === '1';
   db.exec(`CREATE TABLE IF NOT EXISTS _import_token (id TEXT PRIMARY KEY, utente TEXT NOT NULL, nome TEXT NOT NULL, impronta TEXT NOT NULL UNIQUE,
       inizio TEXT NOT NULL, creato TEXT NOT NULL, scade TEXT, usato TEXT, revocato INTEGER NOT NULL DEFAULT 0);
     CREATE TABLE IF NOT EXISTS _import_webhook (id TEXT PRIMARY KEY, def TEXT NOT NULL, segreto TEXT NOT NULL, creato TEXT NOT NULL);
@@ -98,6 +101,7 @@ export default function registra({ r, db, S, D, P, U, serve, ErroreHttp }) {
   function pulito(c) {
     let u; try { u = new URL(String(c.url || '')); } catch { throw new ErroreHttp(400, 'Indirizzo non valido'); }
     if (!['http:', 'https:'].includes(u.protocol)) throw new ErroreHttp(400, 'L\'indirizzo deve iniziare con http:// o https://');
+    const no = controllaUrl(u.href, { interni: interni() }); if (no) throw new ErroreHttp(400, no);
     const eventi = (Array.isArray(c.eventi) ? c.eventi : EVENTI).filter(e => EVENTI.includes(e));
     const entita = c.entita === '*' || !Array.isArray(c.entita) ? '*' : c.entita.map(String);
     return { nome: String(c.nome || u.host).slice(0, 80), url: u.href, entita, eventi: eventi.length ? eventi : EVENTI, attivo: c.attivo !== false };
@@ -154,10 +158,10 @@ export default function registra({ r, db, S, D, P, U, serve, ErroreHttp }) {
         const corpo = JSON.stringify({ ...JSON.parse(c.corpo), consegna: c.id }), tempo = String(Math.floor(Date.now() / 1000)), def = JSON.parse(c.def);
         let codice = null, risposta = '';
         try {
-          const rr = await fetch(def.url, { method: 'POST', body: corpo, redirect: 'manual', signal: AbortSignal.timeout(10000),
-            headers: { 'Content-Type': 'application/json', 'User-Agent': 'Kubo-Webhook/1', 'X-Kubo-Evento': c.evento, 'X-Kubo-Consegna': String(c.id), 'X-Kubo-Tempo': tempo, 'X-Kubo-Firma': firma(c.segreto, tempo, corpo) } });
-          codice = rr.status; risposta = (await rr.text().catch(() => '')).slice(0, 500);
-        } catch (e) { risposta = String(e?.cause?.code || e?.name || e?.message || e).slice(0, 500); }
+          const rr = await invia(def.url, { corpo, interni: interni(), ms: 10000,   // niente redirect seguiti, niente rete interna
+            intestazioni: { 'Content-Type': 'application/json', 'User-Agent': 'Kubo-Webhook/1', 'X-Kubo-Evento': c.evento, 'X-Kubo-Consegna': String(c.id), 'X-Kubo-Tempo': tempo, 'X-Kubo-Firma': firma(c.segreto, tempo, corpo) } });
+          codice = rr.status; risposta = rr.testo.slice(0, 500);
+        } catch (e) { risposta = String(e?.code === 'INDIRIZZO_INTERNO' ? e.message : e?.cause?.code || e?.code || e?.name || e?.message || e).slice(0, 500); }
         const ok = codice >= 200 && codice < 300, tentativi = c.tentativi + 1, fine = ok || tentativi > ATTESE.length;
         db.prepare('UPDATE _import_consegne SET stato = ?, tentativi = ?, codice = ?, risposta = ?, prossimo = ?, aggiornato = ? WHERE id = ?')
           .run(ok ? 'ok' : fine ? 'fallita' : 'attesa', tentativi, codice, risposta, new Date(Date.now() + (fine ? 0 : ATTESE[tentativi - 1] * 1000)).toISOString(), new Date().toISOString(), c.id);

@@ -97,6 +97,10 @@ const num = v => (v == null || v === '' ? 0 : typeof v === 'boolean' ? (v ? 1 : 
 const lista = v => (Array.isArray(v) ? v : [v]).flat(Infinity).filter(x => x != null && x !== '');
 const giorno = v => { if (v == null || v === '') return null; const d = new Date(String(v).length === 10 ? v + 'T00:00:00Z' : v); return isNaN(d) ? null : d; };
 const isoGiorno = d => d.toISOString().slice(0, 10);
+// OGGI() è il giorno nel fuso dell'azienda, non in quello UTC (a mezzanotte e mezza in Italia è già domani). Il server e il
+// browser impostano orologio.fuso dall'impostazione dell'azienda; senza (i test del motore), il giorno UTC come prima.
+export const orologio = { fuso: null };
+const giornoLocale = d => { if (!orologio.fuso) return isoGiorno(d); try { return new Intl.DateTimeFormat('en-CA', { timeZone: orologio.fuso, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d); } catch { return isoGiorno(d); } };
 
 export const FUNZIONI = {
   SOMMA: a => lista(a).reduce((s, x) => s + num(x), 0),
@@ -112,7 +116,7 @@ export const FUNZIONI = {
   MAIUSCOLO: a => String(a[0] ?? '').toUpperCase(),
   MINUSCOLO: a => String(a[0] ?? '').toLowerCase(),
   LUNGHEZZA: a => String(a[0] ?? '').length,
-  OGGI: (a, ctx) => isoGiorno(ctx.adesso ? new Date(ctx.adesso) : new Date()),
+  OGGI: (a, ctx) => giornoLocale(ctx.adesso ? new Date(ctx.adesso) : new Date()),
   ADESSO: (a, ctx) => (ctx.adesso ? new Date(ctx.adesso) : new Date()).toISOString(),
   GIORNI: a => { const x = giorno(a[0]), y = giorno(a[1]); return x && y ? Math.round((y - x) / 864e5) : null; },
   AGGIUNGIGIORNI: a => { const d = giorno(a[0]); if (!d) return null; d.setUTCDate(d.getUTCDate() + num(a[1])); return isoGiorno(d); },

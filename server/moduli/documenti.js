@@ -9,6 +9,7 @@ import { join, dirname } from 'node:path';
 import { VALIDATORI } from './documenti-italia.js';
 import { totali, cent } from './documenti-calcoli.js';
 import { controlla, xml, contiFattura, progressivoDa, REGIMI } from './documenti-xml.js';
+import { unificaIndirizzo } from './sicurezza-migrazioni.js';
 import { modelloPredefinito, pulisciModello, documentoHtml, singolare, rendi } from './documenti-stampa.js';
 
 const FATTURE = 'fatture';
@@ -45,7 +46,8 @@ export function formatta(c, v) {
 
 export default function registra({ r, db, S, D, P, meta, serve, ErroreHttp }) {
   attivaFatture(D);
-  try { completaClienti(db, S); } catch (e) { console.error('documenti: clienti', e.message); }
+  // i campi fiscali dei clienti cambiano lo schema: li aggiunge solo chi può personalizzare (POST /api/documenti/prepara,
+  // che l'interfaccia chiama per lui), mai l'avvio del server né chi stampa o esporta una fattura
   const puoImpostare = ctx => { if (!P.puoSchema(serve(ctx))) throw new P.ErrorePermesso('Solo chi può personalizzare il gestionale cambia questi dati'); };
   const errore = e => { throw new ErroreHttp(422, e.message, e.dettagli ? { dettagli: e.dettagli } : {}); };
 
@@ -73,7 +75,7 @@ export default function registra({ r, db, S, D, P, meta, serve, ErroreHttp }) {
   r('POST', '/api/documenti/anteprima/:e/:id', ({ ctx, p, corpo }) => { serve(ctx); let m; try { m = pulisciModello(corpo); } catch (e) { errore(e); } return stampa(db, { S, D, meta }, p.e, p.id, ctx, m); });
 
   // fatture
-  r('POST', '/api/documenti/prepara', ({ ctx }) => { puoImpostare(ctx); return { aggiunti: completaClienti(db, S) }; });
+  r('POST', '/api/documenti/prepara', ({ ctx }) => { puoImpostare(ctx); return { aggiunti: completaClienti(db, S, { utente: ctx.utente.id }) }; });
   r('POST', '/api/documenti/fattura-da/:e/:id', ({ ctx, p }) => fatturaDa(db, { S, D, P, meta, ErroreHttp }, p.e, p.id, serve(ctx)));
   r('POST', '/api/documenti/nota-di-credito/:id', ({ ctx, p }) => notaDiCredito(db, { S, D, P, ErroreHttp }, p.id, serve(ctx)));
   r('GET', '/api/documenti/fatturapa/:id', ({ ctx, p }) => { const { errori } = preparaXml(db, { S, D, meta }, p.id, serve(ctx)); return { errori }; });
@@ -191,13 +193,14 @@ export function stampa(db, { S, D, meta }, e, id, ctx, modello = null) {
 
 // ---------- fatture ----------
 // i clienti dei modelli di settore prendono i campi fiscali che mancano (si aggiungono e basta: nessun dato si tocca)
-export function completaClienti(db, S) {
+// poi il vecchio campo libero «Indirizzo» si scompone in via, CAP, comune e provincia e si archivia (sicurezza-migrazioni.js)
+export function completaClienti(db, S, { utente = null } = {}) {
   const f = S.leggi(db, FATTURE); if (!f || f.archiviata) return [];
   const rc = S.campo(f, 'cliente'); const cl = rc && S.leggi(db, rc.entita); if (!cl) return [];
   const mancanti = CAMPI_FISCALI.filter(x => !cl.campi.some(c => c.id === x.id));
-  if (!mancanti.length) return [];
   const { archiviata, ...def } = cl;
-  S.applica(db, { ...def, campi: [...def.campi, ...mancanti] });
+  if (mancanti.length) S.applica(db, { ...def, campi: [...def.campi, ...mancanti] }, { utente });
+  unificaIndirizzo(db, S, cl.id, { utente });
   return mancanti.map(x => x.id);
 }
 
@@ -237,7 +240,6 @@ export function fatturaDa(db, { S, D, P, meta, ErroreHttp }, e, id, ctx) {
   if (!fdef || fdef.archiviata) throw new ErroreHttp(409, 'Aggiungi prima il modello «Fatture e fattura elettronica» (Personalizza → modelli).');
   if (e === FATTURE) throw new ErroreHttp(400, 'È già una fattura');
   P.verifica(ctx, FATTURE, 'crea');
-  completaClienti(db, S);
   const def = S.leggi(db, e), src = D.leggi(db, e, id, ctx), az = azienda(db, meta);
   const entCliente = S.campo(fdef, 'cliente').entita;
   const rc = def.campi.find(c => c.tipo === 'relazione' && !c.molti && !c.archiviato && c.entita === entCliente);
@@ -275,7 +277,6 @@ export function notaDiCredito(db, { S, D, P, ErroreHttp }, id, ctx) {
 }
 
 function preparaXml(db, { S, D, meta }, id, ctx) {
-  completaClienti(db, S);
   const f = D.leggi(db, FATTURE, id, ctx), az = azienda(db, meta);
   const fdef = S.leggi(db, FATTURE), entCliente = S.campo(fdef, 'cliente').entita;
   let cliente = {};

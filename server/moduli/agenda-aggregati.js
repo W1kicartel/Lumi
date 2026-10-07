@@ -9,7 +9,9 @@ import * as D from '../dati.js';
 import * as P from '../permessi.js';
 import { analizza, nomi } from '../formule.js';
 
-export const FUSO = 'Europe/Rome';
+// il fuso dell'azienda (impostazione «fuso», predefinito Europe/Rome): lo aggiorna server/moduli/sicurezza.js
+export let FUSO = 'Europe/Rome';
+export const impostaFuso = f => { FUSO = f || 'Europe/Rome'; };
 const SISTEMA = { creato: 'data_ora', modificato: 'data_ora' };
 const MAX_RIGHE = 20000;
 
@@ -88,7 +90,9 @@ export function filtriFra(def, campo, da, a, fuso = FUSO) {
 }
 
 // ---------- lettura completa (a pagine) con i permessi dell'utente ----------
-export function tutte(db, entita, filtri, ctx, { limite = MAX_RIGHE, cerca = '' } = {}) {
+// con «campi» (gli id che servono davvero) si prova prima la lettura leggera in SQL (dati.js, sicurezza-sql.js)
+export function tutte(db, entita, filtri, ctx, { limite = MAX_RIGHE, cerca = '', campi = null } = {}) {
+  if (campi) { const x = D.elenca(db, entita, { filtri, cerca, leggero: campi, limite }, ctx); if (x) return { righe: x.righe, troncato: x.troncato }; }
   const out = []; let pagina = 1, totale = 0;
   for (;;) {
     const r = D.elenca(db, entita, { filtri, cerca, pagina, perPagina: 500 }, ctx);
@@ -124,7 +128,8 @@ export function aggrega(db, rich, ctx, opz = {}) {
   const giorno = /^\d{4}-\d{2}-\d{2}$/;
   if (pr && (!giorno.test(pr.da) || !giorno.test(pr.a))) throw new D.ErroreDati('Periodo non valido (AAAA-MM-GG)');
   if (pr && !campoData) throw new D.ErroreDati('Serve un campo data per il periodo');
-  const leggi = (da, a) => tutte(db, def.id, [...filtri, ...(da ? filtriFra(def, campoData, da, a, fuso) : [])], ctx, { cerca: String(rich.cerca || '').slice(0, 200) });
+  const servono = [...misure.map(m => m.campo), campoData, per && !perTempo ? per : null].filter(Boolean);
+  const leggi = (da, a) => tutte(db, def.id, [...filtri, ...(da ? filtriFra(def, campoData, da, a, fuso) : [])], ctx, { cerca: String(rich.cerca || '').slice(0, 200), campi: servono });
   const { righe, troncato } = leggi(pr?.da, pr?.a);
 
   const valuta = misure.map(m => isValuta(db, def, m.campo));

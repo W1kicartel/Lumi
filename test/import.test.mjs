@@ -14,6 +14,7 @@ import { nomeSicuro } from '../server/moduli/import-file.js';
 
 attiva();
 ATTESE.splice(0, ATTESE.length, 0.05, 0.05);   // nei test i nuovi tentativi dei webhook non aspettano minuti
+process.env.KUBO_WEBHOOK_INTERNI = '1';   // il finto server dei webhook è su 127.0.0.1: rete interna permessa apposta
 
 async function avvia() {
   const srv = creaServer(apri()); await new Promise(r => srv.listen(0, '127.0.0.1', r));
@@ -145,7 +146,7 @@ test('allegati: caricamento a pezzi, permessi della riga e dei campi, nomi peric
     { const x = await chiama('PUT', '/api/schema/articoli', pulita); assert.equal(x.stato, 200, JSON.stringify(x.json)); }
     const png = Buffer.from('89504e470d0a1a0a0000000d4948445200000001000000010806000000', 'hex');
     const foto = await carica('../../foto vaso.png', png, 'image/png'); assert.equal(foto.nome, 'foto vaso.png');
-    const doc = await carica('scheda.html', Buffer.from('<script>alert(1)</script>'), 'text/html');
+    const doc = await carica('scheda.txt', Buffer.from('<script>alert(1)</script>'), 'text/html');   // un .html non si carica proprio (sicurezza.js): qui il tipo dichiarato è HTML
     const art = await chiama('POST', '/api/dati/articoli', { nome: 'Vaso', foto: [foto], scheda: [doc] }); assert.equal(art.stato, 200, JSON.stringify(art.json));
     const url = art.json.foto[0].url; assert.match(url, /^\/api\/file\/articoli\/[0-9A-Z]{17}\/foto\/[0-9A-Z]{17}$/);
     const img = await chiama('GET', url, null, { grezzo: true });
