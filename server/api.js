@@ -38,6 +38,7 @@ export function creaServer(db) {
   // codice di avvio: finché non c'è un titolare, chi si collega da un altro computer deve conoscerlo
   const codiceAvvio = randomBytes(4).toString('hex').toUpperCase();
   if (U.quanti(db) === 0 && process.env.NODE_ENV !== 'test') console.log(`Primo avvio da un altro computer: codice ${codiceAvvio}`);
+  const primoAvvio = (ip, codice) => { if (!locale(ip) && String(codice || '').trim().toUpperCase() !== codiceAvvio) throw new ErroreHttp(403, 'Serve il codice di avvio: lo trovi nel terminale o nel log di Kubo'); };
   const clienti = new Set();   // connessioni SSE: { res, ctx }
   const manda = (ev) => { for (const c of clienti) if (!ev.entita || P.puo(c.ctx, ev.entita, 'leggi')) c.res.write(`data: ${JSON.stringify(ev)}\n\n`); };
   D.ascolta((ev, _db, ctx) => { if (!ev.interno) manda({ tipo: ev.tipo, entita: ev.entita, id: ev.id, da: ctx?.utente?.id ?? null }); });
@@ -71,7 +72,7 @@ export function creaServer(db) {
   r('POST', '/api/configura', ({ corpo, risposta, ip }) => {
     if (U.quanti(db) > 0) throw new ErroreHttp(409, 'Già configurato');
     // il primo avvio (chi lo fa diventa titolare): da questo computer, oppure da fuori con il codice stampato nel log (Docker, VPS)
-    if (!locale(ip) && String(corpo.codice || '').trim().toUpperCase() !== codiceAvvio) throw new ErroreHttp(403, 'Serve il codice di avvio: lo trovi nel terminale o nel log di Kubo');
+    primoAvvio(ip, corpo.codice);
     const { azienda, nome, email, password, modelli = [] } = corpo;
     if (!azienda) throw new ErroreHttp(400, 'Manca il nome dell\'azienda');
     U.creaUtente(db, { nome, email, password, ruolo: 'titolare' });
@@ -132,7 +133,7 @@ export function creaServer(db) {
   r('PUT', '/api/ruoli/:id', ({ ctx, p, corpo }) => { if (!P.puoUtenti(serve(ctx))) throw new P.ErrorePermesso(); P.salvaRuolo(db, { ...corpo, id: p.id }); return P.ruolo(db, p.id); });
 
   r('GET', '/api/moduli', () => moduliWeb());
-  for (const m of MODULI_SERVER) if (typeof m.registra === 'function') m.registra({ r, prima, db, S, D, P, A, M, U, meta, serve, ErroreHttp, manda });
+  for (const m of MODULI_SERVER) if (typeof m.registra === 'function') m.registra({ r, prima, db, S, D, P, A, M, U, meta, serve, ErroreHttp, manda, primoAvvio });
 
   async function statico(req, res, percorso) {
     // il motore delle formule è lo stesso nel server e nel browser

@@ -78,14 +78,17 @@ export async function primoAvvio(app) {
         pl.persone.length ? h('li', pl.persone.length === 1 ? 'Una persona con il suo ruolo' : `${pl.persone.length} persone, ognuna con il suo ruolo`) : null,
         h('li', pl.lumi ? 'Lumi acceso' : 'Lumi spento (si accende quando vuoi)'),
         h('li', pl.esempi ? 'Con i dati d\'esempio, da togliere con un clic' : 'Senza dati d\'esempio'))) : null;
+    const serveCodice = await get('/stato').then(x => x.serveCodice).catch(() => false);
+    const codice = h('input.campo.mono', { name: 'codice', autocomplete: 'off', required: serveCodice, placeholder: 'es. 3FA9C2D1' });
     let invio = false;
     schermata('Ci siamo', 'Ultima cosa: chi sei. Sarai il titolare, quello che può tutto.', h('div', riepilogo, err,
       h('div.avvio-griglia', h('label', h('span.etichetta', 'Il tuo nome'), f.nome), h('label', h('span.etichetta', 'Email'), f.email),
-        h('label.largo', h('span.etichetta', 'Password (almeno 8 caratteri)'), f.password))), async () => {
+        h('label.largo', h('span.etichetta', 'Password (almeno 8 caratteri)'), f.password),
+        serveCodice ? h('label.largo', h('span.etichetta', 'Codice di avvio (è scritto nel terminale o nel log dove gira Kubo)'), codice) : null)), async () => {
       if (invio) return; invio = true; err.replaceChildren();
       const bottone = scatola.querySelector('button[type=submit]'); bottone.disabled = true; bottone.textContent = 'Preparo Kubo…';
       try {
-        const x = await api('POST', '/avvio/configura', { azienda: azienda.trim(), nome: account.nome, email: account.email, password: account.password, risposte: r });
+        const x = await api('POST', '/avvio/configura', { azienda: azienda.trim(), nome: account.nome, email: account.email, password: account.password, risposte: r, codice: codice.value });
         if (x.persone?.length) return consegne(x.persone);
         location.hash = ''; location.reload();
       } catch (e) { err.replaceChildren(h('div.avviso', e.message)); bottone.disabled = false; bottone.textContent = 'Prepara Kubo'; invio = false; }

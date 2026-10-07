@@ -8,15 +8,16 @@
 import { transazione } from '../db.js';
 import { DOMANDE, SETTORI, tipiche, piano, installaPiano, mettiEsempi, togliEsempi, quantiEsempi, tabelle } from './avvio-piano.js';
 
-export default function registra({ r, db, U, P, meta, serve, ErroreHttp, manda }) {
+export default function registra({ r, db, U, P, meta, serve, ErroreHttp, manda, primoAvvio }) {
   tabelle(db);
   const titolare = ctx => { if (serve(ctx).r.id !== 'titolare') throw new P.ErrorePermesso('Solo il titolare può farlo'); return ctx; };
   const cookie = token => `kubo=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${30 * 86400}`;
 
   r('GET', '/api/avvio/domande', () => ({ domande: DOMANDE, tipiche: Object.fromEntries(SETTORI.map(s => [s.id, tipiche(s.id)])) }));
   r('POST', '/api/avvio/piano', ({ corpo }) => { if (U.quanti(db) > 0) throw new ErroreHttp(409, 'Già configurato'); return piano(corpo?.risposte || {}); });
-  r('POST', '/api/avvio/configura', ({ corpo, risposta, req }) => {
+  r('POST', '/api/avvio/configura', ({ corpo, risposta, req, ip }) => {
     if (U.quanti(db) > 0) throw new ErroreHttp(409, 'Già configurato');
+    primoAvvio(ip, corpo?.codice);   // da un altro computer serve il codice stampato nel log
     const { azienda, nome, email, password, risposte = {} } = corpo || {};
     if (!String(azienda || '').trim()) throw new ErroreHttp(400, 'Manca il nome dell\'azienda');
     const pl = piano(risposte);
