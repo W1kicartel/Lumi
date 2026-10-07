@@ -2,9 +2,9 @@
 // restano nel database (con LIMIT e OFFSET) invece di leggere fino a 5000 righe in memoria, e gli aggregati leggono solo le
 // colonne che servono. Si traduce solo quello che dà lo stesso risultato del motore delle formule (formule.js):
 //   numeri, testo, VERO/FALSO · campi della riga (valuta in euro, sì/no, testo) · altri calcolati traducibili
-//   + - * / · confronti fra numeri o fra testi · E O NON · SE(cond; a; b) · ASS · OGGI() · GIORNI(a; b)
+//   + - * / · confronti fra numeri o fra testi · E O NON · SE(cond; a; b) · ASS · ARROTONDA(x; cifre) · OGGI() · GIORNI(a; b)
 //   SOMMA(righe.x) → sottoquery sulle righe figlie · relazione.campo → sottoquery sulla riga collegata
-// Tutto il resto (%, ^, ARROTONDA, CONTA, testo & numeri…) torna null e dati.js usa la strada di prima, in memoria.
+// Tutto il resto (%, ^, CONTA, testo & numeri…) torna null e dati.js usa la strada di prima, in memoria.
 // Anche gli indici: data, data e ora, stato e (archiviato, creato) per ogni entità, creati la prima volta che servono.
 import * as S from '../schema.js';
 import { analizza } from '../formule.js';
@@ -78,6 +78,13 @@ function nodo(db, def, n, tab, prof) {
         return { sql: `(CASE WHEN ${vero(c)} THEN ${x.sql} ELSE ${y.sql} END)`, tipo: x.tipo === y.tipo ? x.tipo : 'n' };
       }
       if ((f === 'ASS' || f === 'ABS') && n.arg.length === 1) { const x = giu(n.arg[0]); return x && x.tipo !== 't' ? { sql: `ABS(${x.sql})`, tipo: 'n' } : null; }
+      // ARROTONDA come Math.round del motore (metà verso l'alto, anche per i negativi): floor(x·k + 0,5) / k, con floor fatto a mano
+      if ((f === 'ARROTONDA' || f === 'ROUND') && n.arg.length >= 1 && n.arg.length <= 2) {
+        const x = giu(n.arg[0]), cifre = n.arg[1] ? (n.arg[1].t === 'val' && typeof n.arg[1].v === 'number' ? n.arg[1].v : null) : 0;
+        if (!x || x.tipo === 't' || cifre == null || !Number.isInteger(cifre) || Math.abs(cifre) > 8) return null;
+        const k = String(10 ** cifre), v = `(COALESCE(${x.sql}, 0) * ${k} + 0.5)`;
+        return { sql: `((CAST(${v} AS INTEGER) - (${v} < CAST(${v} AS INTEGER))) / (${k} * 1.0))`, tipo: 'n' };
+      }
       if ((f === 'OGGI' || f === 'TODAY') && !n.arg.length) return { sql: testo(oggi()), tipo: 't' };
       if ((f === 'GIORNI' || f === 'DAYS') && n.arg.length === 2) {
         const x = giu(n.arg[0]), y = giu(n.arg[1]); if (x?.tipo !== 't' || y?.tipo !== 't') return null;
