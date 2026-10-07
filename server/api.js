@@ -12,6 +12,14 @@ import * as A from './automazioni.js';
 import * as M from './modelli.js';
 import * as U from './auth.js';
 import { meta } from './db.js';
+import { readdirSync } from 'node:fs';
+
+// I moduli (server/moduli/*.js): ognuno esporta di default registra(k) e aggiunge le sue rotte e i suoi ascoltatori.
+// k = { r, db, S, D, P, A, M, U, meta, serve, ErroreHttp, manda }. Si caricano in ordine alfabetico.
+const CARTELLA_MODULI = join(dirname(fileURLToPath(import.meta.url)), 'moduli');
+const MODULI_SERVER = await Promise.all(readdirSync(CARTELLA_MODULI).filter(f => f.endsWith('.js')).sort()
+  .map(f => import(join(CARTELLA_MODULI, f)).then(m => ({ nome: f.replace(/\.js$/, ''), registra: m.default }))));
+export const moduliWeb = () => readdirSync(join(WEB, 'moduli')).filter(f => f.endsWith('.js')).sort().map(f => `/moduli/${f}`);
 
 const WEB = join(dirname(fileURLToPath(import.meta.url)), '..', 'web');
 const VERSIONE = '0.1.0';
@@ -104,6 +112,9 @@ export function creaServer(db) {
   });
   r('GET', '/api/ruoli', ({ ctx }) => { serve(ctx); return P.ruoli(db); });
   r('PUT', '/api/ruoli/:id', ({ ctx, p, corpo }) => { if (!P.puoUtenti(serve(ctx))) throw new P.ErrorePermesso(); P.salvaRuolo(db, { ...corpo, id: p.id }); return P.ruolo(db, p.id); });
+
+  r('GET', '/api/moduli', () => moduliWeb());
+  for (const m of MODULI_SERVER) if (typeof m.registra === 'function') m.registra({ r, db, S, D, P, A, M, U, meta, serve, ErroreHttp, manda });
 
   async function statico(req, res, percorso) {
     // il motore delle formule è lo stesso nel server e nel browser

@@ -72,7 +72,7 @@ export function lista(def, contenitore, { schema }) {
 }
 
 // ---------- scheda ----------
-export async function scheda(def, id, contenitore, { schema }) {
+export async function scheda(def, id, contenitore, { schema, azioni: azioniModuli = () => [] }) {
   const nuovo = id === 'nuovo';
   // nuovo: i valori predefiniti dello schema (@oggi = oggi; @utente lo mette il server)
   let riga = nuovo ? Object.fromEntries(def.campi.filter(c => c.predefinito !== undefined && c.predefinito !== '@utente').map(c => [c.id, c.predefinito === '@oggi' ? new Date().toISOString().slice(0, 10) : c.predefinito])) : {};
@@ -99,7 +99,7 @@ export async function scheda(def, id, contenitore, { schema }) {
     try {
       const r = nuovo ? await api('POST', `/dati/${def.id}`, valori) : await api('PATCH', `/dati/${def.id}/${id}`, valori);
       sporco = false; toast(nuovo ? 'Creato' : 'Salvato');
-      if (nuovo) location.hash = `#/e/${def.id}/${r.id}`; else scheda(def, id, contenitore, { schema });
+      if (nuovo) location.hash = `#/e/${def.id}/${r.id}`; else scheda(def, id, contenitore, { schema, azioni: azioniModuli });
     } catch (e) {
       salva.disabled = false;
       if (e instanceof ErroreApi && e.corpo.campi) for (const [k, m] of Object.entries(e.corpo.campi)) { if (errori[k]) { errori[k].textContent = m; editori[k].classList?.add('sbagliato'); editori[k].querySelector?.('input,select')?.classList.add('sbagliato'); } }
@@ -109,7 +109,8 @@ export async function scheda(def, id, contenitore, { schema }) {
   const titolo = nuovo ? `Nuovo in ${def.nome.toLowerCase()}` : String(titoloDi(riga, def.id) ?? '');
   const azioni = [];
   if (!nuovo && def.puo.elimina && !riga.archiviato) azioni.push(h('button.btn.pericolo', { testo: 'Archivia', on: { click: async () => { if (!confirm('Archiviare? Si può ripristinare dall\'archivio.')) return; await api('DELETE', `/dati/${def.id}/${id}`); toast('Archiviato'); location.hash = `#/e/${def.id}`; } } }));
-  if (riga.archiviato && def.puo.elimina) azioni.push(h('button.btn', { testo: 'Ripristina', on: { click: async () => { await api('POST', `/dati/${def.id}/${id}/ripristina`); toast('Ripristinato'); scheda(def, id, contenitore, { schema }); } } }));
+  if (!nuovo) azioni.push(...azioniModuli(riga));
+  if (riga.archiviato && def.puo.elimina) azioni.push(h('button.btn', { testo: 'Ripristina', on: { click: async () => { await api('POST', `/dati/${def.id}/${id}/ripristina`); toast('Ripristinato'); scheda(def, id, contenitore, { schema, azioni: azioniModuli }); } } }));
   const lato = nuovo ? null : h('div.lato-scheda', h('div.foglio', h('div.etichetta', 'Storia'), storia(def, id)));
   contenitore.replaceChildren(
     h('div.testa', h('a.btn.nudo', { href: `#/e/${def.id}`, testo: '←' }), h('h1', titolo, riga.archiviato ? h('span.nota', ' · archiviato') : null), ...azioni, sola ? null : salva),

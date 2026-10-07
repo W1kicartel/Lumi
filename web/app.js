@@ -8,12 +8,20 @@ import { utenti } from './utenti.js';
 
 const app = document.getElementById('app');
 let stato = null, schema = [], eventi = null, vistaAttiva = null;
+// I moduli dell'interfaccia (web/moduli/*.js), caricati all'avvio. Ognuno esporta di default un oggetto:
+//   { nome, avvio?(k), lato?(k) → [{ href, icona, nome, sezione? }], rotte?: { tipo: (contenuto, k, ...parti) },
+//     azioniLista?(def, k) → [elementi], azioniScheda?(def, riga, k) → [elementi] }
+// k = contesto(): { stato, schema, ricaricaSchema, h, api, get, toast, icona }
+export let MODULI = [];
+export const contesto = () => ({ stato, schema, ricaricaSchema, h, api, get, toast, icona });
 
 async function avvio() {
   stato = await get('/stato');
   if (!stato.configurato) return primoAvvio();
   if (!stato.utente) return accesso();
-  await ricaricaSchema(); collegaEventi();
+  MODULI = (await Promise.all((await get('/moduli')).map(f => import(f).then(m => m.default).catch(e => { console.error('modulo', f, e); return null; })))).filter(Boolean);
+  await ricaricaSchema();
+  for (const m of MODULI) try { await m.avvio?.(contesto()); } catch (e) { console.error(m.nome, e); } collegaEventi();
   window.addEventListener('hashchange', instrada); instrada();
 }
 async function ricaricaSchema() { schema = await get('/schema'); usaSchema(schema); disegnaLato(); }
@@ -63,7 +71,8 @@ function disegnaLato() {
     h('nav', voci.map(e => h('a', { href: `#/e/${e.id}`, 'data-e': e.id }, icona(e.icona), e.nome)),
       stato.poteri?.schema || stato.poteri?.utenti ? h('div.sez', 'Gestione') : null,
       stato.poteri?.schema ? h('a', { href: '#/personalizza/nuova' }, icona('griglia'), 'Nuova sezione') : null,
-      stato.poteri?.utenti ? h('a', { href: '#/utenti' }, icona('utenti'), 'Persone e permessi') : null),
+      stato.poteri?.utenti ? h('a', { href: '#/utenti' }, icona('utenti'), 'Persone e permessi') : null,
+      ...MODULI.flatMap(m => { try { return m.lato?.(contesto()) || []; } catch { return []; } }).map(v => [v.sezione ? h('div.sez', v.sezione) : null, h('a', { href: v.href }, icona(v.icona), v.nome)])),
     h('div.piede', h('span.chi', stato.utente.nome), h('button.btn.nudo.piccolo', { title: 'Esci', on: { click: async () => { await api('POST', '/esci'); location.reload(); } } }, icona('esci'))));
   lato.querySelector('.marca svg').replaceWith(logo());
   evidenzia();
@@ -76,12 +85,15 @@ function instrada() {
   const [, tipo, a, b] = (location.hash || '').replace(/^#/, '').split('/');
   evidenzia(); vistaAttiva = null;
   const def = schema.find(e => e.id === a);
+  const daModulo = MODULI.find(m => m.rotte?.[tipo]);
+  if (daModulo) return daModulo.rotte[tipo](contenuto, contesto(), a, b);
   if (tipo === 'e' && def && !b) {
     vistaAttiva = { entita: def.id, ...lista(def, contenuto, { schema }) };
+    for (const m of MODULI) for (const x of m.azioniLista?.(def, contesto()) || []) contenuto.querySelector('.testa').append(x);
     if (stato.poteri?.schema) contenuto.querySelector('.testa').append(h('a.btn.nudo', { href: `#/personalizza/${def.id}`, title: 'Personalizza questa sezione' }, icona('matita'), 'Personalizza'));
     return;
   }
-  if (tipo === 'e' && def && b) return scheda(def, b, contenuto, { schema });
+  if (tipo === 'e' && def && b) return scheda(def, b, contenuto, { schema, azioni: riga => MODULI.flatMap(m => m.azioniScheda?.(def, riga, contesto()) || []) });
   if (tipo === 'personalizza' && stato.poteri?.schema) return personalizza(a === 'nuova' ? null : def, contenuto, { schema, ricaricaSchema });
   if (tipo === 'utenti' && stato.poteri?.utenti) return utenti(contenuto, { schema });
   const primo = schema.find(e => !e.nascosta);
