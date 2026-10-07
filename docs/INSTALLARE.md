@@ -49,7 +49,7 @@ Per tenerlo acceso da solo puoi usare un servizio di sistema: systemd su Linux, 
 
 ```bash
 docker build -t kubo .
-docker run -d --name kubo -p 4380:4380 -v kubo-dati:/dati --restart unless-stopped kubo
+docker run -d --init --name kubo -p 4380:4380 -v kubo-dati:/dati --restart unless-stopped kubo
 ```
 
 L'immagine:

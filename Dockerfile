@@ -1,5 +1,5 @@
 # Kubo in un contenitore: Node 24, nessuna dipendenza da installare, utente non root, i dati nel volume /dati.
-#   docker build -t kubo .  ·  docker run -d -p 4380:4380 -v kubo-dati:/dati --name kubo kubo
+#   docker build -t kubo .  ·  docker run -d --init -p 4380:4380 -v kubo-dati:/dati --name kubo kubo
 # Per un VPS con HTTPS vedi docker-compose.yml e docs/INSTALLARE.md.
 FROM node:24-slim
 ENV NODE_ENV=production KUBO_DATI=/dati KUBO_PORTA=4380 KUBO_RETE=1

@@ -23,7 +23,7 @@ Come si installa: [INSTALLARE.md](INSTALLARE.md). Qui c'è come è fatto.
 - **Il processo principale.** Kubo gira dentro il processo principale di Electron (Node 24 in Electron 44, con `node:sqlite`). Non c'è un secondo processo né un Node a parte.
 - **Cartelle.** Nel pacchetto `server/`, `web/` e `modelli/` stanno in `resources/kubo`. In sviluppo si usa la cartella sopra `desktop/`.
 - **Le finestre sono isolate.** Hanno `contextIsolation` e `sandbox`, e niente Node nella pagina. Navigano solo sull'origine di Kubo. I collegamenti esterni (solo `https:` e `mailto:`) si aprono nel browser.
-- **Il ponte.** Il preload espone `kuboAvvio.scegli()` alla prima scelta e `kuboDesktop.scegliCartella()` al gestionale, dove serve per scegliere la cartella dei backup con la finestra del sistema. Il processo principale controlla sempre chi chiede.
+- **Il ponte.** Il preload espone `kuboAvvio.scegli()` alla prima scelta e `kuboDesktop.scegliCartella()` al gestionale, dove serve per scegliere la cartella dei backup con la finestra del sistema: solo quando i dati sono su questo PC (a un Kubo in rete non si dà niente, e la cartella sarebbe di questo PC e non del server). Il processo principale controlla sempre chi chiede.
 - **Un ripristino ricarica la finestra.** Il server emette `process.emit('kubo:ripristinato')` e l'app ricarica.
 
 Le opzioni:
@@ -81,7 +81,7 @@ Nomi dei file: `kubo-AAAA-MM-GG-hh-mm-ss-<tipo>.db`, nella cartella `backup/` ac
 
 - **Copia coerente.** Si fa con `VACUUM INTO`, anche mentre si lavora. Si scrive in un file provvisorio, che si rinomina solo a copia finita.
 - **Allegati.** Vanno in `<backup>/allegati/` in modo incrementale: si copiano solo i file nuovi o cambiati e non si cancella niente, così anche un backup vecchio ritrova i suoi file.
-- **Disco esterno staccato.** Se la cartella scelta non risponde, la copia va accanto ai dati e nella pagina compare un avviso.
+- **Disco esterno staccato.** Se la cartella scelta non risponde, la copia va accanto ai dati e nella pagina compare un avviso. Con una cartella esterna l'elenco mostra anche le copie rimaste accanto ai dati (segnate «accanto ai dati»): si scaricano e si ripristinano come le altre.
 - **Il gancio «prima».** Il backup prima delle modifiche usa `prima(metodo, percorso, f)`, un piccolo gancio aggiunto a `server/api.js`: un modulo può agire prima della rotta di un altro senza toccarla.
 
 ### Ripristino
@@ -94,9 +94,13 @@ Il ripristino non spegne il server. Va così:
    - almeno un titolare attivo;
    - una versione dello schema non più nuova di quella di Kubo.
 2. Si fa una copia di **sicurezza** di adesso.
-3. Il backup si prepara in un file a parte. Lì si aggiungono, vuote, le tabelle dei moduli arrivati dopo, e la sessione di chi ripristina, se il suo utente c'è anche nel backup.
+3. Il backup si prepara in un file a parte, in una cartella provvisoria:
+   - si apre con `apri()` di `server/db.js`, che fa le migrazioni del motore che mancano a un backup di una versione vecchia;
+   - si aggiungono, vuote, le tabelle dei moduli arrivati dopo;
+   - le impostazioni `backup.*` e `aggiornamenti.*` restano quelle di adesso (altrimenti la cartella dei backup, con la copia di sicurezza appena fatta, tornerebbe quella di allora o di un altro computer);
+   - la sessione di chi ripristina, se il suo utente c'è anche nel backup.
 4. Le pagine si copiano dentro il database vivo con l'API di backup di SQLite (`node:sqlite` → `backup()`), in un colpo solo. La connessione aperta vede il contenuto nuovo alla lettura dopo. Poi `wal_checkpoint(TRUNCATE)`.
-5. Gli allegati che mancano tornano dalla copia.
+5. Gli allegati che mancano tornano dalla cartella `allegati` accanto al backup.
 6. Si avvisano i browser collegati (evento `ripristinato`): si ricaricano da soli.
 
 Niente si perde: per tornare a prima del ripristino basta ripristinare la copia «Prima di un ripristino».

@@ -6,6 +6,7 @@ services:
   kubo:
     build: .
     image: kubo:latest
+    init: true   # Node non fa da «init»: così «docker compose stop» spegne Kubo subito, senza i 10 secondi di attesa
     restart: unless-stopped
     environment:
       KUBO_DATI: /dati
