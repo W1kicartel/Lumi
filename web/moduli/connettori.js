@@ -12,6 +12,7 @@ const titolare = k => k.stato.utente?.ruolo === 'titolare';
 const quando = v => (v ? dataOra(typeof v === 'number' ? new Date(v).toISOString() : v) : '—');
 const copia = async (k, testo) => { try { await navigator.clipboard.writeText(testo); k.toast(t('connettori.copiato')); } catch { k.toast(testo); } };
 const COLORI = { ok: 'verde', errore: 'rosso', avviso: 'giallo', ignorato: 'grigio' };
+const esitoDi = e => (COLORI[e] ? t('connettori.esito-' + e) : e);   // l'esito nel registro, nella lingua di chi guarda
 
 function statoDi(c) {
   if (c.rotto) return { nome: t('connettori.stato-rotto'), colore: 'rosso' };
@@ -126,7 +127,7 @@ function mappe(k, c, salva) {
 function lavori(k, c, ricarica) {
   const { h } = k, parti = [];
   for (const g of c.giri) parti.push(h('div.conn-giro', h('div', h('b', g.nome), h('span.nota', ' · ', g.ogni ? t('connettori.ogni', { ogni: g.ogni }) : t('connettori.alle', { alle: g.alle }))),
-    h('span.nota', t('connettori.ultimo', { quando: quando(g.ultimo) }), g.esito ? ' · ' : '', g.esito ? chipDi(k, { nome: g.esito, colore: COLORI[g.esito] || 'grigio' }) : null, ' · ', t('connettori.prossimo', { quando: quando(g.prossimo) })),
+    h('span.nota', t('connettori.ultimo', { quando: quando(g.ultimo) }), g.esito ? ' · ' : '', g.esito ? chipDi(k, { nome: esitoDi(g.esito), colore: COLORI[g.esito] || 'grigio' }) : null, ' · ', t('connettori.prossimo', { quando: quando(g.prossimo) })),
     c.attivo ? h('button.btn.piccolo', { on: { click: async ev => { ev.target.disabled = true; try { const r = await k.api('POST', `/connettori/${encodeURIComponent(c.id)}/giri/${encodeURIComponent(g.id)}`); k.toast(r.esito === 'ok' ? t('connettori.giro-ok') : String(r.risultato || r.esito), r.esito !== 'ok'); } catch (e) { k.toast(e.message, true); } ricarica(); } } }, t('connettori.sincronizza')) : null));
   const attesa = c.coda.attesa || 0, fallite = c.coda.fallito || 0;
   if (attesa || fallite) parti.push(h('div.conn-riga', h('span', t('connettori.coda', { attesa, fallite })),
@@ -139,7 +140,7 @@ function registro(k, c) {
   if (!c.registro.length) return h('section.foglio', h('h2', t('connettori.registro')), h('p.nota', t('connettori.registro-vuoto')));
   return h('section.foglio', h('h2', t('connettori.registro')), h('div.conn-scorri', h('table.tabella.conn-tabella',
     h('thead', h('tr', h('th', t('connettori.col-quando')), h('th', t('connettori.col-verso')), h('th', t('connettori.col-esito')), h('th', t('connettori.col-cosa')))),
-    h('tbody', c.registro.map(r => h('tr', h('td', quando(r.quando)), h('td', t('connettori.verso-' + r.verso)), h('td', chipDi(k, { nome: r.esito, colore: COLORI[r.esito] || 'grigio' })),
+    h('tbody', c.registro.map(r => h('tr', h('td', quando(r.quando)), h('td', t('connettori.verso-' + r.verso)), h('td', chipDi(k, { nome: esitoDi(r.esito), colore: COLORI[r.esito] || 'grigio' })),
       h('td', h('span', r.titolo || ''), r.dettagli ? h('span.nota', ' · ', r.dettagli) : null)))))));
 }
 
