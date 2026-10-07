@@ -59,7 +59,11 @@ function normalizza(db, def, c, v, { prima } = {}) {
       return c.molti ? ids.map(String) : String(ids[0]);
     }
     case 'utente': if (!db.prepare('SELECT 1 FROM _utenti WHERE id = ?').get(String(v))) no(`«${c.nome}»: utente sconosciuto`); return String(v);
-    case 'file': case 'immagine': return JSON.stringify(Array.isArray(v) ? v : [v]);
+    case 'file': case 'immagine': {   // [{ id, nome, tipo, dimensione }]: il file vero lo salva e lo serve server/moduli/import-file.js
+      const l = (Array.isArray(v) ? v : [v]).map(x => (typeof x === 'string' ? { id: x } : x));
+      if (l.length > 50 || l.some(x => !x || !/^[0-9A-Z]{17}$/.test(String(x.id)))) no(`«${c.nome}»: allegato non valido`);
+      return JSON.stringify(l.map(x => ({ id: String(x.id), nome: String(x.nome ?? 'file').slice(0, 200), tipo: String(x.tipo ?? '').slice(0, 100), dimensione: Number(x.dimensione) || 0 })));
+    }
     default: {
       const t = String(v).trim();
       if (c.valida && VALIDATORI[c.valida]) { const r = VALIDATORI[c.valida](t); if (r.errore) no(`«${c.nome}»: ${r.errore}`); return r.valore; }
@@ -82,6 +86,7 @@ function grezzo(def, r) {
       if (c.tipo === 'valuta') v = v / 100;
       else if (c.tipo === 'si_no') v = !!v;
       else if (['scelta_multipla', 'file', 'immagine'].includes(c.tipo)) { try { v = JSON.parse(v); } catch { v = []; } }
+      if (['file', 'immagine'].includes(c.tipo) && Array.isArray(v)) v = v.filter(x => x && typeof x === 'object').map(x => ({ ...x, url: `/api/file/${def.id}/${r.id}/${c.id}/${x.id}` }));
     } else if (c.tipo === 'si_no') v = false;
     else if (c.tipo === 'scelta_multipla') v = [];
     o[c.id] = v ?? null;

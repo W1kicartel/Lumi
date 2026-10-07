@@ -1,0 +1,49 @@
+/* Importa ed esporta, API e integrazioni: stesse variabili di stile.css, prefisso «import-». */
+.import { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
+.import > .foglio:first-child, .import > div:nth-child(2) { grid-column: 1; }
+.import-lato { grid-column: 2; grid-row: 1 / span 3; display: flex; flex-direction: column; gap: 16px; }
+.import-dove { display: grid; gap: 4px; margin-bottom: 14px; } .import-dove .import-riga { margin: 0; align-items: center; } .import-dove select.campo, .import-dove > input.campo { max-width: 420px; }
+.import-zona { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 38px 20px; border: 1.5px dashed var(--linea-forte); border-radius: var(--raggio); cursor: pointer; text-align: center; transition: border-color .15s, background .15s; }
+.import-zona:hover, .import-zona:focus-visible, .import-zona.sopra { border-color: var(--testo); background: var(--sopra); outline: none; }
+.import-zona b { font-weight: 600; }
+.import progress { width: 100%; height: 6px; margin-top: 10px; accent-color: var(--testo); }
+.import .foglio + .foglio, .import > div:nth-child(2) > .foglio { margin-top: 16px; }
+.import-titolo { display: flex; flex-direction: column; gap: 2px; margin-bottom: 12px; }
+.import-tabella { overflow-x: auto; margin: 4px 0 16px; border-radius: var(--raggio); }
+.import-tabella .tabella th { vertical-align: top; cursor: default; text-transform: none; letter-spacing: 0; font-size: 12.5px; min-width: 170px; }
+.import-tabella .tabella tbody tr { cursor: default; } .import-tabella .tabella tbody tr:hover td { background: none; }
+.import-tabella select.campo, .import-tabella input.campo { display: block; width: 100%; margin-top: 6px; padding: 6px 8px; font-size: 13px; font-weight: 450; }
+.import-tabella select.campo.abbinata { border-color: var(--testo); font-weight: 550; }
+.import-colonna { color: var(--testo); font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+.import-usa { display: flex; gap: 6px; align-items: center; color: var(--testo); font-weight: 600; }
+.import-opzioni { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; margin-bottom: 8px; }
+.import-opzioni .etichetta { width: 100%; margin: 0; } .import-opzioni select.campo { width: auto; max-width: 100%; }
+.import-bottoni { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
+.import-esito { margin-top: 16px; }
+.import-esito.con-errori { border-color: color-mix(in srgb, var(--errore) 45%, var(--linea)); }
+.import-numeri { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 6px 0 16px; }
+.import-numeri div { background: var(--sopra); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; }
+.import-numeri b { font-size: 26px; letter-spacing: -.03em; font-variant-numeric: tabular-nums; } .import-numeri span { color: var(--tenue); font-size: 13px; }
+.import-esito .righe { margin-bottom: 10px; } .import-esito .righe td.num, .import-esito .righe th:first-child { width: 56px; text-align: left; } .import-esito .btn { margin: 6px 6px 0 0; }
+.import-esporta { display: flex; flex-direction: column; gap: 6px; } .import-esporta > div { display: flex; align-items: center; gap: 6px; } .import-esporta span { flex: 1; }
+/* menu «Esporta» nella testa della lista */
+.import-menu { position: relative; } .import-menu summary { list-style: none; } .import-menu summary::-webkit-details-marker { display: none; }
+.import-menu > div { position: absolute; right: 0; top: calc(100% + 4px); background: var(--pannello); border: 1px solid var(--linea-forte); border-radius: 8px; box-shadow: 0 12px 30px rgba(0,0,0,.12); z-index: 30; padding: 4px; min-width: 160px; display: flex; flex-direction: column; }
+.import-menu > div button, .import-menu > div a { border: 0; background: none; text-align: left; padding: 8px 10px; border-radius: 6px; cursor: pointer; text-decoration: none; white-space: nowrap; }
+.import-menu > div button:hover, .import-menu > div a:hover { background: var(--sopra); } .import-menu hr { border: 0; border-top: 1px solid var(--linea); margin: 4px 0; width: 100%; }
+.import-menu > div hr:first-child { display: none; }
+/* API e integrazioni */
+.import-api { max-width: 980px; } .import-api h2 { font-size: 17px; letter-spacing: -.02em; margin: 28px 0 10px; }
+.import-riga { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; } .import-riga input.campo { flex: 1 1 220px; width: auto; } .import-riga select.campo { width: auto; }
+.import-nuovo { border: 1px solid var(--testo); border-radius: 8px; padding: 12px; margin-bottom: 12px; }
+.import-copia { position: relative; margin: 6px 0 12px; } .import-copia .btn { position: absolute; top: 6px; right: 6px; background: var(--pannello); }
+.import-codice { font-family: "Geist Mono", ui-monospace, monospace; font-size: 12.5px; background: var(--sopra); border-radius: 8px; padding: 12px 70px 12px 12px; margin: 0; overflow-x: auto; white-space: pre; }
+.import-doc { border-top: 1px solid var(--linea); padding: 10px 0; } .import-doc summary { cursor: pointer; } .import-doc[open] summary { margin-bottom: 10px; }
+.import-doc .etichetta { margin-top: 10px; }
+.import-webhook { margin-top: 12px; } .import-webhook .righe { margin-top: 10px; font-size: 13px; }
+.import-stato { font-size: 12px; font-weight: 550; } .import-stato.ok { color: var(--ok); } .import-stato.fallita { color: var(--errore); } .import-stato.attesa, .import-stato.invio { color: var(--giallo); }
+.import-spento td { opacity: .5; }
+@media (max-width: 860px) {
+  .import { grid-template-columns: minmax(0, 1fr); } .import-lato { grid-column: 1; grid-row: auto; }
+  .import-numeri { grid-template-columns: repeat(2, 1fr); }
+}

@@ -48,11 +48,16 @@ function nuovaSessione(db, u, agente) {
   return { token, utente: pubblico(u) };
 }
 export function esci(db, token) { db.prepare('DELETE FROM _sessioni WHERE token = ?').run(String(token || '')); }
-// dal token al contesto dei permessi { utente, r }
+// dal token al contesto dei permessi { utente, r }. Un token che non è una sessione passa agli altri verificatori
+// (i token personali delle API, server/moduli/import-api.js): f(db, token) → { utente, r } | null.
+const verificatori = [];
+export const aggiungiVerificatore = f => { verificatori.push(f); };
 export function contesto(db, token) {
   if (!token) return null;
   const u = db.prepare('SELECT u.* FROM _sessioni s JOIN _utenti u ON u.id = s.utente WHERE s.token = ? AND s.scade > ? AND u.attivo = 1').get(String(token), new Date().toISOString());
-  return u ? { utente: pubblico(u), r: ruolo(db, u.ruolo) } : null;
+  if (u) return { utente: pubblico(u), r: ruolo(db, u.ruolo) };
+  for (const f of verificatori) { const c = f(db, String(token)); if (c) return c; }
+  return null;
 }
 export function modificaUtente(db, id, { nome, ruolo: r, attivo, password, pin }, { utente = null } = {}) {
   const u = db.prepare('SELECT * FROM _utenti WHERE id = ?').get(id); if (!u) throw new ErroreAccesso('Utente sconosciuto');

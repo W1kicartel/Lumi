@@ -4,7 +4,7 @@ import { editor, titoloDi } from './campi.js';
 import { costruttore, risolvi, apriPop, tipoDi, caricaPersone, pronto } from './filtri.js';
 
 const COLONNE_MAX = 7;
-const visibile = c => !c.archiviato && !c.nascosto_in_lista && !['righe', 'testo_lungo', 'immagine', 'file', 'indirizzo'].includes(c.tipo);
+const visibile = c => !c.archiviato && !c.nascosto_in_lista && !['righe', 'testo_lungo', 'file', 'indirizzo'].includes(c.tipo);
 const prefs = (k, v) => { try { if (v === undefined) return JSON.parse(localStorage.getItem('kubo.' + k) || 'null'); localStorage.setItem('kubo.' + k, JSON.stringify(v)); } catch { return null; } };
 
 // ---------- lista ----------
@@ -13,7 +13,8 @@ const prefs = (k, v) => { try { if (v === undefined) return JSON.parse(localStor
 export function lista(def, contenitore, { schema, poteri = {} }) {
   const stato = prefs('lista.' + def.id) || {};
   const campoKanban = def.campi.find(c => c.tipo === 'stato') || def.campi.find(c => c.tipo === 'scelta');
-  const predefinite = def.campi.filter(visibile).slice(0, COLONNE_MAX).map(c => c.id);
+  // la prima immagine (se c'è) va per prima, come una miniatura
+  const predefinite = [...def.campi.filter(c => visibile(c) && c.tipo === 'immagine').slice(0, 1), ...def.campi.filter(c => visibile(c) && c.tipo !== 'immagine')].slice(0, COLONNE_MAX).map(c => c.id);
   const raggruppabili = def.campi.filter(c => !c.archiviato && (['scelta', 'stato', 'utente', 'si_no'].includes(c.tipo) || (c.tipo === 'relazione' && !c.molti)));
   let q = '', pagina = 1, archiviati = false, viste = [], vista = null;
   let { ordina = null, modo = 'tabella', filtri = [], colonne = predefinite, raggruppa = null } = stato;
@@ -111,6 +112,7 @@ export function lista(def, contenitore, { schema, poteri = {} }) {
     if (q) par.set('q', q); if (archiviati) par.set('arch', '1');
     if (fs.length) par.set('f', JSON.stringify(fs));
     if (ordina) par.set('o', `${ordina.campo}:${ordina.dir}`);
+    contenitore.dataset.query = par.toString();   // i filtri correnti, per chi esporta la lista (web/moduli/import.js)
     const cc = campiColonne(), somme = cc.filter(numerico);
     let r, tot = null;
     try {
