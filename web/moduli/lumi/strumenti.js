@@ -6,6 +6,7 @@
 // di GET /api/lumi/strumenti; i 'leggi' chiamano il server e rispondono subito, gli 'scrivi' chiedono la scheda (anteprima con
 // un gettone) e dopo il Conferma eseguono con quel gettone. Un risultato con «scarica» diventa un file da salvare nel browser
 // (al modello arriva solo il nome). I crea_/modifica_ generati qui chiedono al server le righe in più della scheda (k.lumi.scheda).
+//   (un risultato con «entita» ridisegna la vista aperta, come i crea_ generati qui)
 //   strumenti({ schema, api, poteri, dopoSchema, moduli, scarica, lingua }) → [{ nome, descrizione, schema, leggi | proponi + esegui }]
 
 const ID_RIGA = /^[0-9A-HJKMNP-TV-Z]{17}$/;   // gli id di Kubo (db.js: 9 caratteri di tempo + 8 casuali, base 32)
@@ -212,11 +213,11 @@ export function strumenti({ schema, api, poteri = {}, dopoSchema = async () => {
   if (poteri.schema) lista.push(modificaSchema({ schema, api, dopoSchema, errore }), automazione({ schema, api, errore }));
   if (!moduli) return lista;
   const via = new Set(moduli.sostituiti || []), nomi = new Set((moduli.strumenti || []).map(s => s.nome));
-  return [...lista.filter(s => !via.has(s.nome) && !nomi.has(s.nome)), ...daModuli({ moduli, api, errore, scarica, lingua })];
+  return [...lista.filter(s => !via.has(s.nome) && !nomi.has(s.nome)), ...daModuli({ moduli, api, errore, scarica, lingua, apri })];
 }
 
 // ---------- gli strumenti registrati dai moduli del server (k.lumi) ----------
-export function daModuli({ moduli, api, errore = e => ({ errore: e.message }), scarica = () => {}, lingua = 'it' }) {
+export function daModuli({ moduli, api, errore = e => ({ errore: e.message }), scarica = () => {}, lingua = 'it', apri = () => {} }) {
   const gettoni = new Map();   // argomenti → gettone dell'anteprima (lo vuole il server per eseguire)
   // un file da salvare: al browser il contenuto, al modello solo il nome
   const consegna = r => {
@@ -238,7 +239,7 @@ export function daModuli({ moduli, api, errore = e => ({ errore: e.message }), s
       },
       esegui: async args => {
         const k = JSON.stringify(args ?? {}), gettone = gettoni.get(k); gettoni.delete(k);
-        try { return consegna(await api('POST', `${u}/esegui`, { args: args ?? {}, gettone })); } catch (e) { return errore(e); }
+        try { const r = consegna(await api('POST', `${u}/esegui`, { args: args ?? {}, gettone })); if (r?.entita) apri(r.entita, r.id); return r; } catch (e) { return errore(e); }
       },
     };
   });

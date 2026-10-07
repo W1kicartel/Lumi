@@ -4,7 +4,7 @@ export default {
   'moduli.lumi-serve-chiave-spento': "Per rispondere mi serve la chiave di Claude e che tu mi riaccenda. Ti apro **Gestione → Lumi**: ci vuole un minuto.",
   'moduli.lumi-chiedi-titolare': "Per rispondere mi serve la chiave di Claude: chiedi al titolare di aggiungerla in **Gestione → Lumi**.",
   'moduli.lumi-spento': "Lumi è spento: si riaccende in Gestione → Lumi.",
-  'moduli.lumi-file-pronto': "File pronto: {nome}",
+  'moduli.lumi-file-pronto': 'File pronto: {nome}',
   'moduli.lumi-quasi-pronto': "Lumi è quasi pronto: manca la chiave di Claude.",
   'moduli.lumi-apri': "Apri",
   'moduli.lumi-settimana': "Com'è la settimana",

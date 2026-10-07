@@ -3,7 +3,7 @@ export default {
   'moduli.lumi-serve-chiave-spento': "Para responder preciso da chave do Claude e que você me ligue de novo. Vou abrir **Gestão → Lumi**: leva um minuto.",
   'moduli.lumi-chiedi-titolare': "Para responder preciso da chave do Claude: peça ao proprietário para adicioná-la em **Gestão → Lumi**.",
   'moduli.lumi-spento': "O Lumi está desligado: dá para ligar de novo em Gestão → Lumi.",
-  'moduli.lumi-file-pronto': "Arquivo pronto: {nome}",
+  'moduli.lumi-file-pronto': 'Arquivo pronto: {nome}',
   'moduli.lumi-quasi-pronto': "O Lumi está quase pronto: falta a chave do Claude.",
   'moduli.lumi-apri': "Abrir",
   'moduli.lumi-settimana': "Como está a semana",

@@ -187,7 +187,7 @@ export default function registra({ db, S, D, P, meta, lumi }) {
     }),
     esegui: prova(async ({ ctx, args }) => {
       const x = preparaNuova(ctx, args, 'it'), nuova = D.crea(db, FATTURE, x.f, ctx);
-      return { testo: `Fatto: fattura in bozza per ${x.cliente.nome}, totale ${soldi(x.conti.totale)}.`, id: nuova.id, stato: nuova.stato, totale: x.conti.totale, netto: x.conti.netto,
+      return { testo: `Fatto: fattura in bozza per ${x.cliente.nome}, totale ${soldi(x.conti.totale)}.`, entita: FATTURE, id: nuova.id, stato: nuova.stato, totale: x.conti.totale, netto: x.conti.netto,
         ...(x.errori.length ? { da_sistemare_prima_di_emettere: x.errori } : {}) };
     }),
   });
@@ -208,7 +208,7 @@ export default function registra({ db, S, D, P, meta, lumi }) {
       if (bloccata(f)) throw new Problema(`È già emessa con il numero ${f.numero}.`);
       const errori = controlli(f, clienteDi(ctx, f)); if (errori.length) throw new Problema(`Non emessa: ${errori.join(' ')}`);
       const x = D.modifica(db, FATTURE, f.id, { stato: 'emessa' }, ctx);
-      return { testo: `Fatto: emessa con il numero ${x.numero}.`, id: x.id, numero: x.numero, data: x.data };
+      return { testo: `Fatto: emessa con il numero ${x.numero}.`, entita: FATTURE, id: x.id, numero: x.numero, data: x.data };
     }),
   });
 
@@ -261,7 +261,7 @@ export default function registra({ db, S, D, P, meta, lumi }) {
     esegui: prova(async ({ ctx, args }) => {
       const x = preparaNota(ctx, args, 'it');
       const nota = x.parziale ? D.crea(db, FATTURE, x.nc, ctx) : notaDiCredito(db, { S, D, P, ErroreHttp: Errore }, x.f.id, ctx);
-      return { testo: `Fatto: nota di credito in bozza per la fattura ${x.f.numero}, ${soldi(x.conti.totale)}. Va emessa come una fattura.`, id: nota.id, totale: x.conti.totale };
+      return { testo: `Fatto: nota di credito in bozza per la fattura ${x.f.numero}, ${soldi(x.conti.totale)}. Va emessa come una fattura.`, entita: FATTURE, id: nota.id, totale: x.conti.totale };
     }),
   });
 

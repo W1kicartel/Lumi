@@ -3,7 +3,7 @@ export default {
   'moduli.lumi-serve-chiave-spento': "To answer I need the Claude key and to be switched back on. I'll open **Admin → Lumi** for you: it takes a minute.",
   'moduli.lumi-chiedi-titolare': "To answer I need the Claude key: ask the owner to add it in **Admin → Lumi**.",
   'moduli.lumi-spento': "Lumi is off: switch it back on in Admin → Lumi.",
-  'moduli.lumi-file-pronto': "File ready: {nome}",
+  'moduli.lumi-file-pronto': 'File ready: {nome}',
   'moduli.lumi-quasi-pronto': "Lumi is almost ready: the Claude key is missing.",
   'moduli.lumi-apri': "Open",
   'moduli.lumi-settimana': "How's the week",
