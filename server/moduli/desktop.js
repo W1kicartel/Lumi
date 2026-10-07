@@ -39,6 +39,8 @@ export default function registra({ r, prima, db, P, meta, serve, ErroreHttp, man
   }
   function quotidiano() {
     if (!B.fileDb(db) || ripristinando) return;
+    // i caricamenti lasciati a metà (pagina chiusa) da più di un giorno se ne vanno
+    for (const [k, c] of caricamenti) if (Date.now() - c.inizio > 864e5) { rmSync(c.percorso, { force: true }); caricamenti.delete(k); }
     const oggi = B.nomePer(new Date(), 'x').slice(5, 15);
     if (process.env.KUBO_BACKUP !== '0' && !B.elenco(cartella()).some(b => b.tipo === 'giornaliero' && b.nome.slice(5, 15) === oggi)) {
       try { fai('giornaliero'); } catch (e) { console.error('backup:', e.message); }
@@ -50,8 +52,10 @@ export default function registra({ r, prima, db, P, meta, serve, ErroreHttp, man
 
   // prima di una modifica allo schema, di un modello nuovo o di un import: una copia (al massimo una ogni due minuti,
   // perché in «Personalizza» ogni campo salvato è una richiesta)
-  const primaDi = ({ ctx }) => {
+  // (schema e modelli solo per chi può personalizzare: chi non può riceve un errore e non deve far girare copie)
+  const primaDi = ({ ctx, percorso }) => {
     if (!ctx || !B.fileDb(db) || ripristinando || Date.now() - ultimaModifica < PAUSA_MODIFICA) return;
+    if (!percorso.startsWith('/api/import/') && !P.puoSchema(ctx)) return;
     ultimaModifica = Date.now();
     try { fai('modifica'); } catch (e) { console.error('backup prima della modifica:', e.message); }
   };
@@ -70,9 +74,17 @@ export default function registra({ r, prima, db, P, meta, serve, ErroreHttp, man
   });
 
   // ---------- backup ----------
+  // con una cartella esterna l'elenco mostra anche le copie rimaste accanto ai dati: quelle di prima, e quelle fatte lì
+  // quando il disco esterno non rispondeva
+  const cartelle = () => [...new Set([cartella(), B.cartellaPredefinita(db)].filter(Boolean))];
+  const tutti = () => cartelle().flatMap((c, i) => B.elenco(c).map(b => (i ? { ...b, accanto: true } : b))).sort((a, b) => b.quando.localeCompare(a.quando) || b.nome.localeCompare(a.nome));
   const stato = () => ({ cartella: cartella(), predefinita: B.cartellaPredefinita(db), esterna: !!meta.leggi(db, 'backup.cartella'), automatici: process.env.KUBO_BACKUP !== '0',
-    elenco: B.elenco(cartella()), errore: JSON.parse(meta.leggi(db, 'backup.errore') || 'null'), limiti: B.TIENI, inMemoria: !B.fileDb(db) });
-  const daNome = nome => { if (!B.NOME.test(String(nome))) throw new ErroreHttp(404, 'Backup sconosciuto'); const f = join(cartella(), String(nome)); try { statSync(f); } catch { throw new ErroreHttp(404, 'Backup sconosciuto'); } return f; };
+    elenco: tutti(), errore: JSON.parse(meta.leggi(db, 'backup.errore') || 'null'), limiti: B.TIENI, inMemoria: !B.fileDb(db) });
+  const daNome = nome => {
+    if (!B.NOME.test(String(nome))) throw new ErroreHttp(404, 'Backup sconosciuto');
+    for (const c of cartelle()) { const f = join(c, String(nome)); try { if (statSync(f).isFile()) return f; } catch {} }
+    throw new ErroreHttp(404, 'Backup sconosciuto');
+  };
   const occupato = () => { if (ripristinando) throw new ErroreHttp(409, 'C\'è un ripristino in corso'); };
 
   r('GET', '/api/backup', ({ ctx }) => { titolare(ctx); return stato(); });
@@ -110,7 +122,7 @@ export default function registra({ r, prima, db, P, meta, serve, ErroreHttp, man
     if (dimensione > MAX_CARICATO) throw new ErroreHttp(413, 'Il file è troppo grande');
     for (const [k, c] of caricamenti) if (c.utente === ctx.utente.id) { rmSync(c.percorso, { force: true }); caricamenti.delete(k); }
     const id = randomBytes(12).toString('hex'), c = cartella();
-    caricamenti.set(id, { utente: ctx.utente.id, percorso: join(c, `.caricamento-${id}.tmp`), cartella: c, dimensione, ricevuti: 0 });
+    caricamenti.set(id, { utente: ctx.utente.id, percorso: join(c, `.caricamento-${id}.tmp`), cartella: c, dimensione, ricevuti: 0, inizio: Date.now() });
     try { mkdirSync(c, { recursive: true }); appendFileSync(caricamenti.get(id).percorso, Buffer.alloc(0)); } catch { caricamenti.delete(id); throw new ErroreHttp(500, 'Non riesco a scrivere nella cartella dei backup'); }
     return { id, pezzo: PEZZO };
   });

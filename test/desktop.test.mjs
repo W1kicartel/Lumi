@@ -178,6 +178,9 @@ test('backup: solo il titolare; cartella esterna validata; prima di cambiare lo 
     for (const [m, p] of [['GET', '/api/backup'], ['POST', '/api/backup'], ['POST', '/api/backup/ripristina'], ['PUT', '/api/backup/cartella'], ['POST', '/api/backup/carica'], ['PUT', '/api/aggiornamenti']])
       assert.equal((await k.chiama(m, p, m === 'GET' ? undefined : {})).stato, 403, `${m} ${p}`);
     assert.equal((await k.chiama('GET', '/api/desktop/rete')).stato, 200, 'gli indirizzi li vede chiunque ha l\'accesso');
+    // chi non può personalizzare riceve un errore e non fa girare copie «modifica»
+    assert.equal((await k.chiama('PUT', '/api/schema/clienti', { id: 'clienti' })).stato, 403);
+    assert.ok(!B.elenco(join(k.cartella, 'backup')).some(b => b.tipo === 'modifica'));
     k.usa(tit);
     assert.equal((await k.chiama('PUT', '/api/backup/cartella', { cartella: 'relativa/x' })).stato, 400);
     assert.equal((await k.chiama('PUT', '/api/backup/cartella', { cartella: join(k.cartella, 'file') })).stato, 400, 'non dentro i dati');
@@ -189,6 +192,10 @@ test('backup: solo il titolare; cartella esterna validata; prima di cambiare lo 
     const el = (await k.chiama('GET', '/api/backup')).json.elenco; assert.equal(el.filter(b => b.tipo === 'modifica').length, 1);
     const prima = new DatabaseSync(join(fuori, 'Kubo', el.find(b => b.tipo === 'modifica').nome), { readOnly: true });
     assert.ok(!JSON.parse(prima.prepare("SELECT def FROM _entita WHERE id = 'clienti'").get().def).campi.some(c => c.id === 'nota_prova'), 'la copia è di prima della modifica'); prima.close();
+    // con la cartella esterna si vedono anche le copie rimaste accanto ai dati, e si scaricano
+    const vecchio = B.copia(k.db, join(k.cartella, 'backup'), 'manuale', new Date(2020, 0, 1));
+    const conVecchio = (await k.chiama('GET', '/api/backup')).json.elenco.find(b => b.nome === vecchio.nome);
+    assert.equal(conVecchio?.accanto, true); assert.equal((await k.chiama('GET', `/api/backup/file/${vecchio.nome}`, null, { grezzo: true })).stato, 200);
     // si torna alla cartella accanto ai dati
     assert.equal((await k.chiama('PUT', '/api/backup/cartella', { cartella: '' })).json.esterna, false);
   } finally { await k.chiudi(); k.db.close(); }
@@ -206,6 +213,8 @@ test('carica un backup da fuori: a pezzi, controllato, poi ripristinabile; un fi
       while (da < dati.length) { const p = dati.subarray(da, da + passo); ult = await k.chiama('POST', `/api/backup/carica/${a.json.id}`, { da, pezzo: p.toString('base64') }); if (ult.stato !== 200) return ult; da += p.length; }
       return ult;
     };
+    // i backup vanno in una cartella esterna: il ripristino non deve riportarla a quella del backup
+    const fuori = temp(); assert.equal((await k.chiama('PUT', '/api/backup/cartella', { cartella: fuori })).stato, 200);
     const male = await manda(Buffer.alloc(4096, 7)); assert.equal(male.stato, 400); assert.match(male.json.errore, /non è un backup/);
     const su = await manda(buf); assert.equal(su.stato, 200, JSON.stringify(su.json)); assert.equal(su.json.completo, true); assert.match(su.json.nome, /-caricato\.db$/);
     assert.equal(su.json.info.azienda, 'Bottega Prova');
@@ -214,6 +223,8 @@ test('carica un backup da fuori: a pezzi, controllato, poi ripristinabile; un fi
     const dopo = await k.chiama('GET', '/api/dati/clienti'); assert.equal(dopo.stato, 401);
     assert.equal((await k.chiama('POST', '/api/accedi', { email: 't@prova.it', password: 'password-lunga' })).stato, 200);
     assert.deepEqual(await nomi(k), ['Da Un Altro PC']);
+    const dopoRip = (await k.chiama('GET', '/api/backup')).json;
+    assert.equal(dopoRip.cartella, fuori, 'la cartella dei backup resta quella di adesso'); assert.ok(dopoRip.elenco.some(b => b.tipo === 'sicurezza'), 'e lì c\'è la copia di sicurezza');
     assert.ok(!readdirSync(join(k.cartella)).some(f => f.startsWith('.ripristino-')), 'nessun file provvisorio lasciato');
   } finally { await k.chiudi(); k.db.close(); }
 });

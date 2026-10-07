@@ -10,6 +10,7 @@ import { mkdirSync, readdirSync, statSync, renameSync, rmSync, copyFileSync, exi
 import { join, dirname, resolve, isAbsolute, sep } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { cartellaFile } from './import-file.js';
+import { apri } from '../db.js';
 
 export const NOME = /^kubo-(\d{4})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(giornaliero|modifica|manuale|sicurezza|caricato)\.db$/;
 export const TIENI = { giornalieri: 7, settimanali: 4, mensili: 12, modifica: 10, sicurezza: 5, caricato: 5 };
@@ -117,11 +118,14 @@ export async function ripristina(db, percorso, { cartella, token = null } = {}) 
   const info = verifica(percorso, { versioneMax });
   const vivo = fileDb(db); if (!vivo) throw new Error('Questo database è in memoria');
   const sicurezza = copia(db, cartella, 'sicurezza');
-  const prep = join(dirname(vivo), `.ripristino-${randomBytes(6).toString('hex')}.db`);
+  // il file preparato sta in una cartella provvisoria: apri() di db.js gli fa le migrazioni del motore che mancano (un backup
+  // di una versione vecchia) e la sua copia «prima di migrare» resta lì dentro e se ne va con lei
+  const tmp = join(dirname(vivo), `.ripristino-${randomBytes(6).toString('hex')}`), prep = join(tmp, 'kubo.db');
   try {
+    mkdirSync(tmp);
     const src = new DatabaseSync(percorso, { readOnly: true });
     try { src.exec(`VACUUM INTO '${prep.replaceAll("'", "''")}'`); } finally { src.close(); }
-    const p = new DatabaseSync(prep);
+    const p = apri(prep);
     try {
       const ci = new Set(p.prepare('SELECT name FROM sqlite_master').all().map(x => x.name));
       for (const x of db.prepare("SELECT type, name, sql FROM sqlite_master WHERE name LIKE '\\_%' ESCAPE '\\' AND sql IS NOT NULL ORDER BY type = 'table' DESC").all())
@@ -129,12 +133,18 @@ export async function ripristina(db, percorso, { cartella, token = null } = {}) 
       const s = token && db.prepare('SELECT * FROM _sessioni WHERE token = ?').get(String(token));
       if (s && p.prepare('SELECT 1 FROM _utenti WHERE id = ? AND attivo = 1').get(s.utente))
         p.prepare('INSERT OR REPLACE INTO _sessioni (token, utente, scade, agente) VALUES (?, ?, ?, ?)').run(s.token, s.utente, s.scade, s.agente);
+      // le impostazioni dei backup e delle versioni restano quelle di adesso: altrimenti la cartella dei backup (con la copia
+      // di sicurezza appena fatta) potrebbe tornare quella di allora, o quella di un altro computer per un backup caricato
+      p.exec("DELETE FROM _meta WHERE chiave LIKE 'backup.%' OR chiave LIKE 'aggiornamenti.%'");
+      for (const m of db.prepare("SELECT chiave, valore FROM _meta WHERE chiave LIKE 'backup.%' OR chiave LIKE 'aggiornamenti.%'").all())
+        p.prepare('INSERT INTO _meta (chiave, valore) VALUES (?, ?)').run(m.chiave, m.valore);
       p.exec(`PRAGMA user_version = ${Math.max(versioneMax, p.prepare('PRAGMA user_version').get().user_version)}`);
       await copiaPagine(p, vivo, { rate: 1e9 });
     } finally { p.close(); }
-  } finally { for (const f of [prep, prep + '-wal', prep + '-shm', prep + '-journal']) rmSync(f, { force: true }); }
+  } finally { rmSync(tmp, { recursive: true, force: true }); }
   db.exec('PRAGMA wal_checkpoint(TRUNCATE)');
-  const allegati = existsSync(join(cartella, 'allegati')) ? copiaAllegatiMancanti(join(cartella, 'allegati'), cartellaFile(db)) : 0;
+  const da = join(dirname(percorso), 'allegati');   // gli allegati della cartella del backup (può essere quella accanto ai dati)
+  const allegati = existsSync(da) ? copiaAllegatiMancanti(da, cartellaFile(db)) : 0;
   return { ...info, sicurezza: sicurezza.nome, allegati };
 }
 // al ripristino: i file che il database vuole e che mancano tornano dalla copia; quelli che ci sono non si toccano
