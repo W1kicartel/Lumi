@@ -59,6 +59,9 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, c
     fuso: () => meta.leggi(db, 'fuso') || 'Europe/Rome',
     lumiBudget: () => Math.max(0, Number(meta.leggi(db, 'lumi.budget_mese')) || 0),
   };
+  // le sessioni ferme si chiudono anche senza richieste: così chi ha solo la scheda aperta smette di ricevere gli eventi (SSE)
+  const chiudiFerme = () => { try { db.prepare('DELETE FROM _sessioni WHERE COALESCE(ultimo, inizio) < ?').run(new Date(Date.now() - imp.inattivita() * 6e4).toISOString()); } catch {} };
+  setInterval(chiudiFerme, 6e4).unref();
   const usaFuso = () => { impostaFuso(imp.fuso()); orologio.fuso = imp.fuso(); };
   usaFuso();
   const titolare = ctx => { if (serve(ctx).r.id !== 'titolare' || ctx.viaToken) throw new P.ErrorePermesso('Solo il titolare cambia le impostazioni di sicurezza'); return ctx; };
