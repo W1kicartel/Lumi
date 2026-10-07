@@ -18,9 +18,14 @@ export function interno(ip) {
       || (x === 192 && y === 168) || (x === 192 && y === 0) || (x === 198 && (y === 18 || y === 19)) || x >= 224;
   }
   if (isIP(a) === 6) {
-    if (a === '::' || a === '::1') return true;
-    const p = parseInt(a.split(':')[0] || '0', 16);
-    return (p & 0xfe00) === 0xfc00 || (p & 0xffc0) === 0xfe80 || (p & 0xff00) === 0xff00 || a.startsWith('64:ff9b:') || a.startsWith('2001:db8:');
+    // gli 8 gruppi per intero (l'URL scrive [::ffff:127.0.0.1] come [::ffff:7f00:1], che porta comunque a 127.0.0.1)
+    let h; try { h = new URL(`http://[${a}]/`).hostname; } catch { return true; }   // con la zona (fe80::1%en0): rete locale
+    const [s, d] = h.slice(1, -1).split('::'), sx = s ? s.split(':') : [], dx = d ? d.split(':') : [];
+    const g = [...sx, ...Array(8 - sx.length - dx.length).fill('0'), ...dx].map(x => parseInt(x, 16) || 0);
+    if (g.slice(0, 7).every(x => x === 0) && g[7] <= 1) return true;   // :: e ::1
+    if (g.slice(0, 5).every(x => x === 0) && (g[5] === 0xffff || g[5] === 0)) return interno(`${g[6] >> 8}.${g[6] & 255}.${g[7] >> 8}.${g[7] & 255}`);   // IPv4 dentro IPv6
+    const p = g[0];
+    return (p & 0xfe00) === 0xfc00 || (p & 0xffc0) === 0xfe80 || (p & 0xff00) === 0xff00 || (p === 0x64 && g[1] === 0xff9b) || (p === 0x2001 && g[1] === 0xdb8);
   }
   return true;   // non è un indirizzo: meglio no
 }

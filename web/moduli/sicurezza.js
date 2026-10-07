@@ -44,7 +44,7 @@ async function pagina(contenuto, k) {
     sessioni.replaceChildren(...[h('div.sic-scorri', h('table.tabella.sic-tabella', h('thead', h('tr', h('th', 'Dispositivo'), h('th', 'Ultimo uso'), h('th', 'Indirizzo'), h('th', ''))),
       h('tbody', l.map(s => h('tr', h('td', dispositivo(s.agente), s.questa ? h('span.sic-questo', ' · questo') : null), h('td', quando(s.ultimo || s.inizio)), h('td.mono', s.ip || '—'),
         h('td', s.questa ? null : h('button.btn.piccolo.nudo', { on: { click: async () => { await k.api('DELETE', `/sicurezza/sessioni/${s.id}`); disegnaSessioni(); } } }, 'Scollega'))))))),
-      l.length > 1 ? h('button.btn.sic-spazio', { on: { click: async () => { const r = await k.api('POST', '/sicurezza/esci-ovunque'); k.toast(`Scollegati ${r.chiuse} dispositivi`); disegnaSessioni(); } } }, 'Scollega tutti gli altri') : null].filter(Boolean));
+      l.length > 1 ? h('button.btn.sic-spazio', { on: { click: async () => { const r = await k.api('POST', '/sicurezza/esci-ovunque'); k.toast(r.chiuse === 1 ? 'Scollegato 1 dispositivo' : `Scollegati ${r.chiuse} dispositivi`); disegnaSessioni(); } } }, 'Scollega tutti gli altri') : null].filter(Boolean));
   }
   disegnaSessioni().catch(e => sessioni.replaceChildren(h('div.avviso', e.message)));
   if (titolare) corpo.append(await impostazioni(k), await ruoli(k));
@@ -84,10 +84,12 @@ async function ruoli(k) {
 
 async function persone(k) {
   const { h } = k, l = (await k.get('/utenti')).filter(u => u.attivo && u.id !== k.stato.utente.id);
+  const nomi = new Map((await k.get('/ruoli').catch(() => [])).map(r => [r.id, r.nome]));
+  const azione = (u, corpo, ok) => async () => { try { await k.api('POST', `/sicurezza/utenti/${u.id}`, corpo); k.toast(ok); } catch (e) { k.toast(e.message); } };
   return h('section.foglio', h('h2', 'Persone'), l.length ? h('div.sic-scorri', h('table.tabella.sic-tabella', h('thead', h('tr', h('th', 'Nome'), h('th', 'Ruolo'), h('th', ''), h('th', ''))),
-    h('tbody', l.map(u => h('tr', h('td', u.nome), h('td', u.ruolo),
-      h('td', h('button.btn.piccolo.nudo', { on: { click: async () => { await k.api('POST', `/sicurezza/utenti/${u.id}`, { cambioObbligatorio: true }); k.toast(`${u.nome} cambierà la password al prossimo accesso`); } } }, 'Obbliga a cambiare password')),
-      h('td', h('button.btn.piccolo.nudo', { on: { click: async () => { await k.api('POST', `/sicurezza/utenti/${u.id}`, { esciOvunque: true }); k.toast(`${u.nome} è stato scollegato ovunque`); } } }, 'Scollega ovunque'))))))) : h('p.nota', 'Nessun\'altra persona.'));
+    h('tbody', l.map(u => h('tr', h('td', u.nome), h('td', nomi.get(u.ruolo) || u.ruolo),
+      h('td', h('button.btn.piccolo.nudo', { on: { click: azione(u, { cambioObbligatorio: true }, `${u.nome} cambierà la password al prossimo accesso`) } }, 'Obbliga a cambiare password')),
+      h('td', h('button.btn.piccolo.nudo', { on: { click: azione(u, { esciOvunque: true }, `${u.nome} è stato scollegato ovunque`) } }, 'Scollega ovunque'))))))) : h('p.nota', 'Nessun\'altra persona.'));
 }
 
 export default {

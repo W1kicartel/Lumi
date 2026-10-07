@@ -21,17 +21,18 @@ export function ruolo(db, id) {
 // un calcolato che usa un campo nascosto lo rivelerebbe (margine = prezzo - costo dice il costo): si nasconde anche lui,
 // come i calcolati che usano un campo nascosto delle righe o della riga collegata. Si ripete finché non cambia più niente.
 export function nascondiDerivati(db, r) {
-  if (!r || r.id === 'titolare' || !Object.values(r.entita || {}).some(x => Object.values(x?.campi || {}).includes('nascosto'))) return r;
+  if (!r || r.id === 'titolare' || !Object.values(r.entita || {}).some(x => Object.values(x?.campi || {}).includes('nascosto') || x?.leggi === false)) return r;
   const out = structuredClone(r), defs = new Map(S.elenco(db).map(d => [d.id, d]));
   const st = (e, c) => regola(out, e).campi[c];
-  for (let giro = 0, cambiato = true; cambiato && giro < 5; giro++) {
+  for (let giro = 0, cambiato = true; cambiato && giro <= defs.size * 50; giro++) {   // ogni giro nasconde almeno un campo: finisce
     cambiato = false;
     for (const d of defs.values()) for (const c of S.campiAttivi(d)) {
       if (c.tipo !== 'calcolato' || st(d.id, c.id) === 'nascosto') continue;
       let usati; try { usati = [...nomi(analizza(c.formula || ''))]; } catch { continue; }
       const svela = usati.some(n => {
         const [a, b] = n.split('.'); if (st(d.id, a) === 'nascosto') return true;
-        const k = b && S.campo(d, a); return !!(k && ['righe', 'relazione'].includes(k.tipo) && st(k.entita, b) === 'nascosto');
+        // un campo delle righe o della riga collegata: nascosto, o di una sezione che il ruolo non può leggere
+        const k = b && S.campo(d, a); return !!(k && ['righe', 'relazione'].includes(k.tipo) && (st(k.entita, b) === 'nascosto' || !regola(out, k.entita).leggi));
       });
       if (svela) { out.entita ||= {}; out.entita[d.id] ||= {}; out.entita[d.id].campi = { ...(out.entita[d.id].campi || {}), [c.id]: 'nascosto' }; cambiato = true; }
     }

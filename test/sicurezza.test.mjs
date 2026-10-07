@@ -159,9 +159,9 @@ test('campi nascosti: i calcolati che li usano, l\'ordinamento e la storia non l
 });
 
 test('webhook: niente rete interna (SSRF), salvo opzione esplicita', async () => {
-  for (const ip of ['127.0.0.1', '10.1.2.3', '172.16.0.1', '192.168.1.10', '169.254.169.254', '0.0.0.0', '::1', 'fd00::1', 'fe80::1', '::ffff:127.0.0.1', '100.64.0.1']) assert.equal(interno(ip), true, ip);
-  for (const ip of ['8.8.8.8', '151.101.1.69', '2a00:1450:4002::1']) assert.equal(interno(ip), false, ip);
-  for (const u of ['http://127.0.0.1/x', 'http://localhost:8080/', 'http://[::1]/', 'http://0x7f000001/', 'http://2130706433/', 'http://192.168.1.1/', 'http://router.lan/', 'http://intranet/', 'http://u:p@esempio.it/'])
+  for (const ip of ['127.0.0.1', '10.1.2.3', '172.16.0.1', '192.168.1.10', '169.254.169.254', '0.0.0.0', '::1', 'fd00::1', 'fe80::1', '::ffff:127.0.0.1', '::ffff:7f00:1', '::ffff:a9fe:a9fe', '0:0:0:0:0:0:0:1', '100.64.0.1']) assert.equal(interno(ip), true, ip);
+  for (const ip of ['8.8.8.8', '151.101.1.69', '2a00:1450:4002::1', '::ffff:808:808']) assert.equal(interno(ip), false, ip);
+  for (const u of ['http://127.0.0.1/x', 'http://localhost:8080/', 'http://[::1]/', 'http://[::ffff:127.0.0.1]/', 'http://[::ffff:a9fe:a9fe]/', 'http://0x7f000001/', 'http://2130706433/', 'http://192.168.1.1/', 'http://router.lan/', 'http://intranet/', 'http://u:p@esempio.it/'])
     assert.ok(controllaUrl(u), u);
   assert.equal(controllaUrl('https://hooks.esempio.it/kubo'), null);
   assert.equal(controllaUrl('http://127.0.0.1:9/x', { interni: true }), null);
