@@ -68,15 +68,17 @@ function disegnaLato() {
   const voci = schema.filter(e => !e.nascosta);
   lato.replaceChildren(
     h('div.marca', h('svg', { html: '' }), h('div', 'Kubo', h('small', stato.azienda || ''))),
-    h('nav', voci.map(e => h('a', { href: `#/e/${e.id}`, 'data-e': e.id }, icona(e.icona), e.nome)),
+    // le voci dei moduli con «inCima» (es. Cruscotto, Agenda) vanno sopra le sezioni
+    h('nav', vociModuli().filter(v => v.inCima).map(v => h('a', { href: v.href }, icona(v.icona), v.nome)), voci.map(e => h('a', { href: `#/e/${e.id}`, 'data-e': e.id }, icona(e.icona), e.nome)),
       stato.poteri?.schema || stato.poteri?.utenti ? h('div.sez', 'Gestione') : null,
       stato.poteri?.schema ? h('a', { href: '#/personalizza/nuova' }, icona('griglia'), 'Nuova sezione') : null,
       stato.poteri?.utenti ? h('a', { href: '#/utenti' }, icona('utenti'), 'Persone e permessi') : null,
-      ...MODULI.flatMap(m => { try { return m.lato?.(contesto()) || []; } catch { return []; } }).map(v => [v.sezione ? h('div.sez', v.sezione) : null, h('a', { href: v.href }, icona(v.icona), v.nome)])),
+      ...vociModuli().filter(v => !v.inCima).map(v => [v.sezione ? h('div.sez', v.sezione) : null, h('a', { href: v.href }, icona(v.icona), v.nome)])),
     h('div.piede', h('span.chi', stato.utente.nome), h('button.btn.nudo.piccolo', { title: 'Esci', on: { click: async () => { await api('POST', '/esci'); location.reload(); } } }, icona('esci'))));
   lato.querySelector('.marca svg').replaceWith(logo());
   evidenzia();
 }
+const vociModuli = () => MODULI.flatMap(m => { try { return m.lato?.(contesto()) || []; } catch { return []; } });
 function logo() { const s = icona('griglia'); s.style.width = '22px'; s.style.height = '22px'; return s; }
 function evidenzia() { const e = location.hash.split('/')[2]; lato?.querySelectorAll('nav a').forEach(a => a.classList.toggle('attivo', a.getAttribute('href') === `#/e/${e}` || a.getAttribute('href') === location.hash)); }
 
@@ -88,7 +90,7 @@ function instrada() {
   const daModulo = MODULI.find(m => m.rotte?.[tipo]);
   if (daModulo) return daModulo.rotte[tipo](contenuto, contesto(), a, b);
   if (tipo === 'e' && def && !b) {
-    vistaAttiva = { entita: def.id, ...lista(def, contenuto, { schema }) };
+    vistaAttiva = { entita: def.id, ...lista(def, contenuto, { schema, poteri: stato.poteri }) };
     for (const m of MODULI) for (const x of m.azioniLista?.(def, contesto()) || []) contenuto.querySelector('.testa').append(x);
     if (stato.poteri?.schema) contenuto.querySelector('.testa').append(h('a.btn.nudo', { href: `#/personalizza/${def.id}`, title: 'Personalizza questa sezione' }, icona('matita'), 'Personalizza'));
     return;
@@ -96,6 +98,9 @@ function instrada() {
   if (tipo === 'e' && def && b) return scheda(def, b, contenuto, { schema, azioni: riga => MODULI.flatMap(m => m.azioniScheda?.(def, riga, contesto()) || []) });
   if (tipo === 'personalizza' && stato.poteri?.schema) return personalizza(a === 'nuova' ? null : def, contenuto, { schema, ricaricaSchema });
   if (tipo === 'utenti' && stato.poteri?.utenti) return utenti(contenuto, { schema });
+  // la pagina iniziale: quella di un modulo («casa», es. il cruscotto), altrimenti la prima sezione
+  const casa = MODULI.find(m => m.casa)?.casa;
+  if (casa && !tipo) { location.hash = casa; return; }
   const primo = schema.find(e => !e.nascosta);
   if (primo) location.hash = `#/e/${primo.id}`;
   else contenuto.replaceChildren(h('div.corpo', h('div.vuoto', 'Nessuna sezione. ', stato.poteri?.schema ? h('a', { href: '#/personalizza/nuova' }, 'Creane una') : 'Chiedi al titolare di crearne una.')));

@@ -1,60 +1,156 @@
 // Le viste generiche: lista (tabella o kanban) e scheda. Tutto si genera dallo schema dell'entità.
 import { h, api, get, toast, formatta, destra, chip, ErroreApi } from './ui.js';
 import { editor, titoloDi } from './campi.js';
+import { costruttore, risolvi, apriPop, tipoDi } from './filtri.js';
 
 const COLONNE_MAX = 7;
 const visibile = c => !c.archiviato && !c.nascosto_in_lista && !['righe', 'testo_lungo', 'immagine', 'file', 'indirizzo'].includes(c.tipo);
 const prefs = (k, v) => { try { if (v === undefined) return JSON.parse(localStorage.getItem('kubo.' + k) || 'null'); localStorage.setItem('kubo.' + k, JSON.stringify(v)); } catch { return null; } };
 
 // ---------- lista ----------
-export function lista(def, contenitore, { schema }) {
+// Stato della lista: ricerca, filtri (costruttore in filtri.js), colonne scelte e ordinate, raggruppamento con i totali
+// (dal server, su tutte le righe filtrate), ordinamento, tabella o kanban; e le viste salvate «per me» o «per tutti».
+export function lista(def, contenitore, { schema, poteri = {} }) {
   const stato = prefs('lista.' + def.id) || {};
-  let q = '', pagina = 1, ordina = stato.ordina || null, filtri = [], modo = stato.modo || 'tabella', archiviati = false;
   const campoKanban = def.campi.find(c => c.tipo === 'stato') || def.campi.find(c => c.tipo === 'scelta');
-  const colonne = def.campi.filter(visibile).slice(0, COLONNE_MAX);
+  const predefinite = def.campi.filter(visibile).slice(0, COLONNE_MAX).map(c => c.id);
+  const raggruppabili = def.campi.filter(c => !c.archiviato && (['scelta', 'stato', 'utente', 'si_no'].includes(c.tipo) || (c.tipo === 'relazione' && !c.molti)));
+  let q = '', pagina = 1, archiviati = false, viste = [], vista = null;
+  let { ordina = null, modo = 'tabella', filtri = [], colonne = predefinite, raggruppa = null } = stato;
+  const ricorda = () => prefs('lista.' + def.id, { ordina, modo, filtri, colonne, raggruppa, vista: vista?.id || null });
+  const campiColonne = () => colonne.map(id => def.campi.find(c => c.id === id && !c.archiviato)).filter(Boolean);
   const cerca = h('input.campo.cerca', { type: 'search', placeholder: `Cerca in ${def.nome.toLowerCase()}…`, on: { input: () => { q = cerca.value; pagina = 1; ricarica(); } } });
-  const corpo = h('div'), barraFiltri = h('div.filtri');
+  const corpo = h('div');
   const nuovo = def.puo.crea ? h('a.btn.pieno', { href: `#/e/${def.id}/nuovo`, testo: '+ Nuovo' }) : null;
-  const modi = campoKanban ? h('div', { stile: { display: 'flex', gap: '4px' } },
-    h('button.btn.piccolo', { testo: 'Tabella', on: { click: () => { modo = 'tabella'; prefs('lista.' + def.id, { ...stato, modo }); ricarica(); } } }),
-    h('button.btn.piccolo', { testo: 'Kanban', on: { click: () => { modo = 'kanban'; prefs('lista.' + def.id, { ...stato, modo }); ricarica(); } } })) : null;
+  const bModo = m => h('button.btn.piccolo', { testo: m === 'tabella' ? 'Tabella' : 'Kanban', class: modo === m ? 'pieno' : '', on: { click: ev => { modo = m; ev.currentTarget.parentNode.querySelectorAll('button').forEach(b => b.classList.toggle('pieno', b === ev.currentTarget)); ricorda(); ricarica(); } } });
+  const modi = campoKanban ? h('div.lista-modi', bModo('tabella'), bModo('kanban')) : null;
   const arch = h('button.btn.piccolo.nudo', { testo: 'Archiviati', on: { click: () => { archiviati = !archiviati; arch.classList.toggle('pieno', archiviati); pagina = 1; ricarica(); } } });
+  const sceltaVista = h('select.campo.lista-vista', { title: 'Viste salvate', on: { change: () => usaVista(viste.find(v => v.id === sceltaVista.value) || null) } });
+  const barraFiltri = costruttore(def, filtri, { schema, cambia: l => { filtri = l; pagina = 1; ricorda(); segnaModificata(); ricarica(); } });
+  const bColonne = h('button.btn.piccolo', { testo: 'Colonne', on: { click: () => sceltaColonne(bColonne) } });
+  const sRaggruppa = h('select.campo.piccolo', { title: 'Raggruppa', on: { change: () => { raggruppa = sRaggruppa.value || null; pagina = 1; ricorda(); segnaModificata(); ricarica(); } } },
+    h('option', { value: '', testo: 'Senza gruppi' }), raggruppabili.map(c => h('option', { value: c.id, testo: `Gruppi: ${c.nome.toLowerCase()}`, selected: raggruppa === c.id })));
+  const bSalva = h('button.btn.piccolo', { testo: 'Salva vista', on: { click: () => salvaVista(bSalva) } });
   contenitore.replaceChildren(
-    h('div.testa', h('h1', def.nome), cerca, modi, arch, nuovo),
-    h('div.corpo', barraFiltri, corpo));
-  disegnaFiltri();
+    h('div.testa', h('h1', def.nome), sceltaVista, cerca, modi, arch, nuovo),
+    h('div.corpo', h('div.lista-barra', barraFiltri, h('div.lista-strumenti', raggruppabili.length ? sRaggruppa : null, bColonne, bSalva)), corpo));
 
-  function disegnaFiltri() {
-    const scegli = h('select.campo', { stile: { width: 'auto' }, on: { change: () => { const c = def.campi.find(x => x.id === scegli.value); if (c) aggiungiFiltro(c); scegli.value = ''; } } },
-      h('option', { value: '', testo: '+ Filtro' }), def.campi.filter(c => !c.archiviato && ['scelta', 'stato', 'si_no', 'relazione', 'calcolato', 'data', 'numero', 'valuta'].includes(c.tipo) && !c.molti).map(c => h('option', { value: c.id, testo: c.nome })));
-    barraFiltri.replaceChildren(...filtri.map((f, i) => h('span.filtro', `${f.etichetta}`, h('button', { testo: '×', on: { click: () => { filtri.splice(i, 1); disegnaFiltri(); ricarica(); } } }))), scegli);
+  // ---------- viste salvate ----------
+  async function caricaViste(scegli) {
+    viste = await get(`/viste/${def.id}`).catch(() => []);
+    if (scegli !== undefined) vista = viste.find(v => v.id === scegli) || null;
+    else if (stato.vista) vista = viste.find(v => v.id === stato.vista) || null;
+    sceltaVista.replaceChildren(h('option', { value: '', testo: 'Tutti' }),
+      viste.filter(v => v.perTutti).length ? h('optgroup', { label: 'Per tutti' }, viste.filter(v => v.perTutti).map(v => h('option', { value: v.id, testo: v.nome }))) : null,
+      viste.filter(v => !v.perTutti).length ? h('optgroup', { label: 'Mie' }, viste.filter(v => !v.perTutti).map(v => h('option', { value: v.id, testo: v.nome }))) : null);
+    sceltaVista.value = vista?.id || ''; sceltaVista.hidden = !viste.length;
   }
-  function aggiungiFiltro(c) {
-    let f = null;
-    if (['scelta', 'stato'].includes(c.tipo)) { const o = prompt(`${c.nome}: ${c.opzioni.map(o => o.nome).join(', ')}`); const op = c.opzioni.find(x => x.nome.toLowerCase() === String(o || '').trim().toLowerCase()); if (op) f = { campo: c.id, op: '=', valore: op.id, etichetta: `${c.nome}: ${op.nome}` }; }
-    else if (c.tipo === 'si_no' || (c.tipo === 'calcolato' && !c.formato)) f = { campo: c.id, op: '=', valore: true, etichetta: c.nome };
-    else if (c.tipo === 'relazione') { const t = prompt(`${c.nome} contiene:`); if (t) f = { campo: c.id, op: 'nonvuoto', etichetta: `${c.nome}: c'è` }; }
-    else { const t = prompt(`${c.nome} maggiore o uguale a:`); if (t !== null && t !== '') f = { campo: c.id, op: '>=', valore: c.tipo === 'data' ? t : Number(t.replace(',', '.')), etichetta: `${c.nome} ≥ ${t}` }; }
-    if (f) { filtri.push(f); disegnaFiltri(); pagina = 1; ricarica(); }
+  function usaVista(v) {
+    vista = v;
+    filtri = v?.filtri || []; ordina = v?.ordina || null; raggruppa = v?.raggruppa || null; modo = v?.modo || 'tabella';
+    colonne = v?.colonne?.length ? v.colonne : predefinite;
+    if (v?.incompleta) toast('Alcuni filtri di questa vista usano campi che non vedi: li ho tolti');
+    barraFiltri.imposta(filtri); sRaggruppa.value = raggruppa || ''; pagina = 1;
+    modi?.querySelectorAll('button').forEach(b => b.classList.toggle('pieno', b.textContent.toLowerCase() === modo));
+    ricorda(); segnaModificata(); ricarica();
+  }
+  const attuale = () => ({ filtri, colonne, ordina, raggruppa, modo });
+  function segnaModificata() {
+    const diversa = vista && JSON.stringify(attuale()) !== JSON.stringify({ filtri: vista.filtri || [], colonne: vista.colonne?.length ? vista.colonne : predefinite, ordina: vista.ordina || null, raggruppa: vista.raggruppa || null, modo: vista.modo || 'tabella' });
+    bSalva.textContent = diversa ? 'Salva le modifiche…' : 'Salva vista';
+  }
+  function salvaVista(ancora) {
+    const nome = h('input.campo', { value: vista && (vista.mia || (vista.perTutti && poteri.schema)) ? vista.nome : '', placeholder: 'Es. Da consegnare questa settimana', required: true, maxLength: 60 });
+    const perTutti = h('input', { type: 'checkbox', checked: !!vista?.perTutti && !!poteri.schema });
+    const err = h('div.errore-campo');
+    const puoAggiornare = vista && (vista.mia || (vista.perTutti && poteri.schema));
+    const manda = async (comeNuova) => {
+      if (!nome.value.trim()) { err.textContent = 'Dai un nome alla vista'; return; }
+      const corpoV = { nome: nome.value.trim(), perTutti: perTutti.checked, ...attuale() };
+      try {
+        const v = puoAggiornare && !comeNuova ? await api('PUT', `/viste/${def.id}/${vista.id}`, corpoV) : await api('POST', `/viste/${def.id}`, corpoV);
+        pop.chiudi(); toast(perTutti.checked ? 'Vista salvata per tutti' : 'Vista salvata per te'); await caricaViste(v.id); ricorda(); segnaModificata();
+      } catch (e) { err.textContent = e.message; }
+    };
+    const pop = apriPop(ancora, h('form', { on: { submit: ev => { ev.preventDefault(); manda(false); } } },
+      h('div.pop-titolo', puoAggiornare ? `Vista «${vista.nome}»` : 'Salva questa vista'),
+      h('div.nota', 'Filtri, colonne, gruppi e ordine di adesso.'), nome,
+      poteri.schema ? h('label.pop-opz', perTutti, 'La vedono tutti') : h('div.nota', 'La vedrai solo tu.'), err,
+      h('div.pop-azioni',
+        puoAggiornare ? h('button.btn.piccolo.nudo.pericolo', { type: 'button', testo: 'Elimina', on: { click: async () => {
+          if (!confirm(`Eliminare la vista «${vista.nome}»?`)) return;
+          try { await api('DELETE', `/viste/${def.id}/${vista.id}`); pop.chiudi(); toast('Vista eliminata'); await caricaViste(null); usaVista(null); } catch (e) { err.textContent = e.message; } } } }) : null,
+        puoAggiornare ? h('button.btn.piccolo', { type: 'button', testo: 'Salva come nuova', on: { click: () => manda(true) } }) : null,
+        h('button.btn.pieno.piccolo', { type: 'submit', testo: puoAggiornare ? 'Aggiorna' : 'Salva' }))));
   }
 
+  // ---------- colonne: quali e in che ordine ----------
+  function sceltaColonne(ancora) {
+    const tutte = def.campi.filter(c => !c.archiviato && !['righe', 'immagine', 'file'].includes(c.tipo));
+    let ordine = [...colonne.filter(id => tutte.some(c => c.id === id)), ...tutte.filter(c => !colonne.includes(c.id)).map(c => c.id)];
+    const scelte = new Set(colonne), elenco = h('div.pop-colonne');
+    const applica = () => { colonne = ordine.filter(id => scelte.has(id)); ricorda(); segnaModificata(); ricarica(); };
+    const disegna = () => elenco.replaceChildren(...ordine.map((id, i) => {
+      const c = tutte.find(x => x.id === id);
+      const sposta = d => { const j = i + d; if (j < 0 || j >= ordine.length) return; [ordine[i], ordine[j]] = [ordine[j], ordine[i]]; disegna(); applica(); };
+      return h('div.pop-colonna', h('label.pop-opz', h('input', { type: 'checkbox', checked: scelte.has(id), on: { change: ev => { ev.target.checked ? scelte.add(id) : scelte.delete(id); if (!scelte.size) { scelte.add(id); ev.target.checked = true; } applica(); } } }), c.nome),
+        h('button.btn.nudo.piccolo', { type: 'button', title: 'Su', testo: '↑', disabled: i === 0, on: { click: () => sposta(-1) } }),
+        h('button.btn.nudo.piccolo', { type: 'button', title: 'Giù', testo: '↓', disabled: i === ordine.length - 1, on: { click: () => sposta(1) } }));
+    }));
+    disegna();
+    apriPop(ancora, h('div', h('div.pop-titolo', 'Colonne'), elenco, h('div.pop-azioni', h('button.btn.piccolo.nudo', { type: 'button', testo: 'Come all\'inizio', on: { click: () => { colonne = predefinite; ordine = [...predefinite, ...tutte.filter(c => !predefinite.includes(c.id)).map(c => c.id)]; scelte.clear(); predefinite.forEach(x => scelte.add(x)); disegna(); applica(); } } }))));
+  }
+
+  // ---------- dati ----------
+  const numerico = c => ['valuta', 'numero', 'durata'].includes(c.tipo) || (c.tipo === 'calcolato' && ['valuta', 'numero'].includes(tipoDi(c)));
+  let giro = 0;
   async function ricarica() {
-    const par = new URLSearchParams({ p: pagina, n: modo === 'kanban' ? 300 : 50 });
+    const mio = ++giro, fs = risolvi(def, filtri), gruppi = raggruppa && modo === 'tabella' && !archiviati;
+    const par = new URLSearchParams({ p: gruppi ? 1 : pagina, n: modo === 'kanban' || gruppi ? 500 : 50 });
     if (q) par.set('q', q); if (archiviati) par.set('arch', '1');
-    if (filtri.length) par.set('f', JSON.stringify(filtri.map(({ etichetta, ...f }) => f)));
+    if (fs.length) par.set('f', JSON.stringify(fs));
     if (ordina) par.set('o', `${ordina.campo}:${ordina.dir}`);
-    let r; try { r = await get(`/dati/${def.id}?${par}`); } catch (e) { corpo.replaceChildren(h('div.avviso', e.message)); return; }
+    const cc = campiColonne(), somme = cc.filter(numerico);
+    let r, tot = null;
+    try {
+      [r, tot] = await Promise.all([get(`/dati/${def.id}?${par}`),
+        (somme.length || gruppi) && !archiviati ? api('POST', '/aggregati', { entita: def.id, filtri: fs, cerca: q, per: gruppi ? raggruppa : null, misure: [{ misura: 'conta' }, ...somme.map(c => ({ misura: 'somma', campo: c.id }))] }).catch(() => null) : null]);
+    } catch (e) { corpo.replaceChildren(h('div.avviso', e.message)); return; }
+    if (mio !== giro) return;
     if (!r.totale) { corpo.replaceChildren(h('div.vuoto', q || filtri.length ? 'Nessun risultato.' : archiviati ? 'Niente in archivio.' : `Ancora nessun elemento in ${def.nome.toLowerCase()}.`, def.puo.crea && !q && !filtri.length && !archiviati ? h('div', { stile: { marginTop: '12px' } }, h('a.btn.pieno', { href: `#/e/${def.id}/nuovo`, testo: '+ Crea il primo' })) : null)); return; }
     if (modo === 'kanban' && campoKanban) return kanban(r.righe);
-    const th = colonne.map(c => h('th', { class: [destra(c) ? 'num' : '', ordina?.campo === c.id ? 'ord' + (ordina.dir === 'asc' ? ' su' : '') : ''].join(' '),
-      on: { click: () => { ordina = ordina?.campo === c.id && ordina.dir === 'desc' ? { campo: c.id, dir: 'asc' } : { campo: c.id, dir: 'desc' }; prefs('lista.' + def.id, { ...stato, modo, ordina }); ricarica(); } } }, c.nome));
-    const tr = r.righe.map(x => h('tr', { on: { click: () => { location.hash = `#/e/${def.id}/${x.id}`; } } }, colonne.map(c => h('td', { class: destra(c) ? 'num' : '' }, formatta(c, x[c.id])))));
+    const th = cc.map(c => h('th', { class: [destra(c) ? 'num' : '', ordina?.campo === c.id ? 'ord' + (ordina.dir === 'asc' ? ' su' : '') : ''].join(' '),
+      on: { click: () => { ordina = ordina?.campo === c.id && ordina.dir === 'desc' ? { campo: c.id, dir: 'asc' } : { campo: c.id, dir: 'desc' }; ricorda(); segnaModificata(); ricarica(); } } }, c.nome));
+    const riga = x => h('tr', { on: { click: () => { location.hash = `#/e/${def.id}/${x.id}`; } } }, cc.map(c => h('td', { class: destra(c) ? 'num' : '' }, formatta(c, x[c.id]))));
+    // una riga di totali: le somme dal server (su tutte le righe filtrate, non solo questa pagina)
+    const totali = (valori, testo, classe) => h('tr', { class: classe }, cc.map((c, i) => {
+      const k = somme.indexOf(c);
+      if (k >= 0 && valori) return h('td.num', formatta(tot.valuta[k + 1] ? { tipo: 'valuta' } : { tipo: 'numero' }, valori[k + 1]));
+      return h('td', i === 0 ? testo : '');
+    }));
+    let tbody;
+    if (gruppi) {
+      const c = def.campi.find(x => x.id === raggruppa), chiave = x => { const v = x[raggruppa]; return v && typeof v === 'object' ? v.id : c.tipo === 'si_no' ? (v ? 'si' : 'no') : v ?? ''; };
+      const perGruppo = new Map(); for (const x of r.righe) { const k = String(chiave(x)); if (!perGruppo.has(k)) perGruppo.set(k, []); perGruppo.get(k).push(x); }
+      const ordineG = (tot?.gruppi || []).filter(g => g.conta).map(g => g.chiave); for (const k of perGruppo.keys()) if (!ordineG.includes(k)) ordineG.push(k);
+      tbody = h('tbody', ordineG.map(k => {
+        const g = tot?.gruppi?.find(x => x.chiave === k), righe = perGruppo.get(k) || [];
+        const nome = g?.etichetta ?? (k || 'Nessuno'), opz = c.opzioni?.find(o => o.id === k);
+        return [h('tr.gruppo', cc.map((col, i) => {
+          const s = somme.indexOf(col);
+          if (i === 0) return h('td', opz ? chip(opz) : h('b', String(nome)), h('span.nota', ` · ${g?.conta ?? righe.length}`));
+          return h('td', { class: s >= 0 ? 'num' : '' }, s >= 0 && g ? formatta(tot.valuta[s + 1] ? { tipo: 'valuta' } : { tipo: 'numero' }, g.valori[s + 1]) : '');
+        })), righe.map(riga)];
+      }));
+    } else tbody = h('tbody', r.righe.map(riga));
+    const piede = tot && somme.length ? h('tfoot', totali(tot.totali, `Totale (${tot.totali[0]})`, 'totale')) : null;
     const pagine = Math.ceil(r.totale / r.perPagina);
-    corpo.replaceChildren(h('table.tabella', h('thead', h('tr', th)), h('tbody', tr)),
-      h('div.pagine', `${r.totale} in tutto`, pagine > 1 ? [h('button.btn.piccolo', { testo: '‹', disabled: pagina <= 1, on: { click: () => { pagina--; ricarica(); } } }), `${pagina} / ${pagine}`, h('button.btn.piccolo', { testo: '›', disabled: pagina >= pagine, on: { click: () => { pagina++; ricarica(); } } })] : null));
+    corpo.replaceChildren(h('div.tabella-scorre', h('table.tabella', h('thead', h('tr', th)), tbody, piede)),
+      h('div.pagine', gruppi && r.totale > r.righe.length ? `Mostro le prime ${r.righe.length} di ${r.totale} (i totali contano tutte)` : `${r.totale} in tutto`,
+        !gruppi && pagine > 1 ? [h('button.btn.piccolo', { testo: '‹', disabled: pagina <= 1, on: { click: () => { pagina--; ricarica(); } } }), `${pagina} / ${pagine}`, h('button.btn.piccolo', { testo: '›', disabled: pagina >= pagine, on: { click: () => { pagina++; ricarica(); } } })] : null));
   }
   function kanban(righe) {
-    const c = campoKanban, titolo = def.campi.find(x => x.id === def.titolo) || colonne[0], sotto = colonne.filter(x => x !== titolo && x !== c).slice(0, 2);
+    const cc = campiColonne(), c = campoKanban, titolo = def.campi.find(x => x.id === def.titolo) || cc[0], sotto = cc.filter(x => x !== titolo && x !== c).slice(0, 2);
     corpo.replaceChildren(h('div.kanban', c.opzioni.map(o => {
       const qui = righe.filter(x => x[c.id] === o.id);
       const col = h('div.colonna', { on: {
@@ -67,6 +163,7 @@ export function lista(def, contenitore, { schema }) {
       return col;
     })));
   }
+  caricaViste().then(() => { if (vista) segnaModificata(); });
   ricarica();
   return { ricarica };
 }
@@ -76,6 +173,8 @@ export async function scheda(def, id, contenitore, { schema, azioni: azioniModul
   const nuovo = id === 'nuovo';
   // nuovo: i valori predefiniti dello schema (@oggi = oggi; @utente lo mette il server)
   let riga = nuovo ? Object.fromEntries(def.campi.filter(c => c.predefinito !== undefined && c.predefinito !== '@utente').map(c => [c.id, c.predefinito === '@oggi' ? new Date().toISOString().slice(0, 10) : c.predefinito])) : {};
+  // valori messi da un'altra vista (es. il calendario: la data dello spazio cliccato), una volta sola
+  if (nuovo) { try { const k = 'kubo.precompila.' + def.id, x = JSON.parse(sessionStorage.getItem(k) || 'null'); sessionStorage.removeItem(k); if (x) riga = { ...riga, ...x }; } catch {} }
   if (!nuovo) { try { riga = await get(`/dati/${def.id}/${id}`); } catch (e) { contenitore.replaceChildren(h('div.corpo', h('div.avviso', e.message))); return; } }
   let sporco = false;
   const editori = {}, errori = {};

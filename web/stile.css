@@ -127,7 +127,7 @@ textarea.campo { min-height: 90px; resize: vertical; }
 
 @media (max-width: 860px) {
   .app { grid-template-columns: 1fr; grid-template-rows: auto 1fr; height: auto; min-height: 100vh; }
-  .lato { border-right: 0; border-bottom: 1px solid var(--linea); }
+  .lato { border-right: 0; border-bottom: 1px solid var(--linea); min-width: 0; }
   .lato nav { display: flex; overflow-x: auto; padding: 4px 8px 8px; } .lato nav .sez { display: none; } .lato nav a { white-space: nowrap; }
   .lato .piede { display: none; }
   .scheda { grid-template-columns: 1fr; }

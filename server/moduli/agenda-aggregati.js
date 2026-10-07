@@ -88,10 +88,10 @@ export function filtriFra(def, campo, da, a, fuso = FUSO) {
 }
 
 // ---------- lettura completa (a pagine) con i permessi dell'utente ----------
-export function tutte(db, entita, filtri, ctx, { limite = MAX_RIGHE } = {}) {
+export function tutte(db, entita, filtri, ctx, { limite = MAX_RIGHE, cerca = '' } = {}) {
   const out = []; let pagina = 1, totale = 0;
   for (;;) {
-    const r = D.elenca(db, entita, { filtri, pagina, perPagina: 500 }, ctx);
+    const r = D.elenca(db, entita, { filtri, cerca, pagina, perPagina: 500 }, ctx);
     totale = r.totale; out.push(...r.righe);
     if (r.righe.length < 500 || out.length >= limite || out.length >= totale) break;
     pagina++;
@@ -101,7 +101,7 @@ export function tutte(db, entita, filtri, ctx, { limite = MAX_RIGHE } = {}) {
 
 // ---------- l'aggregato ----------
 // richiesta: { entita, misure: [{ misura: 'conta'|'somma'|'media'|'min'|'max', campo? }] (o misura+campo singoli),
-//   filtri, per: 'giorno'|'settimana'|'mese'|'anno'|<id campo>|null, campoData, periodo | da+a, confronta }
+//   filtri, cerca, per: 'giorno'|'settimana'|'mese'|'anno'|<id campo>|null, campoData, periodo | da+a, confronta }
 // → { gruppi: [{ chiave, etichetta, valori: [..] }], totali: [..], prima?: [..], valuta: [bool..], da, a }
 export function aggrega(db, rich, ctx, opz = {}) {
   const fuso = opz.fuso || FUSO, adesso = opz.adesso || new Date();
@@ -123,7 +123,7 @@ export function aggrega(db, rich, ctx, opz = {}) {
   const giorno = /^\d{4}-\d{2}-\d{2}$/;
   if (pr && (!giorno.test(pr.da) || !giorno.test(pr.a))) throw new D.ErroreDati('Periodo non valido (AAAA-MM-GG)');
   if (pr && !campoData) throw new D.ErroreDati('Serve un campo data per il periodo');
-  const leggi = (da, a) => tutte(db, def.id, [...filtri, ...(da ? filtriFra(def, campoData, da, a, fuso) : [])], ctx);
+  const leggi = (da, a) => tutte(db, def.id, [...filtri, ...(da ? filtriFra(def, campoData, da, a, fuso) : [])], ctx, { cerca: String(rich.cerca || '').slice(0, 200) });
   const { righe, troncato } = leggi(pr?.da, pr?.a);
 
   const valuta = misure.map(m => isValuta(db, def, m.campo));
