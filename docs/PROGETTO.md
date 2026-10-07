@@ -18,7 +18,7 @@ Kubo sono i blocchi: ogni azienda monta i suoi e il gestionale prende la sua for
 4. **Nessuna modifica perde dati.** Rinominare un campo non tocca il database, perché le colonne hanno id stabili. Un campo eliminato viene archiviato e si può ripristinare. Il cambio di tipo converte i valori e prima avverte di quelli che non si possono convertire. Ogni modifica allo schema finisce nel registro.
 5. **Ogni modifica ha un autore.** Il registro (audit) dice chi ha cambiato cosa, quando, e qual era il valore prima.
 6. **L'AI propone, la persona decide.** Lumi legge con i permessi dell'utente. Ogni scrittura, sui dati o sullo schema, è una proposta con Conferma / Annulla.
-7. **Italia prima, mondo poi.** Codice fiscale e partita IVA, IVA, fattura elettronica (FatturaPA/SDI) e numerazione per anno arrivano come moduli. Le lingue sono `it` ed `en` fin dall'inizio.
+7. **Italia prima, mondo poi.** Codice fiscale e partita IVA, IVA, fattura elettronica (FatturaPA/SDI) e numerazione per anno arrivano come moduli. Le lingue sono sei fin dall'inizio: italiano, inglese, spagnolo, francese, tedesco e portoghese del Brasile ([LINGUE.md](LINGUE.md)).
 
 ## Architettura
 

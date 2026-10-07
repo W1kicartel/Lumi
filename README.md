@@ -7,6 +7,7 @@
 - **Lo monti tu.** Sezioni, campi, stati, formule alla Excel in italiano, automazioni e permessi si cambiano da **Personalizza**. Nessuna modifica perde dati: un campo tolto si archivia, un cambio di tipo che perderebbe valori si ferma e ti dice quali.
 - **I dati stanno da te.** Un solo file SQLite su un PC o un piccolo server in ufficio; gli altri entrano dal browser della rete locale, anche dal telefono. Funziona senza internet.
 - **C'è Lumi.** Chiedi a parole: «quanto ho incassato questa settimana?», «aggiungi la taglia agli articoli». Lumi legge con i tuoi permessi e propone; ogni modifica la confermi tu.
+- **In sei lingue.** Italiano, inglese, spagnolo, francese, tedesco e portoghese del Brasile: ognuno sceglie la sua, l'azienda sceglie la valuta ([docs/LINGUE.md](docs/LINGUE.md)).
 
 Gratis, licenza MIT, zero dipendenze: basta Node ≥ 22.5.
 

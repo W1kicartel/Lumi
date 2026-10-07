@@ -10,3 +10,5 @@ Ogni file `*.js` di questa cartella esporta di default un oggetto. L'app lo cari
 - `azioniScheda(def, riga, k)`, che restituisce i bottoni da mettere in testa alla scheda di una riga (per esempio «Stampa»).
 
 `k = { stato, schema, ricaricaSchema, h, api, get, toast, icona }`. Gli stili del modulo vanno in un suo `<style>` (prefisso delle classi = nome del modulo) oppure in `web/moduli/<nome>.css`.
+
+I testi del modulo passano da `t()` di `web/lingua.js`, con le chiavi nel catalogo `moduli` delle sei lingue (`web/lingue/<codice>/moduli.js`). Le regole sono in [docs/LINGUE.md](../../docs/LINGUE.md).

@@ -60,6 +60,8 @@ export function creaServer(db) {
   D.ascolta((ev, _db, ctx) => { if (!ev.interno) manda({ tipo: ev.tipo, entita: ev.entita, id: ev.id, da: ctx?.utente?.id ?? null }); });
   A.suAvviso(a => manda({ tipo: 'avviso', ...a }));
   const tentativi = new Map();   // ip → [orari] degli accessi falliti
+  // chi ritocca il corpo di un errore prima che parta (le lingue: server/moduli/lingue.js): f(corpo, { req, ctx }) → corpo
+  const ritocchiErrore = [], suErrore = f => { ritocchiErrore.push(f); };
 
   function ctxDi(req) {
     const auth = req.headers.authorization || '';
@@ -151,7 +153,7 @@ export function creaServer(db) {
   r('PUT', '/api/ruoli/:id', ({ ctx, p, corpo }) => { if (!P.puoUtenti(serve(ctx))) throw new P.ErrorePermesso(); P.salvaRuolo(db, { ...corpo, id: p.id }); return P.ruolo(db, p.id); });
 
   r('GET', '/api/moduli', () => moduliWeb());
-  for (const m of MODULI_SERVER) if (typeof m.registra === 'function') m.registra({ r, prima, db, S, D, P, A, M, U, meta, serve, ErroreHttp, manda, primoAvvio, controllo });
+  for (const m of MODULI_SERVER) if (typeof m.registra === 'function') m.registra({ r, prima, db, S, D, P, A, M, U, meta, serve, ErroreHttp, manda, primoAvvio, controllo, suErrore });
 
   async function statico(req, res, percorso) {
     // il motore delle formule è lo stesso nel server e nel browser
@@ -204,7 +206,9 @@ export function creaServer(db) {
         : e instanceof P.ErrorePermesso ? [403, {}] : e instanceof U.ErroreAccesso ? [ctx ? 400 : 401, {}] : e instanceof SyntaxError ? [400, {}] : [500, {}];
       if (stato === 500) console.error(e);
       if (res.headersSent) { res.end(); return; }
-      res.writeHead(stato, risposta.intestazioni).end(JSON.stringify({ errore: stato === 500 ? 'Errore interno' : e.message, ...extra }));
+      let corpoErrore = { errore: stato === 500 ? 'Errore interno' : e.message, ...extra };
+      for (const f of ritocchiErrore) try { corpoErrore = f(corpoErrore, { req, ctx }) || corpoErrore; } catch (x) { console.error(x); }
+      res.writeHead(stato, risposta.intestazioni).end(JSON.stringify(corpoErrore));
     }
   });
 }

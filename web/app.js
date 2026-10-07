@@ -6,6 +6,7 @@ import { personalizza } from './personalizza.js';
 import { usaSchema } from './campi.js';
 import { utenti } from './utenti.js';
 import { filtriDaIndirizzo } from './filtri.js';
+import { t, LINGUE, lingua, imposta, VALUTE, valutaProposta } from './lingua.js';
 
 const app = document.getElementById('app');
 let stato = null, schema = [], eventi = null, vistaAttiva = null;
@@ -30,25 +31,33 @@ async function ricaricaSchema() { schema = await get('/schema'); usaSchema(schem
 
 // ---------- primo avvio ----------
 async function primoAvvio() {
-  const modelli = await get('/modelli');
+  const modelli = await get(`/lingua/modelli?l=${lingua}`).catch(() => get('/modelli'));
+  const sValuta = h('select.campo', VALUTE.map(v => h('option', { value: v, testo: v, selected: v === valutaProposta() })));
   const f = Object.fromEntries(['azienda', 'nome', 'email', 'password'].map(k => [k, h('input.campo', { name: k, type: k === 'password' ? 'password' : k === 'email' ? 'email' : 'text', required: true, minLength: k === 'password' ? 8 : undefined, autocomplete: k === 'password' ? 'new-password' : undefined })]));
   const err = h('div');
-  const codice = stato.serveCodice ? h('input.campo.mono', { name: 'codice', required: true, autocomplete: 'off', placeholder: 'es. 3FA9C2D1' }) : null;
+  const codice = stato.serveCodice ? h('input.campo.mono', { name: 'codice', required: true, autocomplete: 'off', placeholder: t('comune.codice-avvio-es') }) : null;
   const form = h('form.scatola', { on: { submit: async ev => {
     ev.preventDefault(); err.replaceChildren();
     const scelti = [...form.querySelectorAll('input[name=modello]:checked')].map(x => x.value);
-    try { await api('POST', '/configura', { azienda: f.azienda.value, nome: f.nome.value, email: f.email.value, password: f.password.value, modelli: scelti, codice: codice?.value }); location.hash = ''; location.reload(); }
+    // la lingua e la valuta dell'azienda prima dei modelli: i modelli si installano già tradotti
+    try { await api('PUT', '/lingua/azienda', { lingua, valuta: sValuta.value, codice: codice?.value }); await api('POST', '/configura', { azienda: f.azienda.value, nome: f.nome.value, email: f.email.value, password: f.password.value, modelli: scelti, codice: codice?.value }); location.hash = ''; location.reload(); }
     catch (e) { err.replaceChildren(h('div.avviso', e.message)); }
   } } },
-    h('h1', 'Benvenuto in Kubo'), h('p', 'Il gestionale che si monta come vuoi tu. Parti da un modello, poi cambia tutto quello che vuoi.'),
-    err, codice ? h('div.riga', h('label.etichetta', 'Codice di avvio (è scritto nel terminale o nel log dove gira Kubo)'), codice) : null,
-    h('div.riga', h('label.etichetta', 'Nome dell\'azienda'), f.azienda),
-    h('div.riga', h('label.etichetta', 'Il tuo nome'), f.nome), h('div.riga', h('label.etichetta', 'Email'), f.email),
-    h('div.riga', h('label.etichetta', 'Password (almeno 8 caratteri)'), f.password),
-    h('label.etichetta', 'Da dove partiamo? (se ne possono aggiungere altri dopo)'),
+    h('div.lingue-scegli', sceltaLingua()), h('h1', t('comune.benvenuto')), h('p', t('comune.benvenuto-sotto')),
+    err, codice ? h('div.riga', h('label.etichetta', t('comune.codice-avvio')), codice) : null,
+    h('div.riga', h('label.etichetta', t('comune.nome-azienda')), f.azienda),
+    h('div.riga', h('label.etichetta', t('comune.tuo-nome')), f.nome), h('div.riga', h('label.etichetta', t('comune.email')), f.email),
+    h('div.riga', h('label.etichetta', t('comune.password-nuova')), f.password),
+    h('div.riga', h('label.etichetta', t('comune.valuta')), sValuta),
+    h('label.etichetta', t('comune.da-dove')),
     h('div.modelli', modelli.map((m, i) => h('label.modello', h('input', { type: 'checkbox', name: 'modello', value: m.id, checked: i === 0 }), h('div', h('b', m.nome), h('span', m.descrizione))))),
-    h('button.btn.pieno', { type: 'submit', stile: { width: '100%', justifyContent: 'center', padding: '11px' } }, 'Inizia'));
+    h('button.btn.pieno', { type: 'submit', stile: { width: '100%', justifyContent: 'center', padding: '11px' } }, t('comune.inizia')));
   app.replaceChildren(h('div.centro', form));
+}
+// la lingua prima dell'accesso: si ricorda in questo browser (lingua.js) e la pagina si ricarica nella lingua scelta
+function sceltaLingua() {
+  return h('select.campo.piccolo', { title: t('comune.lingua'), 'aria-label': t('comune.lingua'), stile: { ...STILE_LINGUA, float: 'right', marginBottom: '6px' }, on: { change: ev => { try { localStorage.setItem('kubo.lingua', ev.target.value); } catch { } location.reload(); } } },
+    Object.entries(LINGUE).map(([c, l]) => h('option', { value: c, testo: l.nome, selected: c === lingua })));
 }
 
 // ---------- accesso ----------
@@ -59,9 +68,9 @@ function accesso() {
     ev.preventDefault(); err.replaceChildren();
     try { await api('POST', '/accedi', { email: email.value, password: pw.value }); location.hash = ''; location.reload(); }
     catch (e) { err.replaceChildren(h('div.avviso', e.message)); pw.select(); }
-  } } }, h('h1', stato.azienda || 'Kubo'), h('p', 'Accedi per continuare.'), err,
-    h('div.riga', h('label.etichetta', 'Email'), email), h('div.riga', h('label.etichetta', 'Password'), pw),
-    h('button.btn.pieno', { type: 'submit', stile: { width: '100%', justifyContent: 'center', padding: '11px' } }, 'Accedi'));
+  } } }, h('div.lingue-scegli', sceltaLingua()), h('h1', stato.azienda || 'Kubo'), h('p', t('comune.accedi-per')), err,
+    h('div.riga', h('label.etichetta', t('comune.email')), email), h('div.riga', h('label.etichetta', t('comune.password')), pw),
+    h('button.btn.pieno', { type: 'submit', stile: { width: '100%', justifyContent: 'center', padding: '11px' } }, t('comune.accedi')));
   app.replaceChildren(h('div.centro', form)); email.focus();
 }
 
@@ -74,13 +83,20 @@ function disegnaLato() {
     h('div.marca', h('svg', { html: '' }), h('div', 'Kubo', h('small', stato.azienda || ''))),
     // le voci dei moduli con «inCima» (es. Cruscotto, Agenda) vanno sopra le sezioni
     h('nav', vociModuli().filter(v => v.inCima).map(v => h('a', { href: v.href }, icona(v.icona), v.nome)), voci.map(e => h('a', { href: `#/e/${e.id}`, 'data-e': e.id }, icona(e.icona), e.nome)),
-      stato.poteri?.schema || stato.poteri?.utenti ? h('div.sez', 'Gestione') : null,
-      stato.poteri?.schema ? h('a', { href: '#/personalizza/nuova' }, icona('griglia'), 'Nuova sezione') : null,
-      stato.poteri?.utenti ? h('a', { href: '#/utenti' }, icona('utenti'), 'Persone e permessi') : null,
+      stato.poteri?.schema || stato.poteri?.utenti ? h('div.sez', t('comune.gestione')) : null,
+      stato.poteri?.schema ? h('a', { href: '#/personalizza/nuova' }, icona('griglia'), t('comune.nuova-sezione')) : null,
+      stato.poteri?.utenti ? h('a', { href: '#/utenti' }, icona('utenti'), t('comune.persone-permessi')) : null,
       ...vociModuli().filter(v => !v.inCima).map(v => [v.sezione ? h('div.sez', v.sezione) : null, h('a', { href: v.href }, icona(v.icona), v.nome)])),
-    h('div.piede', h('span.chi', stato.utente.nome), h('button.btn.nudo.piccolo', { title: 'Esci', on: { click: async () => { await api('POST', '/esci'); location.reload(); } } }, icona('esci'))));
+    h('div.piede', h('span.chi', stato.utente.nome), linguaUtente(), h('button.btn.nudo.piccolo', { title: t('comune.esci'), on: { click: async () => { await api('POST', '/esci'); location.reload(); } } }, icona('esci'))));
   lato.querySelector('.marca svg').replaceWith(logo());
   evidenzia();
+}
+// lo stile dei due selettori della lingua: piccolo e discreto, con i colori del tema (stile.css)
+const STILE_LINGUA = { font: 'inherit', fontSize: '12px', color: 'var(--tenue)', background: 'transparent', border: '1px solid var(--linea)', borderRadius: '6px', padding: '3px 4px', cursor: 'pointer' };
+// il selettore della lingua nel piede: la scelta si salva sul server per questo utente (lingua.js, imposta)
+function linguaUtente() {
+  return h('select.lingua-piede', { title: t('comune.lingua'), 'aria-label': t('comune.lingua'), stile: STILE_LINGUA, on: { change: ev => imposta(ev.target.value) } },
+    Object.entries(LINGUE).map(([c]) => h('option', { value: c, testo: c.toUpperCase(), selected: c === lingua })));
 }
 const vociModuli = () => MODULI.flatMap(m => { try { return m.lato?.(contesto()) || []; } catch { return []; } });
 function logo() { const s = icona('griglia'); s.style.width = '22px'; s.style.height = '22px'; return s; }
@@ -97,7 +113,7 @@ function instrada() {
   if (tipo === 'e' && def && !b) {
     vistaAttiva = { entita: def.id, ...lista(def, contenuto, { schema, poteri: stato.poteri }) };
     for (const m of MODULI) for (const x of m.azioniLista?.(def, contesto()) || []) contenuto.querySelector('.testa').append(x);
-    if (stato.poteri?.schema) contenuto.querySelector('.testa').append(h('a.btn.nudo', { href: `#/personalizza/${def.id}`, title: 'Personalizza questa sezione' }, icona('matita'), 'Personalizza'));
+    if (stato.poteri?.schema) contenuto.querySelector('.testa').append(h('a.btn.nudo', { href: `#/personalizza/${def.id}`, title: t('comune.personalizza-sezione') }, icona('matita'), t('comune.personalizza')));
     return;
   }
   if (tipo === 'e' && def && b) return scheda(def, b, contenuto, { schema, azioni: riga => MODULI.flatMap(m => m.azioniScheda?.(def, riga, contesto()) || []) });
@@ -108,7 +124,7 @@ function instrada() {
   if (casa && !tipo) { location.hash = casa; return; }
   const primo = schema.find(e => !e.nascosta);
   if (primo) location.hash = `#/e/${primo.id}`;
-  else contenuto.replaceChildren(h('div.corpo', h('div.vuoto', 'Nessuna sezione. ', stato.poteri?.schema ? h('a', { href: '#/personalizza/nuova' }, 'Creane una') : 'Chiedi al titolare di crearne una.')));
+  else contenuto.replaceChildren(h('div.corpo', h('div.vuoto', t('comune.nessuna-sezione'), ' ', stato.poteri?.schema ? h('a', { href: '#/personalizza/nuova' }, t('comune.creane-una')) : t('comune.chiedi-titolare'))));
 }
 
 // ---------- tempo reale: quando un altro modifica, la lista si aggiorna da sola ----------
@@ -123,4 +139,4 @@ function collegaEventi() {
   };
 }
 
-avvio().catch(e => { app.replaceChildren(h('div.centro', h('div.scatola', h('h1', 'Qualcosa non va'), h('p', e.message)))); });
+avvio().catch(e => { app.replaceChildren(h('div.centro', h('div.scatola', h('h1', t('comune.qualcosa-non-va')), h('p', e.message)))); });

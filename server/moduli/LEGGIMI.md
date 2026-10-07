@@ -13,6 +13,9 @@ Ogni file `*.js` di questa cartella esporta di default `registra(k)`. Il server 
 - `ErroreHttp(stato, messaggio)`;
 - `manda(evento)`, che manda un evento in tempo reale ai browser collegati;
 - `controllo(f)`, per un controllo che gira prima di ogni rotta `/api/*`. `f({ req, res, ctx, token, metodo, percorso, corpo, ip })` lancia un errore per fermare la richiesta, o restituisce `{ ctx: null }` per trattarla come senza accesso. Per esempio `sicurezza.js` lo usa per le sessioni scadute, le password da cambiare e i tentativi di accesso.
+- `suErrore(f)`, per ritoccare il corpo di ogni errore prima che parta: `f(corpo, { req, ctx }) → corpo` (lo usa `lingue.js` per tradurre i messaggi).
+
+I modelli si possono adattare prima dell'installazione con `M.ritocchi.push((modello, db) => modello)`: per esempio, `lingue.js` traduce i nomi.
 
 Le regole:
 
