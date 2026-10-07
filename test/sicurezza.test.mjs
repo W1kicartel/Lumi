@@ -228,6 +228,14 @@ test('percorso SQL dei calcolati: stessi risultati del motore, filtri e ordiname
     // ordinare per totale: stesso ordine dei valori calcolati dal motore
     const ord = D.elenca(db, 'vendite', { ordina: [{ campo: 'totale', dir: 'desc' }], perPagina: 500 }).righe.map(r => r.totale);
     assert.deepEqual(ord, [...ord].sort((a, b) => b - a));
+    // i totali memorizzati (m_totale) restano giusti dopo ogni scrittura: righe cambiate, tolte, aggiunte, vendita nuova
+    assert.ok(db.prepare("SELECT 1 FROM pragma_table_info('d_vendite') WHERE name = 'm_totale'").get());
+    const una = D.elenca(db, 'vendite', { perPagina: 1 }).righe[0], piena = D.leggi(db, 'vendite', una.id);
+    D.modifica(db, 'vendite', una.id, { righe: [{ id: piena.righe[0].id, quantita: 50 }, { articolo: arts[3].id, quantita: 1, prezzo: 999 }] });
+    D.crea(db, 'vendite', { data: '2026-10-15', righe: [{ articolo: arts[2].id, quantita: 3, prezzo: 41.5 }] });
+    D.elimina(db, 'vendite', D.elenca(db, 'vendite', { perPagina: 3 }).righe[2].id);
+    confronta('vendite', { filtri: [{ campo: 'totale', op: '>', valore: 20 }] });
+    for (const r of D.elenca(db, 'vendite', { perPagina: 500 }).righe) assert.equal(Math.round(db.prepare('SELECT m_totale v FROM d_vendite WHERE id = ?').get(r.id).v * 100), Math.round(r.totale * 100), r.id);
     // l'aggregato leggero dà le stesse somme di quello completo
     const { aggrega } = await import('../server/moduli/agenda-aggregati.js');
     const rich = { entita: 'vendite', misure: [{ misura: 'somma', campo: 'totale' }, { misura: 'somma', campo: 'pezzi' }], per: 'mese', da: '2026-10-01', a: '2026-10-31' };

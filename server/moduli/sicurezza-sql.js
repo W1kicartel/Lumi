@@ -19,6 +19,7 @@ let alias = 0;
 // → { sql, tipo: 'n' | 't' | 'b' } oppure null (non traducibile)
 export function traduci(db, def, formula, tab = S.tabella(def.id), prof = 0) {
   if (prof > 4) return null;
+  if (prof === 0) alias = 0;   // alias sempre uguali per la stessa formula: la traduzione fa anche da «versione» dei memorizzati
   let albero; try { albero = analizza(formula); } catch { return null; }
   if (albero.t === 'nome') return null;   // un campo da solo: il motore restituisce null dove SQL darebbe 0
   return nodo(db, def, albero, tab, prof);
@@ -118,9 +119,54 @@ export function indici(db, def) {
   } catch { /* una tabella appena cambiata: si riprova la prossima volta */ fatti.get(db).delete(chiave); }
 }
 
+// ---------- calcolati memorizzati ----------
+// SOMMA(righe.x) in una sottoquery costa una lettura delle righe figlie per ogni riga: per ordinare o filtrare 50.000 vendite
+// sono 200.000 righe. Questi calcolati si memorizzano in una colonna m_<campo> della tabella (con indice), riempita in un
+// colpo solo con la stessa espressione SQL e poi tenuta al passo a ogni scrittura (del padre o delle righe figlie), dentro la
+// stessa transazione. Se la formula o le formule delle righe cambiano, cambia la traduzione e la colonna si riempie di nuovo.
+// Non si memorizza niente che dipenda dal giorno (OGGI) o da una riga collegata (che cambia senza avvisare il padre).
+const TIPO_COL = { n: 'REAL', b: 'INTEGER', t: 'TEXT' };
+function memorizzabile(db, def, c, sq) {
+  if (!sq || !/\(SELECT COALESCE\(SUM/.test(sq.sql) || / k\d+ WHERE /.test(sq.sql) || /'\d{4}-\d{2}-\d{2}'/.test(sq.sql) || /OGGI|TODAY|@oggi/i.test(c.formula || '')) return false;
+  return true;
+}
+function memo(db, def, c, sq) {
+  const T = S.tabella(def.id), col = `m_${c.id}`;
+  const x = db.prepare('SELECT espressione FROM _sicurezza_memo WHERE entita = ? AND campo = ?').get(def.id, c.id);
+  if (x?.espressione !== sq.sql) {
+    if (!db.prepare(`PRAGMA table_info(${T})`).all().some(k => k.name === col)) db.exec(`ALTER TABLE ${T} ADD COLUMN ${col} ${TIPO_COL[sq.tipo]}`);
+    db.exec(`UPDATE ${T} SET ${col} = ${sq.sql}`);
+    db.exec(`CREATE INDEX IF NOT EXISTS x_${def.id}_${col} ON ${T}(${col})`);
+    db.prepare('INSERT INTO _sicurezza_memo (entita, campo, espressione) VALUES (?, ?, ?) ON CONFLICT(entita, campo) DO UPDATE SET espressione = excluded.espressione').run(def.id, c.id, sq.sql);
+  }
+  return { sql: `${T}.${col}`, tipo: sq.tipo };
+}
+// a ogni scrittura: le righe dei padri che dipendono da questa entità (o la riga stessa) si ricalcolano
+const nId = v => (v && typeof v === 'object' ? v.id : v) ?? null;
+function aggiornaMemo(ev, db) {
+  let l; try { l = db.prepare('SELECT entita, campo, espressione FROM _sicurezza_memo').all(); } catch { return; }
+  if (!l.length) return;
+  for (const m of l) {
+    const def = S.leggi(db, m.entita); if (!def) continue;
+    const T = S.tabella(def.id), ids = new Set();
+    if (m.entita === ev.entita) ids.add(ev.id);
+    for (const c of S.campiAttivi(def)) if (c.tipo === 'righe' && c.entita === ev.entita) { ids.add(nId(ev.dopo?.[c.campo])); ids.add(nId(ev.prima?.[c.campo])); }
+    ids.delete(null); ids.delete(undefined); if (!ids.size) continue;
+    const up = db.prepare(`UPDATE ${T} SET m_${m.campo} = ${m.espressione} WHERE id = ?`);
+    for (const id of ids) up.run(String(id));
+  }
+}
+
 // collega il percorso SQL a dati.js (KUBO_SENZA_SQL=1 lo spegne: serve a misurare il prima e dopo in test/carico.mjs)
 export function installaSql(db, { D }) {
   if (!D.estensioni || process.env.KUBO_SENZA_SQL === '1') return;
-  D.estensioni.sqlCalcolato = (dbx, def, c) => traduci(dbx, def, c.formula || '');
+  db.exec('CREATE TABLE IF NOT EXISTS _sicurezza_memo (entita TEXT NOT NULL, campo TEXT NOT NULL, espressione TEXT NOT NULL, PRIMARY KEY (entita, campo))');
+  D.estensioni.sqlCalcolato = (dbx, def, c) => {
+    const sq = traduci(dbx, def, c.formula || '');
+    if (!memorizzabile(dbx, def, c, sq)) return sq;
+    try { return memo(dbx, def, c, sq); } catch { return sq; }
+  };
   D.estensioni.indici = indici;
+  if (!ascoltatore) { ascoltatore = true; D.ascolta((ev, dbx) => { if (['crea', 'modifica', 'elimina', 'ripristina'].includes(ev.tipo)) aggiornaMemo(ev, dbx); }); }
 }
+let ascoltatore = false;
