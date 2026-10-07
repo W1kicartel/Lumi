@@ -124,6 +124,8 @@ export default function registra({ r, db, S, D, P, A, meta, serve, ErroreHttp })
     P.verifica(ctx, def.id, 'leggi');
     const campo = id => { const c = S.campo(def, id); if (!c || c.archiviato || P.statoCampo(ctx, def.id, id) === 'nascosto') throw new ErroreHttp(400, `Campo sconosciuto «${id}» in ${def.nome}`); return c; };
     const f = Array.isArray(filtri) ? [...filtri] : [];
+    const giorno = x => { if (!/^\d{4}-\d{2}-\d{2}$/.test(String(x)) || isNaN(new Date(x))) throw new ErroreHttp(400, `Data non valida «${x}»: usa AAAA-MM-GG`); return x; };
+    if (dal) giorno(dal); if (al) giorno(al);
     if (dal || al) {
       const cd = campo_data || S.campiAttivi(def).find(c => c.tipo === 'data' || c.tipo === 'data_ora')?.id || 'creato';
       const ora = cd === 'creato' || cd === 'modificato' || campo(cd).tipo === 'data_ora';
@@ -131,13 +133,14 @@ export default function registra({ r, db, S, D, P, A, meta, serve, ErroreHttp })
       if (al) f.push({ campo: cd, op: '<=', valore: ora ? new Date(al + 'T23:59:59.999').toISOString() : al });
     }
     const sommati = (Array.isArray(somma) ? somma : [somma]).filter(Boolean).map(campo), gruppo = raggruppa ? campo(raggruppa) : null;
-    const righe = [];
+    const righe = []; let totale = 0;
     for (let pagina = 1; pagina <= 20; pagina++) {
       const x = D.elenca(db, def.id, { filtri: f, cerca: testo || '', perPagina: 500, pagina }, ctx);
-      righe.push(...x.righe); if (righe.length >= x.totale) break;
+      totale = x.totale; righe.push(...x.righe); if (righe.length >= x.totale || !x.righe.length) break;
     }
     const somme = rr => Object.fromEntries(sommati.map(c => [c.id, Math.round(rr.reduce((t, x) => t + (Number(x[c.id]) || 0), 0) * 100) / 100]));
-    const out = { entita: def.id, conteggio: righe.length, somme: somme(righe) };
+    // oltre 10.000 elementi il conteggio resta esatto, somme e gruppi no: lo si dice al modello
+    const out = { entita: def.id, conteggio: totale, somme: somme(righe), ...(totale > righe.length ? { parziale: `somme e gruppi sui primi ${righe.length}` } : {}) };
     if (gruppo) {
       const g = new Map();
       for (const x of righe) { const k = leggibile(gruppo, x[gruppo.id]); (g.get(k) || g.set(k, []).get(k)).push(x); }
@@ -151,8 +154,13 @@ export default function registra({ r, db, S, D, P, A, meta, serve, ErroreHttp })
     if (!P.puoSchema(serve(ctx))) throw new P.ErrorePermesso('Non puoi personalizzare il gestionale');
     const errori = [], archivia = [];
     // i campi attivi che sparirebbero dalla definizione: diventerebbero archiviati (anche quelli nascosti a chi propone)
-    for (const d of Array.isArray(corpo.entita) ? corpo.entita : []) for (const c of S.leggi(db, d?.id)?.campi || [])
-      if (!c.archiviato && !(d.campi || []).some(x => x.id === c.id && !x.archiviato)) archivia.push(`${d.id}.${c.id}`);
+    for (const d of Array.isArray(corpo.entita) ? corpo.entita : []) {
+      const prima = S.leggi(db, d?.id);
+      // una sezione archiviata con lo stesso id tornerebbe in vita con i campi di prima: meglio dirlo che farlo
+      if (prima?.archiviata) { errori.push(`c'è già una sezione archiviata «${prima.nome}» (${prima.id}): ripristinala da Personalizza o scegli un altro nome`); continue; }
+      for (const c of prima?.campi || []) if (!c.archiviato && !(d.campi || []).some(x => x.id === c.id && !x.archiviato)) archivia.push(`${d.id}.${c.id}`);
+    }
+    if (errori.length) return { ok: false, errori, archivia };
     db.exec('SAVEPOINT lumi_prova');
     try {
       const entita = Array.isArray(corpo.entita) ? corpo.entita : [];

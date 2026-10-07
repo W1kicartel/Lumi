@@ -335,6 +335,11 @@ function automazione({ schema, api, errore }) {
     }, required: ['nome', 'sezione', 'quando', 'azioni'] },
     proponi: async inp => {
       let x; try { x = automazioneDa(schema, inp); } catch (e) { return { errore: e.message }; }
+      try {
+        // un nome già usato non deve sostituire un'automazione che c'è: si aggiunge un numero
+        const usati = new Set((await api('GET', '/automazioni')).map(a => a.id)), base = x.a.id;
+        for (let i = 2; usati.has(x.a.id); i++) x.a.id = `${base.slice(0, 56)}_${i}`;
+      } catch (e) { return errore(e); }
       try { const v = await api('POST', '/lumi/verifica', { automazione: x.a }); if (!v.ok) return { errore: 'l\'automazione non va: ' + v.errori.join('; ') }; } catch (e) { return errore(e); }
       memo.set(inp, x);
       const quando = `${x.def.nome}: ${QUANDO[x.a.quando]}${x.campo ? ` «${x.campo.nome}»` : ''}${x.a.a != null ? ` e diventa «${x.campo?.opzioni?.find(o => o.id === x.a.a)?.nome ?? x.a.a}»` : ''}`;

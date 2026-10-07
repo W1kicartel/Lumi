@@ -249,6 +249,15 @@ test('personalizzare a parole: taglia, sezione noleggi e automazione, applicate 
     assert.ok(avvisi.some(a => a.testo === 'Rientrato: Trapano'), JSON.stringify(avvisi));
     // un avviso scritto come testo semplice diventa una formula di testo
     assert.equal((await perNome(lista, 'proponi_automazione').proponi({ ...auto, nome: 'Altro', quando: 'creato', campo: undefined, diventa: undefined, azioni: [{ tipo: 'avvisa', testo: 'Nuovo noleggio' }] })).errore, undefined);
+    // lo stesso nome non sostituisce l'automazione che c'è già: la nuova prende un numero
+    const doppia = { ...auto, azioni: [{ tipo: 'avvisa', testo: 'Di nuovo in magazzino' }] };
+    assert.equal((await perNome(lista, 'proponi_automazione').proponi(doppia)).errore, undefined);
+    assert.equal((await perNome(lista, 'proponi_automazione').esegui(doppia)).id, 'noleggi_noleggio_restituito_2');
+    assert.deepEqual((await k.api('GET', '/automazioni')).filter(a => a.entita === 'noleggi').map(a => a.id).sort(), ['noleggi_noleggio_restituito', 'noleggi_noleggio_restituito_2']);
+    // una sezione archiviata con lo stesso nome non torna in vita di nascosto
+    await k.api('DELETE', '/schema/noleggi');
+    const dinuovo = await perNome(await genera(k), 'proponi_modifica_schema').proponi(noleggi);
+    assert.match(dinuovo.errore, /archiviata/);
   } finally { k.srv.close(); }
 });
 
@@ -275,6 +284,7 @@ test('«Da vedere» dallo schema e riepilogo per periodo, con i permessi', async
     assert.equal(r.conteggio, 2); assert.deepEqual(r.somme, { totale: 24, pezzi: 3 });
     assert.deepEqual(r.gruppi.map(g => [g.valore, g.conteggio, g.somme.totale]).sort(), [['Carta', 1, 16], ['Contanti', 1, 8]]);
     assert.equal((await perNome(lista, 'riepilogo').leggi({ entita: 'vendite', dal: '2001-01-01', al: '2001-12-31' })).conteggio, 0);
+    assert.match((await perNome(lista, 'riepilogo').leggi({ entita: 'vendite', dal: 'lunedì' })).errore, /Data non valida/);
     // un ruolo senza le vendite non le vede né in «Da vedere» né nel riepilogo
     await k.chiama('PUT', '/api/ruoli/magazzino', { nome: 'Magazzino', entita: { '*': { leggi: true }, vendite: { leggi: false }, ordini: { leggi: false } } });
     await k.chiama('POST', '/api/utenti', { nome: 'Piero', email: 'piero@esempio.it', password: 'password-piero', ruolo: 'magazzino' });
