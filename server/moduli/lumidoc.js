@@ -343,14 +343,15 @@ export default function registra({ db, S, D, P, meta, lumi }) {
     nome: 'fatture_da_pagare', tipo: 'leggi', permesso: ctx => puo(ctx, RICEVUTE, 'leggi'),
     descrizione: 'Quanto devi ai fornitori: le fatture ricevute da pagare, le scadute e il totale per fornitore. Per «quanto devo pagare», «cosa scade».',
     schema: { type: 'object', additionalProperties: false, properties: {} },
-    esegui: prova(async ({ ctx }) => riassumi(aperte(ctx, RICEVUTE, [{ campo: 'stato', op: '=', valore: 'da_pagare' }]), 'fornitore')),
+    // una nota di credito ricevuta (TD04, importata dall'XML con l'importo positivo) è un credito verso il fornitore: si toglie
+    esegui: prova(async ({ ctx }) => riassumi(aperte(ctx, RICEVUTE, [{ campo: 'stato', op: '=', valore: 'da_pagare' }]), 'fornitore', x => (STORNI.includes(x.tipo) ? -1 : 1))),
   });
 
   // ---------- i crea_fatture / modifica_fatture generati dallo schema ----------
   lumi.sostituisce('crea_fatture');   // per una fattura nuova c'è fattura_nuova, che deduce e controlla
   lumi.scheda(FATTURE, prova(async ({ ctx, valori, id, lingua: l }) => {
     const prima = id ? D.leggi(db, FATTURE, id, ctx) : null;
-    if (bloccata(prima) && Object.keys(valori).some(k => !MODIFICABILI.has(k)))
+    if (bloccata(prima) && Object.keys(valori).some(k => !MODIFICABILI.has(k) && k !== 'rate'))   // le rate pagate si segnano: il resto lo ferma il motore
       return { errore: `${prima.nome_documento || `La fattura ${prima.numero}`} è emessa: non si modifica più, nemmeno a parole. Proponi una nota di credito con fattura_nota_di_credito (totale o con le righe da stornare).` };
     const f = { ...(prima || {}), ...valori };
     if (!Array.isArray(f.righe) || !f.righe.length) return {};

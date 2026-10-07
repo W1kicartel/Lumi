@@ -302,7 +302,7 @@ export default {
   'lumidoc-av-ritenuta': 'Ritenuta del {aliquota}% come nelle tue fatture precedenti.',
   'lumidoc-av-cassa': 'Contributo cassa del {aliquota}% come nelle tue fatture precedenti.',
   'lumidoc-av-bollo': 'Bollo da 2 € aggiunto: le operazioni senza IVA superano 77,47 €.',
-  'lumidoc-emetti': 'Emettere la fattura',
+  'lumidoc-emetti': 'Emissione della fattura',
   'lumidoc-numero': 'Numero',
   'lumidoc-numero-nuovo': 'il prossimo della serie',
   'lumidoc-data': 'Data',

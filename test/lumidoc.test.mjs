@@ -220,6 +220,8 @@ test('«nota di credito della fattura 12»: lo strumento dedicato, uguale al bot
   const { lista } = await genera(k);
   const no = await lista.find(s => s.nome === 'modifica_fatture').proponi({ id: f12.id, valori: { righe: [{ descrizione: 'Consulenza', quantita: 3, prezzo: 90, aliquota: 22 }] } });
   assert.match(no.errore, /è emessa: non si modifica più, nemmeno a parole.*fattura_nota_di_credito/);
+  // segnare pagata una rata invece si può (lo permette il motore): la scheda non la ferma
+  assert.ok(!(await k.api('POST', '/lumi/scheda/fatture', { id: f12.id, valori: { rate: [{ data: '2026-10-30', importo: 100, pagata: true }], pagata_il: '2026-10-30' } })).errore);
   // la nota di credito parziale: solo la trasferta
   copione = [usa('fattura_nota_di_credito', { fattura: '12', righe: [{ n: 2 }], motivo: 'trasferta non dovuta' }), dice('Preparata.')];
   const p = await conversa(k, 'fai una nota di credito della fattura 12 solo per la trasferta');
@@ -261,8 +263,13 @@ test('«quanto mi devono i clienti?»: emesse non pagate, al netto della ritenut
     rate: [{ data: '2026-10-02', importo: 100, pagata: true }, { data: '2026-11-02', importo: 22 }] });
   const dopo = await (await genera(k)).lista.find(s => s.nome === 'fatture_da_incassare').leggi({ cliente: 'Rossi Srl' });
   assert.equal(dopo.elenco.find(e => e.documento === 'Fattura 14').importo, 22);
-  // e i fornitori: nessuna fattura ricevuta da pagare
+  // e i fornitori: nessuna fattura ricevuta da pagare; poi una da 100 € e una nota di credito ricevuta da 30 € (importo positivo, come nell'XML)
   assert.deepEqual((await (await genera(k)).lista.find(s => s.nome === 'fatture_da_pagare').leggi({})).totale, 0);
+  const forn = await k.api('POST', '/dati/fornitori', { nome: 'Carta Srl' });
+  await k.api('POST', '/dati/fatture_ricevute', { fornitore: forn.id, tipo: 'TD01', numero: 'A1', data: '2026-09-01', stato: 'da_pagare', totale: 100, netto: 100 });
+  await k.api('POST', '/dati/fatture_ricevute', { fornitore: forn.id, tipo: 'TD04', numero: 'A2', data: '2026-09-05', stato: 'da_pagare', totale: 30, netto: 30 });
+  const pagare = await (await genera(k)).lista.find(s => s.nome === 'fatture_da_pagare').leggi({});
+  assert.equal(pagare.totale, 70); assert.equal(pagare.per_fornitore[0].fornitore, 'Carta Srl');
 });
 
 test('«esporta l\'XML della fattura 15»: il file arriva al browser (valido per lo schema ufficiale), al modello solo il nome', async () => {

@@ -51,12 +51,12 @@ Gli errori tornano al modello in parole: argomenti sbagliati («args.righe[0].pr
 |---|---|---|
 | `fattura_nuova` | scrive | Prepara la fattura in bozza: il cliente per nome e le righe a parole. IVA, natura, ritenuta, cassa e bollo li deduce Kubo |
 | `fattura_emetti` | scrive | La bozza prende il numero. Si ferma se l'esportazione non passerebbe |
-| `fattura_nota_di_credito` | scrive | Storno totale (uguale al bottone) o parziale (righe scelte o un importo), mai oltre quello che resta della fattura |
+| `fattura_nota_di_credito` | scrive | Storno totale (uguale al bottone) o parziale (righe scelte o un importo, sempre positivo), mai oltre quello che resta della fattura |
 | `fattura_controlla` | legge | Gli stessi controlli dell'esportazione FatturaPA |
 | `fattura_esporta_xml` | legge | Il file FatturaPA arriva al browser come download |
 | `fattura_stampa` | legge | La stampa in HTML: da lì «Stampa → Salva come PDF» |
 | `fatture_da_incassare` | legge | Fatture emesse non pagate, al netto di ritenuta, note di credito e rate già pagate, scadute, per cliente |
-| `fatture_da_pagare` | legge | Fatture ricevute da pagare, scadute, per fornitore |
+| `fatture_da_pagare` | legge | Fatture ricevute da pagare (meno le note di credito ricevute), scadute, per fornitore |
 
 `crea_fatture` (generato dallo schema) lascia il posto a `fattura_nuova`. `modifica_fatture` resta, per le bozze e per segnare una fattura pagata. Su una fattura emessa la sua scheda non parte e il modello legge di proporre la nota di credito. Il blocco vero sta comunque nel motore dei dati (`fatture-regole.js`).
 
