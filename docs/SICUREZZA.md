@@ -8,7 +8,7 @@ Kubo tiene i dati di un'azienda: clienti, prezzi, costi, fatture. Questa pagina 
   - almeno 8 caratteri, fuori dalle più usate;
   - diversa dal proprio nome e dalla propria email;
   - sotto i 12 caratteri, con lettere e cifre o simboli insieme.
-- **Cambio della propria password.** Serve quella attuale, sia da *Sicurezza* sia da `PATCH /api/utenti/<io>`: chi trova un PC acceso non se la prende. Dopo il cambio si chiudono tutte le altre sessioni.
+- **Cambio della propria password e del PIN del banco.** Serve la password attuale, sia da *Sicurezza* sia da `PATCH /api/utenti/<io>`: chi trova un PC acceso non se li prende. Anche qui vale il limite di 5 tentativi in 15 minuti. Dopo il cambio della password si chiudono tutte le altre sessioni.
 - **Cambio obbligatorio (facoltativo).** Chi gestisce le persone può chiedere a qualcuno di cambiare la password al prossimo accesso: *Sicurezza → Persone*. Finché non la cambia, il server risponde solo alle rotte per cambiarla, e l'interfaccia mostra una finestra che non si chiude.
 - **Tentativi.** Il server già limitava i tentativi per indirizzo: 10 in 5 minuti. In più, 5 accessi sbagliati in 15 minuti bloccano quell'account, o quel PIN del banco, per 15 minuti. Gli altri account entrano lo stesso.
 
@@ -18,6 +18,7 @@ Kubo tiene i dati di un'azienda: clienti, prezzi, costi, fatture. Questa pagina 
 - **Inattività.** Una sessione ferma da più di 12 ore si chiude da sola. Il titolare sceglie il tempo, da 5 minuti a 30 giorni.
 - **Dispositivi.** *Sicurezza → Dispositivi collegati* elenca le proprie sessioni: browser e sistema, ultimo uso, indirizzo. Si può scollegare un dispositivo o tutti gli altri. Il token non esce mai: ogni sessione ha un'impronta.
 - Chi gestisce le persone può scollegare qualcuno da tutti i dispositivi.
+- **Eventi in tempo reale.** A ogni evento la sessione si rilegge: un dispositivo scollegato, una persona disattivata o un ruolo cambiato smettono subito di ricevere aggiornamenti.
 
 ## Permessi
 

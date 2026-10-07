@@ -40,7 +40,14 @@ class ErroreHttp extends Error { constructor(stato, m, extra = {}) { super(m); t
 
 export function creaServer(db) {
   const clienti = new Set();   // connessioni SSE: { res, ctx }
-  const manda = (ev) => { for (const c of clienti) if (!ev.entita || P.puo(c.ctx, ev.entita, 'leggi')) c.res.write(`data: ${JSON.stringify(ev)}\n\n`); };
+  // a ogni evento si rilegge la sessione: chi è uscito (o è stato scollegato, o ha cambiato ruolo) non riceve più niente
+  const manda = (ev) => {
+    for (const c of clienti) {
+      const ctx = c.token ? U.contesto(db, c.token) : null;
+      if (!ctx) { clienti.delete(c); c.res.end(); continue; }
+      if (!ev.entita || P.puo(ctx, ev.entita, 'leggi')) c.res.write(`data: ${JSON.stringify(ev)}\n\n`);
+    }
+  };
   D.ascolta((ev, _db, ctx) => { if (!ev.interno) manda({ tipo: ev.tipo, entita: ev.entita, id: ev.id, da: ctx?.utente?.id ?? null }); });
   A.suAvviso(a => manda({ tipo: 'avviso', ...a }));
   const tentativi = new Map();   // ip → [orari] degli accessi falliti
@@ -159,7 +166,7 @@ export function creaServer(db) {
       try { await controllaTutti({}); } catch { res.writeHead(401).end(); return; }
       if (!ctx) { res.writeHead(401).end(); return; }
       res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' }); res.write(': ciao\n\n');
-      const c = { res, ctx }; clienti.add(c); const batti = setInterval(() => res.write(': .\n\n'), 25000);
+      const c = { res, ctx, token }; clienti.add(c); const batti = setInterval(() => res.write(': .\n\n'), 25000);
       req.on('close', () => { clearInterval(batti); clienti.delete(c); }); return;
     }
     const risposta = { intestazioni: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } };

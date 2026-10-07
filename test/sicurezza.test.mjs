@@ -283,3 +283,20 @@ test('Lumi: i token del flusso si contano per persona e per mese', async () => {
     assert.equal((await k.t('POST', '/api/lumi', domanda)).stato, 429);   // oltre il budget del mese
   } finally { k.chiudi(); finto.close(); delete process.env.ANTHROPIC_BASE_URL; }
 });
+
+test('eventi in tempo reale: chi viene scollegato non riceve più niente', async () => {
+  const k = await avvia(), b = k.browser();
+  try {
+    await b.accedi('t@prova.it', 'password-lunga');
+    const ctrl = new AbortController(), r = await fetch(k.base + '/api/eventi', { headers: { Cookie: b.biscotto() }, signal: ctrl.signal });
+    assert.equal(r.status, 200);
+    const lettore = r.body.getReader(), dec = new TextDecoder(); let testo = '';
+    const leggi = async ms => { const fine = Date.now() + ms; while (Date.now() < fine) { const x = await Promise.race([lettore.read(), new Promise(ok => setTimeout(() => ok(null), 50))]); if (x?.done) return 'chiuso'; if (x?.value) testo += dec.decode(x.value); } return 'aperto'; };
+    await k.t('POST', '/api/dati/clienti', { nome: 'Uno' }); await leggi(300);
+    assert.match(testo, /"tipo":"crea"/);
+    await k.t('POST', '/api/sicurezza/esci-ovunque');   // il titolare scollega gli altri dispositivi
+    await k.t('POST', '/api/dati/clienti', { nome: 'Due' });
+    assert.equal(await leggi(500), 'chiuso');
+    ctrl.abort();
+  } finally { k.chiudi(); }
+});
