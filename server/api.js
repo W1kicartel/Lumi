@@ -174,7 +174,7 @@ export function creaServer(db) {
     if (!percorso.startsWith('/api/')) return statico(req, res, percorso).catch(() => { if (!res.headersSent) res.writeHead(500).end(); else res.end(); });
     let { token, ctx } = ctxDi(req);
     // un controllo può anche togliere l'utente alla richiesta (sessione scaduta per inattività): restituisce { ctx: null }
-    const controllaTutti = async corpo => { for (const f of controlli) { const x = await f({ req, res, ctx, token, metodo: req.method, percorso, corpo, ip: req.socket.remoteAddress }); if (x && 'ctx' in x) ctx = x.ctx; } };
+    const controllaTutti = async corpo => { for (const f of controlli) { const x = await f({ req, res, ctx, token, metodo: req.method, percorso, corpo, ip: indirizzo(req) }); if (x && 'ctx' in x) ctx = x.ctx; } };
     if (percorso === '/api/eventi') {
       try { await controllaTutti({}); } catch { res.writeHead(401).end(); return; }
       if (!ctx) { res.writeHead(401).end(); return; }
