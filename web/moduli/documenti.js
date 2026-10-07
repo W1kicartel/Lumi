@@ -205,7 +205,8 @@ export default {
     caricaCss();
     // i clienti dei modelli di settore prendono i campi per la fattura elettronica (codice destinatario, PEC, indirizzo…)
     const f = fattureDi(k.schema), cl = f && k.schema.find(e => e.id === f.campi.find(c => c.id === 'cliente')?.entita);
-    if (cl && !cl.campi.some(c => c.id === 'codice_destinatario') && k.stato.poteri?.schema) {
+    // (e il vecchio campo libero «Indirizzo» si unifica con via, CAP e comune: server/moduli/sicurezza-migrazioni.js)
+    if (cl && (!cl.campi.some(c => c.id === 'codice_destinatario') || cl.campi.some(c => c.id === 'indirizzo')) && k.stato.poteri?.schema) {
       try { const r = await k.api('POST', '/documenti/prepara'); if (r.aggiunti?.length) await k.ricaricaSchema(); } catch { /* si riprova al prossimo avvio */ }
     }
   },

@@ -54,6 +54,7 @@ const TRATTI = {
   matita: 'M4 20h4L19 9l-4-4L4 16v4Z',
   griglia: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
   esci: 'M15 4h4v16h-4M10 8l-4 4 4 4M6 12h11',
+  lucchetto: 'M6 11h12v10H6zM8.5 11V7.5a3.5 3.5 0 0 1 7 0V11M12 15v2',
 };
 export function icona(nome) {
   const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 24 24'); s.setAttribute('class', 'icona');
@@ -61,7 +62,8 @@ export function icona(nome) {
 }
 export const NOMI_ICONE = Object.keys(TRATTI);
 
-// formati
+// formati. Le date e ore si mostrano nel fuso dell'azienda (/api/stato → fuso; lo imposta web/moduli/sicurezza.js)
+export const fusoUi = { fuso: undefined };
 const eur = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }), nf = new Intl.NumberFormat('it-IT', { maximumFractionDigits: 2 });
 export const COLORI = ['grigio', 'verde', 'rosso', 'blu', 'giallo', 'viola'];
 export function chip(o) { return h('span.chip', { stile: { '--c': `var(--${o?.colore || 'grigio'})` }, testo: o?.nome ?? '' }); }
@@ -74,7 +76,7 @@ export function formatta(c, v) {
     case 'percentuale': return nf.format(v) + '%';
     case 'si_no': return v ? 'Sì' : 'No';
     case 'data': return new Date(v + 'T00:00:00').toLocaleDateString('it-IT');
-    case 'data_ora': return new Date(v).toLocaleString('it-IT', { dateStyle: 'short', timeStyle: 'short' });
+    case 'data_ora': return new Date(v).toLocaleString('it-IT', { dateStyle: 'short', timeStyle: 'short', timeZone: fusoUi.fuso });
     case 'scelta': case 'stato': return chip(c.opzioni?.find(o => o.id === v) || { nome: v });
     case 'scelta_multipla': return h('span', v.map(x => chip(c.opzioni?.find(o => o.id === x) || { nome: x })));
     case 'relazione': return Array.isArray(v) ? v.map(x => x.titolo).join(', ') : v.titolo ?? v;

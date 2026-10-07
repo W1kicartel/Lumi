@@ -11,6 +11,7 @@
 import { readFileSync, writeFileSync, unlinkSync, chmodSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { creaGestore, MODELLO } from './lumi/nucleo.js';
+import { mezzanotte, piuGiorni, giornoDi } from './agenda-aggregati.js';   // i giorni nel fuso dell'azienda
 
 const ORIGINE = 'http://kubo.lumi';   // il nucleo vuole un'origine ammessa: la richiesta la costruiamo noi, dopo la sessione
 const CHIAVE = /^sk-[\w-]{10,300}$/;
@@ -91,7 +92,7 @@ export default function registra({ r, db, S, D, P, A, meta, serve, ErroreHttp })
   // cambia a ogni scrittura: il registro cresce sempre
   const versione = () => db.prepare('SELECT MAX(id) n FROM _registro').get().n;
   function daVedere(ctx) {
-    const oggi = new Date().toISOString().slice(0, 10), settimana = new Date(Date.now() - 7 * GIORNO).toISOString(), out = [];
+    const oggi = giornoDi(new Date()), settimana = new Date(Date.now() - 7 * GIORNO).toISOString(), out = [];
     const conta = (e, filtri) => { try { return D.elenca(db, e, { filtri, perPagina: 1 }, ctx).totale; } catch { return 0; } };
     for (const def of S.elenco(db)) {
       if (def.nascosta || !P.puo(ctx, def.id, 'leggi')) continue;
@@ -129,12 +130,15 @@ export default function registra({ r, db, S, D, P, A, meta, serve, ErroreHttp })
     if (dal || al) {
       const cd = campo_data || S.campiAttivi(def).find(c => c.tipo === 'data' || c.tipo === 'data_ora')?.id || 'creato';
       const ora = cd === 'creato' || cd === 'modificato' || campo(cd).tipo === 'data_ora';
-      if (dal) f.push({ campo: cd, op: '>=', valore: ora ? new Date(dal + 'T00:00:00').toISOString() : dal });
-      if (al) f.push({ campo: cd, op: '<=', valore: ora ? new Date(al + 'T23:59:59.999').toISOString() : al });
+      if (dal) f.push({ campo: cd, op: '>=', valore: ora ? mezzanotte(dal) : dal });
+      if (al) f.push(ora ? { campo: cd, op: '<', valore: mezzanotte(piuGiorni(al, 1)) } : { campo: cd, op: '<=', valore: al });
     }
     const sommati = (Array.isArray(somma) ? somma : [somma]).filter(Boolean).map(campo), gruppo = raggruppa ? campo(raggruppa) : null;
     const righe = []; let totale = 0;
-    for (let pagina = 1; pagina <= 20; pagina++) {
+    // prima la lettura leggera in SQL (solo le colonne da sommare e raggruppare), altrimenti a pagine come prima
+    const veloce = D.elenca(db, def.id, { filtri: f, cerca: testo || '', leggero: [...sommati.map(c => c.id), gruppo?.id].filter(Boolean), limite: 10000 }, ctx);
+    if (veloce) { totale = veloce.totale; righe.push(...veloce.righe); }
+    else for (let pagina = 1; pagina <= 20; pagina++) {
       const x = D.elenca(db, def.id, { filtri: f, cerca: testo || '', perPagina: 500, pagina }, ctx);
       totale = x.totale; righe.push(...x.righe); if (righe.length >= x.totale || !x.righe.length) break;
     }

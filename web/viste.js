@@ -1,5 +1,5 @@
 // Le viste generiche: lista (tabella o kanban) e scheda. Tutto si genera dallo schema dell'entità.
-import { h, api, get, toast, formatta, destra, chip, ErroreApi } from './ui.js';
+import { h, api, get, toast, formatta, destra, chip, ErroreApi, fusoUi } from './ui.js';
 import { editor, titoloDi } from './campi.js';
 import { costruttore, risolvi, apriPop, tipoDi, caricaPersone, pronto } from './filtri.js';
 
@@ -231,7 +231,7 @@ function storia(def, id) {
   const val = (k, v) => { const c = def.campi.find(x => x.id === k); const f = c ? formatta(c, v) : v; return f instanceof Node ? f.textContent : String(f ?? '—') || '—'; };
   get(`/dati/${def.id}/${id}/storia`).then(r => {
     ul.replaceChildren(...r.slice(0, 30).map(x => {
-      const quando = new Date(x.quando).toLocaleString('it-IT', { dateStyle: 'short', timeStyle: 'short' }), chi = x.chi || 'automazione';
+      const quando = new Date(x.quando).toLocaleString('it-IT', { dateStyle: 'short', timeStyle: 'short', timeZone: fusoUi.fuso }), chi = x.chi || 'automazione';
       if (x.tipo === 'modifica' && x.dopo) return h('li', h('b', chi), ` · ${quando}`, h('div', Object.keys(x.dopo).filter(k => !['righe'].includes(k)).slice(0, 4).map(k => h('div', `${nome(k)}: ${val(k, x.prima?.[k])} → ${val(k, x.dopo[k])}`))));
       return h('li', h('b', chi), ` · ${quando} · ${{ crea: 'creato', elimina: 'archiviato', ripristina: 'ripristinato' }[x.tipo] || x.tipo}`);
     }));
