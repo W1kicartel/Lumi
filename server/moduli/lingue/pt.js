@@ -238,4 +238,12 @@ export default {
   'pw-facile': "Esta senha é fácil demais de adivinhar",
   'pw-nome': "A senha não pode ser seu nome ou seu e-mail",
   'pw-mescola': "Com menos de 12 caracteres, misture letras com números ou símbolos",
+  // fisco (server/moduli/fisco.js)
+  'fisco-impostazione': "Configuração fiscal inválida: {campo}",
+  'fisco-forfettario': "No regime simplificado (forfettario) não há apurações de IVA nem comunicações LIPE",
+  'fisco-dati-azienda': "A comunicação precisa do número de IVA e do código fiscal da empresa (Documentos → dados da empresa)",
+  'fisco-anno': "Ano inválido",
+  'fisco-periodo': "Período inválido",
+  'fisco-nessun-versamento': "Nenhum pagamento nesta data",
+  'fisco-solo-chi': "Só quem pode personalizar altera as configurações fiscais",
 };

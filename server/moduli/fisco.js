@@ -53,16 +53,16 @@ export function impostazioni(db, meta) {
 }
 const numOpz = v => (v == null || v === '' ? null : Number(String(v).replace(',', '.')));
 export function salvaImpostazioni(db, meta, corpo = {}) {
-  const s = { ...PREDEFINITE, ...JSON.parse(meta.leggi(db, 'fisco.impostazioni') || '{}') }, no = campo => { throw new Error(`Impostazione fiscale non valida: ${campo}`); };
+  const s = { ...PREDEFINITE, ...JSON.parse(meta.leggi(db, 'fisco.impostazioni') || '{}') }, sbagliato = campo => { throw new Error(`Impostazione fiscale non valida: ${campo}`); };
   for (const k of Object.keys(PREDEFINITE)) if (k in corpo) s[k] = corpo[k];
-  if (s.regime != null && !REGIMI_FISCALI.includes(s.regime)) no('regime');
-  if (!['mensile', 'trimestrale'].includes(s.periodicita)) no('periodicita');
-  if (!GESTIONI.includes(s.gestione)) no('gestione');
-  s.ateco = String(s.ateco || '').trim().slice(0, 12); if (s.ateco && !/^\d{2}(\.?\d{1,2}){0,2}$/.test(s.ateco)) no('ateco');
+  if (s.regime != null && !REGIMI_FISCALI.includes(s.regime)) sbagliato('regime');
+  if (!['mensile', 'trimestrale'].includes(s.periodicita)) sbagliato('periodicita');
+  if (!GESTIONI.includes(s.gestione)) sbagliato('gestione');
+  s.ateco = String(s.ateco || '').trim().slice(0, 12); if (s.ateco && !/^\d{2}(\.?\d{1,2}){0,2}$/.test(s.ateco)) sbagliato('ateco');
   for (const k of ['coefficiente', 'creditoAnnoPrecedente', 'accontoIvaStorico', 'accontoIvaPrevisto', 'impostaAnnoPrecedente', 'accontiVersatiAnnoPrecedente', 'contributiVersati', 'camerale', 'annoInizio']) {
-    s[k] = numOpz(s[k]); if (s[k] != null && (!Number.isFinite(s[k]) || s[k] < 0 || s[k] > 1e9)) no(k);
+    s[k] = numOpz(s[k]); if (s[k] != null && (!Number.isFinite(s[k]) || s[k] < 0 || s[k] > 1e9)) sbagliato(k);
   }
-  if (s.coefficiente != null && (s.coefficiente <= 0 || s.coefficiente > 100)) no('coefficiente');
+  if (s.coefficiente != null && (s.coefficiente <= 0 || s.coefficiente > 100)) sbagliato('coefficiente');
   for (const k of ['riduzione35', 'aliquotaRidotta', 'sostituto', 'bollo']) s[k] = !!s[k];
   for (const k of ['sedeInps', 'matricolaInps', 'provinciaCciaa']) s[k] = String(s[k] || '').trim().toUpperCase().slice(0, 20);
   meta.scrivi(db, 'fisco.impostazioni', JSON.stringify(s));

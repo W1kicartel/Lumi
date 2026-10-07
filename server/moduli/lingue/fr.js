@@ -238,4 +238,12 @@ export default {
   'pw-facile': "Ce mot de passe est trop facile à deviner",
   'pw-nome': "Le mot de passe ne peut pas être votre nom ou votre e-mail",
   'pw-mescola': "En dessous de 12 caractères, mélangez lettres, chiffres ou symboles",
+  // fisco (server/moduli/fisco.js)
+  'fisco-impostazione': "Paramètre fiscal non valide : {campo}",
+  'fisco-forfettario': "En régime forfaitaire, il n'y a ni liquidations de TVA ni déclarations LIPE",
+  'fisco-dati-azienda': "La déclaration demande le numéro de TVA et le code fiscal de l'entreprise (Documents → données de l'entreprise)",
+  'fisco-anno': "Année non valide",
+  'fisco-periodo': "Période non valide",
+  'fisco-nessun-versamento': "Aucun versement à cette date",
+  'fisco-solo-chi': "Seules les personnes qui peuvent personnaliser modifient les paramètres fiscaux",
 };

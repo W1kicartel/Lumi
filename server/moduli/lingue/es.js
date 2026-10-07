@@ -238,4 +238,12 @@ export default {
   'pw-facile': "Esta contraseña es demasiado fácil de adivinar",
   'pw-nome': "La contraseña no puede ser tu nombre ni tu email",
   'pw-mescola': "Con menos de 12 caracteres, mezcla letras con números o símbolos",
+  // fisco (server/moduli/fisco.js)
+  'fisco-impostazione': "Ajuste fiscal no válido: {campo}",
+  'fisco-forfettario': "En el régimen a tanto alzado no hay liquidaciones de IVA ni comunicaciones LIPE",
+  'fisco-dati-azienda': "La comunicación necesita el número de IVA y el código fiscal de la empresa (Documentos → datos de la empresa)",
+  'fisco-anno': "Año no válido",
+  'fisco-periodo': "Periodo no válido",
+  'fisco-nessun-versamento': "Ningún pago en esta fecha",
+  'fisco-solo-chi': "Solo quien puede personalizar cambia los ajustes fiscales",
 };
