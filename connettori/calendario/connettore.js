@@ -3,7 +3,8 @@
 //   («aggiungi calendario da URL»). Nessun account, nessuna chiave: il 90% del valore con il 10% della fatica;
 // - Google Calendar con OAuth (codice + PKCE, accesso offline): ogni appuntamento nuovo o spostato va nel calendario scelto.
 // Il feed contiene nomi di clienti: l'indirizzo è un segreto, si rigenera spegnendo e togliendo il codice.
-const esc = s => String(s ?? '').replace(/\\/g, '\\\\').replace(/;/g, '\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+import { timingSafeEqual } from 'node:crypto';
+const esc = s => String(s ?? '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
 const utc = d => new Date(d).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
 const piega = l => { const out = []; let s = l; while (Buffer.byteLength(s) > 74) { let n = 74; while (Buffer.byteLength(s.slice(0, n)) > 74) n--; out.push(s.slice(0, n)); s = ' ' + s.slice(n); } out.push(s); return out.join('\r\n'); };
 // il titolo di un appuntamento: i titoli delle relazioni (servizio, cliente…), altrimenti il nome della sezione
@@ -17,6 +18,8 @@ function eventi(k) {
   return k.dati.elenca(sem, { filtri: [{ campo: 'quando', op: '>=', valore: da }], ordina: [{ campo: quando, dir: 'asc' }], perPagina: 500 }).righe
     .filter(r => r[quando]).map(r => ({ id: r.id, inizio: r[quando], fine: new Date(Date.parse(r[quando]) + min * 6e4).toISOString(), titolo: titolo(k, def, r), modificato: r.modificato }));
 }
+// il codice del feed si confronta a tempo costante (come le firme dei webhook)
+const stesso = (a, b) => { const x = Buffer.from(String(a ?? '')), y = Buffer.from(String(b ?? '')); return x.length === y.length && timingSafeEqual(x, y); };
 const gbase = k => k.base || 'https://www.googleapis.com';
 export default {
   id: 'calendario', nome: 'Calendario', versione: 1, icona: 'calendario',
@@ -34,7 +37,7 @@ export default {
   pubbliche: {
     // GET /api/connettori/calendario/pub/agenda.ics?t=<codice segreto>
     'agenda.ics': async ({ q, k }) => {
-      const s = k.segreti.feed; if (!s || q.get('t') !== s) return null;
+      const s = k.segreti.feed; if (!s || !stesso(q.get('t'), s)) return null;
       const righe = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Kubo//Agenda//IT', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', `X-WR-CALNAME:${esc(k.db.prepare("SELECT valore FROM _meta WHERE chiave = 'azienda'").get()?.valore || 'Kubo')}`];
       for (const e of eventi(k)) righe.push('BEGIN:VEVENT', `UID:${e.id}@kubo`, `DTSTAMP:${utc(e.modificato || Date.now())}`, `DTSTART:${utc(e.inizio)}`, `DTEND:${utc(e.fine)}`, `SUMMARY:${esc(e.titolo)}`, 'END:VEVENT');
       righe.push('END:VCALENDAR');

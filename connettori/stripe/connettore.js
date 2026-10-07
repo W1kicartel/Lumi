@@ -1,7 +1,10 @@
 // Stripe: i pagamenti segnano pagate le vendite (o le fatture), e Lumi crea i link di pagamento.
 // Webhook firmati (Stripe-Signature, HMAC sul corpo grezzo: https://docs.stripe.com/webhooks#verify-manually).
 // Il pagamento porta «metadata[vendita]» o «metadata[fattura]» con l'id della riga di Kubo; l'importo deve tornare.
-const eventoPagato = ev => ['payment_intent.succeeded', 'checkout.session.completed'].includes(ev.type);
+// checkout.session.completed arriva anche con un bonifico SEPA non ancora incassato (payment_status «unpaid»): pagata solo con
+// «paid»; quei pagamenti arrivano dopo con checkout.session.async_payment_succeeded (https://docs.stripe.com/checkout/fulfillment)
+const eventoPagato = ev => ev.type === 'payment_intent.succeeded' || ev.type === 'checkout.session.async_payment_succeeded'
+  || (ev.type === 'checkout.session.completed' && ev.data?.object?.payment_status === 'paid');
 export default {
   id: 'stripe', nome: 'Stripe', versione: 1, icona: 'cassa', base: 'https://api.stripe.com',
   descrizione: 'Pagamenti online e POS: le vendite e le fatture si segnano pagate da sole.',
@@ -9,7 +12,7 @@ export default {
     { id: 'chiave', nome: 'Chiave segreta (sk_…) o con restrizioni (rk_…)', segreto: true, schema: /^(sk|rk)_(live|test)_\w+$/ },
     { id: 'firma', nome: 'Segreto del webhook (whsec_…)', segreto: true, schema: /^whsec_\w+$/ },
   ],
-  richiede: { vendite: { stato: { tipo: 'stato' }, totale: {}, pagamento: { tipo: 'scelta', facoltativo: true } }, fatture: { stato: { tipo: 'stato', facoltativo: true }, totale: { facoltativo: true } } },
+  richiede: { vendite: { stato: { tipo: 'stato' }, totale: {}, pagamento: { tipo: 'scelta', facoltativo: true } }, fatture: { stato: { tipo: 'stato', facoltativo: true }, totale: { facoltativo: true }, netto: { facoltativo: true }, pagata_il: { tipo: 'data', facoltativo: true } } },
   permessi: { vendite: { leggi: true, modifica: true }, fatture: { leggi: true, modifica: true } },
   prova: async k => { const r = await k.http.get(`${k.base}/v1/balance`, { bearer: k.segreti.chiave }); return { ok: r.ok, messaggio: r.ok ? null : r.json?.error?.message || `HTTP ${r.stato}` }; },
   entrata: {
@@ -21,9 +24,15 @@ export default {
       if (!id) return 'ignorato: senza riga di Kubo';
       if (o.currency && o.currency !== 'eur') return k.avvisa(`pagamento ${o.id} in ${o.currency}: controllalo a mano`);
       let r; try { r = k.dati.leggi(sem, id); } catch { return k.avvisa(`pagamento ${o.id} per una riga che non c'è (${id})`); }
-      const pagato = (o.amount_received ?? o.amount_total ?? o.amount ?? 0) / 100, totale = Number(k.valore(r, sem, 'totale') || 0);
+      if (k.valore(r, sem, 'stato') === 'pagata') return 'ignorato: già pagata';   // il PaymentIntent e la Checkout Session dello stesso pagamento
+      // una fattura con la ritenuta d'acconto si incassa al netto (totale − ritenuta): il cliente versa la ritenuta all'Erario
+      const netto = sem === 'fatture' && k.campo('fatture', 'netto') ? k.valore(r, sem, 'netto') : null;
+      const pagato = (o.amount_received ?? o.amount_total ?? o.amount ?? 0) / 100, totale = Number(netto ?? k.valore(r, sem, 'totale') ?? 0);
       if (Math.abs(totale - pagato) > 0.005) return k.avvisa(`pagamento di ${k.euro(pagato)} diverso dal totale di ${k.euro(totale)}`);
-      await k.dati.modifica(sem, id, { stato: 'pagata', ...(sem === 'vendite' && k.campo('vendite', 'pagamento') ? { pagamento: 'carta' } : {}) });
+      // la data dell'incasso serve (criterio di cassa, forfettari): quella del pagamento su Stripe, nel fuso dell'azienda
+      const il = new Date(((o.created || ev.created) * 1000) || Date.now()).toLocaleDateString('sv-SE', { timeZone: k.fuso() });
+      await k.dati.modifica(sem, id, { stato: 'pagata', ...(sem === 'vendite' && k.campo('vendite', 'pagamento') ? { pagamento: 'carta' } : {}),
+        ...(sem === 'fatture' && k.campo('fatture', 'pagata_il') ? { pagata_il: il } : {}) });
       return 'pagata';
     },
   },

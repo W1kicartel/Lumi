@@ -57,7 +57,10 @@ export default {
       for (const l of o.line_items) {
         const a = l.sku ? k.dati.trova('articoli', 'codice', l.sku) : null;
         if (!a) return k.avvisa(`ordine ${o.name || o.id}: articolo ${l.sku || l.title} sconosciuto`);
-        righe.push({ articolo: a.id, quantita: Number(l.quantity), prezzo: Number(l.price) });
+        // «price» è prima degli sconti, e senza IVA se il negozio non la include nei prezzi: la vendita porta il pagato davvero
+        const q = Number(l.quantity) || 1, somma = xs => (xs || []).reduce((t, x) => t + Number(x.amount ?? x.price ?? 0), 0);
+        const lordo = Number(l.price) * q - somma(l.discount_allocations) + (o.taxes_included ? 0 : somma(l.tax_lines));
+        righe.push({ articolo: a.id, quantita: q, prezzo: Math.round(lordo / q * 100) / 100 });
       }
       const v = k.dati.crea('vendite', { stato: 'pagata', righe }); k.sincro.collega('vendite', v.id, o.id);
       return 'vendita creata';

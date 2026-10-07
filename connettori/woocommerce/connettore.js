@@ -43,7 +43,9 @@ export default {
       for (const l of o.line_items) {
         const a = l.sku ? k.dati.trova('articoli', 'codice', l.sku) : null;
         if (!a) return k.avvisa(`ordine ${o.number || o.id}: articolo ${l.sku || l.name} sconosciuto`);
-        righe.push({ articolo: a.id, quantita: Number(l.quantity), prezzo: Number(l.price) });
+        // «price» è senza IVA e prima degli sconti: la vendita porta quello che il cliente ha pagato davvero (totale della riga + IVA)
+        const q = Number(l.quantity) || 1, lordo = Number(l.total ?? l.price * q) + Number(l.total_tax || 0);
+        righe.push({ articolo: a.id, quantita: q, prezzo: Math.round(lordo / q * 100) / 100 });
       }
       const v = k.dati.crea('vendite', { stato: 'pagata', righe });
       k.sincro.collega('vendite', v.id, o.id);

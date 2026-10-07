@@ -3,6 +3,10 @@
 import { invia } from './smtp.js';
 import { xmlDi } from '../openapi-sdi/connettore.js';
 const conf = k => ({ host: k.imp.host, porta: Number(k.imp.porta || 587), sicurezza: k.imp.sicurezza, utente: k.imp.utente, password: k.segreti.password, interni: k.interni() });
+// le date nei messaggi ai clienti all'italiana (gg/mm/aaaa), non come le salva il database
+const giorno = d => (/^(\d{4})-(\d{2})-(\d{2})/.exec(String(d || '')) || []).slice(1).reverse().join('/') || '—';
+// una bozza o una fattura annullata non si manda: per il fisco non esiste (stessa regola dell'invio allo SDI)
+export const emessa = (k, f) => { const s = k.valore(f, 'fatture', 'stato'); if (s === 'bozza' || s === 'annullata') throw new Error(`La fattura è ${s === 'bozza' ? 'ancora una bozza' : 'annullata'}: non si manda`); };
 const destinatario = (k, f) => { if (!f.cliente?.id) return null; try { const c = k.dati.leggi('clienti', f.cliente.id); return k.valore(c, 'clienti', 'email') || null; } catch { return null; } };
 export default {
   id: 'posta', nome: 'Email e PEC', versione: 1, icona: 'documento',
@@ -20,24 +24,26 @@ export default {
     invia_fattura: {
       nome: 'Manda per email', descrizione: 'Manda la fattura al cliente per email, con l\'XML in allegato', su: 'fatture', lumi: true, scrive: true,
       input: { fattura: { tipo: 'relazione', entita: 'fatture', nome: 'La fattura' } },
-      proponi: async ({ fattura }, k) => { const a = destinatario(k, fattura); return { titolo: 'Fattura per email', righe: [['Fattura', fattura.numero], ['A', a || '—'], ['Totale', k.euro(fattura.totale)]], avvisi: a ? [] : ['Il cliente non ha un indirizzo email'] }; },
+      proponi: async ({ fattura }, k) => { const a = destinatario(k, fattura), no = (() => { try { emessa(k, fattura); return null; } catch (e) { return e.message; } })();
+        return { titolo: 'Fattura per email', righe: [['Fattura', fattura.numero], ['A', a || '—'], ['Totale', k.euro(fattura.totale)]], avvisi: [...(a ? [] : ['Il cliente non ha un indirizzo email']), ...(no ? [no] : [])] }; },
       async esegui({ fattura }, k) {
-        const a = destinatario(k, fattura); if (!a) throw new Error('Il cliente non ha un indirizzo email');
+        emessa(k, fattura); const a = destinatario(k, fattura); if (!a) throw new Error('Il cliente non ha un indirizzo email');
         let allegati = []; try { const x = xmlDi(k, fattura); allegati = [{ nome: x.nome, tipo: 'application/xml', contenuto: x.xml }]; } catch { allegati = []; }
-        await invia(conf(k), { da: k.imp.mittente, a, oggetto: `Fattura ${fattura.numero} del ${fattura.data}`, testo: `Buongiorno,\nin allegato la fattura ${fattura.numero} del ${fattura.data}, totale ${k.euro(fattura.totale)}.\n\nGrazie.`, allegati });
+        await invia(conf(k), { da: k.imp.mittente, a, oggetto: `Fattura ${fattura.numero} del ${giorno(fattura.data)}`, testo: `Buongiorno,\nin allegato la fattura ${fattura.numero} del ${giorno(fattura.data)}, totale ${k.euro(fattura.totale)}.\n\nGrazie.`, allegati });
         return { a };
       },
     },
   },
   pianificati: { promemoria: { nome: 'Promemoria delle fatture scadute', alle: '09:00', async giro(k) {
     if (!k.campo('fatture', 'scadenza')) return { mandati: 0 };
-    const oggi = new Date().toISOString().slice(0, 10), fatti = new Set(k.stato.leggi('ricordate') || []); let n = 0;
+    const oggi = new Date().toLocaleDateString('sv-SE', { timeZone: k.fuso() }), fatti = new Set(k.stato.leggi('ricordate') || []); let n = 0;
     for (const f of k.dati.elenca('fatture', { filtri: [{ campo: 'stato', op: '=', valore: 'emessa' }, { campo: 'scadenza', op: '<', valore: oggi }], perPagina: 200 }).righe) {
       const a = destinatario(k, f); if (!a || fatti.has(f.id)) continue;
-      await invia(conf(k), { da: k.imp.mittente, a, oggetto: `Promemoria: fattura ${f.numero}`, testo: `Buongiorno,\nla fattura ${f.numero} del ${f.data} (${k.euro(f.totale)}) risulta scaduta il ${k.valore(f, 'fatture', 'scadenza')}.\nSe l'ha già pagata, non tenga conto di questo messaggio.\n\nGrazie.` });
-      fatti.add(f.id); n++;
+      await invia(conf(k), { da: k.imp.mittente, a, oggetto: `Promemoria: fattura ${f.numero}`, testo: `Buongiorno,\nla fattura ${f.numero} del ${giorno(f.data)} (${k.euro(f.totale)}) risulta scaduta il ${giorno(k.valore(f, 'fatture', 'scadenza'))}.\nSe l'ha già pagata, non tenga conto di questo messaggio.\n\nGrazie.` });
+      // segnata subito: se la casella si ferma a metà giro, domani non riparte un secondo promemoria a chi l'ha già avuto
+      fatti.add(f.id); n++; k.stato.scrivi('ricordate', [...fatti].slice(-5000));
     }
-    k.stato.scrivi('ricordate', [...fatti].slice(-5000)); return { mandati: n };
+    return { mandati: n };
   } } },
   testi: {
     en: { nome: 'Email and PEC', descrizione: 'Send invoices and reminders to customers from your email or PEC mailbox.', 'imp.host': 'SMTP server (e.g. smtps.pec.aruba.it)', 'imp.porta': 'Port', 'imp.sicurezza': 'Security', 'imp.utente': 'User', 'imp.password': 'Password (or app password)', 'imp.mittente': 'Sender (e.g. Rossi Shop <info@shop.it>)', 'az.invia_fattura': 'Send by email', 'giro.promemoria': 'Overdue invoice reminders' },

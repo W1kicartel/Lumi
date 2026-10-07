@@ -16,6 +16,10 @@ test('Stripe: webhook firmato → vendita pagata, «Stripe» nella storia, idemp
   try {
     const v = await vendita(K);
     await accendi(K, 'stripe', { segreti: { chiave: 'sk_test_abc123', firma: 'whsec_provaprova' } });
+    // una Checkout Session completata ma non ancora incassata (bonifico SEPA) non segna pagata la vendita
+    const sepa = JSON.stringify({ id: 'evt_0', type: 'checkout.session.completed', data: { object: { id: 'cs_0', payment_status: 'unpaid', amount_total: 6000, currency: 'eur', metadata: { vendita: v.id } } } });
+    assert.equal((await manda(K, '/api/connettori/stripe/in', sepa, { 'Stripe-Signature': firmaStripeDi('whsec_provaprova', sepa) })).json.esito, 'ignorato');
+    assert.equal((await K.chiama('GET', `/api/dati/vendite/${v.id}`)).json.stato, 'aperta');
     const ev = { id: 'evt_1', type: 'payment_intent.succeeded', data: { object: { id: 'pi_1', amount_received: 6000, currency: 'eur', metadata: { vendita: v.id } } } };
     const corpo = JSON.stringify(ev, null, 2);
     assert.equal((await manda(K, '/api/connettori/stripe/in', corpo, { 'Stripe-Signature': 't=1,v1=00' })).stato, 401);
@@ -105,7 +109,8 @@ test('WooCommerce: prodotti a pagine, giacenza in uscita senza eco, ordine firma
     await new Promise(r => setTimeout(r, 50)); await K.nucleo.lavora();
     assert.deepEqual(put.at(-1), ['11', 4]); assert.ok(put.length <= 2);
     // ordine dal sito, firmato
-    const ordine = JSON.stringify({ id: 501, number: '501', status: 'processing', line_items: [{ sku: 'P9', quantity: 2, price: 12.5 }] });
+    // «price» è senza IVA: la vendita porta il pagato (totale della riga + IVA), 2 × 12,50 ivato = 25
+    const ordine = JSON.stringify({ id: 501, number: '501', status: 'processing', line_items: [{ sku: 'P9', quantity: 2, price: 10.2459, total: '20.49', total_tax: '4.51' }] });
     assert.equal((await manda(K, '/api/connettori/woocommerce/in', ordine, { 'X-WC-Webhook-Signature': 'sbagliata' })).stato, 401);
     const r = await manda(K, '/api/connettori/woocommerce/in', ordine, { 'X-WC-Webhook-Signature': firmaHmacDi('segreto-woo', ordine), 'X-WC-Webhook-Delivery-ID': 'd1' });
     assert.equal(r.json.esito, 'vendita creata', JSON.stringify(r.json));
@@ -163,6 +168,10 @@ test('Openapi SDI: invio dell\'XML di Kubo, notifica di scarto dal callback con 
   try {
     const f = await fattura(K);
     const pag = await accendi(K, 'openapi-sdi', { base: S.url, segreti: { token: 'tok_x' } });
+    // una bozza non va allo SDI: l'anteprima lo dice e l'invio si ferma prima di chiamare il servizio
+    const bozza = (await K.chiama('POST', '/api/dati/fatture', { cliente: f.cliente.id, data: '2026-09-02', righe: [{ descrizione: 'Prova', quantita: 1, prezzo: 10, aliquota: 22 }] })).json;
+    assert.equal((await K.chiama('POST', '/api/connettori/openapi-sdi/azioni/invia', { args: { fattura: bozza.id }, anteprima: true })).json.avvisi.length, 1);
+    assert.equal((await K.chiama('POST', '/api/connettori/openapi-sdi/azioni/invia', { args: { fattura: bozza.id } })).stato, 502); assert.equal(S.chiamate.length, 0);
     const codice = pag.impostazioni.find(i => i.id === 'callback').valore; assert.ok(codice.length > 20);
     const ant = (await K.chiama('POST', '/api/connettori/openapi-sdi/azioni/invia', { args: { fattura: f.id }, anteprima: true })).json; assert.equal(ant.avvisi.length, 0);
     const r = await K.chiama('POST', '/api/connettori/openapi-sdi/azioni/invia', { args: { fattura: f.id } });
@@ -229,7 +238,7 @@ test('Calendario: feed .ics con il codice segreto, Google Calendar con OAuth (PK
     const codice = pag.impostazioni.find(i => i.id === 'feed').valore;
     assert.equal((await fetch(`${K.base}/api/connettori/calendario/pub/agenda.ics?t=no`)).status, 404);
     const ics = await (await fetch(`${K.base}/api/connettori/calendario/pub/agenda.ics?t=${codice}`)).text();
-    assert.match(ics, /^BEGIN:VCALENDAR\r\n/); assert.match(ics, /SUMMARY:Anna\; Bianchi/); assert.match(ics, new RegExp(`UID:${ap.id}@kubo`));
+    assert.match(ics, /^BEGIN:VCALENDAR\r\n/); assert.match(ics, /SUMMARY:Anna\\; Bianchi/); assert.match(ics, new RegExp(`UID:${ap.id}@kubo`));
     // OAuth: inizio (con PKCE) → il servizio rimanda a «ritorno» con code e state → token salvato cifrato
     const ini = (await K.chiama('POST', '/api/connettori/calendario/oauth/inizio', { base: K.base })).json;
     const u = new URL(ini.url); assert.equal(u.searchParams.get('code_challenge_method'), 'S256'); assert.equal(u.searchParams.get('access_type'), 'offline');

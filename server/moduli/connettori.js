@@ -14,7 +14,7 @@
 //   POST /api/connettori/:id/azioni/:azione  { args, anteprima? }: con i permessi di chi la chiede
 //   POST /api/connettori/:id/in[/:nome]      PUBBLICA: il webhook del servizio, con il corpo grezzo e la firma verificata
 //   GET  /api/connettori/:id/pub/:nome       PUBBLICA: uscite in sola lettura del connettore (es. il feed .ics dell'agenda)
-//   GET  /api/connettori/:id/oauth/inizio · GET …/oauth/ritorno (pubblica) · POST …/oauth/dispositivo[/controlla]
+//   POST /api/connettori/:id/oauth/inizio · GET …/oauth/ritorno (pubblica) · POST …/oauth/dispositivo[/controlla]
 import { readdirSync, readFileSync, writeFileSync, existsSync, chmodSync, statSync } from 'node:fs';
 import { join, dirname, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -341,7 +341,7 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
   for (const [id, c] of tutti) for (const [nome, a] of Object.entries(c.man?.azioni || {})) {
     if (!a.lumi) continue;
     lumi?.strumento?.({ nome: `connettore_${id}_${nome}`.replace(/-/g, '_'), descrizione: `${c.man.nome}: ${a.descrizione || a.nome}`, schema: schemaArgs(a), tipo: a.scrive ? 'scrivi' : 'leggi',
-      permesso: ctx => attivo(id) && (!a.su || P.puo(ctx, entitaDi(id, a.su), a.scrive ? 'modifica' : 'leggi')),
+      permesso: ctx => attivo(id) && (a.su ? P.puo(ctx, entitaDi(id, a.su), a.scrive ? 'modifica' : 'leggi') : ctx?.r?.id === 'titolare'),
       esegui: ({ ctx, args }) => azione(id, nome, args, ctx), anteprima: ({ ctx, args }) => azione(id, nome, args, ctx, { anteprima: true }) });
   }
   function schemaArgs(a) {
@@ -352,6 +352,7 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
     if (!attivo(id)) throw errore(404, 'spento');
     const a = conn(id).man.azioni?.[nome]; if (!a) throw errore(404, 'azione-sconosciuta');
     if (a.su && !P.puo(ctx, entitaDi(id, a.su), a.scrive ? 'modifica' : 'leggi')) throw new P.ErrorePermesso();
+    if (!a.su && ctx?.r?.id !== 'titolare') throw new P.ErrorePermesso();   // un'azione che non dichiara la sezione: solo il titolare
     const k = kPer(id), x = {};
     for (const [n, def] of Object.entries(a.input || {})) x[n] = def.tipo === 'relazione' ? D.leggi(db, entitaDi(id, def.entita), String(args[n]?.id ?? args[n] ?? ''), ctx) : args[n];
     if (anteprima) return a.proponi ? a.proponi(x, k) : { titolo: a.nome, righe: [], avvisi: [] };
@@ -504,6 +505,7 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
     if (!attivo(p.id)) throw errore(404, 'spento');
     const { man } = conn(p.id), en = man.entrata; if (!en) throw errore(404, 'spento');
     const ora = Date.now(), l = (frequenza.get(ip) || []).filter(t => ora - t < 6e4); l.push(ora); frequenza.set(ip, l);
+    if (frequenza.size > 5000) for (const [i, x] of frequenza) if (ora - x.at(-1) >= 6e4) frequenza.delete(i);   // gli indirizzi fermi da un minuto non restano in memoria
     if (l.length > 120) throw errore(429, 'troppe');
     const b = grezzo || Buffer.alloc(0); if (b.length > 1e6) throw errore(413, 'troppo-grande');
     const k = kPer(p.id), f = en.firma || { tipo: 'nessuna' }, s = f.segreto ? segreto(p.id, f.segreto) : null;

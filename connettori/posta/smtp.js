@@ -10,9 +10,11 @@ import { interno } from '../../server/moduli/sicurezza-rete.js';
 
 const b64 = s => Buffer.from(String(s), 'utf8').toString('base64');
 const intesta = s => (/^[\x20-\x7e]*$/.test(s) ? s : `=?UTF-8?B?${b64(s)}?=`);
+// niente a capo negli indirizzi: un'email con «\r\n» aggiungerebbe intestazioni o comandi SMTP
+const pulito = s => String(s ?? '').replace(/[\r\n]+/g, ' ').trim();
 const riga76 = s => s.replace(/.{1,76}/g, '$&\r\n');
 export function messaggio({ da, a, oggetto, testo, allegati = [] }) {
-  const conf = randomBytes(12).toString('hex'), parti = [`From: ${da}`, `To: ${[].concat(a).join(', ')}`, `Subject: ${intesta(oggetto)}`, `Date: ${new Date().toUTCString()}`,
+  const conf = randomBytes(12).toString('hex'), parti = [`From: ${pulito(da)}`, `To: ${[].concat(a).map(pulito).join(', ')}`, `Subject: ${intesta(oggetto)}`, `Date: ${new Date().toUTCString()}`,
     `Message-ID: <${randomBytes(12).toString('hex')}@kubo>`, 'MIME-Version: 1.0', `Content-Type: multipart/mixed; boundary="${conf}"`, '',
     `--${conf}`, 'Content-Type: text/plain; charset=utf-8', 'Content-Transfer-Encoding: base64', '', riga76(b64(testo))];
   for (const x of allegati) parti.push(`--${conf}`, `Content-Type: ${x.tipo || 'application/octet-stream'}; name="${x.nome}"`, 'Content-Transfer-Encoding: base64',
@@ -41,9 +43,9 @@ export async function invia({ host, porta = 587, sicurezza = 'starttls', utente,
     }
     if (utente) await cmd(`AUTH PLAIN ${b64(`\0${utente}\0${password}`)}`, [235]);
     if (posta) {
-      const mitt = /<([^>]+)>/.exec(posta.da)?.[1] || posta.da;
+      const mitt = pulito(/<([^>]+)>/.exec(posta.da)?.[1] || posta.da);
       await cmd(`MAIL FROM:<${mitt}>`, [250]);
-      for (const x of [].concat(posta.a)) await cmd(`RCPT TO:<${/<([^>]+)>/.exec(x)?.[1] || x}>`, [250, 251]);
+      for (const x of [].concat(posta.a)) await cmd(`RCPT TO:<${pulito(/<([^>]+)>/.exec(x)?.[1] || x)}>`, [250, 251]);
       await cmd('DATA', [354]); await cmd(messaggio(posta) + '\r\n.', [250]);
     }
     await cmd('QUIT', [221]).catch(() => {});

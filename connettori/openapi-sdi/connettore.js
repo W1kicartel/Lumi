@@ -16,6 +16,8 @@ export function xmlDi(k, f) {
   return X.xml(az, f, cliente, { progressivo });   // → { nome, xml }
 }
 const base = k => k.base || (k.imp.ambiente === 'produzione' ? 'https://sdi.openapi.it' : 'https://test.sdi.openapi.it');
+// una bozza o una fattura annullata non va allo SDI
+const emessa = (k, f) => { const s = k.valore(f, 'fatture', 'stato'); if (s === 'bozza' || s === 'annullata') throw new Error(`La fattura è ${s === 'bozza' ? 'ancora una bozza' : 'annullata'}: non si invia allo SDI`); };
 // gli esiti SDI che contano per chi ha emesso la fattura
 const ESITI = { RC: 'consegnata', MC: 'non consegnata (in cassetto fiscale)', NS: 'scartata', DT: 'decorrenza termini', NE: 'esito committente', AT: 'non recapitabile' };
 export default {
@@ -34,9 +36,11 @@ export default {
       nome: 'Invia allo SDI', descrizione: 'Manda la fattura elettronica allo SDI tramite Openapi', su: 'fatture', lumi: true, scrive: true,
       input: { fattura: { tipo: 'relazione', entita: 'fatture', nome: 'La fattura da inviare' } },
       proponi: async ({ fattura }, k) => ({ titolo: 'Invio allo SDI', righe: [['Fattura', fattura.numero || fattura.id], ['Cliente', fattura.cliente?.titolo || '—'], ['Totale', k.euro(fattura.totale)]],
-        avvisi: k.sincro.remoto('fatture', fattura.id) ? ['Questa fattura è già stata inviata'] : [] }),
+        avvisi: [...(k.sincro.remoto('fatture', fattura.id) ? ['Questa fattura è già stata inviata'] : []),
+          ...(['bozza', 'annullata'].includes(k.valore(fattura, 'fatture', 'stato')) ? ['La fattura non è emessa: non si può inviare'] : [])] }),
       async esegui({ fattura }, k) {
         if (k.sincro.remoto('fatture', fattura.id)) throw new Error('Fattura già inviata allo SDI');
+        emessa(k, fattura);
         const { xml, nome } = xmlDi(k, fattura);
         const r = await k.http.post(`${base(k)}/invoices`, { bearer: k.segreti.token, testo: xml, intestazioni: { 'Content-Type': 'application/xml' } });
         if (!r.ok) throw new Error(`Openapi ha risposto ${r.stato}: ${String(r.json?.message || r.testo).slice(0, 200)}`);
