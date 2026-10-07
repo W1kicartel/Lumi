@@ -1,0 +1,14 @@
+{
+  "name": "kubo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Kubo: il gestionale open source che ogni azienda monta a modo suo. Un file SQLite, zero dipendenze.",
+  "license": "MIT",
+  "author": "W1kicartel",
+  "type": "module",
+  "engines": { "node": ">=22.5" },
+  "scripts": {
+    "start": "node server/avvia.js",
+    "test": "node --test test/*.test.mjs"
+  }
+}

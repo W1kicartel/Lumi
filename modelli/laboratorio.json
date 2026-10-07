@@ -1,0 +1,70 @@
+{
+  "id": "laboratorio",
+  "nome": "Laboratorio e artigiano",
+  "descrizione": "Preventivi che diventano commesse, fasi di lavorazione in kanban, materiali e ore, consegne.",
+  "entita": [
+    { "id": "clienti", "nome": "Clienti", "icona": "persona", "titolo": "nome", "campi": [
+      { "id": "nome", "nome": "Nome", "tipo": "testo", "obbligatorio": true },
+      { "id": "telefono", "nome": "Telefono", "tipo": "telefono" },
+      { "id": "email", "nome": "Email", "tipo": "email", "unico": true },
+      { "id": "piva", "nome": "Partita IVA / CF", "tipo": "testo" },
+      { "id": "note", "nome": "Note", "tipo": "testo_lungo" } ] },
+    { "id": "materiali", "nome": "Materiali", "icona": "scatola", "titolo": "nome", "campi": [
+      { "id": "nome", "nome": "Nome", "tipo": "testo", "obbligatorio": true },
+      { "id": "unita", "nome": "Unità", "tipo": "scelta", "opzioni": [ { "id": "pz", "nome": "pezzi" }, { "id": "kg", "nome": "kg" }, { "id": "g", "nome": "g" }, { "id": "m", "nome": "metri" }, { "id": "l", "nome": "litri" } ], "predefinito": "pz" },
+      { "id": "costo", "nome": "Costo per unità", "tipo": "valuta" },
+      { "id": "giacenza", "nome": "Giacenza", "tipo": "numero", "predefinito": 0 },
+      { "id": "soglia", "nome": "Scorta minima", "tipo": "numero", "predefinito": 0 },
+      { "id": "da_riordinare", "nome": "Da riordinare", "tipo": "calcolato", "formula": "giacenza <= soglia" } ] },
+    { "id": "voci_preventivo", "nome": "Voci di preventivo", "nascosta": true, "titolo": "descrizione", "campi": [
+      { "id": "preventivo", "nome": "Preventivo", "tipo": "relazione", "entita": "preventivi", "obbligatorio": true },
+      { "id": "descrizione", "nome": "Descrizione", "tipo": "testo", "obbligatorio": true },
+      { "id": "quantita", "nome": "Quantità", "tipo": "numero", "predefinito": 1 },
+      { "id": "prezzo", "nome": "Prezzo", "tipo": "valuta" },
+      { "id": "totale", "nome": "Totale", "tipo": "calcolato", "formula": "quantita * prezzo", "formato": "valuta" } ] },
+    { "id": "preventivi", "nome": "Preventivi", "icona": "documento", "titolo": "numero", "campi": [
+      { "id": "numero", "nome": "Numero", "tipo": "contatore", "formato": "P-{AAAA}-{N:3}" },
+      { "id": "data", "nome": "Data", "tipo": "data", "predefinito": "@oggi" },
+      { "id": "cliente", "nome": "Cliente", "tipo": "relazione", "entita": "clienti", "obbligatorio": true },
+      { "id": "oggetto", "nome": "Oggetto", "tipo": "testo" },
+      { "id": "stato", "nome": "Stato", "tipo": "stato", "iniziale": "bozza", "opzioni": [
+        { "id": "bozza", "nome": "Bozza", "colore": "grigio" }, { "id": "inviato", "nome": "Inviato", "colore": "blu" },
+        { "id": "accettato", "nome": "Accettato", "colore": "verde" }, { "id": "rifiutato", "nome": "Rifiutato", "colore": "rosso" } ],
+        "transizioni": { "bozza": ["inviato"], "inviato": ["accettato", "rifiutato", "bozza"], "accettato": [], "rifiutato": ["bozza"] } },
+      { "id": "valido_fino", "nome": "Valido fino al", "tipo": "data" },
+      { "id": "voci", "nome": "Voci", "tipo": "righe", "entita": "voci_preventivo", "campo": "preventivo" },
+      { "id": "imponibile", "nome": "Imponibile", "tipo": "calcolato", "formula": "SOMMA(voci.totale)", "formato": "valuta" },
+      { "id": "iva", "nome": "IVA %", "tipo": "percentuale", "predefinito": 22 },
+      { "id": "totale", "nome": "Totale", "tipo": "calcolato", "formula": "ARROTONDA(imponibile * (1 + iva / 100); 2)", "formato": "valuta" } ] },
+    { "id": "consumi", "nome": "Materiali usati", "nascosta": true, "titolo": "materiale", "campi": [
+      { "id": "commessa", "nome": "Commessa", "tipo": "relazione", "entita": "commesse", "obbligatorio": true },
+      { "id": "materiale", "nome": "Materiale", "tipo": "relazione", "entita": "materiali", "obbligatorio": true },
+      { "id": "quantita", "nome": "Quantità", "tipo": "numero", "predefinito": 1 },
+      { "id": "costo", "nome": "Costo", "tipo": "valuta" },
+      { "id": "totale", "nome": "Totale", "tipo": "calcolato", "formula": "quantita * costo", "formato": "valuta" } ] },
+    { "id": "commesse", "nome": "Commesse", "icona": "attrezzi", "titolo": "numero", "campi": [
+      { "id": "numero", "nome": "Numero", "tipo": "contatore", "formato": "C-{AAAA}-{N:3}" },
+      { "id": "titolo", "nome": "Lavoro", "tipo": "testo", "obbligatorio": true },
+      { "id": "cliente", "nome": "Cliente", "tipo": "relazione", "entita": "clienti" },
+      { "id": "preventivo", "nome": "Dal preventivo", "tipo": "relazione", "entita": "preventivi" },
+      { "id": "fase", "nome": "Fase", "tipo": "stato", "iniziale": "da_iniziare", "opzioni": [
+        { "id": "da_iniziare", "nome": "Da iniziare", "colore": "grigio" }, { "id": "in_lavorazione", "nome": "In lavorazione", "colore": "blu" },
+        { "id": "rifinitura", "nome": "Rifinitura", "colore": "viola" }, { "id": "pronta", "nome": "Pronta", "colore": "giallo" }, { "id": "consegnata", "nome": "Consegnata", "colore": "verde" } ] },
+      { "id": "consegna", "nome": "Consegna prevista", "tipo": "data" },
+      { "id": "in_ritardo", "nome": "In ritardo", "tipo": "calcolato", "formula": "NON VUOTO(consegna) E consegna < OGGI() E fase <> \"consegnata\"" },
+      { "id": "responsabile", "nome": "Responsabile", "tipo": "utente" },
+      { "id": "ore", "nome": "Ore di lavoro", "tipo": "numero" },
+      { "id": "costo_orario", "nome": "Costo orario", "tipo": "valuta", "predefinito": 35 },
+      { "id": "materiali", "nome": "Materiali usati", "tipo": "righe", "entita": "consumi", "campo": "commessa" },
+      { "id": "prezzo", "nome": "Prezzo al cliente", "tipo": "valuta" },
+      { "id": "costo", "nome": "Costo", "tipo": "calcolato", "formula": "SOMMA(materiali.totale) + ore * costo_orario", "formato": "valuta" },
+      { "id": "margine", "nome": "Margine", "tipo": "calcolato", "formula": "prezzo - costo", "formato": "valuta" },
+      { "id": "note", "nome": "Note di lavorazione", "tipo": "testo_lungo" } ] }
+  ],
+  "automazioni": [
+    { "id": "preventivo_accettato", "nome": "Preventivo accettato: apre la commessa", "entita": "preventivi", "quando": "campo_cambia", "campo": "stato", "a": "accettato",
+      "azioni": [ { "tipo": "crea", "entita": "commesse", "valori": { "titolo": "SE(VUOTO(oggetto); numero; oggetto)", "cliente": "cliente", "preventivo": "id", "prezzo": "imponibile" } } ] },
+    { "id": "consumo_materiali", "nome": "Commessa in lavorazione: scala i materiali", "entita": "commesse", "quando": "campo_cambia", "campo": "fase", "a": "in_lavorazione",
+      "azioni": [ { "tipo": "aggiorna_collegato", "perOgniRiga": "materiali", "relazione": "materiale", "campo": "giacenza", "aggiungi": "-quantita" } ] }
+  ]
+}

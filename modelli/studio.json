@@ -1,0 +1,43 @@
+{
+  "id": "studio",
+  "nome": "Studio e servizi",
+  "descrizione": "Agenda per persona, appuntamenti con i servizi, schede cliente, pacchetti di sedute e pagamenti.",
+  "entita": [
+    { "id": "clienti", "nome": "Clienti", "icona": "persona", "titolo": "nome", "campi": [
+      { "id": "nome", "nome": "Nome", "tipo": "testo", "obbligatorio": true },
+      { "id": "telefono", "nome": "Telefono", "tipo": "telefono" },
+      { "id": "email", "nome": "Email", "tipo": "email", "unico": true },
+      { "id": "nascita", "nome": "Data di nascita", "tipo": "data" },
+      { "id": "consenso", "nome": "Consenso al trattamento", "tipo": "si_no" },
+      { "id": "note", "nome": "Note", "tipo": "testo_lungo" } ] },
+    { "id": "servizi", "nome": "Servizi", "icona": "stella", "titolo": "nome", "campi": [
+      { "id": "nome", "nome": "Nome", "tipo": "testo", "obbligatorio": true },
+      { "id": "durata", "nome": "Durata (minuti)", "tipo": "durata", "predefinito": 60 },
+      { "id": "prezzo", "nome": "Prezzo", "tipo": "valuta" },
+      { "id": "attivo", "nome": "Prenotabile", "tipo": "si_no", "predefinito": true } ] },
+    { "id": "appuntamenti", "nome": "Agenda", "icona": "calendario", "titolo": "cliente", "campi": [
+      { "id": "quando", "nome": "Quando", "tipo": "data_ora", "obbligatorio": true },
+      { "id": "cliente", "nome": "Cliente", "tipo": "relazione", "entita": "clienti", "obbligatorio": true },
+      { "id": "servizio", "nome": "Servizio", "tipo": "relazione", "entita": "servizi" },
+      { "id": "con", "nome": "Con", "tipo": "utente", "predefinito": "@utente" },
+      { "id": "stato", "nome": "Stato", "tipo": "stato", "iniziale": "prenotato", "opzioni": [
+        { "id": "prenotato", "nome": "Prenotato", "colore": "blu" }, { "id": "confermato", "nome": "Confermato", "colore": "viola" },
+        { "id": "fatto", "nome": "Fatto", "colore": "verde" }, { "id": "non_venuto", "nome": "Non venuto", "colore": "rosso" }, { "id": "annullato", "nome": "Annullato", "colore": "grigio" } ] },
+      { "id": "pacchetto", "nome": "Dal pacchetto", "tipo": "relazione", "entita": "pacchetti" },
+      { "id": "prezzo", "nome": "Prezzo", "tipo": "valuta" },
+      { "id": "pagato", "nome": "Pagato", "tipo": "si_no" },
+      { "id": "note", "nome": "Note", "tipo": "testo_lungo" } ] },
+    { "id": "pacchetti", "nome": "Pacchetti", "icona": "documento", "titolo": "nome", "campi": [
+      { "id": "nome", "nome": "Nome", "tipo": "testo", "obbligatorio": true },
+      { "id": "cliente", "nome": "Cliente", "tipo": "relazione", "entita": "clienti", "obbligatorio": true },
+      { "id": "sedute", "nome": "Sedute comprate", "tipo": "numero", "predefinito": 10 },
+      { "id": "usate", "nome": "Sedute usate", "tipo": "numero", "predefinito": 0 },
+      { "id": "rimaste", "nome": "Rimaste", "tipo": "calcolato", "formula": "sedute - usate" },
+      { "id": "scadenza", "nome": "Scadenza", "tipo": "data" },
+      { "id": "prezzo", "nome": "Prezzo", "tipo": "valuta" } ] }
+  ],
+  "automazioni": [
+    { "id": "seduta_usata", "nome": "Appuntamento fatto da un pacchetto: conta la seduta", "entita": "appuntamenti", "quando": "campo_cambia", "campo": "stato", "a": "fatto", "se": "NON VUOTO(pacchetto)",
+      "azioni": [ { "tipo": "aggiorna_collegato", "relazione": "pacchetto", "campo": "usate", "aggiungi": "1" } ] }
+  ]
+}

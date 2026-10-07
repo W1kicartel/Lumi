@@ -1,0 +1,114 @@
+{
+  "id": "negozio",
+  "nome": "Negozio e bottega",
+  "descrizione": "Articoli e magazzino, clienti e fornitori, vendite al banco con lo scarico automatico, ordini ai fornitori con il carico.",
+  "entita": [
+    {
+      "id": "clienti", "nome": "Clienti", "icona": "persona", "titolo": "nome",
+      "campi": [
+        { "id": "nome", "nome": "Nome", "tipo": "testo", "obbligatorio": true },
+        { "id": "telefono", "nome": "Telefono", "tipo": "telefono" },
+        { "id": "email", "nome": "Email", "tipo": "email", "unico": true },
+        { "id": "tipo", "nome": "Tipo", "tipo": "scelta", "opzioni": [
+          { "id": "privato", "nome": "Privato", "colore": "grigio" }, { "id": "azienda", "nome": "Azienda", "colore": "blu" } ], "predefinito": "privato" },
+        { "id": "piva", "nome": "Partita IVA / CF", "tipo": "testo" },
+        { "id": "indirizzo", "nome": "Indirizzo", "tipo": "indirizzo" },
+        { "id": "consenso", "nome": "Consenso marketing", "tipo": "si_no" },
+        { "id": "note", "nome": "Note", "tipo": "testo_lungo" }
+      ]
+    },
+    {
+      "id": "fornitori", "nome": "Fornitori", "icona": "furgone", "titolo": "nome",
+      "campi": [
+        { "id": "nome", "nome": "Ragione sociale", "tipo": "testo", "obbligatorio": true },
+        { "id": "referente", "nome": "Referente", "tipo": "testo" },
+        { "id": "telefono", "nome": "Telefono", "tipo": "telefono" },
+        { "id": "email", "nome": "Email", "tipo": "email" },
+        { "id": "piva", "nome": "Partita IVA", "tipo": "testo" },
+        { "id": "giorni_consegna", "nome": "Giorni di consegna", "tipo": "numero" }
+      ]
+    },
+    {
+      "id": "articoli", "nome": "Articoli", "icona": "scatola", "titolo": "nome",
+      "campi": [
+        { "id": "codice", "nome": "Codice", "tipo": "testo", "unico": true },
+        { "id": "nome", "nome": "Nome", "tipo": "testo", "obbligatorio": true },
+        { "id": "categoria", "nome": "Categoria", "tipo": "scelta", "opzioni": [
+          { "id": "generale", "nome": "Generale", "colore": "grigio" } ] },
+        { "id": "prezzo", "nome": "Prezzo", "tipo": "valuta" },
+        { "id": "costo", "nome": "Costo", "tipo": "valuta" },
+        { "id": "iva", "nome": "IVA", "tipo": "percentuale", "predefinito": 22 },
+        { "id": "giacenza", "nome": "Giacenza", "tipo": "numero", "predefinito": 0 },
+        { "id": "soglia", "nome": "Scorta minima", "tipo": "numero", "predefinito": 0 },
+        { "id": "da_riordinare", "nome": "Da riordinare", "tipo": "calcolato", "formula": "giacenza <= soglia" },
+        { "id": "margine", "nome": "Margine", "tipo": "calcolato", "formula": "SE(prezzo > 0; ARROTONDA((prezzo - costo) / prezzo * 100; 1); \"\")", "formato": "percentuale" },
+        { "id": "fornitore", "nome": "Fornitore", "tipo": "relazione", "entita": "fornitori" },
+        { "id": "barcode", "nome": "Codice a barre", "tipo": "codice_a_barre", "unico": true },
+        { "id": "foto", "nome": "Foto", "tipo": "immagine" }
+      ]
+    },
+    {
+      "id": "righe_vendita", "nome": "Righe di vendita", "nascosta": true, "titolo": "articolo",
+      "campi": [
+        { "id": "vendita", "nome": "Vendita", "tipo": "relazione", "entita": "vendite", "obbligatorio": true },
+        { "id": "articolo", "nome": "Articolo", "tipo": "relazione", "entita": "articoli", "obbligatorio": true },
+        { "id": "quantita", "nome": "Quantità", "tipo": "numero", "predefinito": 1 },
+        { "id": "prezzo", "nome": "Prezzo", "tipo": "valuta" },
+        { "id": "sconto", "nome": "Sconto", "tipo": "percentuale", "predefinito": 0 },
+        { "id": "totale", "nome": "Totale", "tipo": "calcolato", "formula": "ARROTONDA(quantita * prezzo * (1 - sconto / 100); 2)", "formato": "valuta" }
+      ]
+    },
+    {
+      "id": "vendite", "nome": "Vendite", "icona": "cassa", "titolo": "numero",
+      "campi": [
+        { "id": "numero", "nome": "Numero", "tipo": "contatore", "formato": "V-{AAAA}-{N:4}" },
+        { "id": "data", "nome": "Data", "tipo": "data", "predefinito": "@oggi", "obbligatorio": true },
+        { "id": "cliente", "nome": "Cliente", "tipo": "relazione", "entita": "clienti" },
+        { "id": "stato", "nome": "Stato", "tipo": "stato", "iniziale": "aperta", "opzioni": [
+          { "id": "aperta", "nome": "Aperta", "colore": "grigio" }, { "id": "pagata", "nome": "Pagata", "colore": "verde" },
+          { "id": "annullata", "nome": "Annullata", "colore": "rosso" } ],
+          "transizioni": { "aperta": ["pagata", "annullata"], "pagata": ["annullata"], "annullata": [] } },
+        { "id": "pagamento", "nome": "Pagamento", "tipo": "scelta", "opzioni": [
+          { "id": "contanti", "nome": "Contanti" }, { "id": "carta", "nome": "Carta" }, { "id": "bonifico", "nome": "Bonifico" } ] },
+        { "id": "righe", "nome": "Articoli", "tipo": "righe", "entita": "righe_vendita", "campo": "vendita" },
+        { "id": "totale", "nome": "Totale", "tipo": "calcolato", "formula": "SOMMA(righe.totale)", "formato": "valuta" },
+        { "id": "pezzi", "nome": "Pezzi", "tipo": "calcolato", "formula": "SOMMA(righe.quantita)" },
+        { "id": "note", "nome": "Note", "tipo": "testo_lungo" }
+      ]
+    },
+    {
+      "id": "righe_ordine", "nome": "Righe d'ordine", "nascosta": true, "titolo": "articolo",
+      "campi": [
+        { "id": "ordine", "nome": "Ordine", "tipo": "relazione", "entita": "ordini", "obbligatorio": true },
+        { "id": "articolo", "nome": "Articolo", "tipo": "relazione", "entita": "articoli", "obbligatorio": true },
+        { "id": "quantita", "nome": "Quantità", "tipo": "numero", "predefinito": 1 },
+        { "id": "costo", "nome": "Costo", "tipo": "valuta" },
+        { "id": "totale", "nome": "Totale", "tipo": "calcolato", "formula": "quantita * costo", "formato": "valuta" }
+      ]
+    },
+    {
+      "id": "ordini", "nome": "Ordini ai fornitori", "icona": "furgone", "titolo": "numero",
+      "campi": [
+        { "id": "numero", "nome": "Numero", "tipo": "contatore", "formato": "OF-{AAAA}-{N:3}" },
+        { "id": "data", "nome": "Data", "tipo": "data", "predefinito": "@oggi" },
+        { "id": "fornitore", "nome": "Fornitore", "tipo": "relazione", "entita": "fornitori", "obbligatorio": true },
+        { "id": "stato", "nome": "Stato", "tipo": "stato", "iniziale": "bozza", "opzioni": [
+          { "id": "bozza", "nome": "Bozza", "colore": "grigio" }, { "id": "inviato", "nome": "Inviato", "colore": "blu" },
+          { "id": "arrivato", "nome": "Arrivato", "colore": "verde" }, { "id": "annullato", "nome": "Annullato", "colore": "rosso" } ],
+          "transizioni": { "bozza": ["inviato", "annullato"], "inviato": ["arrivato", "annullato"], "arrivato": [], "annullato": [] } },
+        { "id": "consegna_prevista", "nome": "Consegna prevista", "tipo": "data" },
+        { "id": "righe", "nome": "Articoli", "tipo": "righe", "entita": "righe_ordine", "campo": "ordine" },
+        { "id": "totale", "nome": "Totale", "tipo": "calcolato", "formula": "SOMMA(righe.totale)", "formato": "valuta" }
+      ]
+    }
+  ],
+  "automazioni": [
+    { "id": "scarico_vendita", "nome": "Vendita pagata: scala il magazzino", "entita": "vendite", "quando": "campo_cambia", "campo": "stato", "a": "pagata",
+      "azioni": [ { "tipo": "aggiorna_collegato", "perOgniRiga": "righe", "relazione": "articolo", "campo": "giacenza", "aggiungi": "-quantita" } ] },
+    { "id": "reso_vendita", "nome": "Vendita pagata e poi annullata: rimette in magazzino", "entita": "vendite", "quando": "campo_cambia", "campo": "stato", "a": "annullata", "se": "prima.stato = \"pagata\"",
+      "azioni": [ { "tipo": "aggiorna_collegato", "perOgniRiga": "righe", "relazione": "articolo", "campo": "giacenza", "aggiungi": "quantita" } ] },
+    { "id": "carico_ordine", "nome": "Ordine arrivato: carica il magazzino", "entita": "ordini", "quando": "campo_cambia", "campo": "stato", "a": "arrivato",
+      "azioni": [ { "tipo": "aggiorna_collegato", "perOgniRiga": "righe", "relazione": "articolo", "campo": "giacenza", "aggiungi": "quantita" } ] }
+  ],
+  "domande": []
+}
