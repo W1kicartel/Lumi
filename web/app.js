@@ -17,7 +17,8 @@ export const contesto = () => ({ stato, schema, ricaricaSchema, h, api, get, toa
 
 async function avvio() {
   stato = await get('/stato');
-  if (!stato.configurato) return primoAvvio();
+  // il primo avvio guidato (web/moduli/avvio.js); se manca, quello semplice qui sotto
+  if (!stato.configurato) return import('/moduli/avvio.js').then(m => m.primoAvvio(app)).catch(e => { console.error('avvio guidato', e); return primoAvvio(); });
   if (!stato.utente) return accesso();
   MODULI = (await Promise.all((await get('/moduli')).map(f => import(f).then(m => m.default).catch(e => { console.error('modulo', f, e); return null; })))).filter(Boolean);
   await ricaricaSchema();

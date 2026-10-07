@@ -1,0 +1,98 @@
+{
+  "id": "beauty",
+  "ordine": 1,
+  "nome": "Beauty ed estetica",
+  "descrizione": "Agenda per cabina e per operatrice, schede cliente e di trattamento, pacchetti di sedute, prodotti in cabina e in vendita.",
+  "entita": [
+    { "id": "clienti", "nome": "Clienti", "icona": "persona", "titolo": "nome", "campi": [
+      { "id": "nome", "nome": "Nome", "tipo": "testo", "obbligatorio": true },
+      { "id": "telefono", "nome": "Telefono", "tipo": "telefono" },
+      { "id": "email", "nome": "Email", "tipo": "email", "unico": true },
+      { "id": "nascita", "nome": "Data di nascita", "tipo": "data" },
+      { "id": "pelle", "nome": "Tipo di pelle", "tipo": "scelta", "opzioni": [
+        { "id": "normale", "nome": "Normale" }, { "id": "secca", "nome": "Secca" }, { "id": "grassa", "nome": "Grassa" }, { "id": "mista", "nome": "Mista" }, { "id": "sensibile", "nome": "Sensibile", "colore": "giallo" } ] },
+      { "id": "allergie", "nome": "Allergie e controindicazioni", "tipo": "testo_lungo" },
+      { "id": "consenso", "nome": "Consenso al trattamento dei dati", "tipo": "si_no" },
+      { "id": "note", "nome": "Note", "tipo": "testo_lungo" } ] },
+    { "id": "cabine", "nome": "Cabine", "icona": "griglia", "titolo": "nome", "campi": [
+      { "id": "nome", "nome": "Cabina", "tipo": "testo", "obbligatorio": true },
+      { "id": "attrezzatura", "nome": "Attrezzatura", "tipo": "testo" },
+      { "id": "attiva", "nome": "In uso", "tipo": "si_no", "predefinito": true } ] },
+    { "id": "trattamenti", "nome": "Trattamenti", "icona": "stella", "titolo": "nome", "campi": [
+      { "id": "nome", "nome": "Trattamento", "tipo": "testo", "obbligatorio": true },
+      { "id": "categoria", "nome": "Categoria", "tipo": "scelta", "opzioni": [
+        { "id": "viso", "nome": "Viso", "colore": "viola" }, { "id": "corpo", "nome": "Corpo", "colore": "blu" }, { "id": "mani_piedi", "nome": "Mani e piedi", "colore": "giallo" },
+        { "id": "epilazione", "nome": "Epilazione", "colore": "rosso" }, { "id": "massaggi", "nome": "Massaggi", "colore": "verde" } ] },
+      { "id": "durata", "nome": "Durata (minuti)", "tipo": "durata", "predefinito": 60 },
+      { "id": "prezzo", "nome": "Prezzo", "tipo": "valuta" },
+      { "id": "prenotabile", "nome": "Prenotabile", "tipo": "si_no", "predefinito": true } ] },
+    { "id": "pacchetti", "nome": "Pacchetti", "icona": "documento", "titolo": "nome", "campi": [
+      { "id": "nome", "nome": "Pacchetto", "tipo": "testo", "obbligatorio": true },
+      { "id": "cliente", "nome": "Cliente", "tipo": "relazione", "entita": "clienti", "obbligatorio": true },
+      { "id": "trattamento", "nome": "Trattamento", "tipo": "relazione", "entita": "trattamenti" },
+      { "id": "sedute", "nome": "Sedute comprate", "tipo": "numero", "predefinito": 10 },
+      { "id": "usate", "nome": "Sedute usate", "tipo": "numero", "predefinito": 0 },
+      { "id": "rimaste", "nome": "Rimaste", "tipo": "calcolato", "formula": "sedute - usate" },
+      { "id": "scadenza", "nome": "Scadenza", "tipo": "data" },
+      { "id": "prezzo", "nome": "Prezzo", "tipo": "valuta" },
+      { "id": "pagato", "nome": "Pagato", "tipo": "si_no" } ] },
+    { "id": "appuntamenti", "nome": "Agenda", "icona": "calendario", "titolo": "cliente", "campi": [
+      { "id": "quando", "nome": "Quando", "tipo": "data_ora", "obbligatorio": true },
+      { "id": "cliente", "nome": "Cliente", "tipo": "relazione", "entita": "clienti", "obbligatorio": true },
+      { "id": "trattamento", "nome": "Trattamento", "tipo": "relazione", "entita": "trattamenti" },
+      { "id": "cabina", "nome": "Cabina", "tipo": "relazione", "entita": "cabine" },
+      { "id": "con", "nome": "Operatrice", "tipo": "utente", "predefinito": "@utente" },
+      { "id": "stato", "nome": "Stato", "tipo": "stato", "iniziale": "prenotato", "opzioni": [
+        { "id": "prenotato", "nome": "Prenotato", "colore": "blu" }, { "id": "confermato", "nome": "Confermato", "colore": "viola" },
+        { "id": "fatto", "nome": "Fatto", "colore": "verde" }, { "id": "non_venuto", "nome": "Non venuto", "colore": "rosso" }, { "id": "annullato", "nome": "Annullato", "colore": "grigio" } ] },
+      { "id": "pacchetto", "nome": "Dal pacchetto", "tipo": "relazione", "entita": "pacchetti" },
+      { "id": "prezzo", "nome": "Prezzo", "tipo": "valuta" },
+      { "id": "pagato", "nome": "Pagato", "tipo": "si_no" },
+      { "id": "note", "nome": "Note", "tipo": "testo_lungo" } ] },
+    { "id": "schede", "nome": "Schede trattamento", "icona": "cartella", "titolo": "cliente", "campi": [
+      { "id": "cliente", "nome": "Cliente", "tipo": "relazione", "entita": "clienti", "obbligatorio": true },
+      { "id": "data", "nome": "Data", "tipo": "data", "predefinito": "@oggi" },
+      { "id": "trattamento", "nome": "Trattamento", "tipo": "relazione", "entita": "trattamenti" },
+      { "id": "operatrice", "nome": "Operatrice", "tipo": "utente", "predefinito": "@utente" },
+      { "id": "prodotti_usati", "nome": "Prodotti usati", "tipo": "testo_lungo" },
+      { "id": "esito", "nome": "Come è andata", "tipo": "testo_lungo" },
+      { "id": "foto", "nome": "Foto prima e dopo", "tipo": "immagine" },
+      { "id": "richiamo", "nome": "Da richiamare il", "tipo": "data" } ] },
+    { "id": "prodotti", "nome": "Prodotti", "icona": "scatola", "titolo": "nome", "campi": [
+      { "id": "nome", "nome": "Prodotto", "tipo": "testo", "obbligatorio": true },
+      { "id": "marca", "nome": "Marca", "tipo": "testo" },
+      { "id": "uso", "nome": "Uso", "tipo": "scelta", "opzioni": [ { "id": "cabina", "nome": "In cabina" }, { "id": "vendita", "nome": "In vendita" }, { "id": "entrambi", "nome": "Tutti e due" } ], "predefinito": "entrambi" },
+      { "id": "prezzo", "nome": "Prezzo di vendita", "tipo": "valuta" },
+      { "id": "costo", "nome": "Costo", "tipo": "valuta" },
+      { "id": "margine", "nome": "Margine", "tipo": "calcolato", "formula": "SE(prezzo > 0; ARROTONDA((prezzo - costo) / prezzo * 100; 1); \"\")", "formato": "percentuale" },
+      { "id": "giacenza", "nome": "Giacenza", "tipo": "numero", "predefinito": 0 },
+      { "id": "soglia", "nome": "Scorta minima", "tipo": "numero", "predefinito": 1 },
+      { "id": "da_riordinare", "nome": "Da riordinare", "tipo": "calcolato", "formula": "giacenza <= soglia" },
+      { "id": "barcode", "nome": "Codice a barre", "tipo": "codice_a_barre", "unico": true } ] }
+  ],
+  "automazioni": [
+    { "id": "seduta_pacchetto", "nome": "Appuntamento fatto da un pacchetto: conta la seduta", "entita": "appuntamenti", "quando": "campo_cambia", "campo": "stato", "a": "fatto", "se": "NON VUOTO(pacchetto)",
+      "azioni": [ { "tipo": "aggiorna_collegato", "relazione": "pacchetto", "campo": "usate", "aggiungi": "1" } ] },
+    { "id": "scheda_dopo_appuntamento", "nome": "Appuntamento fatto: apre la scheda del trattamento", "entita": "appuntamenti", "quando": "campo_cambia", "campo": "stato", "a": "fatto",
+      "azioni": [ { "tipo": "crea", "entita": "schede", "valori": { "cliente": "cliente", "trattamento": "trattamento", "data": "OGGI()", "operatrice": "con" } } ] }
+  ],
+  "interruttori": {
+    "magazzino": { "campi": ["prodotti.giacenza", "prodotti.soglia", "prodotti.da_riordinare"] },
+    "prodotti": { "entita": ["prodotti"] },
+    "appuntamenti": { "entita": ["appuntamenti"] }
+  },
+  "ruoli": [
+    { "id": "operatrice", "nome": "Operatrice", "entita": { "*": { "leggi": true, "crea": true, "modifica": true },
+      "pacchetti": { "campi": { "prezzo": "nascosto" } }, "prodotti": { "crea": false, "campi": { "costo": "nascosto", "margine": "nascosto" } }, "cabine": { "crea": false, "modifica": false } } }
+  ],
+  "cruscotto": {
+    "widget": [
+      { "tipo": "numero", "titolo": "Pacchetti con sedute da fare", "entita": "pacchetti", "misura": "conta", "filtri": [{ "campo": "rimaste", "op": ">", "valore": 0 }] }
+    ],
+    "attenzione": [
+      { "titolo": "Clienti da richiamare", "entita": "schede", "filtri": [{ "campo": "richiamo", "op": "tra", "valore": ["@oggi-30", "@oggi+7"] }] },
+      { "titolo": "Prodotti da riordinare", "entita": "prodotti", "filtri": [{ "campo": "da_riordinare", "op": "=", "valore": true }] },
+      { "titolo": "Pacchetti non pagati", "entita": "pacchetti", "filtri": [{ "campo": "pagato", "op": "=", "valore": false }] }
+    ]
+  }
+}

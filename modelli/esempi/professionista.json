@@ -1,0 +1,32 @@
+{
+  "clienti": [
+    { "#": "c1", "nome": "Forno Bianchi snc", "referente": "Silvia Bianchi", "telefono": "035 221 0984", "email": "silvia@fornobianchi.example", "piva": "IT04567890123", "provenienza": "passaparola" },
+    { "#": "c2", "nome": "Vivai Serra", "referente": "Tommaso Serra", "telefono": "0376 44 1290", "email": "tommaso@vivaiserra.example", "sito": "https://vivaiserra.example", "provenienza": "sito" },
+    { "#": "c3", "nome": "Associazione Corte Antica", "referente": "Laura De Santis", "email": "info@corteantica.example", "provenienza": "social" }
+  ],
+  "preventivi": [
+    { "data": "@oggi-30", "cliente": "#c1", "oggetto": "Nuovo sito e catalogo prodotti", "stato": "accettato", "voci": [ { "descrizione": "Progetto grafico", "quantita": 1, "prezzo": 900 }, { "descrizione": "Sviluppo sito (pagine)", "quantita": 8, "prezzo": 180 }, { "descrizione": "Fotografie dei prodotti", "quantita": 1, "prezzo": 450 } ] },
+    { "data": "@oggi-8", "cliente": "#c2", "oggetto": "Campagna di primavera", "stato": "inviato", "valido_fino": "@oggi+22", "voci": [ { "descrizione": "Piano editoriale", "quantita": 1, "prezzo": 600 }, { "descrizione": "Gestione social (mesi)", "quantita": 3, "prezzo": 400 } ] },
+    { "data": "@oggi-1", "cliente": "#c3", "oggetto": "Identità visiva del festival", "stato": "bozza", "voci": [ { "descrizione": "Logo e linee guida", "quantita": 1, "prezzo": 1200 } ] }
+  ],
+  "progetti": [
+    { "#": "pr_archivio", "nome": "Riordino archivio fotografico", "cliente": "#c3", "stato": "attivo", "inizio": "@oggi-40", "consegna": "@oggi-2", "budget": 1500, "tariffa": 50, "ore_previste": 30 },
+    { "#": "pr_newsletter", "nome": "Newsletter mensile", "cliente": "#c2", "stato": "attivo", "inizio": "@oggi-70", "budget": 800, "tariffa": 60, "ore_previste": 12 }
+  ],
+  "ore": [
+    { "progetto": "#pr_archivio", "data": "@oggi-1", "chi": "@utente", "ore": 3.5, "attivita": "Selezione e rinomina delle foto 1990-1995" },
+    { "progetto": "#pr_archivio", "data": "@oggi-3", "chi": "@utente", "ore": 4, "attivita": "Scansioni e schede" },
+    { "progetto": "#pr_archivio", "data": "@oggi-8", "chi": "@utente", "ore": 6, "attivita": "Struttura delle cartelle e metadati" },
+    { "progetto": "#pr_archivio", "data": "@oggi-15", "chi": "@utente", "ore": 9, "attivita": "Prima catalogazione" },
+    { "progetto": "#pr_archivio", "data": "@oggi-22", "chi": "@utente", "ore": 7, "attivita": "Sopralluogo e inventario" },
+    { "progetto": "#pr_newsletter", "data": "@oggi-2", "chi": "@utente", "ore": 2, "attivita": "Testi e impaginazione di ottobre" },
+    { "progetto": "#pr_newsletter", "data": "@oggi-33", "chi": "@utente", "ore": 2.5, "attivita": "Newsletter di settembre" },
+    { "progetto": "#pr_newsletter", "data": "@oggi-60", "chi": "@utente", "ore": 3, "attivita": "Modello grafico e prima uscita", "fatturabile": false }
+  ],
+  "attivita": [
+    { "titolo": "Mandare le bozze delle pagine prodotto", "cliente": "#c1", "chi": "@utente", "scadenza": "@oggi+2", "priorita": "alta", "stato": "in_corso" },
+    { "titolo": "Chiedere i testi dei vivai", "cliente": "#c2", "chi": "@utente", "scadenza": "@oggi-1", "priorita": "media", "stato": "da_fare" },
+    { "titolo": "Consegna archivio: chiavetta e copia online", "progetto": "#pr_archivio", "chi": "@utente", "scadenza": "@oggi+5", "priorita": "alta", "stato": "da_fare" },
+    { "titolo": "Rinnovo dominio cliente", "cliente": "#c1", "scadenza": "@oggi+20", "priorita": "bassa", "stato": "da_fare" }
+  ]
+}

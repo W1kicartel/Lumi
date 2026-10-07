@@ -1,0 +1,36 @@
+{
+  "soci": [
+    { "#": "s1", "nome": "Chiara Moretti", "tessera": "0142", "telefono": "347 880 2219", "email": "chiara.moretti@esempio.it", "nascita": "1992-06-03", "certificato_fino": "@oggi+200", "consenso": true },
+    { "#": "s2", "nome": "Luca Ferrara", "tessera": "0143", "telefono": "333 418 7754", "email": "luca.ferrara@esempio.it", "nascita": "1985-01-21", "certificato_fino": "@oggi-10", "consenso": true },
+    { "#": "s3", "nome": "Martina Galli", "tessera": "0151", "telefono": "320 117 3380", "email": "martina.galli@esempio.it", "nascita": "2001-09-14", "certificato_fino": "@oggi+90", "consenso": true },
+    { "#": "s4", "nome": "Roberto Sala", "tessera": "0156", "telefono": "349 662 0045", "nascita": "1968-12-02", "certificato_fino": "@oggi+300", "consenso": true },
+    { "#": "s5", "nome": "Federica Rizzi", "tessera": "0160", "telefono": "339 905 6612", "email": "federica.rizzi@esempio.it", "nascita": "1996-03-28", "consenso": true },
+    { "#": "s6", "nome": "Andrea Villa", "tessera": "0163", "telefono": "348 270 1199", "email": "andrea.villa@esempio.it", "nascita": "1979-07-09", "certificato_fino": "@oggi+150", "consenso": true }
+  ],
+  "corsi": [
+    { "#": "pilates", "nome": "Pilates", "istruttore": "@utente", "giorni": ["lun", "mer"], "ora": "18:30", "durata": 60, "posti": 12, "livello": "tutti" },
+    { "#": "funzionale", "nome": "Allenamento funzionale", "istruttore": "@utente", "giorni": ["mar", "gio"], "ora": "19:00", "durata": 50, "posti": 15, "livello": "intermedio" },
+    { "#": "yoga", "nome": "Yoga del mattino", "giorni": ["sab"], "ora": "09:30", "durata": 75, "posti": 10, "livello": "base" }
+  ],
+  "abbonamenti": [
+    { "socio": "#s1", "tipo": "trimestrale", "dal": "@oggi-40", "al": "@oggi+50", "prezzo": 165, "pagato": true },
+    { "socio": "#s2", "tipo": "mensile", "dal": "@oggi-26", "al": "@oggi+4", "prezzo": 60, "pagato": true },
+    { "socio": "#s3", "tipo": "annuale", "dal": "@oggi-120", "al": "@oggi+245", "prezzo": 540, "pagato": true },
+    { "socio": "#s4", "tipo": "ingressi", "dal": "@oggi-30", "al": "@oggi+150", "ingressi": 10, "usati": 7, "prezzo": 90, "pagato": true },
+    { "socio": "#s5", "tipo": "mensile", "dal": "@oggi-2", "prezzo": 60, "pagato": false },
+    { "socio": "#s6", "tipo": "mensile", "dal": "@oggi-45", "al": "@oggi-15", "prezzo": 60, "pagato": true }
+  ],
+  "quote": [
+    { "socio": "#s1", "causale": "quota_associativa", "anno": 2026, "data": "@oggi-60", "importo": 25, "pagata": true, "metodo": "carta" },
+    { "socio": "#s3", "causale": "quota_associativa", "anno": 2026, "data": "@oggi-120", "importo": 25, "pagata": true, "metodo": "contanti" },
+    { "socio": "#s5", "causale": "iscrizione", "anno": 2026, "data": "@oggi-2", "importo": 30, "pagata": false }
+  ],
+  "lezioni": [
+    { "corso": "#pilates", "quando": "@oggi 18:30", "istruttore": "@utente", "stato": "in_programma" },
+    { "corso": "#funzionale", "quando": "@oggi+1 19:00", "istruttore": "@utente", "stato": "in_programma" },
+    { "corso": "#pilates", "quando": "@oggi-2 18:30", "istruttore": "@utente", "stato": "fatta", "presenze": ["#s1", "#s3", "#s5"] },
+    { "corso": "#funzionale", "quando": "@oggi-1 19:00", "istruttore": "@utente", "stato": "fatta", "presenze": ["#s2", "#s4", "#s6", "#s3"] },
+    { "corso": "#yoga", "quando": "@oggi-4 09:30", "stato": "fatta", "presenze": ["#s1", "#s4"] },
+    { "corso": "#funzionale", "quando": "@oggi-6 19:00", "istruttore": "@utente", "stato": "in_programma" }
+  ]
+}

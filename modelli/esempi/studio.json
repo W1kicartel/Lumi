@@ -1,0 +1,29 @@
+{
+  "clienti": [
+    { "#": "sara", "nome": "Sara Lombardi", "telefono": "347 556 0981", "email": "sara.lombardi@esempio.it", "nascita": "1988-04-12", "consenso": true },
+    { "#": "davide", "nome": "Davide Greco", "telefono": "333 129 4407", "email": "davide.greco@esempio.it", "consenso": true },
+    { "#": "elena", "nome": "Elena Fontana", "telefono": "320 778 3315", "email": "elena.fontana@esempio.it", "nascita": "1975-11-30", "consenso": true },
+    { "#": "paolo", "nome": "Paolo Testa", "telefono": "349 221 6058", "consenso": false }
+  ],
+  "servizi": [
+    { "#": "prima", "nome": "Prima visita", "durata": 60, "prezzo": 80 },
+    { "#": "seduta", "nome": "Seduta di controllo", "durata": 45, "prezzo": 60 },
+    { "#": "breve", "nome": "Consulenza breve", "durata": 30, "prezzo": 40 }
+  ],
+  "pacchetti": [
+    { "#": "pk_sara", "nome": "10 sedute", "cliente": "#sara", "sedute": 10, "usate": 3, "scadenza": "@oggi+90", "prezzo": 500 },
+    { "#": "pk_elena", "nome": "5 sedute", "cliente": "#elena", "sedute": 5, "usate": 4, "scadenza": "@oggi-5", "prezzo": 270 }
+  ],
+  "appuntamenti": [
+    { "quando": "@oggi 9:00", "cliente": "#sara", "servizio": "#seduta", "con": "@utente", "stato": "confermato", "pacchetto": "#pk_sara", "prezzo": 0 },
+    { "quando": "@oggi 10:30", "cliente": "#davide", "servizio": "#prima", "con": "@utente", "stato": "prenotato", "prezzo": 80 },
+    { "quando": "@oggi 15:00", "cliente": "#paolo", "servizio": "#breve", "con": "@utente", "stato": "prenotato", "prezzo": 40 },
+    { "quando": "@oggi+1 11:00", "cliente": "#elena", "servizio": "#seduta", "con": "@utente", "stato": "prenotato", "prezzo": 60 },
+    { "quando": "@oggi+2 17:30", "cliente": "#davide", "servizio": "#seduta", "con": "@utente", "stato": "prenotato", "prezzo": 60 },
+    { "quando": "@oggi-1 9:30", "cliente": "#elena", "servizio": "#seduta", "con": "@utente", "stato": "fatto", "prezzo": 60, "pagato": true },
+    { "quando": "@oggi-1 16:00", "cliente": "#paolo", "servizio": "#prima", "con": "@utente", "stato": "confermato", "prezzo": 80 },
+    { "quando": "@oggi-3 10:00", "cliente": "#sara", "servizio": "#seduta", "con": "@utente", "stato": "fatto", "pacchetto": "#pk_sara", "prezzo": 0, "pagato": true },
+    { "quando": "@oggi-8 12:00", "cliente": "#davide", "servizio": "#breve", "con": "@utente", "stato": "non_venuto", "prezzo": 40 },
+    { "quando": "@oggi-15 9:00", "cliente": "#elena", "servizio": "#prima", "con": "@utente", "stato": "fatto", "prezzo": 80, "pagato": true }
+  ]
+}

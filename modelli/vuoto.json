@@ -1,0 +1,10 @@
+{
+  "id": "vuoto",
+  "ordine": 9,
+  "nome": "Da zero",
+  "descrizione": "Nessuna sezione pronta: le crei tu da «Nuova sezione», oppure le chiedi a Lumi a parole.",
+  "entita": [],
+  "automazioni": [],
+  "interruttori": {},
+  "ruoli": []
+}

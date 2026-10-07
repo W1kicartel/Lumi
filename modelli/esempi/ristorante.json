@@ -1,0 +1,92 @@
+{
+  "tavoli": [
+    {"#": "t1", "nome": "1", "sala": "interna", "posti": 2},
+    {"#": "t2", "nome": "2", "sala": "interna", "posti": 4},
+    {"#": "t3", "nome": "3", "sala": "interna", "posti": 4},
+    {"#": "t4", "nome": "4", "sala": "interna", "posti": 6},
+    {"#": "t5", "nome": "D1", "sala": "dehors", "posti": 4},
+    {"#": "t6", "nome": "D2", "sala": "dehors", "posti": 2},
+    {"#": "t7", "nome": "Saletta", "sala": "privata", "posti": 12}
+  ],
+  "fornitori": [
+    {"#": "f_ortofrutta", "nome": "Ortofrutta Bassi", "cosa": "Verdura e frutta", "telefono": "0522 401 778", "giorni": ["lun", "mer", "ven"]},
+    {"#": "f_carni", "nome": "Macelleria Pedretti", "cosa": "Carni", "telefono": "0522 330 915", "giorni": ["mar", "ven"]},
+    {"#": "f_vini", "nome": "Cantina Colli Alti", "cosa": "Vini", "email": "ordini@collialti.example", "giorni": ["gio"]}
+  ],
+  "piatti": [
+    {"#": "tortelli", "nome": "Tortelli di zucca al burro e salvia", "categoria": "primi", "prezzo": 13, "costo": 3.1, "allergeni": ["glutine", "uova", "latte"], "vegetariano": true},
+    {"#": "tagliatelle", "nome": "Tagliatelle al ragù", "categoria": "primi", "prezzo": 12, "costo": 2.8, "allergeni": ["glutine", "uova", "sedano"]},
+    {"#": "tagliere", "nome": "Tagliere di salumi e gnocco fritto", "categoria": "antipasti", "prezzo": 15, "costo": 5.2, "allergeni": ["glutine", "latte"]},
+    {"#": "guancia", "nome": "Guancia brasata al Lambrusco", "categoria": "secondi", "prezzo": 18, "costo": 5.9, "allergeni": ["sedano", "solfiti"]},
+    {"#": "orata", "nome": "Orata al forno con patate", "categoria": "secondi", "prezzo": 19, "costo": 7.4, "allergeni": ["pesce"]},
+    {"#": "verdure", "nome": "Verdure grigliate", "categoria": "contorni", "prezzo": 5, "costo": 1.2, "vegetariano": true},
+    {"#": "zuppa", "nome": "Zuppa inglese", "categoria": "dolci", "prezzo": 6, "costo": 1.5, "allergeni": ["glutine", "uova", "latte"], "vegetariano": true},
+    {"#": "torta", "nome": "Torta di noci", "categoria": "dolci", "prezzo": 6, "costo": 1.3, "allergeni": ["glutine", "uova", "frutta_guscio"], "vegetariano": true, "disponibile": false},
+    {"#": "acqua", "nome": "Acqua minerale 0,75 l", "categoria": "bevande", "prezzo": 2.5, "costo": 0.4},
+    {"#": "lambrusco", "nome": "Lambrusco Grasparossa (bottiglia)", "categoria": "vini", "prezzo": 18, "costo": 6.5, "allergeni": ["solfiti"]}
+  ],
+  "ingredienti": [
+    {"nome": "Farina 00", "unita": "kg", "giacenza": 22, "soglia": 10, "costo": 0.9, "fornitore": "#f_ortofrutta"},
+    {"nome": "Zucca mantovana", "unita": "kg", "giacenza": 4, "soglia": 6, "costo": 1.8, "fornitore": "#f_ortofrutta", "scadenza": "@oggi+2"},
+    {"nome": "Guancia di manzo", "unita": "kg", "giacenza": 3.5, "soglia": 3, "costo": 14, "fornitore": "#f_carni", "scadenza": "@oggi+3"},
+    {"nome": "Burro", "unita": "kg", "giacenza": 2, "soglia": 2, "costo": 9.5, "scadenza": "@oggi+12"},
+    {"nome": "Lambrusco Grasparossa", "unita": "bt", "giacenza": 34, "soglia": 12, "costo": 6.5, "fornitore": "#f_vini"},
+    {"nome": "Uova fresche", "unita": "pz", "giacenza": 60, "soglia": 30, "costo": 0.3, "scadenza": "@oggi+9"}
+  ],
+  "prenotazioni": [
+    {"quando": "@oggi 20:00", "nome": "Bertolini", "telefono": "347 220 1198", "persone": 4, "tavolo": "#t2", "stato": "confermata", "canale": "telefono"},
+    {"quando": "@oggi 20:30", "nome": "Mancini", "telefono": "333 671 4402", "persone": 2, "tavolo": "#t6", "stato": "confermata", "canale": "sito", "allergie": "Una persona celiaca"},
+    {"quando": "@oggi 21:00", "nome": "Compleanno Ferrari", "telefono": "339 108 6620", "persone": 11, "tavolo": "#t7", "stato": "richiesta", "canale": "telefono"},
+    {"quando": "@oggi+1 13:00", "nome": "Ufficio Tecnoservice", "persone": 6, "tavolo": "#t4", "stato": "confermata", "canale": "di_persona"},
+    {"quando": "@oggi+2 20:00", "nome": "Gualtieri", "telefono": "320 554 9087", "persone": 3, "stato": "richiesta", "canale": "sito"}
+  ],
+  "comande": [
+    {"data": "@oggi-28", "tavolo": "#t1", "coperti": 3, "stato": "pagata", "pagamento": "carta", "righe": [{"piatto": "#guancia", "quantita": 1, "prezzo": 18}, {"piatto": "#orata", "quantita": 1, "prezzo": 19}, {"piatto": "#zuppa", "quantita": 3, "prezzo": 6}]},
+    {"data": "@oggi-28", "tavolo": "#t4", "coperti": 4, "stato": "pagata", "pagamento": "carta", "righe": [{"piatto": "#tortelli", "quantita": 1, "prezzo": 13}, {"piatto": "#tagliere", "quantita": 1, "prezzo": 15}, {"piatto": "#tagliatelle", "quantita": 4, "prezzo": 12}]},
+    {"data": "@oggi-26", "tavolo": "#t6", "coperti": 2, "stato": "pagata", "pagamento": "contanti", "righe": [{"piatto": "#tagliatelle", "quantita": 1, "prezzo": 12}, {"piatto": "#tagliere", "quantita": 1, "prezzo": 15}, {"piatto": "#orata", "quantita": 1, "prezzo": 19}]},
+    {"data": "@oggi-26", "tavolo": "#t1", "coperti": 4, "stato": "pagata", "pagamento": "contanti", "righe": [{"piatto": "#tortelli", "quantita": 4, "prezzo": 13}, {"piatto": "#tagliere", "quantita": 1, "prezzo": 15}, {"piatto": "#lambrusco", "quantita": 2, "prezzo": 18}]},
+    {"data": "@oggi-24", "tavolo": "#t1", "coperti": 2, "stato": "pagata", "pagamento": "contanti", "righe": [{"piatto": "#tagliere", "quantita": 1, "prezzo": 15}, {"piatto": "#orata", "quantita": 2, "prezzo": 19}, {"piatto": "#tagliatelle", "quantita": 1, "prezzo": 12}]},
+    {"data": "@oggi-24", "tavolo": "#t4", "coperti": 4, "stato": "pagata", "pagamento": "contanti", "righe": [{"piatto": "#orata", "quantita": 1, "prezzo": 19}, {"piatto": "#guancia", "quantita": 1, "prezzo": 18}, {"piatto": "#tortelli", "quantita": 2, "prezzo": 13}]},
+    {"data": "@oggi-21", "tavolo": "#t3", "coperti": 4, "stato": "pagata", "pagamento": "carta", "righe": [{"piatto": "#lambrusco", "quantita": 4, "prezzo": 18}, {"piatto": "#acqua", "quantita": 4, "prezzo": 2.5}, {"piatto": "#guancia", "quantita": 3, "prezzo": 18}]},
+    {"data": "@oggi-21", "tavolo": "#t6", "coperti": 2, "stato": "pagata", "pagamento": "carta", "righe": [{"piatto": "#orata", "quantita": 2, "prezzo": 19}, {"piatto": "#tortelli", "quantita": 2, "prezzo": 13}, {"piatto": "#tagliere", "quantita": 2, "prezzo": 15}]},
+    {"data": "@oggi-20", "tavolo": "#t2", "coperti": 3, "stato": "pagata", "pagamento": "carta", "righe": [{"piatto": "#tagliatelle", "quantita": 2, "prezzo": 12}, {"piatto": "#tortelli", "quantita": 1, "prezzo": 13}, {"piatto": "#tagliere", "quantita": 2, "prezzo": 15}]},
+    {"data": "@oggi-20", "tavolo": "#t5", "coperti": 4, "stato": "pagata", "pagamento": "carta", "righe": [{"piatto": "#tortelli", "quantita": 3, "prezzo": 13}, {"piatto": "#zuppa", "quantita": 3, "prezzo": 6}, {"piatto": "#acqua", "quantita": 3, "prezzo": 2.5}]},
+    {"data": "@oggi-17", "tavolo": "#t1", "coperti": 4, "stato": "pagata", "pagamento": "contanti", "righe": [{"piatto": "#acqua", "quantita": 3, "prezzo": 2.5}, {"piatto": "#tortelli", "quantita": 4, "prezzo": 13}, {"piatto": "#lambrusco", "quantita": 1, "prezzo": 18}]},
+    {"data": "@oggi-17", "tavolo": "#t6", "coperti": 5, "stato": "pagata", "pagamento": "carta", "righe": [{"piatto": "#tagliere", "quantita": 4, "prezzo": 15}, {"piatto": "#zuppa", "quantita": 3, "prezzo": 6}, {"piatto": "#acqua", "quantita": 4, "prezzo": 2.5}]},
+    {"data": "@oggi-15", "tavolo": "#t2", "coperti": 2, "stato": "pagata", "pagamento": "carta", "righe": [{"piatto": "#acqua", "quantita": 1, "prezzo": 2.5}, {"piatto": "#guancia", "quantita": 2, "prezzo": 18}, {"piatto": "#tagliatelle", "quantita": 1, "prezzo": 12}]},
+    {"data": "@oggi-15", "tavolo": "#t4", "coperti": 2, "stato": "pagata", "pagamento": "carta", "righe": [{"piatto": "#orata", "quantita": 2, "prezzo": 19}, {"piatto": "#acqua", "quantita": 1, "prezzo": 2.5}, {"piatto": "#lambrusco", "quantita": 1, "prezzo": 18}]},
+    {"data": "@oggi-14", "tavolo": "#t6", "coperti": 4, "stato": "pagata", "pagamento": "carta", "righe": [{"piatto": "#tagliere", "quantita": 3, "prezzo": 15}, {"piatto": "#tagliatelle", "quantita": 4, "prezzo": 12}, {"piatto": "#orata", "quantita": 3, "prezzo": 19}]},
+    {"data": "@oggi-14", "tavolo": "#t1", "coperti": 2, "stato": "pagata", "pagamento": "carta", "righe": [{"piatto": "#guancia", "quantita": 1, "prezzo": 18}, {"piatto": "#tortelli", "quantita": 1, "prezzo": 13}, {"piatto": "#tagliatelle", "quantita": 1, "prezzo": 12}]},
+    {"data": "@oggi-13", "tavolo": "#t5", "coperti": 4, "stato": "pagata", "pagamento": "carta", "righe": [{"piatto": "#guancia", "quantita": 1, "prezzo": 18}, {"piatto": "#acqua", "quantita": 2, "prezzo": 2.5}, {"piatto": "#lambrusco", "quantita": 4, "prezzo": 18}]},
+    {"data": "@oggi-13", "tavolo": "#t4", "coperti": 4, "stato": "pagata", "pagamento": "carta", "righe": [{"piatto": "#zuppa", "quantita": 1, "prezzo": 6}, {"piatto": "#tagliatelle", "quantita": 4, "prezzo": 12}, {"piatto": "#acqua", "quantita": 4, "prezzo": 2.5}]},
+    {"data": "@oggi-12", "tavolo": "#t1", "coperti": 4, "stato": "pagata", "pagamento": "carta", "righe": [{"piatto": "#tagliatelle", "quantita": 4, "prezzo": 12}, {"piatto": "#orata", "quantita": 1, "prezzo": 19}, {"piatto": "#zuppa", "quantita": 2, "prezzo": 6}]},
+    {"data": "@oggi-12", "tavolo": "#t5", "coperti": 4, "stato": "pagata", "pagamento": "carta", "righe": [{"piatto": "#guancia", "quantita": 1, "prezzo": 18}, {"piatto": "#tortelli", "quantita": 1, "prezzo": 13}, {"piatto": "#acqua", "quantita": 1, "prezzo": 2.5}]},
+    {"data": "@oggi-10", "tavolo": "#t1", "coperti": 2, "stato": "pagata", "pagamento": "contanti", "righe": [{"piatto": "#tortelli", "quantita": 2, "prezzo": 13}]},
+    {"data": "@oggi-9", "tavolo": "#t5", "coperti": 4, "stato": "pagata", "pagamento": "carta", "righe": [{"piatto": "#tagliatelle", "quantita": 1, "prezzo": 12}, {"piatto": "#guancia", "quantita": 1, "prezzo": 18}, {"piatto": "#tagliere", "quantita": 2, "prezzo": 15}]},
+    {"data": "@oggi-9", "tavolo": "#t1", "coperti": 2, "stato": "pagata", "pagamento": "carta", "righe": [{"piatto": "#tagliere", "quantita": 2, "prezzo": 15}, {"piatto": "#guancia", "quantita": 2, "prezzo": 18}, {"piatto": "#acqua", "quantita": 1, "prezzo": 2.5}]},
+    {"data": "@oggi-8", "tavolo": "#t6", "coperti": 4, "stato": "pagata", "pagamento": "carta", "righe": [{"piatto": "#acqua", "quantita": 1, "prezzo": 2.5}, {"piatto": "#orata", "quantita": 2, "prezzo": 19}, {"piatto": "#guancia", "quantita": 1, "prezzo": 18}]},
+    {"data": "@oggi-8", "tavolo": "#t2", "coperti": 5, "stato": "pagata", "pagamento": "contanti", "righe": [{"piatto": "#tagliere", "quantita": 2, "prezzo": 15}, {"piatto": "#orata", "quantita": 5, "prezzo": 19}, {"piatto": "#zuppa", "quantita": 1, "prezzo": 6}]},
+    {"data": "@oggi-7", "tavolo": "#t6", "coperti": 3, "stato": "pagata", "pagamento": "carta", "righe": [{"piatto": "#guancia", "quantita": 1, "prezzo": 18}, {"piatto": "#zuppa", "quantita": 3, "prezzo": 6}, {"piatto": "#tagliere", "quantita": 2, "prezzo": 15}]},
+    {"data": "@oggi-7", "tavolo": "#t5", "coperti": 5, "stato": "pagata", "pagamento": "contanti", "righe": [{"piatto": "#tagliere", "quantita": 2, "prezzo": 15}, {"piatto": "#acqua", "quantita": 3, "prezzo": 2.5}, {"piatto": "#guancia", "quantita": 2, "prezzo": 18}]},
+    {"data": "@oggi-6", "tavolo": "#t3", "coperti": 4, "stato": "pagata", "pagamento": "carta", "righe": [{"piatto": "#orata", "quantita": 2, "prezzo": 19}, {"piatto": "#guancia", "quantita": 2, "prezzo": 18}]},
+    {"data": "@oggi-5", "tavolo": "#t6", "coperti": 4, "stato": "pagata", "pagamento": "carta", "righe": [{"piatto": "#zuppa", "quantita": 2, "prezzo": 6}, {"piatto": "#acqua", "quantita": 2, "prezzo": 2.5}, {"piatto": "#tagliatelle", "quantita": 4, "prezzo": 12}]},
+    {"data": "@oggi-5", "tavolo": "#t4", "coperti": 2, "stato": "pagata", "pagamento": "carta", "righe": [{"piatto": "#acqua", "quantita": 1, "prezzo": 2.5}, {"piatto": "#guancia", "quantita": 1, "prezzo": 18}, {"piatto": "#zuppa", "quantita": 2, "prezzo": 6}]},
+    {"data": "@oggi-4", "tavolo": "#t2", "coperti": 2, "stato": "pagata", "pagamento": "carta", "righe": [{"piatto": "#zuppa", "quantita": 2, "prezzo": 6}, {"piatto": "#orata", "quantita": 2, "prezzo": 19}, {"piatto": "#acqua", "quantita": 1, "prezzo": 2.5}]},
+    {"data": "@oggi-4", "tavolo": "#t4", "coperti": 2, "stato": "pagata", "pagamento": "contanti", "righe": [{"piatto": "#acqua", "quantita": 1, "prezzo": 2.5}, {"piatto": "#tagliatelle", "quantita": 2, "prezzo": 12}, {"piatto": "#guancia", "quantita": 1, "prezzo": 18}]},
+    {"data": "@oggi-3", "tavolo": "#t7", "coperti": 10, "stato": "pagata", "pagamento": "carta", "righe": [{"piatto": "#tagliere", "quantita": 3, "prezzo": 15}, {"piatto": "#tortelli", "quantita": 10, "prezzo": 13}, {"piatto": "#zuppa", "quantita": 10, "prezzo": 6}, {"piatto": "#lambrusco", "quantita": 4, "prezzo": 18}]},
+    {"data": "@oggi-2", "tavolo": "#t2", "coperti": 4, "stato": "pagata", "pagamento": "buoni", "righe": [{"piatto": "#tagliatelle", "quantita": 4, "prezzo": 12}, {"piatto": "#acqua", "quantita": 2, "prezzo": 2.5}]},
+    {"data": "@oggi-1", "tavolo": "#t5", "coperti": 2, "stato": "pagata", "pagamento": "contanti", "righe": [{"piatto": "#guancia", "quantita": 2, "prezzo": 18}, {"piatto": "#verdure", "quantita": 2, "prezzo": 5}, {"piatto": "#acqua", "quantita": 1, "prezzo": 2.5}]},
+    {"data": "@oggi-1", "tavolo": "#t4", "coperti": 5, "stato": "pagata", "pagamento": "carta", "righe": [{"piatto": "#tagliere", "quantita": 2, "prezzo": 15}, {"piatto": "#tortelli", "quantita": 3, "prezzo": 13}, {"piatto": "#orata", "quantita": 2, "prezzo": 19}, {"piatto": "#lambrusco", "quantita": 2, "prezzo": 18}]},
+    {"data": "@oggi", "tavolo": "#t1", "coperti": 2, "stato": "pagata", "pagamento": "carta", "righe": [{"piatto": "#tagliatelle", "quantita": 2, "prezzo": 12}, {"piatto": "#zuppa", "quantita": 2, "prezzo": 6}, {"piatto": "#lambrusco", "quantita": 1, "prezzo": 18}]},
+    {"data": "@oggi", "tavolo": "#t3", "coperti": 3, "stato": "in_cucina", "righe": [{"piatto": "#tagliere", "quantita": 1, "prezzo": 15, "uscita": "subito"}, {"piatto": "#tortelli", "quantita": 2, "prezzo": 13, "uscita": "prima"}, {"piatto": "#guancia", "quantita": 1, "prezzo": 18, "uscita": "prima", "note": "Senza contorno"}, {"piatto": "#acqua", "quantita": 2, "prezzo": 2.5}]}
+  ],
+  "dopo": {
+    "tavoli": [
+      {"#": "t2", "stato": "libero"},
+      {"#": "t4", "stato": "libero"},
+      {"#": "t5", "stato": "libero"},
+      {"#": "t6", "stato": "libero"},
+      {"#": "t7", "stato": "libero"}
+    ]
+  }
+}

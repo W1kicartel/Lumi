@@ -1,0 +1,89 @@
+{
+  "id": "noleggio",
+  "ordine": 1,
+  "nome": "Noleggio",
+  "descrizione": "Beni con la disponibilità sempre aggiornata, contratti dal/al con i giorni e il totale, cauzioni, riconsegne e ritardi.",
+  "entita": [
+    { "id": "clienti", "nome": "Clienti", "icona": "persona", "titolo": "nome", "campi": [
+      { "id": "nome", "nome": "Nome", "tipo": "testo", "obbligatorio": true },
+      { "id": "telefono", "nome": "Telefono", "tipo": "telefono" },
+      { "id": "email", "nome": "Email", "tipo": "email", "unico": true },
+      { "id": "documento", "nome": "Documento d'identità", "tipo": "testo" },
+      { "id": "piva", "nome": "Partita IVA / CF", "tipo": "testo" },
+      { "id": "indirizzo", "nome": "Indirizzo", "tipo": "indirizzo" },
+      { "id": "affidabile", "nome": "Cliente affidabile", "tipo": "si_no", "predefinito": true },
+      { "id": "note", "nome": "Note", "tipo": "testo_lungo" } ] },
+    { "id": "beni", "nome": "Beni a noleggio", "icona": "scatola", "titolo": "nome", "campi": [
+      { "id": "codice", "nome": "Codice", "tipo": "testo", "unico": true },
+      { "id": "nome", "nome": "Bene", "tipo": "testo", "obbligatorio": true },
+      { "id": "categoria", "nome": "Categoria", "tipo": "scelta", "opzioni": [
+        { "id": "attrezzatura", "nome": "Attrezzatura" }, { "id": "veicoli", "nome": "Veicoli" }, { "id": "bici", "nome": "Bici e sport" }, { "id": "elettronica", "nome": "Elettronica" },
+        { "id": "eventi", "nome": "Eventi e allestimenti" }, { "id": "altro", "nome": "Altro" } ] },
+      { "id": "stato", "nome": "Disponibilità", "tipo": "stato", "iniziale": "disponibile", "opzioni": [
+        { "id": "disponibile", "nome": "Disponibile", "colore": "verde" }, { "id": "noleggiato", "nome": "Fuori a noleggio", "colore": "blu" },
+        { "id": "manutenzione", "nome": "In manutenzione", "colore": "giallo" }, { "id": "fuori_servizio", "nome": "Fuori servizio", "colore": "rosso" } ] },
+      { "id": "tariffa_giorno", "nome": "Tariffa al giorno", "tipo": "valuta" },
+      { "id": "cauzione", "nome": "Cauzione", "tipo": "valuta" },
+      { "id": "valore", "nome": "Valore del bene", "tipo": "valuta" },
+      { "id": "manutenzione_il", "nome": "Prossima manutenzione", "tipo": "data" },
+      { "id": "foto", "nome": "Foto", "tipo": "immagine" },
+      { "id": "note", "nome": "Note", "tipo": "testo_lungo" } ] },
+    { "id": "righe_contratto", "nome": "Beni del contratto", "nascosta": true, "titolo": "bene", "campi": [
+      { "id": "contratto", "nome": "Contratto", "tipo": "relazione", "entita": "contratti", "obbligatorio": true },
+      { "id": "bene", "nome": "Bene", "tipo": "relazione", "entita": "beni", "obbligatorio": true },
+      { "id": "quantita", "nome": "Quantità", "tipo": "numero", "predefinito": 1 },
+      { "id": "tariffa_giorno", "nome": "Al giorno", "tipo": "valuta" },
+      { "id": "importo_giorno", "nome": "Totale al giorno", "tipo": "calcolato", "formula": "quantita * tariffa_giorno", "formato": "valuta" } ] },
+    { "id": "contratti", "nome": "Contratti", "icona": "documento", "titolo": "numero", "campi": [
+      { "id": "numero", "nome": "Numero", "tipo": "contatore", "formato": "NL-{AAAA}-{N:4}" },
+      { "id": "cliente", "nome": "Cliente", "tipo": "relazione", "entita": "clienti", "obbligatorio": true },
+      { "id": "dal", "nome": "Dal", "tipo": "data", "predefinito": "@oggi", "obbligatorio": true },
+      { "id": "al", "nome": "Al", "tipo": "data", "obbligatorio": true },
+      { "id": "stato", "nome": "Stato", "tipo": "stato", "iniziale": "prenotato", "opzioni": [
+        { "id": "prenotato", "nome": "Prenotato", "colore": "grigio" }, { "id": "in_corso", "nome": "In corso", "colore": "blu" },
+        { "id": "riconsegnato", "nome": "Riconsegnato", "colore": "verde" }, { "id": "annullato", "nome": "Annullato", "colore": "rosso" } ],
+        "transizioni": { "prenotato": ["in_corso", "annullato"], "in_corso": ["riconsegnato"], "riconsegnato": [], "annullato": [] } },
+      { "id": "beni", "nome": "Beni", "tipo": "righe", "entita": "righe_contratto", "campo": "contratto" },
+      { "id": "giorni", "nome": "Giorni", "tipo": "calcolato", "formula": "MAX(1; GIORNI(dal; al))" },
+      { "id": "al_giorno", "nome": "Al giorno", "tipo": "calcolato", "formula": "SOMMA(beni.importo_giorno)", "formato": "valuta" },
+      { "id": "sconto", "nome": "Sconto", "tipo": "percentuale", "predefinito": 0 },
+      { "id": "totale", "nome": "Totale", "tipo": "calcolato", "formula": "ARROTONDA(al_giorno * giorni * (1 - sconto / 100); 2)", "formato": "valuta" },
+      { "id": "pagato", "nome": "Pagato", "tipo": "si_no" },
+      { "id": "cauzione", "nome": "Cauzione", "tipo": "valuta" },
+      { "id": "cauzione_stato", "nome": "Cauzione", "tipo": "scelta", "opzioni": [
+        { "id": "da_incassare", "nome": "Da incassare", "colore": "giallo" }, { "id": "incassata", "nome": "Incassata", "colore": "blu" },
+        { "id": "restituita", "nome": "Restituita", "colore": "verde" }, { "id": "trattenuta", "nome": "Trattenuta", "colore": "rosso" } ], "predefinito": "da_incassare" },
+      { "id": "riconsegnato_il", "nome": "Riconsegnato il", "tipo": "data" },
+      { "id": "in_ritardo", "nome": "In ritardo", "tipo": "calcolato", "formula": "stato = \"in_corso\" E al < OGGI()" },
+      { "id": "danni", "nome": "Danni o mancanze alla riconsegna", "tipo": "testo_lungo" } ] }
+  ],
+  "automazioni": [
+    { "id": "contratto_uscita", "nome": "Contratto in corso: i beni risultano fuori", "entita": "contratti", "quando": "campo_cambia", "campo": "stato", "a": "in_corso",
+      "azioni": [ { "tipo": "aggiorna_collegato", "perOgniRiga": "beni", "relazione": "bene", "campo": "stato", "formula": "\"noleggiato\"" } ] },
+    { "id": "contratto_rientro", "nome": "Riconsegna: i beni tornano disponibili e si segna il giorno", "entita": "contratti", "quando": "campo_cambia", "campo": "stato", "a": "riconsegnato",
+      "azioni": [ { "tipo": "aggiorna_collegato", "perOgniRiga": "beni", "relazione": "bene", "campo": "stato", "formula": "\"disponibile\"" },
+        { "tipo": "imposta", "campo": "riconsegnato_il", "formula": "OGGI()" } ] },
+    { "id": "contratto_danni", "nome": "Riconsegna con danni: avvisa", "entita": "contratti", "quando": "campo_cambia", "campo": "stato", "a": "riconsegnato", "se": "NON VUOTO(danni)",
+      "azioni": [ { "tipo": "avvisa", "testo": "numero & \": riconsegna con danni, controlla la cauzione\"" } ] }
+  ],
+  "interruttori": {},
+  "ruoli": [
+    { "id": "banco", "nome": "Banco", "entita": { "*": { "leggi": true, "crea": true, "modifica": true }, "beni": { "crea": false, "campi": { "valore": "nascosto" } } } }
+  ],
+  "cruscotto": {
+    "widget": [
+      { "tipo": "numero", "titolo": "Beni fuori ora", "entita": "beni", "misura": "conta", "filtri": [{ "campo": "stato", "op": "=", "valore": "noleggiato" }] },
+      { "tipo": "numero", "titolo": "Beni disponibili", "entita": "beni", "misura": "conta", "filtri": [{ "campo": "stato", "op": "=", "valore": "disponibile" }] },
+      { "tipo": "numero", "titolo": "Noleggiato questo mese", "entita": "contratti", "misura": "somma", "campo": "totale", "campoData": "dal", "periodo": "mese", "filtri": [{ "campo": "stato", "op": "in", "valore": ["in_corso", "riconsegnato"] }] },
+      { "tipo": "numero", "titolo": "Contratti in corso", "entita": "contratti", "misura": "conta", "filtri": [{ "campo": "stato", "op": "=", "valore": "in_corso" }] },
+      { "tipo": "grafico", "titolo": "Noleggi per settimana", "entita": "contratti", "misura": "conta", "campoData": "dal", "periodo": "ultimi_84", "per": "settimana", "forma": "barre", "filtri": [{ "campo": "stato", "op": "!=", "valore": "annullato" }], "largo": true }
+    ],
+    "attenzione": [
+      { "titolo": "Riconsegne in ritardo", "entita": "contratti", "filtri": [{ "campo": "in_ritardo", "op": "=", "valore": true }] },
+      { "titolo": "Ritiri di oggi", "entita": "contratti", "filtri": [{ "campo": "stato", "op": "=", "valore": "prenotato" }, { "campo": "dal", "op": "<=", "valore": "@oggi" }] },
+      { "titolo": "Rientri di oggi", "entita": "contratti", "filtri": [{ "campo": "stato", "op": "=", "valore": "in_corso" }, { "campo": "al", "op": "=", "valore": "@oggi" }] },
+      { "titolo": "Cauzioni da restituire", "entita": "contratti", "filtri": [{ "campo": "stato", "op": "=", "valore": "riconsegnato" }, { "campo": "cauzione_stato", "op": "=", "valore": "incassata" }] },
+      { "titolo": "Beni da mandare in manutenzione", "entita": "beni", "filtri": [{ "campo": "manutenzione_il", "op": "<=", "valore": "@oggi+7" }] }
+    ]
+  }
+}

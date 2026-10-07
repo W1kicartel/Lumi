@@ -66,5 +66,13 @@
       "azioni": [ { "tipo": "crea", "entita": "commesse", "valori": { "titolo": "SE(VUOTO(oggetto); numero; oggetto)", "cliente": "cliente", "preventivo": "id", "prezzo": "imponibile" } } ] },
     { "id": "consumo_materiali", "nome": "Commessa in lavorazione: scala i materiali", "entita": "commesse", "quando": "campo_cambia", "campo": "fase", "a": "in_lavorazione",
       "azioni": [ { "tipo": "aggiorna_collegato", "perOgniRiga": "materiali", "relazione": "materiale", "campo": "giacenza", "aggiungi": "-quantita" } ] }
+  ],
+  "interruttori": {
+    "magazzino": { "campi": ["materiali.giacenza", "materiali.soglia", "materiali.da_riordinare"] },
+    "su_misura": { "entita": ["preventivi", "voci_preventivo"] }
+  },
+  "ruoli": [
+    { "id": "laboratorio", "nome": "Laboratorio", "entita": { "*": { "leggi": true, "crea": true, "modifica": true },
+      "preventivi": { "leggi": false, "crea": false, "modifica": false }, "commesse": { "campi": { "prezzo": "nascosto", "margine": "nascosto" } } } }
   ]
 }
