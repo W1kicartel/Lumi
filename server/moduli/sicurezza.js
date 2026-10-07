@@ -96,12 +96,12 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, c
     const proprio = /^\/api\/utenti\/([^/]+)$/.exec(percorso);
     if (metodo === 'PATCH' && proprio && ctx && !ctx.viaToken && corpo?.pin != null && corpo.pin !== '' && decodifica(proprio[1]) === ctx.utente.id && !attualeGiusta(ctx.utente.id, corpo.attuale))
       throw new ErroreHttp(400, 'Per cambiare il PIN serve la password attuale');
-    if (metodo !== 'GET' && !ctx?.viaToken && corpo && corpo.password != null && corpo.password !== '' && (/^\/api\/(configura|utenti)$/.test(percorso) || /^\/api\/utenti\/[^/]+$/.test(percorso))) {
+    if (metodo !== 'GET' && corpo && corpo.password != null && corpo.password !== '' && (/^\/api\/(configura|utenti)$/.test(percorso) || /^\/api\/utenti\/[^/]+$/.test(percorso))) {
       let nome = corpo.nome, email = corpo.email;
       const m = /^\/api\/utenti\/([^/]+)$/.exec(percorso); if (m) { const u = db.prepare('SELECT nome, email FROM _utenti WHERE id = ?').get(decodifica(m[1])); nome ??= u?.nome; email ??= u?.email; }
       const no = robustezza(corpo.password, { nome, email }); if (no) throw new ErroreHttp(400, no);
       // la propria password si cambia solo conoscendo quella attuale (chi trova il PC acceso non se la prende)
-      if (m && ctx && decodifica(m[1]) === ctx.utente.id && !attualeGiusta(ctx.utente.id, corpo.attuale)) throw new ErroreHttp(400, 'La password attuale non è giusta');
+      if (m && ctx && !ctx.viaToken && decodifica(m[1]) === ctx.utente.id && !attualeGiusta(ctx.utente.id, corpo.attuale)) throw new ErroreHttp(400, 'La password attuale non è giusta');
     }
     // 4. tentativi di accesso per account (o per PIN), oltre a quelli per indirizzo che conta già il server
     if (metodo === 'POST' && percorso === '/api/accedi') {
