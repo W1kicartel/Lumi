@@ -218,7 +218,9 @@ async function paginaApi(contenuto, k) {
 import { createHmac, timingSafeEqual } from 'node:crypto';
 const atteso = 'sha256=' + createHmac('sha256', process.env.KUBO_SEGRETO)
   .update(req.headers['x-kubo-tempo'] + '.' + corpoGrezzo).digest('hex');
-const buona = timingSafeEqual(Buffer.from(atteso), Buffer.from(req.headers['x-kubo-firma'] || ''));`;
+const arrivata = Buffer.from(req.headers['x-kubo-firma'] || '');
+const buona = arrivata.length === atteso.length && timingSafeEqual(Buffer.from(atteso), arrivata);
+// e scarta i messaggi con x-kubo-tempo vecchio di più di 5 minuti`;
 
   contenuto.replaceChildren(h('div.testa', h('h1', 'API e integrazioni')),
     h('div.corpo.import-api',

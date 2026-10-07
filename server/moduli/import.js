@@ -10,6 +10,7 @@ import { readFileSync, rmSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { randomBytes } from 'node:crypto';
+import { DatabaseSync } from 'node:sqlite';
 import { transazione } from '../db.js';
 import { leggiTabella, scriviCsv, scriviXlsx, scriviZip, numeroIt, dataIt, siNo, indovinaTipo, proponiAbbinamento, slug, ErroreFormato } from './import-formati.js';
 import { caricamento, fileDaSalvare, intestazioneNome } from './import-file.js';
@@ -175,7 +176,7 @@ export default function registra({ r, db, S, D, P, serve, ErroreHttp, manda }) {
   }
   r('GET', '/api/import/esporta/:e', ({ ctx, p, q, res }) => {
     serve(ctx);
-    const def = S.leggi(db, p.e); if (!def || def.archiviata) throw new ErroreHttp(404, 'Sezione sconosciuta');
+    const def = S.leggi(db, p.e); if (!def || def.archiviata || !P.puo(ctx, def.id, 'leggi')) throw new ErroreHttp(404, 'Sezione sconosciuta');
     // ?vuoto=1: il modello da compilare, con le sole colonne che si possono importare
     const vuoto = q.get('vuoto') === '1';
     const campi = vuoto ? importabili(def, ctx) : S.campiAttivi(def).filter(c => c.tipo !== 'righe' && P.statoCampo(ctx, def.id, c.id) !== 'nascosto');
@@ -200,6 +201,8 @@ export default function registra({ r, db, S, D, P, serve, ErroreHttp, manda }) {
     const copia = join(cartella, 'kubo.db');
     try {
       db.exec(`VACUUM INTO '${copia.replace(/'/g, "''")}'`);   // copia coerente anche mentre altri scrivono
+      // chi trova lo zip non deve poter entrare con le sessioni aperte né riprendere i caricamenti a metà
+      { const c = new DatabaseSync(copia); c.exec('DELETE FROM _sessioni; DROP TABLE IF EXISTS _import_caricamenti; VACUUM'); c.close(); }
       const allegati = fileDaSalvare(db), peso = allegati.reduce((s, f) => s + f.dimensione, 0), conAllegati = peso <= 1024 * 1024 * 1024;
       const ora = new Date(), nome = `kubo-backup-${ora.toISOString().slice(0, 16).replace(/[T:]/g, '-')}.zip`;
       const zip = scriviZip([

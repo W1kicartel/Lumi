@@ -106,6 +106,7 @@ export function creaServer(db) {
   r('POST', '/api/utenti', ({ ctx, corpo }) => { if (!P.puoUtenti(serve(ctx))) throw new P.ErrorePermesso(); if (corpo.ruolo === 'titolare' && ctx.r.id !== 'titolare') throw new P.ErrorePermesso(); return U.creaUtente(db, corpo, { utente: ctx.utente.id }); });
   r('PATCH', '/api/utenti/:id', ({ ctx, p, corpo }) => {
     serve(ctx); const se = p.id === ctx.utente.id;
+    if (ctx.viaToken && (corpo.password != null || corpo.pin != null)) throw new P.ErrorePermesso('Con un token non si cambiano password e PIN');
     if (!se && !P.puoUtenti(ctx)) throw new P.ErrorePermesso();
     if (se && !P.puoUtenti(ctx)) { const { nome, password, pin } = corpo; return U.modificaUtente(db, p.id, { nome, password, pin }, { utente: ctx.utente.id }); }
     if (corpo.ruolo === 'titolare' && ctx.r.id !== 'titolare') throw new P.ErrorePermesso();

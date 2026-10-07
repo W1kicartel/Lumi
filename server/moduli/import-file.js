@@ -103,7 +103,7 @@ export default function registra({ r, db, S, D, serve, ErroreHttp }) {
     const nome = nomeSicuro(x.nome), tipo = tipoDi(x.tipo, nome), inLinea = IN_LINEA[tipo] && q.get('scarica') !== '1';
     res.writeHead(200, { 'Content-Type': inLinea ? tipo : 'application/octet-stream', 'Content-Length': statSync(f).size, 'Content-Disposition': intestazioneNome(nome, inLinea ? 'inline' : 'attachment'),
       'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox", 'Cache-Control': 'private, max-age=3600' });
-    createReadStream(f).pipe(res);
+    createReadStream(f).on('error', () => res.destroy()).pipe(res);   // un file sparito a metà non fa cadere il server
   });
 }
 

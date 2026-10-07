@@ -56,7 +56,12 @@ test('formati: CSV con virgolette, separatori e Windows-1252; xlsx scritto e ril
   assert.equal(F.leggiTabella(Buffer.from('a,b\n1,2\n')).righe[0][1], '2');
   assert.equal(F.leggiTabella(Buffer.from([0x43, 0x69, 0x74, 0x74, 0xe0, 0x0a, 0x46, 0x6f, 0x72, 0x6c, 0xec])).righe[0][0], 'Forlì');   // Windows-1252
   assert.deepEqual(F.leggiTabella(Buffer.from('X;X;\n1;2;3\n')).intestazioni, ['X', 'X (2)', 'Colonna 3']);
-  assert.equal(F.leggiTabella(Buffer.from(F.scriviCsv(['f'], [['=1+1']]))).righe[0][0], '=1+1');   // l'apostrofo di protezione va e torna
+  assert.equal(F.leggiTabella(Buffer.from(F.scriviCsv(['f'], [['=1+1']]))).righe[0][0], '=1+1');
+  {   // una riga solo formattata in fondo al foglio (r=1048576) non fa scattare il limite delle righe
+    const z = F.leggiZip(F.scriviXlsx(['A'], [['uno']])), voci = Object.fromEntries(z.nomi.map(n => [n, z.leggi(n)]));
+    voci['xl/worksheets/sheet1.xml'] = Buffer.from(voci['xl/worksheets/sheet1.xml'].toString().replace('</sheetData>', '<row r="1048576" s="1" customFormat="1"/></sheetData>'));
+    assert.deepEqual(F.leggiTabella(F.scriviZip(Object.entries(voci).map(([nome, dati]) => ({ nome, dati })))).righe, [['uno']]);
+  }   // l'apostrofo di protezione va e torna
   const x = F.scriviXlsx(['Nome', 'Prezzo', 'Data', 'Ok'], [['Vaso <blu> & co', { euro: 12.5 }, { data: '2026-12-31' }, true], ['Tazza', null, null, false]]);
   assert.deepEqual(F.leggiTabella(x), { intestazioni: ['Nome', 'Prezzo', 'Data', 'Ok'], righe: [['Vaso <blu> & co', 12.5, '2026-12-31', 'Sì'], ['Tazza', null, null, 'No']] });
   // come lo salva Excel: stringhe condivise (anche «ricche»), prefissi x:, stile con data predefinita (14) e propria (164), celle saltate
@@ -154,13 +159,14 @@ test('allegati: caricamento a pezzi, permessi della riga e dei campi, nomi peric
       assert.equal((await chiama('GET', p, null, { grezzo: true })).stato, 404, p);
     assert.equal((await chiama('POST', '/api/file/carica', { nome: 'grosso.bin', dimensione: 26 * 1024 * 1024 })).stato, 413);
     // un ruolo che non vede la foto, uno che vede solo i propri
-    await chiama('PUT', '/api/ruoli/banco', { nome: 'Banco', entita: { '*': { leggi: true, crea: true, modifica: true }, articoli: { campi: { foto: 'nascosto' } } } });
+    await chiama('PUT', '/api/ruoli/banco', { nome: 'Banco', entita: { '*': { leggi: true, crea: true, modifica: true }, articoli: { campi: { foto: 'nascosto' } }, clienti: { leggi: false } } });
     await chiama('PUT', '/api/ruoli/propri', { nome: 'Propri', entita: { '*': { leggi: true, crea: true, modifica: true, soloPropri: true } } });
     await chiama('POST', '/api/utenti', { nome: 'Giulia', email: 'g@prova.it', password: 'password-giulia', ruolo: 'banco' });
     await chiama('POST', '/api/utenti', { nome: 'Piero', email: 'p@prova.it', password: 'password-piero', ruolo: 'propri' });
     esci(); assert.equal((await chiama('GET', url, null, { grezzo: true })).stato, 401);
     await chiama('POST', '/api/accedi', { email: 'g@prova.it', password: 'password-giulia' });
     assert.equal((await chiama('GET', url, null, { grezzo: true })).stato, 404);
+    assert.equal((await chiama('GET', '/api/import/esporta/clienti?vuoto=1', null, { grezzo: true })).stato, 404);   // nemmeno il modello di una sezione che non vede
     assert.equal((await chiama('GET', art.json.scheda[0].url, null, { grezzo: true })).stato, 200);
     // Giulia non può usare un caricamento di Piero
     esci(); await chiama('POST', '/api/accedi', { email: 'p@prova.it', password: 'password-piero' });
@@ -185,6 +191,9 @@ test('token personali: Bearer con i permessi del ruolo, mostrato una volta, revo
     assert.equal((await chiama('DELETE', `/api/dati/clienti/${c.json.id}`, null, { token: t.token })).stato, 403);   // il collaboratore non elimina
     assert.equal((await chiama('POST', '/api/token', { nome: 'Altro' }, { token: t.token })).stato, 403);
     assert.equal((await chiama('GET', '/api/webhook', null, { token: t.token })).stato, 403);
+    const io = (await chiama('GET', '/api/stato')).json.utente.id;   // un token rubato non cambia la password
+    assert.equal((await chiama('PATCH', `/api/utenti/${io}`, { password: 'presa-dal-token' }, { token: t.token })).stato, 403);
+    assert.equal((await chiama('PATCH', `/api/utenti/${io}`, { nome: 'Giulia B.' }, { token: t.token })).stato, 200);
     assert.equal((await chiama('GET', '/api/dati/clienti', null, { token: 'kubo_sbagliato' })).stato, 401);
     assert.equal((await chiama('DELETE', `/api/token/${t.id}`)).stato, 200);
     assert.equal((await chiama('GET', '/api/dati/clienti', null, { token: t.token })).stato, 401);
@@ -241,6 +250,7 @@ test('backup: uno zip con la copia coerente del database e gli allegati', async 
     assert.equal(b.status, 200); assert.match(b.headers.get('content-disposition'), /kubo-backup-.*\.zip/);
     const z = F.leggiZip(Buffer.from(await b.arrayBuffer())); assert.ok(z.nomi.includes('kubo.db') && z.nomi.includes('LEGGIMI.txt'));
     const copia = join(cartella, 'copia.db'); writeFileSync(copia, z.leggi('kubo.db'));
-    const d2 = new DatabaseSync(copia); assert.equal(d2.prepare("SELECT c_nome n FROM d_clienti").get().n, 'Nel backup'); d2.close();
+    const d2 = new DatabaseSync(copia); assert.equal(d2.prepare("SELECT c_nome n FROM d_clienti").get().n, 'Nel backup');
+    assert.equal(d2.prepare('SELECT COUNT(*) n FROM _sessioni').get().n, 0); d2.close();   // nessuna sessione aperta nello zip
   } finally { srv.close(); }
 });

@@ -92,6 +92,7 @@ export function leggiXlsx(buf, { maxRighe = 100000 } = {}) {
   const date = stiliData(testo('xl/styles.xml') || ''), righe = [];
   const reRiga = new RegExp(`<${tag('row')}\\b([^>]*?)(?:/>|>([\\s\\S]*?)</${tag('row')}>)`, 'g'), reCella = new RegExp(`<${tag('c')}\\b([^>]*?)(?:/>|>([\\s\\S]*?)</${tag('c')}>)`, 'g'), reV = new RegExp(`<${tag('v')}>([\\s\\S]*?)</${tag('v')}>`);
   for (const mr of testo(percorso).matchAll(reRiga)) {
+    if (!mr[2] || !/<(?:[\w-]+:)?c\b/.test(mr[2])) continue;   // righe solo formattate, anche alla riga 1048576
     const ar = attributi(mr[1]), ir = ar.r ? Number(ar.r) - 1 : righe.length;
     if (ir >= maxRighe + 1) throw new ErroreFormato(`Il foglio ha più di ${maxRighe} righe: dividilo in più file`);
     const riga = []; let col = 0;
