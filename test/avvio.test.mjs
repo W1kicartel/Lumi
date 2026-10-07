@@ -65,8 +65,8 @@ test('formule e automazioni dei modelli sui dati d\'esempio', () => {
   { // ristorante: coperto nel totale, tavolo occupato dalla comanda aperta, food cost
     const { uno, tutti } = prepara({ settore: 'ristorante' });
     assert.equal(uno('tavoli', 'nome', '3').stato, 'occupato');
-    assert.equal(uno('tavoli', 'nome', '1').stato, 'da_pulire');
-    const c = tutti('comande').find(x => x.coperti === 3); assert.equal(c.consumato, 15 + 26 + 18 + 5); assert.equal(c.totale, 64 + 7.5); assert.equal(c.a_testa, 23.83);
+    assert.equal(uno('tavoli', 'nome', '1').stato, 'da_pulire'); assert.equal(uno('tavoli', 'nome', 'D1').stato, 'libero');
+    const c = tutti('comande').find(x => x.stato === 'in_cucina'); assert.equal(c.consumato, 15 + 26 + 18 + 5); assert.equal(c.totale, 64 + 7.5); assert.equal(c.a_testa, 23.83);
     assert.equal(uno('piatti', 'nome', 'Tortelli di zucca al burro e salvia').food_cost, 23.8);
     assert.deepEqual(uno('piatti', 'nome', 'Tortelli di zucca al burro e salvia').allergeni, ['glutine', 'uova', 'latte']);
   }

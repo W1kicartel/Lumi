@@ -198,7 +198,7 @@ export function scriviCruscotto(db) {
 }
 
 // ---------- dati d'esempio ----------
-// modelli/esempi/<modello>.json = { entità: [ { "#": "chiave", campo: valore, … } ] }. Valori speciali: "#chiave" (una riga
+// modelli/esempi/<modello>.json = { entità: [ { "#": "chiave", campo: valore, … } ], dopo?: { entità: [ { "#": "chiave", campo: valore } ] } }. Valori speciali: "#chiave" (una riga
 // d'esempio dello stesso file), "@oggi", "@oggi-3", "@oggi+2 10:30" (date e ore nel fuso dell'azienda), "@utente".
 // Si scrive con dati.js e il ctx del titolare: formule, numeratori e automazioni funzionano come sempre. Ogni riga creata
 // (anche quelle create dalle automazioni e le righe figlie) finisce in _avvio_esempi, così si toglie tutto con un clic.
@@ -241,10 +241,20 @@ export function mettiEsempi(db, ctx, { adesso = new Date() } = {}) {
       const f = join(CARTELLA_ESEMPI, `${id}.json`); if (!/^[a-z0-9_-]+$/.test(id) || !existsSync(f)) continue;
       const esempi = JSON.parse(readFileSync(f, 'utf8')), chiavi = new Map();
       for (const [entita, righe] of Object.entries(esempi)) {
+        if (entita === 'dopo') continue;
         const def = S.leggi(db, entita); if (!def || def.archiviata) continue;
         for (const riga of righe) {
           // ogni riga nella sua transazione: una che non va (es. un'email già usata) non ferma le altre
           try { const x = transazione(db, () => D.crea(db, entita, valoriPer(db, def, riga, chiavi, ctx, adesso), ctx)); if (riga['#']) chiavi.set(riga['#'], x.id); }
+          catch (e) { if (e instanceof D.ErroreDati || e instanceof P.ErrorePermesso) saltati.push({ entita, errore: e.message }); else throw e; }
+        }
+      }
+      // «dopo»: ritocchi alle righe già create, quando le automazioni le hanno cambiate (es. i tavoli del giorno prima di nuovo liberi)
+      for (const [entita, righe] of Object.entries(esempi.dopo || {})) {
+        const def = S.leggi(db, entita); if (!def || def.archiviata) continue;
+        for (const riga of righe) {
+          const id = chiavi.get(riga['#']); if (!id) continue;
+          try { transazione(db, () => D.modifica(db, entita, id, valoriPer(db, def, riga, chiavi, ctx, adesso), ctx)); }
           catch (e) { if (e instanceof D.ErroreDati || e instanceof P.ErrorePermesso) saltati.push({ entita, errore: e.message }); else throw e; }
         }
       }
