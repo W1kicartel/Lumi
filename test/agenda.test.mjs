@@ -157,3 +157,28 @@ test('API: viste salvate per me e per tutti, cruscotto, agenda e aggregati con i
     assert.equal((await chiama('PUT', '/api/cruscotto', { widget: [{ tipo: 'boh' }] })).stato, 400);
   } finally { srv.close(); }
 });
+
+test('API: calendario su un campo «data» e permessi del calendario', async () => {
+  const { srv, chiama, esci } = await avvia();
+  try {
+    await chiama('POST', '/api/configura', { azienda: 'Lab', nome: 'Titolare', email: 't@lab.it', password: 'password-lunga', modelli: ['laboratorio'] });
+    await chiama('POST', '/api/dati/commesse', { titolo: 'Anello', consegna: '2026-10-09' });
+    await chiama('POST', '/api/dati/commesse', { titolo: 'Collana', consegna: '2026-11-20' });
+    const ag = (await chiama('GET', '/api/agenda/commesse?da=2026-10-01&a=2026-10-31')).json;
+    assert.equal(ag.tipoData, 'data'); assert.equal(ag.campoData, 'consegna');
+    assert.deepEqual(ag.eventi.map(e => [e.titolo, e.inizio]), [['Anello', '2026-10-09']]);
+    assert.ok(ag.colonne.some(c => c.id === 'responsabile'));
+    assert.equal((await chiama('GET', '/api/agenda/commesse?da=2026-10-01&a=2026-10-31&campo=nonesiste')).json.campoData, 'consegna');
+    // chi non vede le commesse non ha né calendario né aggregati né viste
+    await chiama('PUT', '/api/ruoli/esterno', { nome: 'Esterno', entita: { '*': { leggi: true }, commesse: { leggi: false } } });
+    await chiama('POST', '/api/utenti', { nome: 'Ext', email: 'e@lab.it', password: 'password-ext1', ruolo: 'esterno' });
+    esci(); await chiama('POST', '/api/accedi', { email: 'e@lab.it', password: 'password-ext1' });
+    assert.equal((await chiama('GET', '/api/agenda/commesse?da=2026-10-01&a=2026-10-31')).stato, 403);
+    assert.equal((await chiama('POST', '/api/aggregati', { entita: 'commesse', misura: 'conta' })).stato, 403);
+    assert.equal((await chiama('GET', '/api/viste/commesse')).stato, 403);
+    const cr = (await chiama('GET', '/api/cruscotto')).json;
+    assert.ok(!cr.widget.some(w => w.entita === 'commesse'));
+    assert.ok(!cr.dati[cr.widget.find(w => w.tipo === 'attenzione').id].voci.some(v => v.entita === 'commesse'));
+    assert.ok(!cr.dati[cr.widget.find(w => w.tipo === 'ultime').id].voci.some(v => v.entita === 'commesse'));
+  } finally { srv.close(); }
+});

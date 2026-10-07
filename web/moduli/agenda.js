@@ -46,7 +46,7 @@ async function calendario(contenuto, k, entita, vistaUrl) {
   const def = k.schema.find(e => e.id === entita) || k.schema.find(conData);
   if (!def || !conData(def)) { contenuto.replaceChildren(h('div.corpo', h('div.vuoto', 'Nessuna sezione ha un campo data da mettere in calendario.'))); return; }
   const p = prefs(def.id) || {};
-  let vista = ['mese', 'settimana', 'giorno'].includes(vistaUrl) ? vistaUrl : p.vista || (def.campi.some(c => c.tipo === 'data_ora') ? 'settimana' : 'mese');
+  let vista = ['mese', 'settimana', 'giorno'].includes(vistaUrl) ? vistaUrl : p.vista || (!def.campi.some(c => c.tipo === 'data_ora') ? 'mese' : innerWidth < 700 ? 'giorno' : 'settimana');
   let centro = oggi(), campo = p.campo || null, colonna = p.colonna ?? undefined, dati = null;
   const ricorda = () => prefs(def.id, { vista, campo, colonna }), nomi = new Map();
   const etichettaPeriodo = h('div.ag-periodo'), corpo = h('div.ag-corpo'), strumenti = h('div.ag-strumenti');
@@ -174,7 +174,7 @@ async function calendario(contenuto, k, entita, vistaUrl) {
       const z = h('div.ag-giorno', { stile: { height: alto + 'px' } });
       const minutiDa = ev => { const r = z.getBoundingClientRect(); return Math.max(inizio, Math.min(fine - PASSO, inizio + Math.round((ev.clientY - r.top) / PX_ORA * 60 / PASSO) * PASSO)); };
       const quando = m => { const d = giorno(col.g); d.setHours(0, m, 0, 0); return d; };
-      const extra = () => (c && col.chiave ? { [c.id]: col.chiave } : {});
+      const extra = () => (c && col.chiave ? { [c.id]: c.tipo === 'relazione' ? { id: col.chiave, titolo: col.nome } : col.chiave } : {});
       z.addEventListener('click', ev => { if (ev.target === z) crea(quando(Math.floor(minutiDa(ev) / 30) * 30), extra()); });
       z.addEventListener('mousemove', ev => { if (ev.target === z) z.dataset.ora = ora(Math.floor(minutiDa(ev) / 30) * 30); });
       z.addEventListener('dragover', ev => { if (!ev.dataTransfer.types.includes('text/kubo-evento')) return; ev.preventDefault(); z.classList.add('sopra'); segno.style.top = (minutiDa(ev) - inizio) / 60 * PX_ORA + 'px'; segno.textContent = ora(minutiDa(ev)); });

@@ -43,7 +43,8 @@ export default function registra({ r, db, S, D, P, serve, ErroreHttp }) {
       for (const x of tutte(db, durataDa.entita, [{ campo: 'id', op: 'in', valore: ids }], ctx).righe) durate.set(x.id, x[durataDa.campo]);
     }
     const colonne = campi.filter(c => c.tipo === 'utente' || (c.tipo === 'relazione' && !c.molti)).map(c => ({ id: c.id, nome: c.nome, tipo: c.tipo, entita: c.entita }));
-    const titolo = S.campoTitolo(def), colore = campi.find(c => c.tipo === 'stato') || campi.find(c => c.tipo === 'scelta');
+    // il titolo dell'evento: quello della riga, ma un numero progressivo (C-2026-001) dice poco: meglio il primo testo
+    const t0 = S.campoTitolo(def), titolo = t0?.tipo === 'contatore' ? campi.find(c => c.tipo === 'testo') || t0 : t0, colore = campi.find(c => c.tipo === 'stato') || campi.find(c => c.tipo === 'scelta');
     const sotto = durataDa ? durataDa.relazione : campi.find(c => c.tipo === 'relazione' && !c.molti && c.id !== titolo?.id)?.id;
     const testo = v => (v && typeof v === 'object' ? v.titolo : v);
     const eventi = righe.map(x => {
