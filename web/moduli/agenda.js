@@ -3,7 +3,7 @@
 // persona o per risorsa), trascina per spostare, clic su uno spazio vuoto per creare con la data già messa.
 // Il cruscotto: widget salvati nel server (numeri, grafici disegnati a mano in SVG, «cosa richiede attenzione», ultime modifiche).
 import { costruttore, risolvi, apriPop, etichetta } from '../filtri.js';
-import { locale, numero, soldi, soldiCorto, numeroCorto, giorniSettimana, primoGiorno } from '../lingua.js';
+import { t, locale, minuscole, soldi, soldiCorto, numero as numeroL, numeroCorto, giorniSettimana, primoGiorno } from '../lingua.js';
 
 let h, api, get, toast, icona;
 const prefs = (k, v) => { try { if (v === undefined) return JSON.parse(localStorage.getItem('kubo.agenda.' + k) || 'null'); localStorage.setItem('kubo.agenda.' + k, JSON.stringify(v)); } catch { return null; } };
@@ -30,12 +30,12 @@ export default {
     if (!document.querySelector('link[href="/moduli/agenda.css"]')) document.head.append(h('link', { rel: 'stylesheet', href: '/moduli/agenda.css' }));
   },
   lato(k) {
-    const voci = [{ href: '#/cruscotto', icona: 'griglia', nome: 'Cruscotto', inCima: true }];
+    const voci = [{ href: '#/cruscotto', icona: 'griglia', nome: t('moduli.ag-cruscotto'), inCima: true }];
     const e = k.schema.find(x => !x.nascosta && x.campi.some(c => c.tipo === 'data_ora' && !c.archiviato));
-    if (e) voci.push({ href: `#/agenda/${e.id}`, icona: 'calendario', nome: k.schema.some(x => !x.nascosta && x.nome === 'Agenda') ? 'Calendario' : 'Agenda', inCima: true });
+    if (e) voci.push({ href: `#/agenda/${e.id}`, icona: 'calendario', nome: k.schema.some(x => !x.nascosta && x.nome === t('moduli.ag-agenda')) ? t('moduli.ag-calendario') : t('moduli.ag-agenda'), inCima: true });
     return voci;
   },
-  azioniLista(def, k) { return conData(def) ? [k.h('a.btn', { href: `#/agenda/${def.id}`, title: 'Vedi sul calendario' }, k.icona('calendario'), 'Calendario')] : []; },
+  azioniLista(def, k) { return conData(def) ? [k.h('a.btn', { href: `#/agenda/${def.id}`, title: t('moduli.ag-vedi-calendario') }, k.icona('calendario'), t('moduli.ag-calendario'))] : []; },
   rotte: {
     agenda: (contenuto, k, entita, vista) => calendario(contenuto, k, entita, vista),
     cruscotto: (contenuto, k) => cruscotto(contenuto, k),
@@ -54,13 +54,13 @@ async function calendario(contenuto, k, entita, vistaUrl) {
   const ricorda = () => prefs(def.id, { vista, campo, colonna }), nomi = new Map();
   const etichettaPeriodo = h('div.ag-periodo'), corpo = h('div.ag-corpo'), strumenti = h('div.ag-strumenti');
   const vai = n => { centro = vista === 'mese' ? iso(new Date(giorno(centro).getFullYear(), giorno(centro).getMonth() + n, 1)) : piu(centro, n * (vista === 'settimana' ? 7 : 1)); ricorda(); carica(); };
-  const bVista = v => h('button.btn.piccolo', { class: v === vista ? 'pieno' : '', testo: { mese: 'Mese', settimana: 'Settimana', giorno: 'Giorno' }[v], on: { click: () => { vista = v; ricorda(); carica(); } } });
+  const bVista = v => h('button.btn.piccolo', { class: v === vista ? 'pieno' : '', testo: t('moduli.ag-vista-' + v), on: { click: () => { vista = v; ricorda(); carica(); } } });
   contenuto.replaceChildren(
-    h('div.testa', h('h1', def.nome), h('a.btn.nudo', { href: `#/e/${def.id}`, title: 'Torna alla lista' }, 'Lista'),
+    h('div.testa', h('h1', def.nome), h('a.btn.nudo', { href: `#/e/${def.id}`, title: t('moduli.ag-torna-lista') }, t('moduli.ag-lista')),
       def.puo.crea ? h('button.btn.pieno', { testo: '+ Nuovo', on: { click: () => crea(ora9(centro)) } }) : null),
     h('div.corpo', h('div.ag-barra',
-      h('div.ag-nav', h('button.btn.piccolo', { testo: '‹', title: 'Prima', on: { click: () => vai(-1) } }), h('button.btn.piccolo', { testo: 'Oggi', on: { click: () => { centro = oggi(); ricorda(); carica(); } } }),
-        h('button.btn.piccolo', { testo: '›', title: 'Dopo', on: { click: () => vai(1) } }), etichettaPeriodo),
+      h('div.ag-nav', h('button.btn.piccolo', { testo: '‹', title: t('moduli.ag-prima'), on: { click: () => vai(-1) } }), h('button.btn.piccolo', { testo: t('moduli.ag-oggi'), on: { click: () => { centro = oggi(); ricorda(); carica(); } } }),
+        h('button.btn.piccolo', { testo: '›', title: t('moduli.ag-dopo'), on: { click: () => vai(1) } }), etichettaPeriodo),
       strumenti), corpo));
   const ora9 = g => (dati?.tipoData === 'data' ? g : new Date(giorno(g).setHours(9, 0, 0, 0)));
   // frecce ← → per spostarsi, «t» per oggi; e quando un collega cambia qualcosa in questa sezione, si ricarica
@@ -90,9 +90,9 @@ async function calendario(contenuto, k, entita, vistaUrl) {
   }
   function disegnaStrumenti() {
     const d = dati;
-    const sCampo = d.date.length > 1 ? h('select.campo.piccolo', { title: 'Quale data', on: { change: () => { campo = sCampo.value; ricorda(); carica(); } } }, d.date.map(c => h('option', { value: c.id, testo: c.nome, selected: c.id === campo }))) : null;
-    const sCol = vista === 'giorno' && d.tipoData === 'data_ora' && d.colonne.length ? h('select.campo.piccolo', { title: 'Colonne', on: { change: async () => { colonna = sCol.value || null; ricorda(); await nomiRisorse(); disegna(); } } },
-      h('option', { value: '', testo: 'Una colonna' }), d.colonne.map(c => h('option', { value: c.id, testo: `Colonne: ${c.nome.toLowerCase()}`, selected: c.id === colonna }))) : null;
+    const sCampo = d.date.length > 1 ? h('select.campo.piccolo', { title: t('moduli.ag-quale-data'), on: { change: () => { campo = sCampo.value; ricorda(); carica(); } } }, d.date.map(c => h('option', { value: c.id, testo: c.nome, selected: c.id === campo }))) : null;
+    const sCol = vista === 'giorno' && d.tipoData === 'data_ora' && d.colonne.length ? h('select.campo.piccolo', { title: t('viste.colonne'), on: { change: async () => { colonna = sCol.value || null; ricorda(); await nomiRisorse(); disegna(); } } },
+      h('option', { value: '', testo: t('moduli.ag-una-colonna') }), d.colonne.map(c => h('option', { value: c.id, testo: t('moduli.ag-colonne-per', { nome: minuscole(c.nome) }), selected: c.id === colonna }))) : null;
     strumenti.replaceChildren(...[sCampo, sCol, h('div.lista-modi', ['mese', 'settimana', 'giorno'].map(bVista))].filter(Boolean));
   }
   function disegna() {
@@ -114,7 +114,7 @@ async function calendario(contenuto, k, entita, vistaUrl) {
     return el;
   }
   async function sposta(id, valori) {
-    try { await api('PATCH', `/dati/${def.id}/${id}`, valori); toast('Spostato'); } catch (err) { toast(err.message, true); }
+    try { await api('PATCH', `/dati/${def.id}/${id}`, valori); toast(t('moduli.ag-spostato')); } catch (err) { toast(err.message, true); }
     carica();
   }
   function crea(quando, extra = {}) {
@@ -137,9 +137,9 @@ async function calendario(contenuto, k, entita, vistaUrl) {
         drop: ev => { ev.preventDefault(); cella.classList.remove('sopra'); const id = ev.dataTransfer.getData('text/kubo-evento'), e = dati.eventi.find(x => x.id === id); if (!e || giornoEv(e) === g) return;
           if (dati.tipoData === 'data') return sposta(id, { [dati.campoData]: g });
           const d = new Date(e.inizio), n = giorno(g); n.setHours(d.getHours(), d.getMinutes(), 0, 0); sposta(id, { [dati.campoData]: n.toISOString() }); } } },
-        h('div.ag-num-riga', h('button.ag-num', { testo: String(giorno(g).getDate()), title: 'Vedi il giorno', on: { click: ev => { ev.stopPropagation(); centro = g; vista = 'giorno'; ricorda(); carica(); } } })),
+        h('div.ag-num-riga', h('button.ag-num', { testo: String(giorno(g).getDate()), title: t('moduli.ag-vedi-giorno'), on: { click: ev => { ev.stopPropagation(); centro = g; vista = 'giorno'; ricorda(); carica(); } } })),
         qui.slice(0, 3).map(e => carta(e, { compatta: true })),
-        qui.length > 3 ? h('button.ag-altri', { testo: `+${qui.length - 3} altri`, on: { click: ev => { ev.stopPropagation(); centro = g; vista = 'giorno'; ricorda(); carica(); } } }) : null);
+        qui.length > 3 ? h('button.ag-altri', { testo: t('moduli.ag-altri', { n: qui.length - 3 }), on: { click: ev => { ev.stopPropagation(); centro = g; vista = 'giorno'; ricorda(); carica(); } } }) : null);
       return cella;
     });
     return h('div.ag-mese', GIORNI.map(n => h('div.ag-intest', n)), celle);
@@ -153,10 +153,10 @@ async function calendario(contenuto, k, entita, vistaUrl) {
     let colonne = giorni.map(g => ({ g, chiave: null, nome: null }));
     if (c) {
       const risorse = c.tipo === 'utente' ? dati.persone.map(p => ({ id: p.id, nome: p.nome })) : [];
-      for (const e of dati.eventi) { const id = e.colonne[c.id]; if (id && !risorse.some(r => r.id === id)) risorse.push({ id, nome: nomi.get(id) || (c.tipo === 'utente' ? 'Utente non attivo' : id) }); }
-      colonne = [...risorse.map(r => ({ g: giorni[0], chiave: r.id, nome: r.nome })), { g: giorni[0], chiave: '', nome: 'Nessuno' }]
+      for (const e of dati.eventi) { const id = e.colonne[c.id]; if (id && !risorse.some(r => r.id === id)) risorse.push({ id, nome: nomi.get(id) || (c.tipo === 'utente' ? t('moduli.ag-utente-non-attivo') : id) }); }
+      colonne = [...risorse.map(r => ({ g: giorni[0], chiave: r.id, nome: r.nome })), { g: giorni[0], chiave: '', nome: t('viste.nessuno') }]
         .filter(x => x.chiave !== '' || dati.eventi.some(e => !e.colonne[c.id]));
-      if (!colonne.length) colonne = [{ g: giorni[0], chiave: '', nome: 'Nessuno' }];
+      if (!colonne.length) colonne = [{ g: giorni[0], chiave: '', nome: t('viste.nessuno') }];
     }
     const dellaColonna = col => dati.eventi.filter(e => giornoEv(e) === col.g && (!c || (e.colonne[c.id] || '') === col.chiave));
     // ore mostrate: 7–21, allargate agli eventi che stanno fuori
@@ -225,16 +225,15 @@ async function calendario(contenuto, k, entita, vistaUrl) {
 // =====================================================================================================================
 // CRUSCOTTO
 // =====================================================================================================================
-const PERIODI = { oggi: 'Oggi', settimana: 'Questa settimana', mese: 'Questo mese', anno: "Quest'anno", ultimi_7: 'Ultimi 7 giorni', ultimi_30: 'Ultimi 30 giorni', ultimi_84: 'Ultime 12 settimane', ultimi_365: 'Ultimo anno', sempre: 'Sempre' };
-const PRIMA = { oggi: 'a ieri', settimana: 'alla settimana scorsa', mese: 'al mese scorso', anno: "all'anno scorso" }, COME = { oggi: 'ieri', settimana: 'la settimana scorsa', mese: 'il mese scorso', anno: "l'anno scorso" };
-const valore = (v, valuta) => (v == null ? '—' : valuta ? soldi(v) : numero(v, 1));
+const PERIODI = Object.fromEntries(['oggi', 'settimana', 'mese', 'anno', 'ultimi_7', 'ultimi_30', 'ultimi_84', 'ultimi_365', 'sempre'].map(k => [k, t('moduli.ag-periodo-' + k)]));
+const valore = (v, valuta) => (v == null ? '—' : valuta ? soldi(v) : numeroL(v, 1));
 
 async function cruscotto(contenuto, k) {
-  const saluto = (() => { const o = new Date().getHours(); return o < 13 ? 'Buongiorno' : o < 18 ? 'Buon pomeriggio' : 'Buonasera'; })();
+  const saluto = (() => { const o = new Date().getHours(); return o < 13 ? t('moduli.ag-buongiorno') : o < 18 ? t('moduli.ag-buon-pomeriggio') : t('moduli.ag-buonasera'); })();
   const griglia = h('div.cr-griglia'), azioni = h('div.cr-azioni');
   let c = null, modifica = false;
   contenuto.replaceChildren(
-    h('div.testa', h('h1', `${saluto}, ${k.stato.utente.nome.split(' ')[0]}`, h('small.cr-data', new Date().toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long' }))), azioni),
+    h('div.testa', h('h1', t('moduli.ag-saluto', { saluto, nome: k.stato.utente.nome.split(' ')[0] }), h('small.cr-data', new Date().toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long' }))), azioni),
     h('div.corpo', griglia));
   // le modifiche dei colleghi aggiornano i numeri (al massimo una volta ogni 2 secondi), finché si resta qui
   let tRic; const altrui = () => { if (modifica) return; clearTimeout(tRic); tRic = setTimeout(carica, 2000); };
@@ -245,19 +244,19 @@ async function cruscotto(contenuto, k) {
   }
   function disegna() {
     azioni.replaceChildren(...(c.puoModificare ? (modifica
-      ? [h('button.btn', { testo: '+ Aggiungi', on: { click: ev => editorWidget(ev.currentTarget, null) } }), h('button.btn.pieno', { testo: 'Fatto', on: { click: () => { modifica = false; disegna(); } } })]
-      : [h('button.btn.nudo', { on: { click: () => { modifica = true; disegna(); } } }, icona('matita'), 'Modifica')]) : []));
+      ? [h('button.btn', { testo: t('moduli.ag-piu-aggiungi'), on: { click: ev => editorWidget(ev.currentTarget, null) } }), h('button.btn.pieno', { testo: t('moduli.ag-fatto'), on: { click: () => { modifica = false; disegna(); } } })]
+      : [h('button.btn.nudo', { on: { click: () => { modifica = true; disegna(); } } }, icona('matita'), t('moduli.ag-modifica')]) : []));
     griglia.classList.toggle('in-modifica', modifica);
     if (!c.widget.length) { griglia.replaceChildren(h('div.vuoto', 'Il cruscotto è vuoto. ', c.puoModificare ? 'Premi «Modifica» per aggiungere numeri e grafici.' : '')); return; }
     griglia.replaceChildren(...c.widget.map((w, i) => {
       const d = c.dati[w.id] || {};
-      const testa = h('div.cr-testa', h('span.cr-titolo', { title: w.titolo || '' }, w.titolo || 'Senza titolo'), w.periodo && w.tipo !== 'grafico' ? h('span.cr-periodo', PERIODI[w.periodo] || '') : null,
-        modifica ? h('span.cr-mod', h('button.btn.nudo.piccolo', { title: 'Prima', testo: '←', disabled: i === 0, on: { click: () => muovi(i, -1) } }), h('button.btn.nudo.piccolo', { title: 'Dopo', testo: '→', disabled: i === c.widget.length - 1, on: { click: () => muovi(i, 1) } }),
-          h('button.btn.nudo.piccolo', { title: 'Cambia', on: { click: ev => editorWidget(ev.currentTarget, i) } }, icona('matita')), h('button.btn.nudo.piccolo.pericolo', { title: 'Togli', testo: '×', on: { click: () => { c.widget.splice(i, 1); salva(); } } })) : null);
+      const testa = h('div.cr-testa', h('span.cr-titolo', { title: w.titolo || '' }, w.titolo || t('moduli.ag-senza-titolo')), w.periodo && w.tipo !== 'grafico' ? h('span.cr-periodo', PERIODI[w.periodo] || '') : null,
+        modifica ? h('span.cr-mod', h('button.btn.nudo.piccolo', { title: t('moduli.ag-prima'), testo: '←', disabled: i === 0, on: { click: () => muovi(i, -1) } }), h('button.btn.nudo.piccolo', { title: t('moduli.ag-dopo'), testo: '→', disabled: i === c.widget.length - 1, on: { click: () => muovi(i, 1) } }),
+          h('button.btn.nudo.piccolo', { title: t('moduli.ag-cambia'), on: { click: ev => editorWidget(ev.currentTarget, i) } }, icona('matita')), h('button.btn.nudo.piccolo.pericolo', { title: t('comune.togli'), testo: '×', on: { click: () => { c.widget.splice(i, 1); salva(); } } })) : null);
       let dentro;
       try {
         dentro = d.errore ? h('div.nota', d.errore) : w.tipo === 'numero' ? numero(w, d) : w.tipo === 'grafico' ? grafico(w, d) : w.tipo === 'attenzione' ? attenzione(d) : ultime(d);
-      } catch (e) { dentro = h('div.nota', 'Non riesco a disegnarlo'); console.error(e); }
+      } catch (e) { dentro = h('div.nota', t('moduli.ag-non-disegno')); console.error(e); }
       return h('section.cr-widget', { class: `cr-w-${w.tipo}${w.largo || ['attenzione', 'ultime'].includes(w.tipo) ? ' largo' : ''}` }, testa, dentro);
     }));
   }
@@ -266,9 +265,9 @@ async function cruscotto(contenuto, k) {
     let conf = null;
     if (prima != null && v != null && PRIMA[w.periodo]) {
       const diff = v - prima, pct = prima ? Math.round(diff / Math.abs(prima) * 100) : null;
-      conf = h('div.cr-conf', { class: diff > 0 ? 'su' : diff < 0 ? 'giu' : '' }, diff === 0 ? `come ${COME[w.periodo]}` : `${diff > 0 ? '▲' : '▼'} ${pct != null ? Math.abs(pct) + '%' : valore(Math.abs(diff), val)} rispetto ${PRIMA[w.periodo]} (${valore(prima, val)})`);
+      conf = h('div.cr-conf', { class: diff > 0 ? 'su' : diff < 0 ? 'giu' : '' }, diff === 0 ? t('moduli.ag-come-' + w.periodo) : `${diff > 0 ? '▲' : '▼'} ${t('moduli.ag-rispetto-' + w.periodo, { diff: pct != null ? t('comune.percento', { n: numeroL(Math.abs(pct)) }) : valore(Math.abs(diff), val), prima: valore(prima, val) })}`);
     }
-    return h('a.cr-numero', { href: `#/e/${w.entita}`, title: 'Vedi l\'elenco', on: { click: () => apriLista(w.entita, w.filtri, w.periodo && w.periodo !== 'sempre' ? { campo: w.campoData, op: 'periodo', valore: w.periodo } : null) } }, h('div.cr-valore', valore(v, val)), conf);
+    return h('a.cr-numero', { href: `#/e/${w.entita}`, title: t('moduli.ag-vedi-elenco'), on: { click: () => apriLista(w.entita, w.filtri, w.periodo && w.periodo !== 'sempre' ? { campo: w.campoData, op: 'periodo', valore: w.periodo } : null) } }, h('div.cr-valore', valore(v, val)), conf);
   }
   carica();
 
@@ -287,20 +286,20 @@ async function cruscotto(contenuto, k) {
     const disegnaForm = () => {
       const def = entita.find(e => e.id === w.entita) || entita[0]; if (def && !['attenzione', 'ultime'].includes(w.tipo)) w.entita = def.id;
       const numeri = def ? def.campi.filter(x => !x.archiviato && (['valuta', 'numero', 'durata', 'percentuale'].includes(x.tipo) || x.tipo === 'calcolato')) : [];
-      const date = def ? [...def.campi.filter(x => !x.archiviato && ['data', 'data_ora'].includes(x.tipo)), { id: 'creato', nome: 'Creato il' }] : [];
+      const date = def ? [...def.campi.filter(x => !x.archiviato && ['data', 'data_ora'].includes(x.tipo)), { id: 'creato', nome: t('viste.creato-il') }] : [];
       const titolo = h('input.campo', { value: w.titolo || '', placeholder: 'Es. Incassato oggi', on: { input: () => { w.titolo = titolo.value; } } });
-      const parti = [h('div.pop-titolo', i == null ? 'Nuovo widget' : 'Cambia il widget'),
-        riga('Tipo', sel([['numero', 'Numero'], ['grafico', 'Grafico'], ['attenzione', 'Cosa richiede attenzione'], ['ultime', 'Ultime modifiche']], w.tipo, v => { w.tipo = v; if (v === 'grafico') { w.per ||= 'giorno'; w.periodo = w.periodo && w.periodo.startsWith('ultimi') ? w.periodo : 'ultimi_30'; w.largo = true; } disegnaForm(); })),
-        riga('Titolo', titolo)];
+      const parti = [h('div.pop-titolo', i == null ? t('moduli.ag-nuovo-widget') : t('moduli.ag-cambia-widget')),
+        riga(t('moduli.ag-tipo'), sel([['numero', t('moduli.ag-w-numero')], ['grafico', t('moduli.ag-w-grafico')], ['attenzione', t('moduli.ag-w-attenzione')], ['ultime', t('moduli.ag-w-ultime')]], w.tipo, v => { w.tipo = v; if (v === 'grafico') { w.per ||= 'giorno'; w.periodo = w.periodo && w.periodo.startsWith('ultimi') ? w.periodo : 'ultimi_30'; w.largo = true; } disegnaForm(); })),
+        riga(t('moduli.ag-titolo'), titolo)];
       if (['numero', 'grafico'].includes(w.tipo) && def) {
-        parti.push(riga('Sezione', sel(entita.map(e => [e.id, e.nome]), w.entita, v => { w.entita = v; w.campo = null; w.campoData = null; w.filtri = []; disegnaForm(); })),
-          riga('Misura', sel([['conta', 'Quanti sono'], ...(numeri.length ? [['somma', 'Somma di…'], ['media', 'Media di…']] : [])], w.misura, v => { w.misura = v; if (v !== 'conta') w.campo ||= numeri[0]?.id; disegnaForm(); })));
-        if (w.misura !== 'conta') parti.push(riga('Campo', sel(numeri.map(x => [x.id, x.nome]), w.campo, v => { w.campo = v; })));
-        parti.push(riga('Data di riferimento', sel(date.map(x => [x.id, x.nome]), w.campoData || date[0]?.id, v => { w.campoData = v; })));
+        parti.push(riga(t('gestione.sezione'), sel(entita.map(e => [e.id, e.nome]), w.entita, v => { w.entita = v; w.campo = null; w.campoData = null; w.filtri = []; disegnaForm(); })),
+          riga(t('moduli.ag-misura'), sel([['conta', t('moduli.ag-quanti')], ...(numeri.length ? [['somma', t('moduli.ag-somma')], ['media', t('moduli.ag-media')]] : [])], w.misura, v => { w.misura = v; if (v !== 'conta') w.campo ||= numeri[0]?.id; disegnaForm(); })));
+        if (w.misura !== 'conta') parti.push(riga(t('moduli.ag-campo'), sel(numeri.map(x => [x.id, x.nome]), w.campo, v => { w.campo = v; })));
+        parti.push(riga(t('moduli.ag-data-rif'), sel(date.map(x => [x.id, x.nome]), w.campoData || date[0]?.id, v => { w.campoData = v; })));
         if (!w.campoData) w.campoData = date[0]?.id;
         const periodi = w.tipo === 'grafico' ? ['ultimi_7', 'ultimi_30', 'ultimi_84', 'ultimi_365', 'mese', 'anno'] : ['oggi', 'settimana', 'mese', 'anno', 'ultimi_30', 'sempre'];
-        parti.push(riga('Periodo', sel(periodi.map(p => [p, PERIODI[p]]), w.periodo, v => { w.periodo = v; })));
-        if (w.tipo === 'grafico') parti.push(h('div.pop-due', riga('Per', sel([['giorno', 'Giorno'], ['settimana', 'Settimana'], ['mese', 'Mese']], w.per, v => { w.per = v; })), riga('Forma', sel([['barre', 'Barre'], ['linea', 'Linea']], w.forma || 'barre', v => { w.forma = v; }))));
+        parti.push(riga(t('moduli.ag-periodo'), sel(periodi.map(p => [p, PERIODI[p]]), w.periodo, v => { w.periodo = v; })));
+        if (w.tipo === 'grafico') parti.push(h('div.pop-due', riga(t('moduli.ag-per'), sel([['giorno', t('moduli.ag-vista-giorno')], ['settimana', t('moduli.ag-vista-settimana')], ['mese', t('moduli.ag-vista-mese')]], w.per, v => { w.per = v; })), riga(t('moduli.ag-forma'), sel([['barre', t('moduli.ag-barre')], ['linea', t('moduli.ag-linea')]], w.forma || 'barre', v => { w.forma = v; }))));
         parti.push(h('span.etichetta', 'Solo quelli con…'), costruttore(def, w.filtri || [], { schema: k.schema, cambia: l => { w.filtri = l; } }));
       }
       if (w.tipo === 'attenzione') {
@@ -308,22 +307,22 @@ async function cruscotto(contenuto, k) {
         parti.push(h('div.nota', 'Ogni voce conta gli elementi di una sezione che rispondono ai filtri (es. articoli da riordinare, preventivi fermi da 7 giorni).'),
           ...w.voci.map((v, j) => {
             const d = entita.find(e => e.id === v.entita);
-            return h('div.cr-voce-ed', h('input.campo', { value: v.titolo || '', placeholder: 'Nome della voce', on: { input: ev => { v.titolo = ev.target.value; } } }),
-              h('div.nota', d ? `${d.nome}: ${(v.filtri || []).map(f => etichetta(d, f)).join(', ') || 'tutti'}` : v.entita),
-              h('button.btn.nudo.piccolo.pericolo', { type: 'button', testo: 'Togli', on: { click: () => { w.voci.splice(j, 1); disegnaForm(); } } }));
+            return h('div.cr-voce-ed', h('input.campo', { value: v.titolo || '', placeholder: t('moduli.ag-nome-voce'), on: { input: ev => { v.titolo = ev.target.value; } } }),
+              h('div.nota', d ? `${d.nome}: ${(v.filtri || []).map(f => etichetta(d, f)).join(', ') || t('moduli.ag-tutti')}` : v.entita),
+              h('button.btn.nudo.piccolo.pericolo', { type: 'button', testo: t('comune.togli'), on: { click: () => { w.voci.splice(j, 1); disegnaForm(); } } }));
           }),
           (() => { const nv = { titolo: '', entita: entita[0]?.id, filtri: [] }; const box = h('div.cr-voce-nuova');
-            const dis = () => { const d = entita.find(e => e.id === nv.entita); box.replaceChildren(h('span.etichetta', 'Nuova voce'), sel(entita.map(e => [e.id, e.nome]), nv.entita, v => { nv.entita = v; nv.filtri = []; dis(); }),
+            const dis = () => { const d = entita.find(e => e.id === nv.entita); box.replaceChildren(h('span.etichetta', t('moduli.ag-nuova-voce')), sel(entita.map(e => [e.id, e.nome]), nv.entita, v => { nv.entita = v; nv.filtri = []; dis(); }),
               costruttore(d, nv.filtri, { schema: k.schema, cambia: l => { nv.filtri = l; } }),
-              h('button.btn.piccolo', { type: 'button', testo: 'Aggiungi la voce', on: { click: () => { if (!nv.filtri.length) { err.textContent = 'Metti almeno un filtro alla voce'; return; } nv.titolo ||= nv.filtri.map(f => etichetta(d, f)).join(', '); w.voci.push(nv); disegnaForm(); } } })); };
+              h('button.btn.piccolo', { type: 'button', testo: t('moduli.ag-aggiungi-voce'), on: { click: () => { if (!nv.filtri.length) { err.textContent = t('moduli.ag-un-filtro'); return; } nv.titolo ||= nv.filtri.map(f => etichetta(d, f)).join(', '); w.voci.push(nv); disegnaForm(); } } })); };
             dis(); return box; })());
       }
-      parti.push(err, h('div.pop-azioni', h('button.btn.pieno.piccolo', { type: 'submit', testo: i == null ? 'Aggiungi' : 'Salva' })));
+      parti.push(err, h('div.pop-azioni', h('button.btn.pieno.piccolo', { type: 'submit', testo: i == null ? t('gestione.aggiungi') : t('viste.salva') })));
       form.replaceChildren(...parti);
     };
     form.addEventListener('submit', async ev => {
       ev.preventDefault(); err.textContent = '';
-      if (!w.titolo?.trim()) { err.textContent = 'Dai un titolo al widget'; return; }
+      if (!w.titolo?.trim()) { err.textContent = t('moduli.ag-titolo-widget'); return; }
       try { await api('POST', '/cruscotto/anteprima', w); } catch (e) { err.textContent = e.message; return; }
       if (i == null) c.widget.push(w); else c.widget[i] = w;
       pop.chiudi(); salva();
@@ -343,7 +342,7 @@ function grafico(w, d) {
   const ns = 'http://www.w3.org/2000/svg', s = (tag, attr = {}, ...figli) => { const e = document.createElementNS(ns, tag); for (const [a, v] of Object.entries(attr)) e.setAttribute(a, v); e.append(...figli); return e; };
   const corto = v => (valuta ? soldiCorto(v) : numeroCorto(v));
   const nomeX = k => (w.per === 'mese' ? new Date(k + '-01T12:00').toLocaleDateString(locale(), { month: 'short' }) : w.per === 'anno' ? k : new Date(k + 'T12:00').toLocaleDateString(locale(), { day: 'numeric', month: 'short' }));
-  const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, class: 'cr-svg', role: 'img', 'aria-label': `${w.titolo}: grafico` });
+  const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, class: 'cr-svg', role: 'img', 'aria-label': t('moduli.ag-aria-grafico', { titolo: w.titolo }) });
   for (let v = 0; v <= top + 1e-9; v += passo) svg.append(s('line', { x1: sx, x2: W - dx, y1: y(v), y2: y(v), class: v === 0 ? 'cr-base' : 'cr-griglia-l' }), s('text', { x: sx - 6, y: y(v) + 4, 'text-anchor': 'end', class: 'cr-asse' }, corto(v)));
   const ogni = Math.ceil(g.length / 6);
   g.forEach((x, i) => { if (i % ogni === 0 || i === g.length - 1 && g.length < 14) svg.append(s('text', { x: sx + larg * (i + 0.5), y: H - 6, 'text-anchor': 'middle', class: 'cr-asse' }, nomeX(x.chiave))); });
@@ -372,7 +371,7 @@ function grafico(w, d) {
     });
   }
   const totale = d.totali?.[0];
-  return h('div', box, h('div.cr-piede', `${PERIODI[w.periodo] || ''} · in tutto ${valore(totale, valuta)}`));
+  return h('div', box, h('div.cr-piede', t('moduli.ag-piede-grafico', { periodo: PERIODI[w.periodo] || '', totale: valore(totale, valuta) })));
 }
 function scala(max) { const p = 10 ** Math.floor(Math.log10(max / 3)), n = max / 3 / p; return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * p; }
 
@@ -381,8 +380,8 @@ function attenzione(d) {
   const tutto = d.voci.every(v => !v.totale);
   if (tutto) return h('div.cr-tutto-ok', '✓ Tutto in ordine: niente da sistemare.');
   return h('ul.cr-attenzione', d.voci.filter(v => v.totale).map(v => h('li',
-    h('a.cr-att-testa', { href: `#/e/${v.entita}`, title: 'Vedi l\'elenco', on: { click: () => apriLista(v.entita, v.filtri) } }, h('b', v.titolo), h('span.cr-conta', String(v.totale))),
-    h('div.cr-att-righe', v.righe.map(r => h('a', { href: `#/e/${v.entita}/${r.id}`, testo: r.titolo })), v.totale > v.righe.length ? h('a.nota', { href: `#/e/${v.entita}`, testo: `e altri ${v.totale - v.righe.length}`, on: { click: () => apriLista(v.entita, v.filtri) } }) : null))));
+    h('a.cr-att-testa', { href: `#/e/${v.entita}`, title: t('moduli.ag-vedi-elenco'), on: { click: () => apriLista(v.entita, v.filtri) } }, h('b', v.titolo), h('span.cr-conta', String(v.totale))),
+    h('div.cr-att-righe', v.righe.map(r => h('a', { href: `#/e/${v.entita}/${r.id}`, testo: r.titolo })), v.totale > v.righe.length ? h('a.nota', { href: `#/e/${v.entita}`, testo: t('moduli.ag-e-altri', { n: v.totale - v.righe.length }), on: { click: () => apriLista(v.entita, v.filtri) } }) : null))));
 }
 // dal cruscotto alla lista con gli stessi filtri: le date relative del server («@oggi-7») diventano «prima del» / «dal»
 function apriLista(entita, filtri = [], periodo = null) {
@@ -396,7 +395,9 @@ function apriLista(entita, filtri = [], periodo = null) {
 }
 function ultime(d) {
   if (!d.voci?.length) return h('div.nota', 'Ancora nessuna modifica.');
-  const verbo = { crea: 'ha creato', modifica: 'ha modificato', elimina: 'ha archiviato', ripristina: 'ha ripristinato' };
-  const quando = q => { const m = Math.round((Date.now() - new Date(q)) / 6e4); return m < 1 ? 'adesso' : m < 60 ? `${m} min fa` : m < 24 * 60 ? `${Math.round(m / 60)} h fa` : new Date(q).toLocaleDateString(locale(), { day: 'numeric', month: 'short' }); };
-  return h('ul.cr-ultime', d.voci.map(v => h('li', h('span', h('b', v.chi), ` ${verbo[v.tipo] || v.tipo} `, h('a', { href: `#/e/${v.entita}/${v.riga}`, testo: v.titolo || 'un elemento' }), h('span.nota', ` in ${v.nomeEntita.toLowerCase()}`)), h('span.nota', quando(v.quando)))));
+  const verbo = { crea: t('moduli.ag-ha-creato'), modifica: t('moduli.ag-ha-modificato'), elimina: t('moduli.ag-ha-archiviato'), ripristina: t('moduli.ag-ha-ripristinato') };
+  // «5 min fa», «5 min ago», «hace 5 min»… dal formato della lingua (Intl.RelativeTimeFormat)
+  const rel = new Intl.RelativeTimeFormat(locale(), { style: 'short' });
+  const quando = q => { const m = Math.round((Date.now() - new Date(q)) / 6e4); return m < 1 ? t('moduli.ag-adesso') : m < 60 ? rel.format(-m, 'minute') : m < 24 * 60 ? rel.format(-Math.round(m / 60), 'hour') : new Date(q).toLocaleDateString(locale(), { day: 'numeric', month: 'short' }); };
+  return h('ul.cr-ultime', d.voci.map(v => h('li', h('span', h('b', v.chi), ` ${verbo[v.tipo] || v.tipo} `, h('a', { href: `#/e/${v.entita}/${v.riga}`, testo: v.titolo || t('moduli.ag-un-elemento') }), h('span.nota', ' ', t('moduli.ag-in-sezione', { nome: minuscole(v.nomeEntita) }))), h('span.nota', quando(v.quando)))));
 }

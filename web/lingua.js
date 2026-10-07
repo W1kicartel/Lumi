@@ -40,6 +40,9 @@ let salvata = null; if (!nodo) try { salvata = localStorage.getItem(CHIAVE); } c
 export let lingua = nodo ? (LINGUE[globalThis.process?.env?.KUBO_LINGUA] ? globalThis.process.env.KUBO_LINGUA : 'it') : iniziale({ utente: info.lingua, salvata, browser });
 export let valuta = VALUTE.includes(info.azienda?.valuta) ? info.azienda.valuta : 'EUR';
 export const linguaAzienda = () => info.azienda?.lingua || 'it';
+// la valuta da proporre al primo avvio, dal paese del browser (en-US → USD, pt-BR → BRL, de-CH → CHF…); se no l'euro
+const VALUTA_PAESE = { US: 'USD', GB: 'GBP', CH: 'CHF', BR: 'BRL', MX: 'MXN', AR: 'ARS', CL: 'CLP', CO: 'COP', CA: 'CAD', AU: 'AUD', JP: 'JPY', SE: 'SEK', NO: 'NOK', DK: 'DKK', PL: 'PLN', CZ: 'CZK', HU: 'HUF', RO: 'RON', TR: 'TRY', MA: 'MAD', IN: 'INR' };
+export const valutaProposta = (l = browser) => { for (const x of l) { const v = VALUTA_PAESE[String(x).split('-')[1]?.toUpperCase()]; if (v) return v; } return 'EUR'; };
 let loc = localeDi(lingua, browser);
 export const locale = () => loc;
 if (!nodo) { try { localStorage.setItem(CHIAVE, lingua); } catch { } document.documentElement.lang = lingua; }

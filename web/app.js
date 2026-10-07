@@ -5,7 +5,7 @@ import { lista, scheda } from './viste.js';
 import { personalizza } from './personalizza.js';
 import { usaSchema } from './campi.js';
 import { utenti } from './utenti.js';
-import { t, LINGUE, lingua, imposta, VALUTE, valuta } from './lingua.js';
+import { t, LINGUE, lingua, imposta, VALUTE, valutaProposta } from './lingua.js';
 
 const app = document.getElementById('app');
 let stato = null, schema = [], eventi = null, vistaAttiva = null;
@@ -30,7 +30,7 @@ async function ricaricaSchema() { schema = await get('/schema'); usaSchema(schem
 // ---------- primo avvio ----------
 async function primoAvvio() {
   const modelli = await get(`/lingua/modelli?l=${lingua}`).catch(() => get('/modelli'));
-  const sValuta = h('select.campo', VALUTE.map(v => h('option', { value: v, testo: v, selected: v === (lingua === 'pt' ? 'BRL' : valuta) })));
+  const sValuta = h('select.campo', VALUTE.map(v => h('option', { value: v, testo: v, selected: v === valutaProposta() })));
   const f = Object.fromEntries(['azienda', 'nome', 'email', 'password'].map(k => [k, h('input.campo', { name: k, type: k === 'password' ? 'password' : k === 'email' ? 'email' : 'text', required: true, minLength: k === 'password' ? 8 : undefined, autocomplete: k === 'password' ? 'new-password' : undefined })]));
   const err = h('div');
   const form = h('form.scatola', { on: { submit: async ev => {
