@@ -92,6 +92,9 @@ test('cambio password obbligatorio e cambio con la password attuale', async () =
     assert.equal((await g.chiama('GET', '/api/dati/articoli')).stato, 200);   // nuova sessione, niente più blocco
     // la propria password via /api/utenti vuole quella attuale (chi trova il PC acceso non se la prende)
     assert.equal((await g.chiama('PATCH', `/api/utenti/${u.id}`, { password: 'presa-al-volo-1' })).stato, 400);
+    // anche il PIN del banco: chi lo imposta entra al posto della persona
+    assert.equal((await g.chiama('PATCH', `/api/utenti/${u.id}`, { pin: '4321' })).stato, 400);
+    assert.equal((await g.chiama('PATCH', `/api/utenti/${u.id}`, { pin: '4321', attuale: 'la-mia-di-giulia' })).stato, 200);
   } finally { k.chiudi(); }
 });
 

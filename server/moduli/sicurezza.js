@@ -84,6 +84,10 @@ export default function registra({ r, db, D, P, U, meta, serve, ErroreHttp, cont
     if (ctx && !ctx.viaToken && deveCambiare(ctx.utente.id) && !LIBERE_CAMBIO.some(x => x.test(`${metodo} ${percorso}`)))
       throw new ErroreHttp(403, 'Prima di continuare cambia la password che ti hanno dato', { cambiaPassword: true });
     // 3. password robuste ovunque se ne sceglie una
+    // (anche il PIN del banco: chi lo imposta per un altro entra al suo posto)
+    const proprio = /^\/api\/utenti\/([^/]+)$/.exec(percorso);
+    if (metodo === 'PATCH' && proprio && ctx && !ctx.viaToken && corpo?.pin != null && corpo.pin !== '' && decodeURIComponent(proprio[1]) === ctx.utente.id && !U.verificaPassword(db, ctx.utente.id, corpo.attuale))
+      throw new ErroreHttp(400, 'Per cambiare il PIN serve la password attuale');
     if (metodo !== 'GET' && !ctx?.viaToken && corpo && corpo.password != null && corpo.password !== '' && (/^\/api\/(configura|utenti)$/.test(percorso) || /^\/api\/utenti\/[^/]+$/.test(percorso))) {
       let nome = corpo.nome, email = corpo.email;
       const m = /^\/api\/utenti\/([^/]+)$/.exec(percorso); if (m) { const u = db.prepare('SELECT nome, email FROM _utenti WHERE id = ?').get(decodeURIComponent(m[1])); nome ??= u?.nome; email ??= u?.email; }
