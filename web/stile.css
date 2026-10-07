@@ -19,8 +19,8 @@ a { color: inherit; }
 .mono { font-family: "Geist Mono", ui-monospace, monospace; }
 
 /* struttura */
-.app { display: grid; grid-template-columns: 236px 1fr; height: 100vh; }
-.lato { border-right: 1px solid var(--linea); background: var(--pannello); display: flex; flex-direction: column; min-height: 0; }
+.app { display: grid; grid-template-columns: 236px minmax(0, 1fr); height: 100vh; }
+.lato { min-width: 0; border-right: 1px solid var(--linea); background: var(--pannello); display: flex; flex-direction: column; min-height: 0; }
 .lato .marca { display: flex; align-items: center; gap: 10px; padding: 18px 18px 14px; font-weight: 650; letter-spacing: -.02em; }
 .lato .marca small { display: block; font-weight: 450; color: var(--tenue); font-size: 12px; letter-spacing: 0; }
 .lato nav { flex: 1; overflow: auto; padding: 4px 8px; }
@@ -126,7 +126,7 @@ textarea.campo { min-height: 90px; resize: vertical; }
 .toast.male { background: var(--errore); color: #fff; }
 
 @media (max-width: 860px) {
-  .app { grid-template-columns: 1fr; grid-template-rows: auto 1fr; height: auto; min-height: 100vh; }
+  .app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; height: auto; min-height: 100vh; }
   .lato { border-right: 0; border-bottom: 1px solid var(--linea); }
   .lato nav { display: flex; overflow-x: auto; padding: 4px 8px 8px; } .lato nav .sez { display: none; } .lato nav a { white-space: nowrap; }
   .lato .piede { display: none; }
