@@ -78,7 +78,8 @@ export function formatta(c, v) {
     case 'scelta': case 'stato': return chip(c.opzioni?.find(o => o.id === v) || { nome: v });
     case 'scelta_multipla': return h('span', v.map(x => chip(c.opzioni?.find(o => o.id === x) || { nome: x })));
     case 'relazione': return Array.isArray(v) ? v.map(x => x.titolo).join(', ') : v.titolo ?? v;
-    case 'immagine': case 'file': return `${v.length} file`;
+    case 'immagine': return h('span.miniature', v.slice(0, 3).map(x => h('img', { src: x.url, alt: x.nome, loading: 'lazy' })), v.length > 3 ? `+${v.length - 3}` : null);
+    case 'file': return v.map(x => x.nome).join(', ');
     default: return String(v);
   }
 }

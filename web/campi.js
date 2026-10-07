@@ -1,6 +1,6 @@
 // Gli editor dei campi, uno per tipo. editor(campo, valore, { schema, cambia }) → elemento con .leggi() che restituisce il
 // valore da mandare al server (undefined = non toccare).
-import { h, get, formatta, chip } from './ui.js';
+import { h, get, api, toast, formatta, chip } from './ui.js';
 import { calcola } from '/motore/formule.js';
 
 const ORA = () => new Date().toISOString().slice(0, 10);
@@ -39,12 +39,55 @@ export function editor(c, v, opz = {}) {
     case 'righe': return righe(c, v, opz);
     case 'calcolato': { const e = h('div.valore-calcolato', formatta(c, v) || '—'); e.leggi = () => undefined; e.aggiorna = x => e.replaceChildren(formatta(c, x) || '—'); return e; }
     case 'contatore': { const e = h('div.valore-calcolato.mono', v || 'al salvataggio'); e.leggi = () => undefined; return e; }
-    case 'immagine': case 'file': { const e = h('div.nota', 'Gli allegati arrivano nella prossima versione.'); e.leggi = () => undefined; return e; }
+    case 'immagine': case 'file': return allegati(c, v, cambia);
     case 'email': { const e = input('email', { value: v ?? '' }); e.leggi = () => e.value; return e; }
     case 'telefono': { const e = input('tel', { value: v ?? '' }); e.leggi = () => e.value; return e; }
     case 'url': { const e = input('url', { value: v ?? '' }); e.leggi = () => e.value; return e; }
     default: { const e = input('text', { value: v ?? '' }); e.leggi = () => e.value; return e; }
   }
+}
+
+// allegati: si scelgono o si trascinano qui, partono subito a pezzi (vedi server/moduli/import-file.js) e diventano del
+// campo al salvataggio della scheda. Le immagini si vedono in anteprima, gli altri file si scaricano.
+export async function carica(file, { max, avanzamento } = {}) {
+  const a = await api('POST', '/file/carica', { nome: file.name, tipo: file.type, dimensione: file.size, max });
+  let da = 0, ultimo = null;
+  while (da < file.size) {
+    const pezzo = new Uint8Array(await file.slice(da, da + a.pezzo).arrayBuffer());
+    let bin = ''; for (let i = 0; i < pezzo.length; i += 0x8000) bin += String.fromCharCode(...pezzo.subarray(i, i + 0x8000));
+    ultimo = await api('POST', `/file/carica/${a.id}`, { da, pezzo: btoa(bin) }); da += pezzo.length; avanzamento?.(da / file.size);
+  }
+  return ultimo.file;
+}
+export const peso = n => (n == null ? '' : n < 1024 ? `${n} B` : n < 1048576 ? `${Math.round(n / 1024)} KB` : `${(n / 1048576).toFixed(1).replace('.', ',')} MB`);
+function allegati(c, v, cambia) {
+  const lista = [...(v || [])], immagine = c.tipo === 'immagine', e = h('div.allegati', { class: immagine ? 'immagini' : '' });
+  const scegli = h('input', { type: 'file', multiple: true, accept: immagine ? 'image/*' : undefined, hidden: true, on: { change: () => { aggiungi([...scegli.files]); scegli.value = ''; } } });
+  const bottone = h('button.btn.piccolo', { type: 'button', on: { click: () => scegli.click() } }, immagine ? '+ Immagine' : '+ File');
+  async function aggiungi(files) {
+    for (const f of files) {
+      if (immagine && !f.type.startsWith('image/')) { toast(`«${f.name}» non è un'immagine`, true); continue; }
+      const x = { nome: f.name, dimensione: f.size, caricando: 0, anteprima: immagine ? URL.createObjectURL(f) : null }; lista.push(x); disegna();
+      try { Object.assign(x, await carica(f, { avanzamento: p => { x.caricando = p; disegna(); } }), { caricando: null }); cambia(); }
+      catch (err) { lista.splice(lista.indexOf(x), 1); toast(err.message, true); }
+      disegna();
+    }
+  }
+  function disegna() {
+    e.replaceChildren(...lista.map(x => h('div.allegato',
+      immagine ? h('a.miniatura', { href: x.url || x.anteprima, target: '_blank', rel: 'noopener' }, h('img', { src: x.anteprima || x.url, alt: x.nome, loading: 'lazy' })) : null,
+      h('div.info', x.url && !immagine ? h('a', { href: x.url + '?scarica=1', testo: x.nome }) : h('span', { testo: x.nome }),
+        x.caricando != null ? h('progress', { max: 1, value: x.caricando }) : h('small', peso(x.dimensione))),
+      h('button.btn.nudo.piccolo', { type: 'button', title: 'Togli', testo: '×', on: { click: () => { lista.splice(lista.indexOf(x), 1); disegna(); cambia(); } } }))),
+      h('div.aggiungi', bottone, h('small.nota', 'o trascina qui'), scegli));
+  }
+  e.addEventListener('dragover', ev => { ev.preventDefault(); e.classList.add('sopra'); });
+  e.addEventListener('dragleave', () => e.classList.remove('sopra'));
+  e.addEventListener('drop', ev => { ev.preventDefault(); e.classList.remove('sopra'); if (!e.querySelector('button:disabled')) aggiungi([...ev.dataTransfer.files]); });
+  disegna();
+  // mentre un file sta ancora salendo non si tocca il campo
+  e.leggi = () => (lista.some(x => x.caricando != null) ? undefined : lista.filter(x => x.id).map(({ id, nome, tipo, dimensione }) => ({ id, nome, tipo, dimensione })));
+  return e;
 }
 
 // relazione: campo di ricerca con il menu dei risultati (frecce, invio, esc)

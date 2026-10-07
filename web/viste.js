@@ -3,7 +3,7 @@ import { h, api, get, toast, formatta, destra, chip, ErroreApi } from './ui.js';
 import { editor, titoloDi } from './campi.js';
 
 const COLONNE_MAX = 7;
-const visibile = c => !c.archiviato && !c.nascosto_in_lista && !['righe', 'testo_lungo', 'immagine', 'file', 'indirizzo'].includes(c.tipo);
+const visibile = c => !c.archiviato && !c.nascosto_in_lista && !['righe', 'testo_lungo', 'file', 'indirizzo'].includes(c.tipo);
 const prefs = (k, v) => { try { if (v === undefined) return JSON.parse(localStorage.getItem('kubo.' + k) || 'null'); localStorage.setItem('kubo.' + k, JSON.stringify(v)); } catch { return null; } };
 
 // ---------- lista ----------
@@ -11,7 +11,8 @@ export function lista(def, contenitore, { schema }) {
   const stato = prefs('lista.' + def.id) || {};
   let q = '', pagina = 1, ordina = stato.ordina || null, filtri = [], modo = stato.modo || 'tabella', archiviati = false;
   const campoKanban = def.campi.find(c => c.tipo === 'stato') || def.campi.find(c => c.tipo === 'scelta');
-  const colonne = def.campi.filter(visibile).slice(0, COLONNE_MAX);
+  // la prima immagine (se c'è) apre la riga, come una miniatura
+  const colonne = [...def.campi.filter(c => visibile(c) && c.tipo === 'immagine').slice(0, 1), ...def.campi.filter(c => visibile(c) && c.tipo !== 'immagine')].slice(0, COLONNE_MAX);
   const cerca = h('input.campo.cerca', { type: 'search', placeholder: `Cerca in ${def.nome.toLowerCase()}…`, on: { input: () => { q = cerca.value; pagina = 1; ricarica(); } } });
   const corpo = h('div'), barraFiltri = h('div.filtri');
   const nuovo = def.puo.crea ? h('a.btn.pieno', { href: `#/e/${def.id}/nuovo`, testo: '+ Nuovo' }) : null;
@@ -43,6 +44,7 @@ export function lista(def, contenitore, { schema }) {
     if (q) par.set('q', q); if (archiviati) par.set('arch', '1');
     if (filtri.length) par.set('f', JSON.stringify(filtri.map(({ etichetta, ...f }) => f)));
     if (ordina) par.set('o', `${ordina.campo}:${ordina.dir}`);
+    contenitore.dataset.query = par.toString();   // i filtri correnti, per chi esporta la lista (web/moduli/import.js)
     let r; try { r = await get(`/dati/${def.id}?${par}`); } catch (e) { corpo.replaceChildren(h('div.avviso', e.message)); return; }
     if (!r.totale) { corpo.replaceChildren(h('div.vuoto', q || filtri.length ? 'Nessun risultato.' : archiviati ? 'Niente in archivio.' : `Ancora nessun elemento in ${def.nome.toLowerCase()}.`, def.puo.crea && !q && !filtri.length && !archiviati ? h('div', { stile: { marginTop: '12px' } }, h('a.btn.pieno', { href: `#/e/${def.id}/nuovo`, testo: '+ Crea il primo' })) : null)); return; }
     if (modo === 'kanban' && campoKanban) return kanban(r.righe);

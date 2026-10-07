@@ -86,6 +86,7 @@ export default function registra({ r, db, S, D, serve, ErroreHttp }) {
         const dest = percorso(db, ev.entita, ev.id, x.id); if (existsSync(dest)) continue;
         const k = caricamento(db, x.id, ctx);
         if (!k?.completo || !existsSync(k.percorso)) { if (!ctx) continue; const m = `«${c.nome}»: il file «${x.nome}» non è arrivato, caricalo di nuovo`; throw new D.ErroreDati(m, { [c.id]: m }); }
+        if (k.dimensione > MAX_FILE) { const m = `«${c.nome}»: «${x.nome}» supera ${MAX_FILE / 1048576} MB`; throw new D.ErroreDati(m, { [c.id]: m }); }
         if (c.tipo === 'immagine' && !k.tipo.startsWith('image/')) { const m = `«${c.nome}»: «${x.nome}» non è un'immagine`; throw new D.ErroreDati(m, { [c.id]: m }); }
         mkdirSync(dirname(dest), { recursive: true }); copyFileSync(k.percorso, dest);
       }
