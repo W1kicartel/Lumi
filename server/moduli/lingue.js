@@ -36,7 +36,9 @@ export function daIntestazione(s) {
 const escape = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const MODELLI = Object.entries(it).filter(([, v]) => typeof v === 'string').map(([chiave, testo]) => {
   const nomi = [...testo.matchAll(/\{(\w+)\}/g)].map(m => m[1]);
-  const re = new RegExp('^' + testo.split(/\{\w+\}/).map(escape).join('([\\s\\S]+?)') + '$');
+  // un parametro semplice non contiene virgolette « » (così «campo «{id}»» non si mangia un messaggio composto); uno con «_» sì
+  const pezzi = testo.split(/\{\w+\}/).map(escape);
+  const re = new RegExp('^' + pezzi.map((p, i) => (i ? (nomi[i - 1].startsWith('_') ? '([\\s\\S]+?)' : '([^«»]+?)') : '') + p).join('') + '$');
   return { chiave, re, nomi, fissi: testo.replace(/\{\w+\}/g, '').length };
 }).sort((a, b) => b.fissi - a.fissi);
 
