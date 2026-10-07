@@ -34,8 +34,8 @@ export const svuota = e => { while (e.firstChild) e.firstChild.remove(); return 
 let tToast;
 export function toast(testo, male = false) {
   document.querySelector('.toast')?.remove(); clearTimeout(tToast);
-  const t = h('div.toast', { testo }); if (male) t.classList.add('male'); document.body.append(t);
-  tToast = setTimeout(() => t.remove(), male ? 5000 : 2600);
+  const el = h('div.toast', { testo }); if (male) el.classList.add('male'); document.body.append(el);
+  tToast = setTimeout(() => el.remove(), male ? 5000 : 2600);
 }
 export const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 

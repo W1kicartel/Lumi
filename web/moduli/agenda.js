@@ -215,7 +215,7 @@ async function calendario(contenuto, k, entita, vistaUrl) {
     if (c?.tipo !== 'relazione') return;
     const mancano = [...new Set(dati.eventi.map(e => e.colonne[c.id]).filter(id => id && !nomi.has(id)))];
     if (!mancano.length) return;
-    const t = k.schema.find(x => x.id === c.entita), ct = t?.campi.find(x => x.id === t.titolo) || t?.campi.find(x => x.tipo === 'testo');
+    const altra = k.schema.find(x => x.id === c.entita), ct = altra?.campi.find(x => x.id === altra.titolo) || altra?.campi.find(x => x.tipo === 'testo');
     const r = await get(`/dati/${c.entita}?n=500&f=${encodeURIComponent(JSON.stringify([{ campo: 'id', op: 'in', valore: mancano }]))}`).catch(() => ({ righe: [] }));
     for (const x of r.righe) nomi.set(x.id, String((ct && (typeof x[ct.id] === 'object' ? x[ct.id]?.titolo : x[ct.id])) ?? x.id));
   }
@@ -370,8 +370,8 @@ function grafico(w, d) {
       // barra con gli angoli tondi solo in cima
       const dPath = alto ? `M${x0},${y(0)}V${y(v) + r}Q${x0},${y(v)} ${x0 + r},${y(v)}H${x0 + b - r}Q${x0 + b},${y(v)} ${x0 + b},${y(v) + r}V${y(0)}Z` : '';
       if (dPath) svg.append(s('path', { d: dPath, class: 'cr-barra' }));
-      const t = s('rect', { x: sx + larg * i, y: su, width: larg, height: H - su - giu, fill: 'transparent', class: 'cr-tocco' });
-      t.addEventListener('mousemove', ev => mostra(i, ev)); t.addEventListener('mouseleave', () => { suggerimento.hidden = true; }); svg.append(t);
+      const zona = s('rect', { x: sx + larg * i, y: su, width: larg, height: H - su - giu, fill: 'transparent', class: 'cr-tocco' });
+      zona.addEventListener('mousemove', ev => mostra(i, ev)); zona.addEventListener('mouseleave', () => { suggerimento.hidden = true; }); svg.append(zona);
     });
   }
   const totale = d.totali?.[0];

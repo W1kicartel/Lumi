@@ -93,7 +93,7 @@ function allegati(c, v, cambia) {
 
 // relazione: campo di ricerca con il menu dei risultati (frecce, invio, esc)
 function relazione(c, v, cambia) {
-  let scelto = v ? { id: v.id ?? v, titolo: v.titolo ?? v } : null, risultati = [], su = 0, t;
+  let scelto = v ? { id: v.id ?? v, titolo: v.titolo ?? v } : null, risultati = [], su = 0, attesa;
   const inp = h('input.campo', { value: scelto?.titolo ?? '', placeholder: t('comune.cerca'), autocomplete: 'off' });
   const menu = h('div.menu', { hidden: true }), e = h('div.rel', inp, menu);
   const mostra = () => {
@@ -102,8 +102,8 @@ function relazione(c, v, cambia) {
   };
   const scegli = r => { scelto = r; inp.value = r?.titolo ?? ''; risultati = []; mostra(); cambia(); e.dispatchEvent(new CustomEvent('scelto', { detail: r })); };
   inp.addEventListener('input', () => {
-    clearTimeout(t); if (!inp.value.trim()) { scelto = null; risultati = []; mostra(); cambia(); return; }
-    t = setTimeout(async () => {
+    clearTimeout(attesa); if (!inp.value.trim()) { scelto = null; risultati = []; mostra(); cambia(); return; }
+    attesa = setTimeout(async () => {
       const r = await get(`/dati/${c.entita}?n=8&q=${encodeURIComponent(inp.value)}`).catch(() => ({ righe: [] }));
       risultati = r.righe.map(x => ({ id: x.id, titolo: x.__titolo ?? titoloDi(x), riga: x })); su = 0; mostra();
     }, 160);
@@ -128,7 +128,7 @@ export function titoloDi(riga, entita) {
 function relazioneMolti(c, v, cambia) {
   const scelti = new Map((v || []).map(x => [x.id, x.titolo]));
   const lista = h('div.etichette-scelte'), cerca = relazione({ ...c, molti: false }, null, () => {});
-  const disegna = () => lista.replaceChildren(...[...scelti].map(([id, t]) => h('span.filtro', t, h('button', { type: 'button', testo: '×', on: { click: () => { scelti.delete(id); disegna(); cambia(); } } }))));
+  const disegna = () => lista.replaceChildren(...[...scelti].map(([id, tit]) => h('span.filtro', tit, h('button', { type: 'button', testo: '×', on: { click: () => { scelti.delete(id); disegna(); cambia(); } } }))));
   cerca.addEventListener('scelto', ev => { if (ev.detail) { scelti.set(ev.detail.id, ev.detail.titolo); disegna(); cambia(); cerca.querySelector('input').value = ''; } });
   disegna(); const e = h('div', lista, h('div', { stile: { marginTop: '6px' } }, cerca)); e.leggi = () => [...scelti.keys()]; return e;
 }

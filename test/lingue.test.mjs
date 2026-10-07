@@ -76,6 +76,14 @@ test('nei moduli tradotti (agenda, cruscotto, Lumi, lingua) bottoni, titoli e se
   }
 });
 
+test('chi usa t() non ha variabili locali chiamate t (coprirebbero la funzione)', () => {
+  const ombra = /\b(?:let|const|var)\s+(?:[^;=]*,\s*)?t\s*[,;=]|[(,]\s*t\s*[,)]\s*=>|\bt\s*=>|\[[^\]]*\bt\]\)\s*=>/;
+  for (const f of fileWeb()) {
+    const s = readFileSync(f, 'utf8'); if (!/import \{ t\b/.test(s)) continue;
+    s.split('\n').forEach((riga, i) => { if (!/^\s*(\/\/|import )/.test(riga)) assert.ok(!ombra.test(riga), `${f.split('/').pop()}:${i + 1}: ${riga.trim().slice(0, 100)}`); });
+  }
+});
+
 test('lingua.js: scelta della lingua, plurali, numeri, valuta e primo giorno della settimana', async () => {
   assert.equal(W.iniziale({ utente: 'fr', salvata: 'de', browser: ['en-US'] }), 'fr');
   assert.equal(W.iniziale({ salvata: 'de', browser: ['en-US'] }), 'de');

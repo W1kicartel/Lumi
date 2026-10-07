@@ -54,7 +54,7 @@ export function personalizza(def, contenitore, { schema, ricaricaSchema }) {
     }
     return h('div.campo-edit', { class: c.archiviato ? 'archiviato' : '' }, h('div.maniglia', '⋮⋮'), nomeC, tipo, azioni, dettagli.childNodes.length ? dettagli : null);
   }
-  function disegna() { lista.replaceChildren(...lavoro.campi.map(riga)); const t = titolo(); selTitolo.replaceWith(t); selTitolo = t; }
+  function disegna() { lista.replaceChildren(...lavoro.campi.map(riga)); const nuovo = titolo(); selTitolo.replaceWith(nuovo); selTitolo = nuovo; }
 
   const salva = h('button.btn.pieno', { testo: nuova ? t('viste.crea') : t('gestione.salva-modifiche'), on: { click: async () => {
     avviso.replaceChildren();

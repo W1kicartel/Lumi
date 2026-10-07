@@ -9,7 +9,7 @@ const NON_IMPORTABILI = ['calcolato', 'contatore', 'righe', 'file', 'immagine'];
 // i nomi dei tipi sono quelli di Personalizza (gestione.tipo-<tipo>), nella lingua di chi importa
 const TIPI_NUOVI = ['testo', 'testo_lungo', 'numero', 'valuta', 'percentuale', 'data', 'data_ora', 'si_no', 'scelta', 'scelta_multipla', 'email', 'telefono', 'url', 'indirizzo', 'codice_a_barre']
   .map(k => [k, t('gestione.tipo-' + k, { simbolo: simbolo() })]);
-const nomeTipo = t => TIPI_NUOVI.find(x => x[0] === t)?.[1] || t;
+const nomeTipo = tipo => TIPI_NUOVI.find(x => x[0] === tipo)?.[1] || tipo;
 // i valori dell'anteprima come li legge il server (1.234,5 · 31/12/2026 · Sì), con i numeri e il sì/no nella lingua di chi guarda
 const comeTesto = x => (x == null ? '' : typeof x === 'boolean' ? (x ? t('comune.si') : t('comune.no')) : typeof x === 'number' ? numero(x, 6)
   : /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?/.test(x) ? x.slice(0, 10).split('-').reverse().join('/') + (x.length > 10 ? ' ' + x.slice(11, 16) : '') : String(x));
@@ -33,7 +33,7 @@ function paginaImporta(contenuto, k, entita) {
   const destinazioni = schema.filter(e => !e.nascosta && e.puo.crea);
   const scelta = h('select.campo', destinazioni.map(e => h('option', { value: e.id, testo: e.nome, selected: e.id === entita })),
     stato.poteri?.schema ? h('option', { value: '__nuova', testo: t('moduli.im-nuova-dal-foglio'), selected: entita === 'nuova' }) : null);
-  const modello = h('a.btn.piccolo.nudo', { href: '#', on: { click: ev => { ev.preventDefault(); if (scelta.value !== '__nuova') scarica(`/api/import/esporta/${scelta.value}?formato=xlsx&vuoto=1`); } } }, 'Scarica il modello da compilare');
+  const modello = h('a.btn.piccolo.nudo', { href: '#', on: { click: ev => { ev.preventDefault(); if (scelta.value !== '__nuova') scarica(`/api/import/esporta/${scelta.value}?formato=xlsx&vuoto=1`); } } }, t('moduli.im-scarica-modello'));
   scelta.addEventListener('change', () => { modello.hidden = scelta.value === '__nuova'; });
   modello.hidden = scelta.value === '__nuova';
   const zona = h('label.import-zona', h('input', { type: 'file', accept: '.xlsx,.csv,.txt,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', hidden: true, on: { change: ev => ev.target.files[0] && parti(ev.target.files[0]) } }),
@@ -91,7 +91,7 @@ function paginaImporta(contenuto, k, entita) {
     const modo = h('select.campo', h('option', { value: 'aggiorna', testo: t('moduli.im-aggiorna') }), h('option', { value: 'salta', testo: t('moduli.im-salta') }));
     const avviso = h('div');
     const corpo = prova => {
-      const abbinamento = Object.fromEntries(a.intestazioni.map((t, i) => [t, scelte[i] == null ? null : scelte[i].campo ?? { nuovo: true, tipo: scelte[i].tipo, nome: scelte[i].nome }]));
+      const abbinamento = Object.fromEntries(a.intestazioni.map((col, i) => [col, scelte[i] == null ? null : scelte[i].campo ?? { nuovo: true, tipo: scelte[i].tipo, nome: scelte[i].nome }]));
       return { caricamento: f.id, prova, abbinamento, ...(def ? { entita: def.id } : { nuova: { nome: nomeSezione.value } }), ...(def && doppio.value ? { doppioni: { campo: doppio.value, modo: modo.value } } : {}) };
     };
     const vai = async (prova, b) => {
@@ -149,7 +149,7 @@ const formato = c => ({ valuta: 'euro, numero (19.9)', data: 'AAAA-MM-GG', data_
 async function paginaApi(contenuto, k) {
   const { h, api, get, toast, schema, stato } = k;
   const base = location.origin, titolare = stato.utente.ruolo === 'titolare';
-  const codice = t => { const p = h('pre.import-codice', { testo: t }); return h('div.import-copia', p, h('button.btn.piccolo.nudo', { type: 'button', testo: 'Copia', on: { click: async () => { try { await navigator.clipboard.writeText(t); toast('Copiato'); } catch { toast('Seleziona e copia a mano', true); } } } })); };
+  const codice = testo => { const p = h('pre.import-codice', { testo }); return h('div.import-copia', p, h('button.btn.piccolo.nudo', { type: 'button', testo: 'Copia', on: { click: async () => { try { await navigator.clipboard.writeText(testo); toast('Copiato'); } catch { toast('Seleziona e copia a mano', true); } } } })); };
   const quando = d => (d ? new Date(d).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
 
   // token
@@ -157,16 +157,16 @@ async function paginaApi(contenuto, k) {
   async function disegnaToken() {
     const l = await get('/token');
     tokenBox.replaceChildren(l.length ? h('table.tabella', h('thead', h('tr', ['Nome', 'Inizia con', 'Creato', 'Scade', 'Ultimo uso', ''].map(x => h('th', x)))),
-      h('tbody', l.map(t => h('tr', { class: t.revocato ? 'import-spento' : '' }, h('td', { testo: t.nome }), h('td.mono', `${t.inizio}…`), h('td', quando(t.creato)), h('td', t.scade ? quando(t.scade) : 'mai'), h('td', quando(t.usato)),
-        h('td', t.revocato ? 'revocato' : h('button.btn.piccolo.pericolo', { type: 'button', testo: 'Revoca', on: { click: async () => { if (!confirm(`Revocare «${t.nome}»? Chi lo usa non entra più.`)) return; await api('DELETE', `/token/${t.id}`); disegnaToken(); } } }))))))
+      h('tbody', l.map(tk => h('tr', { class: tk.revocato ? 'import-spento' : '' }, h('td', { testo: tk.nome }), h('td.mono', `${tk.inizio}…`), h('td', quando(tk.creato)), h('td', tk.scade ? quando(tk.scade) : 'mai'), h('td', quando(tk.usato)),
+        h('td', tk.revocato ? 'revocato' : h('button.btn.piccolo.pericolo', { type: 'button', testo: 'Revoca', on: { click: async () => { if (!confirm(`Revocare «${tk.nome}»? Chi lo usa non entra più.`)) return; await api('DELETE', `/token/${tk.id}`); disegnaToken(); } } }))))))
       : h('p.nota', 'Nessun token, per ora.'));
   }
   const nomeT = h('input.campo', { placeholder: 'A cosa serve (es. Sito, Contabilità)' });
   const durata = h('select.campo', [['30', '30 giorni'], ['90', '90 giorni'], ['365', 'un anno'], ['0', 'non scade']].map(([v, n]) => h('option', { value: v, testo: n, selected: v === '90' })));
   const creaT = h('button.btn.pieno', { type: 'button', testo: 'Crea il token', on: { click: async () => {
     try {
-      const t = await api('POST', '/token', { nome: nomeT.value, giorni: Number(durata.value) }); nomeT.value = '';
-      nuovoBox.replaceChildren(h('div.import-nuovo', h('b', 'Ecco il token. Copialo adesso: non si vedrà più.'), codice(t.token))); disegnaToken();
+      const nuovo = await api('POST', '/token', { nome: nomeT.value, giorni: Number(durata.value) }); nomeT.value = '';
+      nuovoBox.replaceChildren(h('div.import-nuovo', h('b', 'Ecco il token. Copialo adesso: non si vedrà più.'), codice(nuovo.token))); disegnaToken();
     } catch (e) { toast(e.message, true); }
   } } });
 

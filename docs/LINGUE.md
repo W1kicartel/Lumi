@@ -55,7 +55,7 @@ h('div.vuoto', t('viste.ancora-nessuno', { nome: minuscole(def.nome) }));
   - `comune`: app, ui e parole condivise;
   - `viste`: lista, scheda, campi e filtri;
   - `gestione`: Personalizza, persone e permessi, lingua e valuta;
-  - `moduli`: agenda, cruscotto, Lumi e import.
+  - `moduli`: agenda, cruscotto, Lumi, import e documenti.
 - **Una chiave nuova** si scrive in tutte e sei le lingue nello stesso commit.
 - **Parametri:** `{nome}`. `t()` non fa l'escape: il testo va negli elementi con `h()` (textContent), mai in `innerHTML`.
 - **Plurali:** `{ one: '…', other: '{n} …' }` con il parametro `n`, scelti con `Intl.PluralRules`. In portoghese del Brasile lo 0 prende `other` («0 itens»).
@@ -118,6 +118,7 @@ Valgono anche CONTA, VUOTO, ARROTONDA, CONCATENA, MAIUSCOLO, MINUSCOLO, LUNGHEZZ
 - **i cataloghi web:** stesse chiavi e stessi parametri in tutte le lingue, plurali con `other`;
 - **le chiavi:** ogni `t('…')` del codice è nel catalogo, e ogni chiave italiana serve a qualcosa;
 - **i testi a mano:** nei file del motore web e nei moduli tradotti non restano frasi italiane scritte fuori da `t()`;
+- **niente variabili locali chiamate `t`** nei file che usano `t()` (coprirebbero la funzione);
 - **la sintassi** dei file web toccati;
 - **i formati:** lingua scelta, plurali, numeri, valute, primo giorno della settimana;
 - **il server:** parità dei cataloghi, ogni messaggio riconosciuto, traduzione annidata, `Accept-Language`;
@@ -127,7 +128,7 @@ Valgono anche CONTA, VUOTO, ARROTONDA, CONCATENA, MAIUSCOLO, MINUSCOLO, LUNGHEZZ
 
 ## Cosa manca ancora
 
-I testi delle schermate del modulo **Documenti** (`web/moduli/documenti.js`) e della pagina **API e integrazioni** (`#/api`, documentazione per sviluppatori) sono ancora solo in italiano. I loro messaggi d'errore dal server invece sono già tradotti. L'import accetta numeri nei due formati («1.234,50» e «1,234.50»), ma le date solo con il giorno prima («31/12/2026») e il sì/no come «sì», «yes», «1», «x». Restano in italiano anche:
+La pagina **API e integrazioni** (`#/api`, documentazione per sviluppatori: token, esempi curl, webhook) è ancora solo in italiano, tranne il titolo. I loro messaggi d'errore dal server invece sono già tradotti. L'import accetta numeri nei due formati («1.234,50» e «1,234.50»), ma le date solo con il giorno prima («31/12/2026») e il sì/no come «sì», «yes», «1», «x». Restano in italiano anche:
 
 - gli avvisi delle automazioni (`ev.testo`);
 - le stampe dei documenti;
