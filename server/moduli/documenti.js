@@ -9,7 +9,7 @@ import { join, dirname } from 'node:path';
 import { VALIDATORI } from './documenti-italia.js';
 import { totali, cent } from './documenti-calcoli.js';
 import { controlla, xml, contiFattura, progressivoDa, REGIMI } from './documenti-xml.js';
-import { bloccata, cambiVietati, DERIVATI } from './fatture-regole.js';
+import { bloccata, cambiVietati, DERIVATI, normValore } from './fatture-regole.js';
 import { AUTOFATTURE } from './fatture-codici.js';
 import * as Schema from '../schema.js';   // l'ascoltatore delle scritture riceve solo il database
 import { unificaIndirizzo } from './sicurezza-migrazioni.js';
@@ -219,12 +219,19 @@ let attivo = false;
 export function attivaFatture(D) {
   if (attivo) return; attivo = true;
   D.ascolta((ev, db) => {
-    // le righe, le rate e i DDT di una fattura emessa non si toccano da sole (dalle API sulle sezioni nascoste)
-    if (['righe_fattura', 'rate_fattura', 'ddt_fattura'].includes(ev.entita) && !ev.interno) {
-      const r = ev.dopo || ev.prima, id = r?.fattura?.id ?? r?.fattura;
-      const padre = id && db.prepare(`SELECT c_stato AS stato, c_numero AS numero FROM d_${FATTURE} WHERE id = ?`).get(String(id));
-      const soloPagata = ev.entita === 'rate_fattura' && ev.tipo === 'modifica' && Object.keys(ev.dopo || {}).every(k => k === 'pagata' || JSON.stringify(ev.dopo[k]) === JSON.stringify(ev.prima?.[k]) || ['modificato', 'modificato_da'].includes(k));
-      if (bloccata(padre) && !soloPagata) throw new D.ErroreDati(`La fattura ${padre.numero} è emessa: non si modifica più. Correggila con una nota di credito o di debito.`);
+    // le righe, le rate e i DDT di una fattura emessa non si toccano, da nessuna strada: API delle sezioni nascoste, import da file
+    // (che scrive «interno»), ripristino, spostamento di una riga su un'altra fattura (si guarda il padre di prima e quello di dopo).
+    // Passano le riscritture senza cambi che fa la fattura quando si salva (i suoi cambi li controlla il blocco qui sotto), «pagata»
+    // sulle rate e le righe scritte mentre la fattura nasce già emessa (non ha ancora la voce «crea» nel registro).
+    if (['righe_fattura', 'rate_fattura', 'ddt_fattura'].includes(ev.entita)) {
+      const padreDi = r => { const id = r?.fattura?.id ?? r?.fattura; return id ? { id: String(id), ...db.prepare(`SELECT c_stato AS stato, c_numero AS numero, creato, modificato FROM d_${FATTURE} WHERE id = ?`).get(String(id)) } : null; };
+      const campi = (Schema.leggi(db, ev.entita) || { campi: [] }).campi.filter(c => !c.archiviato && c.tipo !== 'calcolato' && !(ev.entita === 'rate_fattura' && c.id === 'pagata'));
+      if (ev.tipo === 'modifica' && campi.every(c => JSON.stringify(normValore(ev.prima?.[c.id])) === JSON.stringify(normValore(ev.dopo?.[c.id])))) return;
+      for (const padre of [padreDi(ev.prima), padreDi(ev.dopo)]) {
+        if (!bloccata(padre)) continue;
+        const nascente = ev.tipo === 'crea' && ev.interno && padre.creato === padre.modificato && !db.prepare("SELECT 1 FROM _registro WHERE entita = ? AND riga = ? AND tipo = 'crea'").get(FATTURE, padre.id);
+        if (!nascente) throw new D.ErroreDati(`La fattura ${padre.numero} è emessa: non si modifica più. Correggila con una nota di credito o di debito.`);
+      }
       return;
     }
     if (ev.entita !== FATTURE) return;

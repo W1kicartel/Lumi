@@ -54,6 +54,16 @@ test('fattura emessa = bloccata: righe, prezzi, cliente e numero non si toccano 
   assert.throws(() => D.modifica(db, 'righe_fattura', em.righe[0].id, { prezzo: 1 }), /è emessa/);
   assert.throws(() => D.crea(db, 'righe_fattura', { fattura: f.id, descrizione: 'y', prezzo: 1 }), /è emessa/);
   assert.throws(() => D.elimina(db, 'righe_fattura', em.righe[0].id), /è emessa/);
+  // nemmeno dalle strade «interne» (l'import da file scrive così), spostando una riga su una bozza o ripristinandone una vecchia
+  assert.throws(() => D.modifica(db, 'righe_fattura', em.righe[0].id, { prezzo: 1 }, null, { interno: true }), /è emessa/);
+  assert.throws(() => D.crea(db, 'righe_fattura', { fattura: f.id, descrizione: 'y', prezzo: 1 }, null, { interno: true }), /è emessa/);
+  const bozza = D.crea(db, 'fatture', { cliente: cl.id, righe: [{ descrizione: 'b', prezzo: 1, aliquota: 22 }] });
+  assert.throws(() => D.modifica(db, 'righe_fattura', em.righe[0].id, { fattura: bozza.id }), /è emessa/);
+  assert.throws(() => D.ripristina(db, 'righe_fattura', db.prepare("SELECT id FROM d_righe_fattura WHERE c_fattura = ? AND archiviato = 1").get(f.id).id), /è emessa/);
+  assert.equal(D.leggi(db, 'fatture', f.id).righe.length, 1);
+  // una fattura che nasce già emessa (con il suo numero, per esempio riportata da un altro programma) porta le sue righe
+  const gia = D.crea(db, 'fatture', { cliente: cl.id, data: '2025-12-30', numero: '90', stato: 'emessa', righe: [{ descrizione: 'r', prezzo: 5, aliquota: 22 }] });
+  assert.equal(D.leggi(db, 'fatture', gia.id).righe.length, 1);
   D.modifica(db, 'rate_fattura', em.rate[0].id, { pagata: true });
   assert.throws(() => D.modifica(db, 'rate_fattura', em.rate[0].id, { importo: 1 }), /è emessa/);
   // quello che si può: note interne, stato del pagamento e dell'invio, rate pagate passando dalla fattura

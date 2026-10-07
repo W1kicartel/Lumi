@@ -23,15 +23,15 @@ export function cambiVietati(def, prima, dopo, defDi) {
       const figlia = defDi(c.entita); if (!figlia) continue;
       // delle righe contano i valori scritti, non i calcolati; nelle rate si può segnare «pagata»
       const pulisci = l => (l || []).map(r => Object.fromEntries(figlia.campi.filter(x => !x.archiviato && x.tipo !== 'calcolato' && x.id !== c.campo && !META.has(x.id) && !(c.id === 'rate' && x.id === 'pagata'))
-        .map(x => [x.id, norm(r[x.id])])));
+        .map(x => [x.id, normValore(r[x.id])])));
       a = pulisci(a); b = pulisci(b);
-    } else { a = norm(a); b = norm(b); }
+    } else { a = normValore(a); b = normValore(b); }
     if (JSON.stringify(a) !== JSON.stringify(b)) vietati.push(c.id);
   }
   return vietati;
 }
 // una relazione si confronta per id; vuoto, null e assente sono la stessa cosa
-const norm = v => (v && typeof v === 'object' && !Array.isArray(v) && 'id' in v ? v.id : v === '' || v === undefined ? null : v);
+export const normValore = v => (v && typeof v === 'object' && !Array.isArray(v) && 'id' in v ? v.id : v === '' || v === undefined ? null : v);
 
 // i numeri che mancano fra 1 e il più alto, per serie e anno: [{ serie, anno, mancano: [3, 7], ultimo }]
 export function buchiNumerazione(righe) {
