@@ -1,0 +1,9 @@
+.git
+dati
+desktop
+test
+docs
+node_modules
+*.db
+*.db-wal
+*.db-shm

@@ -1,0 +1,34 @@
+# Kubo su un VPS o un server dell'ufficio, con HTTPS automatico (Let's Encrypt) grazie a Caddy.
+#   1. un nome a dominio che punta al server (es. kubo.miazienda.it) e le porte 80 e 443 aperte
+#   2. KUBO_DOMINIO=kubo.miazienda.it docker compose up -d
+# Solo in rete locale, senza HTTPS: docker compose up -d kubo  (e si apre http://<ip-del-server>:4380)
+services:
+  kubo:
+    build: .
+    image: kubo:latest
+    init: true   # Node non fa da «init»: così «docker compose stop» spegne Kubo subito, senza i 10 secondi di attesa
+    restart: unless-stopped
+    environment:
+      KUBO_DATI: /dati
+      KUBO_RETE: "1"
+    volumes:
+      - kubo-dati:/dati
+      # i backup su un disco del server, fuori dal volume (in Kubo → Backup scegli la cartella /backup-esterni)
+      # - /mnt/disco-backup/kubo:/backup-esterni
+    ports:
+      - "4380:4380"   # toglila se usi solo Caddy da internet
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on: [kubo]
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      KUBO_DOMINIO: ${KUBO_DOMINIO:-localhost}
+    command: caddy reverse-proxy --from ${KUBO_DOMINIO:-localhost} --to kubo:4380
+    volumes:
+      - caddy-dati:/data
+volumes:
+  kubo-dati:
+  caddy-dati:
