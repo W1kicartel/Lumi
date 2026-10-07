@@ -1,0 +1,44 @@
+/* Il fisco: stesse variabili di stile.css (bianco e nero, tema chiaro e scuro). */
+.fisco-barra { padding: 0 28px 8px; overflow-x: auto; }
+.fisco-schede { display: inline-flex; gap: 4px; background: var(--sopra); padding: 3px; border-radius: 9px; }
+.fisco-schede a { text-decoration: none; padding: 5px 12px; border-radius: 7px; color: var(--tenue); font-size: 14px; white-space: nowrap; }
+.fisco-schede a.si { background: var(--pannello); color: var(--testo); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.fisco { max-width: 1100px; }
+.fisco-responsabilita { font-size: 13px; color: var(--tenue); margin: 4px 0 16px; }
+.fisco-cifre { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.fisco-cifra { background: var(--pannello); border: 1px solid var(--linea); border-radius: var(--raggio); padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.fisco-cifra span { font-size: 12px; color: var(--tenue); text-transform: uppercase; letter-spacing: .05em; }
+.fisco-cifra b { font-size: 24px; font-weight: 650; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.fisco-cifra small { color: var(--tenue); font-size: 13px; overflow: hidden; text-overflow: ellipsis; }
+.fisco-scheda { background: var(--pannello); border: 1px solid var(--linea); border-radius: var(--raggio); padding: 16px 18px; margin-bottom: 14px; transition: border-color .2s; }
+.fisco-scheda.scelta { border-color: var(--accento); }
+.fisco-scheda h2 { font-size: 15px; font-weight: 600; margin: 0 0 10px; letter-spacing: -.01em; }
+.fisco-scheda .fisco-riga h2 { margin: 0; flex: 1; }
+.fisco-tabella { overflow-x: auto; }
+.fisco-tabella .tabella { border: 0; border-radius: 0; }
+.fisco-tabella .tabella th { cursor: default; }
+.fisco-tabella td.num, .fisco-tabella th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.fisco-avviso { border: 1px solid var(--linea-forte); border-left: 3px solid var(--accento); background: var(--pannello); border-radius: 8px; padding: 10px 14px; margin: 0 0 12px; font-size: 14px; }
+.fisco-avviso.forte { border-left-color: var(--rosso); }
+.fisco-scadenze { list-style: none; margin: 0; padding: 0; }
+.fisco-scadenze li { display: grid; grid-template-columns: 110px 1fr auto; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--linea); align-items: baseline; }
+.fisco-scadenze li:last-child { border-bottom: 0; }
+.fisco-scadenze time { color: var(--tenue); font-variant-numeric: tabular-nums; }
+.fisco-scadenze b { font-variant-numeric: tabular-nums; }
+.fisco-soglia { height: 10px; background: var(--sopra); border-radius: 99px; overflow: hidden; margin: 6px 0 4px; }
+.fisco-soglia div { height: 100%; background: var(--accento); border-radius: 99px; transition: width .6s cubic-bezier(.2,.8,.2,1); }
+.fisco-soglia div.vicino { background: var(--giallo); } .fisco-soglia div.oltre { background: var(--rosso); }
+.fisco-riga { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 6px 0; }
+.fisco-riga .campo { max-width: 220px; }
+.fisco-riga .btn.si { background: var(--sopra); }
+.fisco-bottoni { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.fisco-guida { margin: 8px 0; padding-left: 20px; } .fisco-guida li { padding: 3px 0; }
+.fisco-sim-esito p { font-size: 15px; margin: 10px 0 0; }
+.fisco-griglia { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px 18px; }
+.fisco-griglia small.nota { display: block; margin-top: 4px; font-size: 12px; }
+.fisco-spunta label { display: flex; gap: 8px; align-items: center; font-weight: 500; padding-top: 18px; }
+label.fisco-spunta { display: flex; gap: 8px; align-items: center; margin: 8px 0 12px; }
+.fisco-velo { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 50; display: grid; place-items: center; padding: 20px; }
+.fisco-finestra { background: var(--pannello); border-radius: 12px; width: min(980px, 100%); height: min(92vh, 1200px); display: flex; flex-direction: column; padding: 12px; gap: 8px; }
+.fisco-foglio { flex: 1; border: 1px solid var(--linea); border-radius: 8px; background: #fff; width: 100%; }
+@media (max-width: 700px) { .fisco-barra { padding: 0 16px 8px; } .fisco-scadenze li { grid-template-columns: 90px 1fr; } .fisco-scadenze b { grid-column: 2; } }

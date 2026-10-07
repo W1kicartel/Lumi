@@ -238,4 +238,12 @@ export default {
   'pw-facile': "This password is too easy to guess",
   'pw-nome': "The password can't be your name or your email",
   'pw-mescola': "Under 12 characters, mix letters with digits or symbols",
+  // fisco (server/moduli/fisco.js)
+  'fisco-impostazione': "Invalid tax setting: {campo}",
+  'fisco-forfettario': "Under the flat-rate scheme there are no VAT settlements or LIPE returns",
+  'fisco-dati-azienda': "The return needs the company's VAT number and tax code (Documents → company details)",
+  'fisco-anno': "Invalid year",
+  'fisco-periodo': "Invalid period",
+  'fisco-nessun-versamento': "No payment on this date",
+  'fisco-solo-chi': "Only people who can customize change the tax settings",
 };

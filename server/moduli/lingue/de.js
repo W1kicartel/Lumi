@@ -238,4 +238,12 @@ export default {
   'pw-facile': "Dieses Passwort ist zu leicht zu erraten",
   'pw-nome': "Das Passwort darf nicht dein Name oder deine E-Mail sein",
   'pw-mescola': "Unter 12 Zeichen mische Buchstaben mit Ziffern oder Symbolen",
+  // fisco (server/moduli/fisco.js)
+  'fisco-impostazione': "Ungültige Steuereinstellung: {campo}",
+  'fisco-forfettario': "In der Pauschalregelung gibt es keine MwSt.-Abrechnungen und keine LIPE-Meldungen",
+  'fisco-dati-azienda': "Für die Meldung braucht es USt-IdNr. und Steuernummer des Unternehmens (Dokumente → Firmendaten)",
+  'fisco-anno': "Ungültiges Jahr",
+  'fisco-periodo': "Ungültiger Zeitraum",
+  'fisco-nessun-versamento': "Keine Zahlung an diesem Tag",
+  'fisco-solo-chi': "Nur wer anpassen darf, ändert die Steuereinstellungen",
 };

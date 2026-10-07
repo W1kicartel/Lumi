@@ -249,4 +249,12 @@ export default {
   'pw-facile': "Questa password è troppo facile da indovinare",
   'pw-nome': "La password non può essere il tuo nome o la tua email",
   'pw-mescola': "Sotto i 12 caratteri mescola lettere con cifre o simboli",
+  // fisco (server/moduli/fisco.js)
+  'fisco-impostazione': "Impostazione fiscale non valida: {campo}",
+  'fisco-forfettario': "Nel regime forfettario non si fanno liquidazioni IVA né comunicazioni LIPE",
+  'fisco-dati-azienda': "Per la comunicazione servono partita IVA e codice fiscale dell'azienda (Documenti → dati dell'azienda)",
+  'fisco-anno': "Anno non valido",
+  'fisco-periodo': "Periodo non valido",
+  'fisco-nessun-versamento': "Nessun versamento in questa data",
+  'fisco-solo-chi': "Solo chi può personalizzare cambia le impostazioni fiscali",
 };
