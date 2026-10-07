@@ -114,6 +114,12 @@ test('import: anteprima, abbinamento, doppioni, errori, prova senza salvare, nuo
     const fe = await carica('noleggi.csv', ec.dati);
     const re = (await chiama('POST', '/api/import/esegui', { caricamento: fe.id, entita: 'noleggi', abbinamento: (await chiama('POST', '/api/import/anteprima', { caricamento: fe.id, entita: 'noleggi' })).json.abbinamento, doppioni: { campo: 'targa', modo: 'aggiorna' } })).json;
     assert.deepEqual([re.create, re.aggiornate, re.erroriTotali], [0, 2, 0], JSON.stringify(re));
+    // il modello da compilare: solo le intestazioni dei campi importabili
+    const vu = F.leggiTabella((await chiama('GET', '/api/import/esporta/noleggi?vuoto=1', null, { grezzo: true })).dati);
+    assert.deepEqual(vu, { intestazioni: ['Targa', 'Modello', 'Prezzo al giorno', 'Revisione', 'Disponibile'], righe: [] });
+    // OpenAPI dallo schema
+    const oa = (await chiama('GET', '/api/openapi.json')).json;
+    assert.equal(oa.openapi, '3.0.3'); assert.ok(oa.paths['/api/dati/noleggi'].post); assert.equal(oa.components.schemas.noleggi.properties.revisione.format, 'date');
     // il caricamento di un altro non si usa
     assert.equal((await chiama('POST', '/api/import/anteprima', { caricamento: '0'.repeat(17) })).stato, 404);
   } finally { srv.close(); }

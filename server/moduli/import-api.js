@@ -15,7 +15,7 @@ export const firma = (segreto, tempo, corpo) => 'sha256=' + createHmac('sha256',
 const EVENTI = ['crea', 'modifica', 'elimina', 'ripristina'];
 let verificatoreAggiunto = false;
 
-export default function registra({ r, db, D, P, U, serve, ErroreHttp }) {
+export default function registra({ r, db, S, D, P, U, serve, ErroreHttp }) {
   db.exec(`CREATE TABLE IF NOT EXISTS _import_token (id TEXT PRIMARY KEY, utente TEXT NOT NULL, nome TEXT NOT NULL, impronta TEXT NOT NULL UNIQUE,
       inizio TEXT NOT NULL, creato TEXT NOT NULL, scade TEXT, usato TEXT, revocato INTEGER NOT NULL DEFAULT 0);
     CREATE TABLE IF NOT EXISTS _import_webhook (id TEXT PRIMARY KEY, def TEXT NOT NULL, segreto TEXT NOT NULL, creato TEXT NOT NULL);
@@ -52,6 +52,44 @@ export default function registra({ r, db, D, P, U, serve, ErroreHttp }) {
     daSessione(ctx);
     const n = db.prepare('UPDATE _import_token SET revocato = 1 WHERE id = ? AND (utente = ? OR ?)').run(p.id, ctx.utente.id, ctx.r.id === 'titolare' ? 1 : 0).changes;
     if (!n) throw new ErroreHttp(404, 'Token sconosciuto'); return { ok: true };
+  });
+
+  // ---------- OpenAPI 3, generato dallo schema visto da chi chiede (per Postman, Swagger, generatori di client) ----------
+  const TIPO_JSON = { numero: { type: 'number' }, valuta: { type: 'number', description: 'euro' }, percentuale: { type: 'number' }, durata: { type: 'integer', description: 'minuti' },
+    si_no: { type: 'boolean' }, data: { type: 'string', format: 'date' }, data_ora: { type: 'string', format: 'date-time' }, email: { type: 'string', format: 'email' }, url: { type: 'string', format: 'uri' },
+    scelta_multipla: { type: 'array', items: { type: 'string' } }, file: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' }, nome: { type: 'string' } } } } };
+  r('GET', '/api/openapi.json', ({ ctx, req }) => {
+    serve(ctx);
+    const entita = S.elenco(db).filter(e => P.puo(ctx, e.id, 'leggi')), paths = {}, schemas = {};
+    const errore = { description: 'Errore', content: { 'application/json': { schema: { type: 'object', properties: { errore: { type: 'string' } } } } } };
+    for (const e of entita) {
+      const props = {};
+      for (const c of S.campiAttivi(e).filter(c => P.statoCampo(ctx, e.id, c.id) !== 'nascosto')) {
+        let t = TIPO_JSON[c.tipo === 'immagine' ? 'file' : c.tipo] || { type: 'string' };
+        if (['scelta', 'stato'].includes(c.tipo)) t = { type: 'string', enum: c.opzioni.map(o => o.id) };
+        if (c.tipo === 'relazione') t = c.molti ? { type: 'array', items: { type: 'string' } } : { type: 'string', description: `id di ${c.entita}` };
+        if (c.tipo === 'righe') t = { type: 'array', items: { type: 'object' }, description: `righe di ${c.entita}` };
+        props[c.id] = { ...t, title: c.nome, ...(['calcolato', 'contatore'].includes(c.tipo) || P.statoCampo(ctx, e.id, c.id) === 'lettura' ? { readOnly: true } : {}) };
+      }
+      schemas[e.id] = { type: 'object', title: e.nome, properties: { id: { type: 'string', readOnly: true }, creato: { type: 'string', format: 'date-time', readOnly: true }, ...props },
+        required: S.campiAttivi(e).filter(c => c.obbligatorio && props[c.id]).map(c => c.id) };
+      const rif = { $ref: `#/components/schemas/${e.id}` }, corpo = { required: true, content: { 'application/json': { schema: rif } } }, una = { description: 'OK', content: { 'application/json': { schema: rif } } };
+      const par = (name, descrizione, inn = 'query') => ({ name, in: inn, required: inn === 'path', schema: { type: 'string' }, description: descrizione });
+      paths[`/api/dati/${e.id}`] = {
+        get: { tags: [e.nome], summary: `Elenco di ${e.nome}`, parameters: [par('q', 'cerca nel testo'), par('f', 'filtri JSON: [{"campo":"…","op":"=","valore":…}]'), par('o', 'ordina: campo:desc'), par('p', 'pagina'), par('n', 'per pagina (max 500)')],
+          responses: { 200: { description: 'OK', content: { 'application/json': { schema: { type: 'object', properties: { righe: { type: 'array', items: rif }, totale: { type: 'integer' } } } } } }, default: errore } },
+        ...(P.puo(ctx, e.id, 'crea') ? { post: { tags: [e.nome], summary: `Crea in ${e.nome}`, requestBody: corpo, responses: { 200: una, default: errore } } } : {}),
+      };
+      paths[`/api/dati/${e.id}/{id}`] = {
+        parameters: [par('id', 'id della riga', 'path')],
+        get: { tags: [e.nome], summary: 'Una riga', responses: { 200: una, default: errore } },
+        ...(P.puo(ctx, e.id, 'modifica') ? { patch: { tags: [e.nome], summary: 'Modifica (solo i campi mandati)', requestBody: corpo, responses: { 200: una, default: errore } } } : {}),
+        ...(P.puo(ctx, e.id, 'elimina') ? { delete: { tags: [e.nome], summary: 'Archivia (si ripristina)', responses: { 200: { description: 'OK' }, default: errore } } } : {}),
+      };
+    }
+    return { openapi: '3.0.3', info: { title: 'Kubo', version: '1', description: 'API del gestionale, generate dallo schema. Autenticazione: Authorization: Bearer <token personale>.' },
+      servers: [{ url: `http://${String(req.headers.host || 'localhost').replace(/[^\w.:-]/g, '')}` }], security: [{ token: [] }],
+      components: { securitySchemes: { token: { type: 'http', scheme: 'bearer' } }, schemas }, paths };
   });
 
   // ---------- webhook ----------

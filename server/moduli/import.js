@@ -176,11 +176,13 @@ export default function registra({ r, db, S, D, P, serve, ErroreHttp, manda }) {
   r('GET', '/api/import/esporta/:e', ({ ctx, p, q, res }) => {
     serve(ctx);
     const def = S.leggi(db, p.e); if (!def || def.archiviata) throw new ErroreHttp(404, 'Sezione sconosciuta');
-    const campi = S.campiAttivi(def).filter(c => c.tipo !== 'righe' && P.statoCampo(ctx, def.id, c.id) !== 'nascosto');
+    // ?vuoto=1: il modello da compilare, con le sole colonne che si possono importare
+    const vuoto = q.get('vuoto') === '1';
+    const campi = vuoto ? importabili(def, ctx) : S.campiAttivi(def).filter(c => c.tipo !== 'righe' && P.statoCampo(ctx, def.id, c.id) !== 'nascosto');
     const opz = { cerca: q.get('q') || '', filtri: q.get('f') ? JSON.parse(q.get('f')) : [], archiviati: q.get('arch') === '1', perPagina: 500,
       ordina: (q.get('o') || '').split(',').filter(Boolean).map(x => { const [campo, dir] = x.split(':'); return { campo, dir }; }) };
     const utenti = new Map(db.prepare('SELECT id, nome FROM _utenti').all().map(u => [u.id, u.nome])), righe = [];
-    for (let pagina = 1; pagina <= 200; pagina++) {
+    for (let pagina = 1; pagina <= 200 && !vuoto; pagina++) {
       const r = D.elenca(db, def.id, { ...opz, pagina }, ctx);
       for (const x of r.righe) righe.push(campi.map(c => cella(c, x[c.id], utenti)));
       if (pagina * r.perPagina >= r.totale) break;
@@ -188,7 +190,7 @@ export default function registra({ r, db, S, D, P, serve, ErroreHttp, manda }) {
     const xlsx = q.get('formato') !== 'csv', oggi = new Date().toISOString().slice(0, 10);
     const dati = xlsx ? scriviXlsx(campi.map(c => c.nome), righe, { foglio: def.nome }) : Buffer.from(scriviCsv(campi.map(c => c.nome), righe), 'utf8');
     res.writeHead(200, { 'Content-Type': xlsx ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : 'text/csv; charset=utf-8',
-      'Content-Disposition': intestazioneNome(`${def.nome} ${oggi}.${xlsx ? 'xlsx' : 'csv'}`), 'Content-Length': dati.length, 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' }).end(dati);
+      'Content-Disposition': intestazioneNome(`${def.nome} ${vuoto ? 'da compilare' : oggi}.${xlsx ? 'xlsx' : 'csv'}`), 'Content-Length': dati.length, 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' }).end(dati);
   });
 
   // ---------- backup completo ----------

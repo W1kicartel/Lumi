@@ -31,6 +31,9 @@ function paginaImporta(contenuto, k, entita) {
   const destinazioni = schema.filter(e => !e.nascosta && e.puo.crea);
   const scelta = h('select.campo', destinazioni.map(e => h('option', { value: e.id, testo: e.nome, selected: e.id === entita })),
     stato.poteri?.schema ? h('option', { value: '__nuova', testo: '+ Una nuova sezione dal foglio', selected: entita === 'nuova' }) : null);
+  const modello = h('a.btn.piccolo.nudo', { href: '#', on: { click: ev => { ev.preventDefault(); if (scelta.value !== '__nuova') scarica(`/api/import/esporta/${scelta.value}?formato=xlsx&vuoto=1`); } } }, 'Scarica il modello da compilare');
+  scelta.addEventListener('change', () => { modello.hidden = scelta.value === '__nuova'; });
+  modello.hidden = scelta.value === '__nuova';
   const zona = h('label.import-zona', h('input', { type: 'file', accept: '.xlsx,.csv,.txt,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', hidden: true, on: { change: ev => ev.target.files[0] && parti(ev.target.files[0]) } }),
     h('b', 'Scegli un file Excel (.xlsx) o CSV'), h('span.nota', 'oppure trascinalo qui. La prima riga deve avere i nomi delle colonne.'));
   zona.addEventListener('dragover', ev => { ev.preventDefault(); zona.classList.add('sopra'); });
@@ -43,7 +46,7 @@ function paginaImporta(contenuto, k, entita) {
     h('p.nota', 'Uno zip con la copia del database (presa in modo coerente anche mentre si lavora) e gli allegati. Tienilo su un disco esterno o in un cloud tuo.'),
     h('a.btn.pieno', { href: '/api/import/backup', testo: 'Scarica il backup' })) : null;
   contenuto.replaceChildren(h('div.testa', h('h1', 'Importa ed esporta')),
-    h('div.corpo.import', h('div.foglio', h('div.import-dove', h('label.etichetta', 'Dove vanno le righe'), scelta), zona), passo, h('div.import-lato', esportazioni, backup)));
+    h('div.corpo.import', h('div.foglio', h('div.import-dove', h('label.etichetta', 'Dove vanno le righe'), h('div.import-riga', scelta, modello)), zona), passo, h('div.import-lato', esportazioni, backup)));
 
   async function parti(file) {
     const avanza = h('progress', { max: 1, value: 0 });
@@ -223,6 +226,7 @@ const buona = timingSafeEqual(Buffer.from(atteso), Buffer.from(req.headers['x-ku
       h('h2', 'Documentazione'),
       h('div.foglio', h('p', 'Ogni richiesta porta l\'intestazione ', h('code.mono', 'Authorization: Bearer <token>'), '. Le risposte sono JSON; gli errori hanno ', h('code.mono', '{ "errore": "…" }'), ' e il codice HTTP giusto (401, 403, 404, 422).'),
         codice(`export KUBO_TOKEN=kubo_…\ncurl -H "Authorization: Bearer $KUBO_TOKEN" ${base}/api/schema`),
+        h('p.nota', 'La descrizione OpenAPI 3 (per Postman, Swagger o per generare un client) è in ', h('a', { href: '/api/openapi.json', target: '_blank', testo: '/api/openapi.json' }), ', con le sole sezioni che il token può vedere.'),
         h('p.nota', 'Gli allegati si caricano prima a pezzi (POST /api/file/carica, poi /api/file/carica/<id> con { da, pezzo in base64 }) e poi si mettono nel campo come [{ "id": "<id>" }].'),
         doc),
       titolare ? [h('h2', 'Webhook'), h('p.nota', 'Quando qualcosa cambia, Kubo manda un POST JSON firmato all\'indirizzo che scegli. Se non risponde, riprova dopo 30 secondi, 2, 10 e 30 minuti e 2 ore.'),
