@@ -135,7 +135,12 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
     const { man } = conn(id), uid = `servizio:${id}`;
     if (!db.prepare('SELECT 1 FROM _utenti WHERE id = ?').get(uid))
       db.prepare("INSERT INTO _utenti (id, nome, email, hash, ruolo, attivo, creato) VALUES (?, ?, ?, '!', ?, 0, ?)").run(uid, man.nome, `${id}@connettori.kubo.invalid`, uid, new Date().toISOString());
-    const entita = {}; for (const [sem, p] of Object.entries(man.permessi || {})) entita[entitaDi(id, sem)] = { leggi: !!p.leggi, crea: !!p.crea, modifica: !!p.modifica, elimina: !!p.elimina };
+    const entita = {};
+    for (const [sem, p] of Object.entries(man.permessi || {})) {
+      const e = entitaDi(id, sem), regola = { leggi: !!p.leggi, crea: !!p.crea, modifica: !!p.modifica, elimina: !!p.elimina }; entita[e] = regola;
+      // le righe figlie (righe di una vendita) seguono il padre: chi crea una vendita crea anche le sue righe
+      for (const c of S.leggi(db, e)?.campi || []) if (c.tipo === 'righe' && !c.archiviato) entita[c.entita] = { ...regola, modifica: regola.modifica || regola.crea };
+    }
     return { utente: { id: uid, nome: man.nome, ruolo: uid }, r: { id: uid, nome: man.nome, schema: false, utenti: false, entita: { '*': {}, ...entita } }, servizio: id };
   }
 
@@ -187,8 +192,9 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
     const k = {
       id, man, db, S, D, P, ctx, dati, valore, fuso: () => FUSO,
       get imp() { const x = impDi(id); for (const i of man.impostazioni || []) if (!i.segreto && x[i.id] == null && i.predefinito != null) x[i.id] = i.predefinito; return x; },
-      get segreti() { return Object.fromEntries((man.impostazioni || []).filter(i => i.segreto).map(i => [i.id, segreto(id, i.id)]).concat([['_feed', segreto(id, '_feed')]])); },
+      get segreti() { return Object.fromEntries((man.impostazioni || []).filter(i => i.segreto).map(i => [i.id, segreto(id, i.id)])); },
       get base() { return impDi(id)._base || man.base || ''; },
+      interni: () => process.env.KUBO_CONNETTORI_INTERNI === '1' || !!riga(id)?.interni,
       http: client({ interni: () => process.env.KUBO_CONNETTORI_INTERNI === '1' || !!riga(id)?.interni }),
       campo: (sem, c) => campoDi(id, sem, c), entita: vero,
       annota: (verso, esito, titolo, dett) => annota(id, verso, esito, titolo, dett),
@@ -197,7 +203,7 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
       salvaSegreto: (nome, v) => salvaSegreto(id, nome, v),
       accoda: (tipo, chiaveC, corpo, opz) => accoda(id, tipo, chiaveC, corpo, opz),
       euro: n => `${Number(n || 0).toFixed(2).replace('.', ',')} €`,
-      oauth: { token: () => tokenOAuth(id) },
+      oauth: { token: () => tokenOAuth(id), collegato: () => !!tokenSalvato(id)?.access_token },
       sincro: {
         // gli oggetti del servizio entrano in Kubo: abbinati per id remoto o per la chiave, solo i campi con comanda ≠ 'kubo'
         async daRemoto(nome, oggetti) {
@@ -209,7 +215,8 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
             const valori = {};
             for (const c of mp.campi) { if (rigaId && c.comanda === 'kubo') continue; const v = prendi(o, c.remoto); if (v !== undefined) valori[c.kubo] = c.da ? c.da(v) : v; }
             if (!rigaId && mp.chiave) valori[mp.chiave[0]] ??= prendi(o, mp.chiave[1]);
-            const impronta = createHash('sha256').update(JSON.stringify(valori)).digest('hex').slice(0, 32);
+            // l'impronta guarda solo i campi che comanda il servizio: così un giro senza novità non riscrive niente
+            const impronta = createHash('sha256').update(JSON.stringify(mp.campi.filter(c => c.comanda !== 'kubo').map(c => prendi(o, c.remoto)))).digest('hex').slice(0, 32);
             if (rigaId && noto?.impronta === impronta) { conti.uguali++; continue; }
             if (rigaId) { dati.modifica(sem, rigaId, valori); conti.aggiornati++; } else { rigaId = dati.crea(sem, valori).id; conti.creati++; }
             db.prepare('INSERT INTO _connettori_mappa (connettore, entita, riga, remoto, impronta, aggiornato) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(connettore, entita, remoto) DO UPDATE SET riga = excluded.riga, impronta = excluded.impronta, aggiornato = excluded.aggiornato')
@@ -278,7 +285,7 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
 
   // ---------- giri pianificati: un solo timer, un lucchetto per giro, recupero (uno solo) dopo uno spegnimento ----------
   const inCorso = new Set();
-  async function gira(id, nome, { forza = false } = {}) {
+  async function gira(id, nome, { forza = false, adesso = Date.now() } = {}) {
     const def = conn(id).man.pianificati?.[nome]; if (!def) throw errore(404, 'giro-sconosciuto');
     const chiaveG = `${id}/${nome}`; if (inCorso.has(chiaveG)) return { esito: 'in-corso' };
     if (!forza && !attivo(id)) return { esito: 'spento' };
@@ -288,7 +295,7 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
     finally {
       inCorso.delete(chiaveG);
       db.prepare('INSERT INTO _connettori_giri (connettore, giro, ultimo, prossimo, esito, durata) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(connettore, giro) DO UPDATE SET ultimo = excluded.ultimo, prossimo = excluded.prossimo, esito = excluded.esito, durata = excluded.durata')
-        .run(id, nome, new Date().toISOString(), prossimo(def, Date.now()), esito, Date.now() - t0);
+        .run(id, nome, new Date().toISOString(), prossimo(def, Math.max(Date.now(), adesso)), esito, Date.now() - t0);
     }
     return { esito, risultato: ris };
   }
@@ -298,7 +305,7 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
       for (const [nome, def] of Object.entries(c.man.pianificati)) {
         const x = db.prepare('SELECT prossimo FROM _connettori_giri WHERE connettore = ? AND giro = ?').get(id, nome);
         if (!x) { db.prepare('INSERT INTO _connettori_giri (connettore, giro, prossimo) VALUES (?, ?, ?)').run(id, nome, def.ogni ? adesso : prossimo(def, adesso)); if (!def.ogni) continue; }
-        if ((x?.prossimo ?? adesso) <= adesso) await gira(id, nome);   // anche un giro perso a computer spento: uno solo, poi si riparte da adesso
+        if ((x?.prossimo ?? adesso) <= adesso) await gira(id, nome, { adesso });   // anche un giro perso a computer spento: uno solo, poi si riparte da adesso
       }
     }
   }
@@ -349,7 +356,12 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
     if (anteprima) return a.proponi ? a.proponi(x, k) : { titolo: a.nome, righe: [], avvisi: [] };
     const t0 = Date.now();
     try { const r = await a.esegui(x, k, { ctx }); annota(id, 'azione', 'ok', nome, { chi: ctx?.utente?.nome }, Date.now() - t0); return r; }
-    catch (e) { annota(id, 'azione', 'errore', nome, String(e.message).slice(0, 500), Date.now() - t0); throw e; }
+    catch (e) {
+      annota(id, 'azione', 'errore', nome, String(e.message).slice(0, 500), Date.now() - t0);
+      // l'errore di un servizio (o del connettore) arriva a chi ha chiesto, non come «errore interno»
+      if (e instanceof ErroreHttp || e instanceof P.ErrorePermesso || e instanceof D.ErroreDati) throw e;
+      throw errore(502, 'servizio', { dettaglio: String(e.message).slice(0, 300) });
+    }
   }
 
   // ---------- la vista di un connettore per la pagina (nella lingua di chi guarda) ----------
@@ -358,14 +370,14 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
     const c = tutti.get(id), x = riga(id);
     if (!c || c.rotto) return { id, rotto: c?.rotto || true, origine: c?.origine, somma: c?.somma };
     const { man } = c, salvati = segretiSalvati(id), imp = impDi(id), tok = tokenSalvato(id);
-    const base = { id, nome: man.nome, descrizione: tr(man, l, 'descrizione', man.descrizione), icona: man.icona || 'cartella', versione: man.versione || 1, origine: c.origine,
+    const base = { id, nome: tr(man, l, 'nome', man.nome), descrizione: tr(man, l, 'descrizione', man.descrizione), icona: man.icona || 'cartella', versione: man.versione || 1, origine: c.origine,
       somma: c.somma, attivo: attivo(id), acceso: !!x?.attivo, cambiato: c.origine === 'locale' && !!x?.attivo && x.somma !== c.somma,
-      mancano: [...(man.impostazioni || []).filter(i => i.obbligatorio !== false && i.segreto && !salvati.has(i.id)).map(i => tr(man, l, `imp.${i.id}`, i.nome)), ...mancanti(id)] };
+      mancano: [...(man.impostazioni || []).filter(i => i.obbligatorio !== false && i.segreto && !i.generato && !salvati.has(i.id)).map(i => tr(man, l, `imp.${i.id}`, i.nome)), ...mancanti(id)] };
     if (!completa) return base;
     return { ...base, interni: !!x?.interni,
       permessi: Object.entries(man.permessi || {}).map(([sem, p]) => ({ entita: S.leggi(db, entitaDi(id, sem))?.nome || sem, ...p })),
       impostazioni: (man.impostazioni || []).map(i => ({ id: i.id, nome: tr(man, l, `imp.${i.id}`, i.nome), aiuto: tr(man, l, `aiuto.${i.id}`, i.aiuto) || null, tipo: i.tipo || 'testo', segreto: !!i.segreto,
-        opzioni: i.opzioni || null, ...(i.segreto ? { salvato: salvati.has(i.id) } : { valore: imp[i.id] ?? i.predefinito ?? null }) })),
+        opzioni: i.opzioni || null, ...(i.segreto ? { salvato: salvati.has(i.id), ...(i.generato ? { valore: segreto(id, i.id), generato: true } : {}) } : { valore: imp[i.id] ?? i.predefinito ?? null }) })),
       webhook: man.entrata ? { percorso: `/api/connettori/${id}/in${man.entrata.firma?.tipo === 'token' ? '/' + (salvati.has(man.entrata.firma.segreto) ? '…' : '') : ''}`, firma: man.entrata.firma?.tipo || 'nessuna' } : null,
       oauth: man.oauth ? { tipo: man.oauth.tipo || 'codice', collegato: !!tok?.access_token, scade: tok?.scade || null, rinnovo: !!tok?.refresh_token } : null,
       pubbliche: Object.keys(man.pubbliche || {}),
@@ -417,6 +429,7 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
         // un connettore locale si attiva confermando la sua somma: è codice che gira con i permessi del server
         if (c.origine === 'locale' && corpo.somma !== c.somma) throw errore(409, 'somma-diversa');
         scriviRiga(p.id, { attivo: 1, somma: c.somma, versione: man.versione || 1 }); ctxServizio(p.id);
+        for (const i of man.impostazioni || []) if (i.generato && !segreto(p.id, i.id)) salvaSegreto(p.id, i.id, randomBytes(24).toString('base64url'));
       }
       if (corpo.attivo === false) scriviRiga(p.id, { attivo: 0 });
     });
@@ -507,7 +520,8 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
     const t0 = Date.now(); let esito;
     try { esito = await en.gestisci(ev, k, { req }); }
     catch (e) { annota(p.id, 'entrata', 'errore', chiaveE || 'evento', String(e.message).slice(0, 500), Date.now() - t0); throw e; }
-    if (chiaveE) db.prepare('INSERT OR IGNORE INTO _connettori_eventi (connettore, chiave, quando) VALUES (?, ?, ?)').run(p.id, chiaveE, new Date().toISOString());
+    // un evento ignorato non si segna: se il servizio lo rimanda quando è cambiato qualcosa (SumUp «richiama»), si rilegge
+    if (chiaveE && !/^ignorato/.test(String(esito))) db.prepare('INSERT OR IGNORE INTO _connettori_eventi (connettore, chiave, quando) VALUES (?, ?, ?)').run(p.id, chiaveE, new Date().toISOString());
     annota(p.id, 'entrata', /^(ignorato|doppione)/.test(String(esito)) ? 'ignorato' : 'ok', chiaveE || 'evento', esito, Date.now() - t0);
     return { ok: true, esito: typeof esito === 'string' ? esito : undefined };
   }

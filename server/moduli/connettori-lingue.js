@@ -10,6 +10,7 @@ export const TESTI = {
     'oauth-rifiutato': 'Il servizio non ha dato l\'accesso (risposta {stato})', 'oauth-scollegato': 'Account non collegato: collegalo dalla pagina del connettore',
     'oauth-no': 'Questo connettore non usa questo tipo di collegamento', troppe: 'Troppe richieste: riprova fra un minuto', 'troppo-grande': 'Richiesta troppo grande',
     'non-configurato': 'Connettore non ancora configurato', firma: 'Firma non valida', corpo: 'Corpo della richiesta non leggibile',
+    'servizio': 'Il servizio non ha completato l\'operazione: {dettaglio}',
   },
   en: {
     sconosciuto: 'Unknown connector', spento: 'Connector off or missing', 'giro-sconosciuto': 'Unknown scheduled run',
@@ -19,6 +20,7 @@ export const TESTI = {
     'oauth-rifiutato': 'The service did not grant access (response {stato})', 'oauth-scollegato': 'Account not connected: connect it from the connector page',
     'oauth-no': 'This connector does not use this kind of connection', troppe: 'Too many requests: try again in a minute', 'troppo-grande': 'Request too large',
     'non-configurato': 'Connector not configured yet', firma: 'Invalid signature', corpo: 'Unreadable request body',
+    'servizio': 'The service did not complete the operation: {dettaglio}',
   },
   es: {
     sconosciuto: 'Conector desconocido', spento: 'Conector apagado o inexistente', 'giro-sconosciuto': 'Tarea programada desconocida',
@@ -28,6 +30,7 @@ export const TESTI = {
     'oauth-rifiutato': 'El servicio no dio acceso (respuesta {stato})', 'oauth-scollegato': 'Cuenta no conectada: conéctala desde la página del conector',
     'oauth-no': 'Este conector no usa este tipo de conexión', troppe: 'Demasiadas solicitudes: inténtalo en un minuto', 'troppo-grande': 'Solicitud demasiado grande',
     'non-configurato': 'Conector aún no configurado', firma: 'Firma no válida', corpo: 'Cuerpo de la solicitud ilegible',
+    'servizio': 'El servicio no completó la operación: {dettaglio}',
   },
   fr: {
     sconosciuto: 'Connecteur inconnu', spento: 'Connecteur éteint ou inexistant', 'giro-sconosciuto': 'Tâche planifiée inconnue',
@@ -37,6 +40,7 @@ export const TESTI = {
     'oauth-rifiutato': 'Le service n\'a pas donné l\'accès (réponse {stato})', 'oauth-scollegato': 'Compte non connecté : connectez-le depuis la page du connecteur',
     'oauth-no': 'Ce connecteur n\'utilise pas ce type de connexion', troppe: 'Trop de requêtes : réessayez dans une minute', 'troppo-grande': 'Requête trop volumineuse',
     'non-configurato': 'Connecteur pas encore configuré', firma: 'Signature non valide', corpo: 'Corps de la requête illisible',
+    'servizio': 'Le service n\'a pas terminé l\'opération : {dettaglio}',
   },
   de: {
     sconosciuto: 'Unbekannter Connector', spento: 'Connector aus oder nicht vorhanden', 'giro-sconosciuto': 'Unbekannter geplanter Lauf',
@@ -46,6 +50,7 @@ export const TESTI = {
     'oauth-rifiutato': 'Der Dienst hat den Zugriff verweigert (Antwort {stato})', 'oauth-scollegato': 'Konto nicht verbunden: Verbinde es auf der Seite des Connectors',
     'oauth-no': 'Dieser Connector nutzt diese Verbindungsart nicht', troppe: 'Zu viele Anfragen: Versuche es in einer Minute erneut', 'troppo-grande': 'Anfrage zu groß',
     'non-configurato': 'Connector noch nicht eingerichtet', firma: 'Ungültige Signatur', corpo: 'Anfrageinhalt nicht lesbar',
+    'servizio': 'Der Dienst hat den Vorgang nicht abgeschlossen: {dettaglio}',
   },
   pt: {
     sconosciuto: 'Conector desconhecido', spento: 'Conector desligado ou inexistente', 'giro-sconosciuto': 'Execução agendada desconhecida',
@@ -55,6 +60,7 @@ export const TESTI = {
     'oauth-rifiutato': 'O serviço não deu acesso (resposta {stato})', 'oauth-scollegato': 'Conta não conectada: conecte-a pela página do conector',
     'oauth-no': 'Este conector não usa este tipo de conexão', troppe: 'Solicitações demais: tente de novo em um minuto', 'troppo-grande': 'Solicitação grande demais',
     'non-configurato': 'Conector ainda não configurado', firma: 'Assinatura inválida', corpo: 'Corpo da solicitação ilegível',
+    'servizio': 'O serviço não concluiu a operação: {dettaglio}',
   },
 };
 export const testo = (l, chiave, p = {}) => String(TESTI[l]?.[chiave] ?? TESTI.it[chiave] ?? chiave).replace(/\{(\w+)\}/g, (x, k) => (k in p ? String(p[k]) : x));
