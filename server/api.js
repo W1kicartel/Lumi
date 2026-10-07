@@ -15,7 +15,8 @@ import { meta } from './db.js';
 import { readdirSync } from 'node:fs';
 
 // I moduli (server/moduli/*.js): ognuno esporta di default registra(k) e aggiunge le sue rotte e i suoi ascoltatori.
-// k = { r, db, S, D, P, A, M, U, meta, serve, ErroreHttp, manda }. Si caricano in ordine alfabetico.
+// k = { r, db, S, D, P, A, M, U, meta, serve, ErroreHttp, manda }. Si caricano in ordine alfabetico. Una rotta riceve anche
+// «res»: se risponde da sé (un file da scaricare), il server non aggiunge il JSON.
 const CARTELLA_MODULI = join(dirname(fileURLToPath(import.meta.url)), 'moduli');
 const MODULI_SERVER = await Promise.all(readdirSync(CARTELLA_MODULI).filter(f => f.endsWith('.js')).sort()
   .map(f => import(join(CARTELLA_MODULI, f)).then(m => ({ nome: f.replace(/\.js$/, ''), registra: m.default }))));
@@ -152,7 +153,8 @@ export function creaServer(db) {
       const rotta = rotte.find(x => x.metodo === req.method && x.re.test(percorso));
       if (!rotta) throw new ErroreHttp(404, 'Non trovato');
       const p = Object.fromEntries(Object.entries(percorso.match(rotta.re).groups || {}).map(([k, v]) => [k, decodeURIComponent(v)]));
-      const out = await rotta.f({ req, ctx, token, p, q: url.searchParams, corpo, risposta, ip: req.socket.remoteAddress });
+      const out = await rotta.f({ req, res, ctx, token, p, q: url.searchParams, corpo, risposta, ip: req.socket.remoteAddress });
+      if (res.headersSent) return;   // la rotta ha già risposto da sé (file, scaricamenti)
       res.writeHead(200, risposta.intestazioni).end(JSON.stringify(out ?? null));
     } catch (e) {
       const [stato, extra] = e instanceof ErroreHttp ? [e.stato, e.extra] : e instanceof D.ErroreDati ? [422, { campi: e.campi }] : e instanceof S.ErroreSchema ? [422, { dettagli: e.dettagli }]
