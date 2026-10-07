@@ -83,6 +83,7 @@ export function etichetta(def, f) {
   else if (f.op === 'in') testo = (v || []).map(x => c.opzioni?.find(o => o.id === x)?.nome || x).join(' o ');
   else if (f.op === 'tra') testo = ['data', 'data_ora'].includes(tipoDi(c)) ? `${data(v?.[0])} – ${data(v?.[1])}` : `${v?.[0]} e ${v?.[1]}`;
   else if (['prima', 'dopo'].includes(f.op)) testo = `${NOMI_OP[f.op]} ${data(v)}`;
+  else if (f.op === '=' && tipoDi(c) === 'utente') return `${c.nome}: ${v === '@io' ? 'io' : v?.nome ?? v}`;
   else if (f.op === 'contiene' && tipoDi(c) === 'scelta_multipla') testo = `contiene ${c.opzioni?.find(o => o.id === v)?.nome || v}`;
   else testo = `${NOMI_OP[f.op] || f.op} ${v === '@io' ? 'me' : v?.titolo ?? v?.nome ?? v}`;
   return f.op === 'in' || f.op === 'periodo' ? `${c.nome}: ${testo}` : `${c.nome} ${testo}`;

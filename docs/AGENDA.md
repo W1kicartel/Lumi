@@ -48,7 +48,7 @@ Il primo cruscotto si crea da solo, con i widget adatti ai modelli installati:
 ```
 
 - **Misure:** `conta`, `somma`, `media`, `min`, `max`.
-- **`per`:** `giorno`, `settimana` (dal lunedì), `mese` o `anno` nel fuso **Europe/Rome**, ora legale compresa. Oppure l'id di un campo `scelta`, `stato`, `relazione`, `utente` o `si_no`.
+- **`per`:** `giorno`, `settimana` (dal lunedì), `mese` o `anno` nel fuso **Europe/Rome**, ora legale compresa. Oppure l'id di un campo `scelta`, `stato`, `relazione` (non «molti»), `utente`, `si_no` o `calcolato`: gli altri tipi vengono rifiutati.
 - **Periodo:**
   - `oggi`, `settimana`, `mese`, `anno`, `ultimi_N`, `sempre`;
   - oppure `da` e `a` in AAAA-MM-GG;
@@ -69,6 +69,7 @@ Il primo cruscotto si crea da solo, con i widget adatti ai modelli installati:
 
   Un clic sul filtro lo cambia. I periodi restano relativi: «questo mese» resta questo mese.
 - **Colonne:** quali mostrare e in che ordine.
+- Il filtro **«no»** su un sì/no trova anche le righe dove il valore non è mai stato impostato.
 - **Raggruppamento** per stato, scelta, persona, relazione o sì/no. I **totali** di ogni gruppo e quelli in fondo vengono dal server e contano tutte le righe filtrate, non solo la pagina.
 - **Viste salvate.** Filtri, colonne, gruppi, ordine e modo (tabella o kanban) si salvano **per me** o **per tutti**. Le viste per tutti le salva solo chi può personalizzare il gestionale. Se una vista usa campi nascosti per chi la apre, quei filtri e quelle colonne si tolgono e lo si dice.
 

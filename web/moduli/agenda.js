@@ -250,7 +250,7 @@ async function cruscotto(contenuto, k) {
     if (!c.widget.length) { griglia.replaceChildren(h('div.vuoto', 'Il cruscotto è vuoto. ', c.puoModificare ? 'Premi «Modifica» per aggiungere numeri e grafici.' : '')); return; }
     griglia.replaceChildren(...c.widget.map((w, i) => {
       const d = c.dati[w.id] || {};
-      const testa = h('div.cr-testa', h('span.cr-titolo', w.titolo || 'Senza titolo'), w.periodo && w.tipo !== 'grafico' ? h('span.cr-periodo', PERIODI[w.periodo] || '') : null,
+      const testa = h('div.cr-testa', h('span.cr-titolo', { title: w.titolo || '' }, w.titolo || 'Senza titolo'), w.periodo && w.tipo !== 'grafico' ? h('span.cr-periodo', PERIODI[w.periodo] || '') : null,
         modifica ? h('span.cr-mod', h('button.btn.nudo.piccolo', { title: 'Prima', testo: '←', disabled: i === 0, on: { click: () => muovi(i, -1) } }), h('button.btn.nudo.piccolo', { title: 'Dopo', testo: '→', disabled: i === c.widget.length - 1, on: { click: () => muovi(i, 1) } }),
           h('button.btn.nudo.piccolo', { title: 'Cambia', on: { click: ev => editorWidget(ev.currentTarget, i) } }, icona('matita')), h('button.btn.nudo.piccolo.pericolo', { title: 'Togli', testo: '×', on: { click: () => { c.widget.splice(i, 1); salva(); } } })) : null);
       let dentro;
