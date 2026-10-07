@@ -1,0 +1,31 @@
+/* Costruttore dei filtri, popover, strumenti della lista (colonne, gruppi, viste salvate). */
+.lista-barra { display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; margin-bottom: 12px; }
+.lista-barra .filtri { margin-bottom: 0; flex: 1; min-width: 240px; }
+.lista-strumenti { display: flex; gap: 6px; align-items: center; }
+.lista-modi { display: flex; gap: 4px; }
+.lista-vista { width: auto; max-width: 220px; }
+select.campo.piccolo { width: auto; padding: 4px 8px; font-size: 13px; }
+.filtro-t { cursor: pointer; }
+.filtro-t:hover { text-decoration: underline; text-underline-offset: 3px; }
+.tabella-scorre { overflow-x: auto; border-radius: var(--raggio); }
+.tabella tr.gruppo td { background: var(--sopra); font-size: 13px; cursor: default; }
+.tabella tbody tr.gruppo:hover td { background: var(--sopra); }
+.tabella tfoot td { font-weight: 600; border-top: 1px solid var(--linea-forte); border-bottom: 0; padding: 10px 12px; font-variant-numeric: tabular-nums; }
+
+.pop { position: absolute; z-index: 60; width: 320px; background: var(--pannello); border: 1px solid var(--linea-forte); border-radius: 12px; padding: 14px;
+  box-shadow: 0 18px 50px rgba(0,0,0,.16); display: block; animation: pop-entra .12s ease-out; }
+.pop.largo { width: 400px; }
+.pop form, .pop > div { display: flex; flex-direction: column; gap: 10px; }
+.pop-titolo { font-weight: 600; letter-spacing: -.01em; }
+.pop-azioni { display: flex; gap: 6px; justify-content: flex-end; flex-direction: row !important; margin-top: 2px; }
+.pop-scelte { display: flex; flex-wrap: wrap; gap: 6px; flex-direction: row !important; }
+.pop-due { display: grid !important; grid-template-columns: 1fr 1fr; gap: 6px; }
+.pop-opz { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; }
+.pop-colonne { gap: 2px !important; max-height: 340px; overflow: auto; }
+.pop-colonna { display: flex; align-items: center; gap: 2px; padding: 2px 4px; border-radius: 6px; }
+.pop-colonna:hover { background: var(--sopra); }
+.pop-colonna label { flex: 1; }
+.pop-colonna .btn { padding: 2px 7px; }
+@keyframes pop-entra { from { opacity: 0; transform: translateY(-4px); } }
+@media (prefers-reduced-motion: reduce) { .pop { animation: none; } }
+@media (max-width: 860px) { .pop, .pop.largo { width: calc(100vw - 32px); left: 16px !important; } .lista-vista { max-width: 140px; } }
