@@ -2,7 +2,11 @@
 // vede «cerca_<id>» e «leggi_<id>», per quelle in cui può scrivere «crea_<id>» e «modifica_<id>» (proposte con Conferma /
 // Annulla), più «riepilogo» e «da_vedere»; per chi può personalizzare «proponi_modifica_schema» e «proponi_automazione».
 // Tutto passa dalle API con la sessione di chi è collegato: i permessi sono quelli del server. Nessun DOM: si prova in Node.
-//   strumenti({ schema, api, poteri, dopoSchema }) → [{ nome, descrizione, schema, leggi | proponi + esegui }]
+// In più gli strumenti che i moduli del server registrano con k.lumi (server/moduli/lumi/registro.js): «moduli» è la risposta
+// di GET /api/lumi/strumenti; i 'leggi' chiamano il server e rispondono subito, gli 'scrivi' chiedono la scheda (anteprima con
+// un gettone) e dopo il Conferma eseguono con quel gettone. Un risultato con «scarica» diventa un file da salvare nel browser
+// (al modello arriva solo il nome). I crea_/modifica_ generati qui chiedono al server le righe in più della scheda (k.lumi.scheda).
+//   strumenti({ schema, api, poteri, dopoSchema, moduli, scarica, lingua }) → [{ nome, descrizione, schema, leggi | proponi + esegui }]
 
 const ID_RIGA = /^[0-9A-HJKMNP-TV-Z]{17}$/;   // gli id di Kubo (db.js: 9 caratteri di tempo + 8 casuali, base 32)
 const NON_SCRIVIBILI = ['calcolato', 'contatore', 'immagine', 'file'];
@@ -81,7 +85,7 @@ export function leggibile(c, v, schema) {
 }
 
 // ---------- gli strumenti ----------
-export function strumenti({ schema, api, poteri = {}, dopoSchema = async () => {}, apri = () => {} }) {
+export function strumenti({ schema, api, poteri = {}, dopoSchema = async () => {}, apri = () => {}, moduli = null, scarica = () => {}, lingua = 'it' }) {
   const visibili = schema.filter(e => !e.nascosta);
   const defDi = id => schema.find(e => e.id === id);
   const errore = e => ({ errore: [e.message, ...Object.entries(e.corpo?.campi || {}).map(([k, m]) => `${k}: ${m}`), ...(e.corpo?.dettagli || [])].join(' · ') });
@@ -121,6 +125,15 @@ export function strumenti({ schema, api, poteri = {}, dopoSchema = async () => {
     return { api: api_, righe, vista };
   }
   const memo = new Map();   // proponi ed esegui ricevono lo stesso input: i collegamenti si risolvono una volta sola
+  // la scheda di conferma con le righe in più dei moduli (le fatture: prezzi, IVA, totale, controlli; o il no a una fattura emessa)
+  async function conScheda(def, r, id, p) {
+    let x; try { x = await api('POST', `/lumi/scheda/${def.id}`, { valori: r.api, ...(id ? { id } : {}), lingua }); } catch { return p; }   // un server senza schede: quella generica
+    if (x?.errore) return { errore: x.errore };
+    if (!x?.righe?.length && !x?.avvisi?.length) return p;
+    // le righe del documento le mostra il modulo, con i prezzi: la riga generica «2 righe» si toglie
+    const generiche = new Set(def.campi.filter(c => c.tipo === 'righe').map(c => c.nome));
+    return { ...p, righe: [...p.righe.filter(([k]) => !(x.righe.length && generiche.has(k))), ...x.righe], avvisi: x.avvisi || [] };
+  }
 
   for (const def of visibili) {
     const nomi = def.campi.filter(c => !c.archiviato).map(c => `${c.id} (${c.tipo}${c.opzioni ? ': ' + c.opzioni.map(o => o.id).join('/') : ''}${c.entita ? ' → ' + c.entita : ''})`).join(', ');
@@ -151,7 +164,7 @@ export function strumenti({ schema, api, poteri = {}, dopoSchema = async () => {
           const manca = scrivibili(def).filter(c => c.obbligatorio && c.predefinito === undefined && (inp.valori?.[c.id] == null || inp.valori[c.id] === ''));
           if (manca.length) return { errore: `mancano: ${manca.map(c => c.nome).join(', ')}` };
           const r = await risolvi(def, inp.valori); memo.set(inp, r);
-          return { titolo: `Nuovo in ${def.nome}`, righe: r.righe };
+          return conScheda(def, r, null, { titolo: `Nuovo in ${def.nome}`, righe: r.righe });
         } catch (e) { return { errore: e.message }; }
       },
       esegui: async inp => {
@@ -167,7 +180,7 @@ export function strumenti({ schema, api, poteri = {}, dopoSchema = async () => {
           const prima = await api('GET', `/dati/${def.id}/${encodeURIComponent(inp.id)}`);
           if (!Object.keys(inp.valori || {}).length) return { errore: 'nessun campo da cambiare' };
           const r = await risolvi(def, inp.valori, prima); memo.set(inp, r);
-          return { titolo: `${def.nome} · ${titolo(def, prima) ?? inp.id}`, righe: r.righe };
+          return conScheda(def, r, inp.id, { titolo: `${def.nome} · ${titolo(def, prima) ?? inp.id}`, righe: r.righe });
         } catch (e) { return { errore: e.message }; }
       },
       esegui: async inp => {
@@ -197,7 +210,38 @@ export function strumenti({ schema, api, poteri = {}, dopoSchema = async () => {
   });
 
   if (poteri.schema) lista.push(modificaSchema({ schema, api, dopoSchema, errore }), automazione({ schema, api, errore }));
-  return lista;
+  if (!moduli) return lista;
+  const via = new Set(moduli.sostituiti || []), nomi = new Set((moduli.strumenti || []).map(s => s.nome));
+  return [...lista.filter(s => !via.has(s.nome) && !nomi.has(s.nome)), ...daModuli({ moduli, api, errore, scarica, lingua })];
+}
+
+// ---------- gli strumenti registrati dai moduli del server (k.lumi) ----------
+export function daModuli({ moduli, api, errore = e => ({ errore: e.message }), scarica = () => {}, lingua = 'it' }) {
+  const gettoni = new Map();   // argomenti → gettone dell'anteprima (lo vuole il server per eseguire)
+  // un file da salvare: al browser il contenuto, al modello solo il nome
+  const consegna = r => {
+    if (!r?.scarica) return r;
+    const { scarica: f, ...resto } = r; try { scarica(f); } catch { /* il file resta disponibile dallo strumento */ }
+    return { ...resto, scaricato: f.nome };
+  };
+  return (moduli?.strumenti || []).map(s => {
+    const base = { nome: s.nome, descrizione: s.descrizione, schema: s.schema }, u = `/lumi/strumenti/${encodeURIComponent(s.nome)}`;
+    if (s.tipo !== 'scrivi') return { ...base, leggi: async args => { try { return consegna(await api('POST', u, { args: args ?? {} })); } catch (e) { return errore(e); } } };
+    return { ...base,
+      proponi: async args => {
+        try {
+          const p = await api('POST', `${u}/anteprima`, { args: args ?? {}, lingua });
+          if (p.errore) return { errore: p.errore };
+          gettoni.set(JSON.stringify(args ?? {}), p.gettone);
+          return { titolo: p.titolo, righe: p.righe || [], avvisi: p.avvisi || [], nota: p.nota || '' };
+        } catch (e) { return errore(e); }
+      },
+      esegui: async args => {
+        const k = JSON.stringify(args ?? {}), gettone = gettoni.get(k); gettoni.delete(k);
+        try { return consegna(await api('POST', `${u}/esegui`, { args: args ?? {}, gettone })); } catch (e) { return errore(e); }
+      },
+    };
+  });
 }
 
 // ---------- personalizzare a parole: la modifica dello schema ----------
@@ -355,7 +399,7 @@ function automazione({ schema, api, errore }) {
 }
 
 // ---------- le istruzioni per il modello: come è fatto Kubo ----------
-export function istruzioni({ poteri = {} } = {}) {
+export function istruzioni({ poteri = {}, moduli = null } = {}) {
   return [
     'Sei dentro Kubo, un gestionale fatto di sezioni (entità) e campi. Gli strumenti si chiamano cerca_<sezione>, leggi_<sezione>, crea_<sezione>, modifica_<sezione>: gli id delle sezioni e dei campi sono quelli negli schemi.',
     'Importi in euro con il punto decimale; date AAAA-MM-GG. Per i collegamenti puoi dare il nome: se è ambiguo lo strumento ti dice quali ci sono, e allora chiedi alla persona.',
@@ -363,5 +407,6 @@ export function istruzioni({ poteri = {} } = {}) {
     'Se la persona guarda una scheda (nel contesto), «questo», «questa» si riferiscono a quella: leggila con leggi_<sezione>.',
     poteri.schema ? 'Questa persona può personalizzare il gestionale: per «aggiungi un campo», «fammi una sezione per…», «quando… avvisami» usa proponi_modifica_schema o proponi_automazione. Scegli i tipi giusti (stato per un flusso come prenotato → in corso → restituito, relazione verso le sezioni che esistono già, data per le date). Dopo una sezione nuova i suoi strumenti arrivano al giro successivo.'
       : 'Questa persona non può cambiare la forma del gestionale: se lo chiede, dille che serve il titolare.',
+    ...(moduli?.istruzioni || []),
   ].join('\n');
 }

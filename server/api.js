@@ -14,6 +14,7 @@ import * as U from './auth.js';
 import { meta } from './db.js';
 import { readdirSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
+import { registroLumi } from './moduli/lumi/registro.js';
 
 // I moduli (server/moduli/*.js): ognuno esporta di default registra(k) e aggiunge le sue rotte e i suoi ascoltatori.
 // k = { r, db, S, D, P, A, M, U, meta, serve, ErroreHttp, manda }. Si caricano in ordine alfabetico. Una rotta riceve anche
@@ -153,7 +154,10 @@ export function creaServer(db) {
   r('PUT', '/api/ruoli/:id', ({ ctx, p, corpo }) => { if (!P.puoUtenti(serve(ctx))) throw new P.ErrorePermesso(); P.salvaRuolo(db, { ...corpo, id: p.id }); return P.ruolo(db, p.id); });
 
   r('GET', '/api/moduli', () => moduliWeb());
-  for (const m of MODULI_SERVER) if (typeof m.registra === 'function') m.registra({ r, prima, db, S, D, P, A, M, U, meta, serve, ErroreHttp, manda, primoAvvio, controllo, suErrore });
+  // k.lumi: gli strumenti di Lumi che i moduli registrano (server/moduli/lumi/registro.js); nasce qui perché un modulo che si
+  // carica prima di lumi.js lo trovi già
+  const lumi = registroLumi();
+  for (const m of MODULI_SERVER) if (typeof m.registra === 'function') m.registra({ r, prima, db, S, D, P, A, M, U, meta, serve, ErroreHttp, manda, primoAvvio, controllo, suErrore, lumi });
 
   async function statico(req, res, percorso) {
     // il motore delle formule è lo stesso nel server e nel browser

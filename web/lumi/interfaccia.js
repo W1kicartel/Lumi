@@ -441,9 +441,10 @@ export function montaInterfaccia(op, t) {
     entra(s, { dy: 10, blur: 8, ms: 500, scala: 0.985 });
     [...s.querySelectorAll('.lumi-el')].forEach((r, i) => entra(r, { ritardo: 80 + i * 60, dy: 6, blur: 5, ms: 440 }));
   }
-  function schedaConferma({ titolo, righe = [], nota: n }) {
+  function schedaConferma({ titolo, righe = [], nota: n, avvisi = [] }) {
     const s = scheda('lumi-conf', `<h3>${esc(titolo)}</h3>
       <dl>${righe.map(r => (Array.isArray(r) ? r : [r?.etichetta ?? '', r?.valore ?? r])).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
+      ${avvisi.length ? `<ul class="lumi-avvisi" role="list">${avvisi.map(a => `<li>${esc(a)}</li>`).join('')}</ul>` : ''}
       ${n ? `<p class="lumi-nota">${esc(n)}</p>` : ''}
       <div class="az"><button type="button" class="lumi-btn primario" data-lumi="si">${esc(t('conferma.si'))}</button><button type="button" class="lumi-btn piano" data-lumi="no">${esc(t('conferma.no'))}</button><small>${esc(ascolto.disponibile() ? t('conferma.voce') : t('conferma.scrivi'))}</small></div>
       <div class="tempo" aria-hidden="true"><i></i></div>`);
