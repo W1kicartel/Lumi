@@ -113,8 +113,10 @@ function proteggi(w, permesso = url => { try { return new URL(url).origin === or
 }
 
 function creaFinestra(mostrala = true) {
+  // il ponte per scegliere la cartella dei backup serve solo quando i dati sono qui: per un Kubo in rete la cartella sarebbe
+  // di questo PC e non del server, e a una pagina di un altro computer non si dà niente
   finestra = new BrowserWindow({ width: 1280, height: 820, minWidth: 380, minHeight: 500, title: 'Kubo', show: false, backgroundColor: '#fafafa',
-    webPreferences: { preload: join(QUI, 'preload.cjs'), contextIsolation: true, sandbox: true, nodeIntegration: false, additionalArguments: ['--kubo-pagina=gestionale'] } });
+    webPreferences: { preload: join(QUI, 'preload.cjs'), contextIsolation: true, sandbox: true, nodeIntegration: false, additionalArguments: conf.modo === 'server' ? ['--kubo-pagina=gestionale'] : [] } });
   proteggi(finestra);
   if (mostrala && !FOTO) finestra.once('ready-to-show', () => finestra.show());
   if (FOTO) finestra.webContents.once('did-finish-load', async () => {
@@ -147,7 +149,7 @@ async function mostraNonRaggiungibile(url) {
 
 // il gestionale chiede una cartella per i backup: la finestra del sistema, solo dalla pagina di Kubo
 ipcMain.handle('kubo:scegli-cartella', async e => {
-  if (!finestra || e.sender !== finestra.webContents || new URL(e.senderFrame?.url || 'about:blank').origin !== origine()) return null;
+  if (conf?.modo !== 'server' || !finestra || e.sender !== finestra.webContents || new URL(e.senderFrame?.url || 'about:blank').origin !== origine()) return null;
   const r = await dialog.showOpenDialog(finestra, { title: 'Dove salvare i backup di Kubo', buttonLabel: 'Usa questa cartella', properties: ['openDirectory', 'createDirectory'] });
   return r.canceled ? null : r.filePaths[0];
 });
@@ -180,7 +182,8 @@ function creaVassoio() {
 async function cambiaRete(rete) {
   scriviConf({ ...conf, rete });
   const vecchio = kubo; kubo = null; await vecchio?.chiudi();
-  kubo = await accendi({ radice: RADICE, cartella: join(app.getPath('userData'), 'dati'), porta: conf.porta || 4380, rete });
+  try { kubo = await accendi({ radice: RADICE, cartella: join(app.getPath('userData'), 'dati'), porta: conf.porta || 4380, rete }); }
+  catch (e) { dialog.showErrorBox('Kubo non riesce a riaccendersi', String(e.message || e)); uscendo = true; app.quit(); return; }
   creaVassoio(); finestra?.loadURL(indirizzo() + '#/rete');
 }
 async function cambiaModo() {
