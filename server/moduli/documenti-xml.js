@@ -16,7 +16,7 @@ const pulito = s => String(s ?? '').replace(/[\s.-]/g, '').toUpperCase();
 export function fiscaliCliente(c = {}) {
   const grezzo = pulito(c.piva), cf = pulito(c.codice_fiscale);
   const nazione = (String(c.nazione || 'IT').trim().toUpperCase() || 'IT').slice(0, 2);
-  const piva = grezzo.length === 16 ? '' : grezzo.replace(/^IT/, '');
+  const piva = grezzo.length === 16 ? '' : /^[A-Z]{2}$/.test(nazione) && grezzo.startsWith(nazione) ? grezzo.slice(2) : grezzo.replace(/^IT/, '');   // DE123… → 123…
   return {
     nome: String(c.nome ?? '').trim(), piva, cf: cf || (grezzo.length === 16 ? grezzo : ''), nazione,
     codice: pulito(c.codice_destinatario), pec: String(c.pec ?? '').trim(),
@@ -38,12 +38,13 @@ export function controlla(az = {}, f = {}, cliente = {}) {
   if (!az.via || !az.comune || !/^\d{5}$/.test(String(az.cap || ''))) e.push('Manca l\'indirizzo completo della tua azienda (via, CAP di 5 cifre, comune).');
   // la fattura
   if (f.stato === 'bozza' || !f.stato) e.push('La fattura è ancora in bozza: emettila, così prende il suo numero.');
+  else if (f.stato === 'annullata') e.push('La fattura è annullata: non si manda allo SDI. Se era già stata mandata, stornala con una nota di credito.');
   else if (!f.numero || !/\d/.test(String(f.numero))) e.push('Manca il numero della fattura.');
   if (!f.data) e.push('Manca la data della fattura.');
   if (!(f.righe || []).length) e.push('La fattura non ha righe.');
   // il cliente
   if (!c.nome) e.push('Manca il nome o la ragione sociale del cliente.');
-  if (!c.piva && !c.cf) e.push('Manca la partita IVA o il codice fiscale del cliente.');
+  if (!c.piva && !c.cf && c.nazione === 'IT') e.push('Manca la partita IVA o il codice fiscale del cliente.');
   if (c.piva && c.nazione === 'IT' && pivaValida(c.piva).errore) e.push(`La partita IVA del cliente non va: ${pivaValida(c.piva).errore}.`);
   if (c.cf && c.nazione === 'IT' && cfValido(c.cf).errore) e.push(`Il codice fiscale del cliente non va: ${cfValido(c.cf).errore}.`);
   if (c.nazione === 'IT') {
@@ -108,9 +109,10 @@ export function xml(az, f, cliente, { progressivo = '00001' } = {}) {
       ['DatiAnagrafici', [['IdFiscaleIVA', [['IdPaese', 'IT'], ['IdCodice', pivaAz]]], se(az.codice_fiscale, ['CodiceFiscale', pulito(az.codice_fiscale)]),
         ['Anagrafica', [['Denominazione', testoPA(az.ragione_sociale, 80)]]], ['RegimeFiscale', az.regime]]],
       sede(az.via, String(az.cap || ''), az.comune, String(az.provincia || '').toUpperCase(), 'IT'),
-      se(az.telefono || az.email, ['Contatti', [se(az.telefono, ['Telefono', testoPA(az.telefono, 12)]), se(az.email, ['Email', testoPA(az.email, 256)])]])]],
+      se(az.telefono || az.email, ['Contatti', [se(az.telefono, ['Telefono', testoPA(String(az.telefono).replace(/\s/g, ''), 12)]), se(az.email, ['Email', testoPA(az.email, 256)])]])]],
     ['CessionarioCommittente', [
-      ['DatiAnagrafici', [se(c.piva, ['IdFiscaleIVA', [['IdPaese', c.nazione], ['IdCodice', c.piva]]]), se(c.cf && !estero, ['CodiceFiscale', c.cf]),
+      // un cliente estero ha sempre l'IdFiscaleIVA: la sua partita IVA, o il codice fiscale, o 99999999999 se è un privato senza codice
+      ['DatiAnagrafici', [se(c.piva || estero, ['IdFiscaleIVA', [['IdPaese', c.nazione], ['IdCodice', c.piva || testoPA(c.cf, 28).replace(/\s/g, '') || '99999999999']]]), se(c.cf && !estero, ['CodiceFiscale', c.cf]),
         ['Anagrafica', [['Denominazione', testoPA(c.nome, 80)]]]]],
       sede(c.via, c.cap, c.comune, c.provincia, c.nazione)]],
   ]];

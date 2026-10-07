@@ -110,8 +110,9 @@ export function salvaAzienda(db, meta, corpo = {}) {
 const cartellaDati = db => { try { const l = db.location?.(); return l ? dirname(l) : null; } catch { return null; } };
 export function salvaLogo(db, meta, datiUrl) {
   const cartella = cartellaDati(db), dir = cartella && join(cartella, 'documenti');
-  for (const ext of ['png', 'jpg']) if (dir && existsSync(join(dir, `logo.${ext}`))) rmSync(join(dir, `logo.${ext}`));
-  if (!datiUrl) { db.prepare('DELETE FROM _meta WHERE chiave = ?').run('documenti.logo'); return; }
+  const togli = () => { for (const ext of ['png', 'jpg']) if (dir && existsSync(join(dir, `logo.${ext}`))) rmSync(join(dir, `logo.${ext}`)); };
+  if (!datiUrl) { togli(); db.prepare('DELETE FROM _meta WHERE chiave = ?').run('documenti.logo'); return; }
+  // prima si controlla il nuovo, poi si toglie il vecchio: un file sbagliato non cancella il logo che c'era
   const m = /^data:image\/(png|jpeg);base64,([A-Za-z0-9+/=]+)$/.exec(String(datiUrl));
   if (!m) throw new Error('Il logo deve essere un\'immagine PNG o JPEG');
   const b = Buffer.from(m[2], 'base64');
@@ -119,6 +120,7 @@ export function salvaLogo(db, meta, datiUrl) {
   const png = b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])), jpg = b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff;
   if (!png && !jpg) throw new Error('Il file non è un PNG o un JPEG');
   const ext = png ? 'png' : 'jpg';
+  togli();
   if (dir) { mkdirSync(dir, { recursive: true }); writeFileSync(join(dir, `logo.${ext}`), b); meta.scrivi(db, 'documenti.logo', `file:${ext}`); }
   else meta.scrivi(db, 'documenti.logo', `data:image/${png ? 'png' : 'jpeg'};base64,${b.toString('base64')}`);
 }
@@ -212,12 +214,15 @@ export function attivaFatture(D) {
   D.ascolta((ev, db) => {
     if (ev.entita !== FATTURE || !['crea', 'modifica'].includes(ev.tipo) || !ev.dopo) return;
     const f = ev.dopo, cambi = {};
+    const doppia = (numero, data) => !!db.prepare(`SELECT 1 FROM d_${FATTURE} WHERE archiviato = 0 AND id <> ? AND c_numero = ? AND IFNULL(c_serie, '') = ? AND substr(c_data, 1, 4) = ?`)
+      .get(f.id, String(numero), f.serie || '', String(data || '').slice(0, 4));
     if (f.stato && f.stato !== 'bozza' && !f.numero) {
+      // i numeri già scritti a mano (per esempio le fatture riportate da un altro programma) si saltano
       const data = f.data || new Date().toISOString().slice(0, 10);
-      cambi.numero = numeroFattura(D, db, f.serie, data); if (!f.data) cambi.data = data;
+      let n = numeroFattura(D, db, f.serie, data); for (let i = 0; i < 10000 && doppia(n, data); i++) n = numeroFattura(D, db, f.serie, data);
+      cambi.numero = n; if (!f.data) cambi.data = data;
     } else if (f.numero && (ev.prima?.numero !== f.numero || (ev.prima?.serie ?? null) !== (f.serie ?? null) || String(ev.prima?.data || '').slice(0, 4) !== String(f.data || '').slice(0, 4))) {
-      const doppia = db.prepare(`SELECT 1 FROM d_${FATTURE} WHERE archiviato = 0 AND id <> ? AND c_numero = ? AND IFNULL(c_serie, '') = ? AND substr(c_data, 1, 4) = ?`).get(f.id, String(f.numero), f.serie || '', String(f.data || '').slice(0, 4));
-      if (doppia) throw new D.ErroreDati(`C'è già una fattura numero ${f.numero} nel ${String(f.data).slice(0, 4)}`, { numero: 'Numero già usato quest\'anno' });
+      if (doppia(f.numero, f.data)) throw new D.ErroreDati(`C'è già una fattura numero ${f.numero} nel ${String(f.data).slice(0, 4)}`, { numero: 'Numero già usato quest\'anno' });
     }
     // il nome con cui la fattura compare nei titoli e nelle relazioni (un campo vero, così lo trova anche la ricerca)
     if ('nome_documento' in f) { const n = nomeDocumento({ ...f, ...cambi }); if (n !== f.nome_documento) cambi.nome_documento = n; }

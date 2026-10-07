@@ -235,3 +235,28 @@ test('nota di credito: storna una fattura emessa e nel file XML c\'è la fattura
   assert.match(x, /<\/DatiGeneraliDocumento>\s*<DatiFattureCollegate>\s*<IdDocumento>1<\/IdDocumento>\s*<Data>2026-02-10<\/Data>/);
   assert.match(x, /<TipoDocumento>TD04<\/TipoDocumento>/);
 });
+
+test('verifica: numeri scritti a mano, logo sbagliato, cliente estero, fattura annullata', () => {
+  const db = gestionale();
+  const cl = D.crea(db, 'clienti', { nome: 'Rossi' });
+  const nuova = (v) => D.crea(db, 'fatture', { cliente: cl.id, righe: [{ descrizione: 'x', prezzo: 10, aliquota: 22 }], ...v });
+  // fatture riportate a mano con i numeri 1 e 2: la prima emessa da Kubo prende il 3, non si blocca sul doppione
+  nuova({ data: '2026-01-10', numero: '1', stato: 'emessa' }); nuova({ data: '2026-01-11', numero: '2', stato: 'emessa' });
+  const b = nuova({ data: '2026-02-01' }); D.modifica(db, 'fatture', b.id, { stato: 'emessa' });
+  assert.equal(D.leggi(db, 'fatture', b.id).numero, '3');
+  // un logo sbagliato non cancella quello che c'era (anche su disco)
+  const dir = mkdtempSync(join(tmpdir(), 'kubo-logo-')), dbf = apri(join(dir, 'kubo.db'));
+  const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+  salvaLogo(dbf, meta, png);
+  assert.throws(() => salvaLogo(dbf, meta, 'data:image/png;base64,AAAA'), /PNG o un JPEG/);
+  assert.equal(leggiLogo(dbf, meta), png);
+  salvaLogo(dbf, meta, null); assert.equal(leggiLogo(dbf, meta), null);
+  // cliente estero: sempre IdFiscaleIVA, senza il prefisso del paese; privato senza codice → 99999999999
+  const estero = { nome: 'Müller GmbH', piva: 'DE123456789', via: 'Hauptstraße 1', comune: 'Berlin', nazione: 'DE' };
+  assert.deepEqual(controlla(AZ, FATTURA, estero), []);
+  assert.match(xml(AZ, FATTURA, estero).xml, /<IdPaese>DE<\/IdPaese>\s*<IdCodice>123456789<\/IdCodice>/);
+  assert.match(xml(AZ, FATTURA, { ...estero, piva: '' }).xml, /<IdPaese>DE<\/IdPaese>\s*<IdCodice>99999999999<\/IdCodice>/);
+  assert.match(xml(AZ, FATTURA, estero).xml, /<CodiceDestinatario>XXXXXXX<\/CodiceDestinatario>/);
+  // annullata: non si esporta
+  assert.ok(controlla(AZ, { ...FATTURA, stato: 'annullata' }, CLIENTE).some(x => x.includes('annullata')));
+});
