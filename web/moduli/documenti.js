@@ -21,13 +21,13 @@ function caricaCss() {
 // ---------- anteprima e stampa ----------
 function finestra(k, titolo, ...contenuto) {
   const { h } = k;
-  const chiudi = () => { velo.remove(); document.removeEventListener('keydown', esc); };
+  const chiudi = () => { velo.remove(); document.removeEventListener('keydown', esc); window.removeEventListener('hashchange', chiudi); };
   const esc = ev => { if (ev.key === 'Escape') chiudi(); };
   const velo = h('div.documenti-velo', { on: { click: ev => { if (ev.target === velo) chiudi(); } } },
     h('div.documenti-finestra', { role: 'dialog', 'aria-label': titolo },
       h('div.documenti-barra', h('b', titolo), h('span.documenti-spazio'), ...contenuto.filter(x => x?.dataset?.barra), h('button.btn.nudo', { title: 'Chiudi (Esc)', testo: '×', on: { click: () => chiudi() } })),
       ...contenuto.filter(x => !x?.dataset?.barra)));
-  document.addEventListener('keydown', esc); document.body.append(velo);
+  document.addEventListener('keydown', esc); window.addEventListener('hashchange', chiudi); document.body.append(velo);   // cambiando pagina si chiude
   return { velo, chiudi };
 }
 function foglio(k, html) {
@@ -45,8 +45,7 @@ async function apriStampa(def, riga, k) {
   const f = foglio(k, s.html);
   const bottone = h('button.btn.pieno', { testo: 'Stampa o salva PDF', 'data-barra': '1', on: { click: () => stampa(f) } });
   const modifica = k.stato.poteri?.schema ? h('a.btn', { href: `#/documenti/modelli/${def.id}`, testo: 'Modifica il modello', 'data-barra': '1' }) : null;
-  const { chiudi } = finestra(k, s.titolo, modifica, bottone, h('div.documenti-tavolo', f));
-  modifica?.addEventListener('click', () => chiudi());
+  finestra(k, s.titolo, modifica, bottone, h('div.documenti-tavolo', f));
 }
 
 // ---------- FatturaPA ----------

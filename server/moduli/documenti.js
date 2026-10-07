@@ -204,6 +204,8 @@ export function numeroFattura(D, db, serie, data) {
   const n = D.prossimoNumero(db, `fatture:${serie || ''}`, '{AAAA}/{N}', new Date(`${data}T12:00:00`)).split('/')[1];
   return serie ? `${n}/${serie}` : n;
 }
+const NOMI_TIPO = { TD04: 'Nota di credito', TD05: 'Nota di debito', TD06: 'Parcella' };
+export const nomeDocumento = f => `${NOMI_TIPO[f.tipo] || 'Fattura'} ${f.numero ? f.numero : 'in bozza'}`;
 let attivo = false;
 export function attivaFatture(D) {
   if (attivo) return; attivo = true;
@@ -217,6 +219,8 @@ export function attivaFatture(D) {
       const doppia = db.prepare(`SELECT 1 FROM d_${FATTURE} WHERE archiviato = 0 AND id <> ? AND c_numero = ? AND IFNULL(c_serie, '') = ? AND substr(c_data, 1, 4) = ?`).get(f.id, String(f.numero), f.serie || '', String(f.data || '').slice(0, 4));
       if (doppia) throw new D.ErroreDati(`C'è già una fattura numero ${f.numero} nel ${String(f.data).slice(0, 4)}`, { numero: 'Numero già usato quest\'anno' });
     }
+    // il nome con cui la fattura compare nei titoli e nelle relazioni (un campo vero, così lo trova anche la ricerca)
+    if ('nome_documento' in f) { const n = nomeDocumento({ ...f, ...cambi }); if (n !== f.nome_documento) cambi.nome_documento = n; }
     // l'IVA si calcola per aliquota sul totale delle righe, non riga per riga (come vuole la FatturaPA)
     if ('imposta' in f) { const imposta = contiFattura(f).imposta; if (cent(imposta) !== cent(f.imposta)) cambi.imposta = imposta; }
     if (Object.keys(cambi).length) D.modifica(db, FATTURE, f.id, cambi, null, { interno: true });

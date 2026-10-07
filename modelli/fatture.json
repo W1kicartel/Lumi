@@ -80,8 +80,7 @@
       { "id": "pagata_il", "nome": "Pagata il", "tipo": "data" },
       { "id": "causale", "nome": "Causale", "tipo": "testo_lungo" },
       { "id": "note", "nome": "Note in fattura", "tipo": "testo_lungo" },
-      { "id": "nome_documento", "nome": "Nome del documento", "tipo": "calcolato", "nascosto_in_lista": true,
-        "formula": "SE(tipo = \"TD04\"; \"Nota di credito\"; SE(tipo = \"TD05\"; \"Nota di debito\"; SE(tipo = \"TD06\"; \"Parcella\"; \"Fattura\"))) & \" \" & SE(VUOTO(numero); \"in bozza\"; numero)" } ] }
+      { "id": "nome_documento", "nome": "Nome del documento (si scrive da solo)", "tipo": "testo", "nascosto_in_lista": true } ] }
   ],
   "automazioni": [
     { "id": "fattura_pagata", "nome": "Fattura pagata: segna la data", "entita": "fatture", "quando": "campo_cambia", "campo": "stato", "a": "pagata", "se": "VUOTO(pagata_il)",
