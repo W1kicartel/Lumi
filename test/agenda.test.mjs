@@ -83,6 +83,11 @@ test('aggregati: permessi, campi nascosti e «solo i propri»', () => {
   assert.throws(() => aggrega(db, { entita: 'appuntamenti', misura: 'conta', filtri: [{ campo: 'prezzo', op: '>', valore: 0 }] }, io), D.ErroreDati);
   assert.throws(() => aggrega(db, { entita: 'servizi', misura: 'conta' }, io), P.ErrorePermesso);
   assert.throws(() => aggrega(db, { entita: 'appuntamenti', misura: 'boh' }, null), D.ErroreDati);
+  // «no» su un sì/no conta anche le righe dove non è mai stato impostato (NULL)
+  assert.equal(aggrega(db, { entita: 'appuntamenti', misura: 'conta', filtri: [{ campo: 'pagato', op: '=', valore: false }] }, null).totali[0], 3);
+  assert.equal(D.elenca(db, 'appuntamenti', { filtri: [{ campo: 'pagato', op: '=', valore: false }] }).totale, 3);
+  // si raggruppa solo per campi con valori ripetuti
+  assert.throws(() => aggrega(db, { entita: 'appuntamenti', misura: 'conta', per: 'quando' }, null), D.ErroreDati);
 });
 
 test('cruscotto predefinito per i tre modelli', () => {
@@ -144,8 +149,8 @@ test('API: viste salvate per me e per tutti, cruscotto, agenda e aggregati con i
     assert.equal((await chiama('POST', '/api/aggregati', { entita: 'appuntamenti', misura: 'conta' })).json.totali[0], 1);
     const cr = (await chiama('GET', '/api/cruscotto')).json;
     assert.equal(cr.puoModificare, false);
-    const incasso = cr.widget.find(w => w.titolo === 'Incassato oggi');
-    assert.ok(cr.dati[incasso.id].errore, 'il widget sui prezzi nascosti non dà numeri');
+    assert.ok(!cr.widget.some(w => w.campo === 'prezzo'), 'i widget sui prezzi nascosti non si mostrano a chi non può sistemarli');
+    assert.ok(Object.values(cr.dati).every(d => !d.errore));
     const ultime = cr.dati[cr.widget.find(w => w.tipo === 'ultime').id].voci;
     assert.ok(ultime.some(v => v.riga === ap.id)); assert.ok(ultime.every(v => v.prima === undefined && v.dopo === undefined));
     assert.equal((await chiama('PUT', '/api/cruscotto', { widget: [] })).stato, 403);
@@ -180,5 +185,18 @@ test('API: calendario su un campo «data» e permessi del calendario', async () 
     assert.ok(!cr.widget.some(w => w.entita === 'commesse'));
     assert.ok(!cr.dati[cr.widget.find(w => w.tipo === 'attenzione').id].voci.some(v => v.entita === 'commesse'));
     assert.ok(!cr.dati[cr.widget.find(w => w.tipo === 'ultime').id].voci.some(v => v.entita === 'commesse'));
+    // chi personalizza ma non vede le commesse salva il cruscotto: i widget sulle commesse non si perdono
+    esci(); await chiama('POST', '/api/accedi', { email: 't@lab.it', password: 'password-lunga' });
+    const prima = (await chiama('GET', '/api/cruscotto')).json.widget.filter(w => w.entita === 'commesse').map(w => w.id);
+    assert.ok(prima.length);
+    await chiama('PUT', '/api/ruoli/capo', { nome: 'Capo', schema: true, entita: { '*': { leggi: true }, commesse: { leggi: false } } });
+    await chiama('POST', '/api/utenti', { nome: 'Capo', email: 'c@lab.it', password: 'password-capo1', ruolo: 'capo' });
+    esci(); await chiama('POST', '/api/accedi', { email: 'c@lab.it', password: 'password-capo1' });
+    const suo = (await chiama('GET', '/api/cruscotto')).json; assert.equal(suo.puoModificare, true);
+    assert.equal((await chiama('PUT', '/api/cruscotto', { widget: suo.widget.slice(1) })).stato, 200);
+    esci(); await chiama('POST', '/api/accedi', { email: 't@lab.it', password: 'password-lunga' });
+    const dopo = (await chiama('GET', '/api/cruscotto')).json.widget.map(w => w.id);
+    for (const id of prima) assert.ok(dopo.includes(id), `widget ${id} perso`);
+    assert.ok(!dopo.includes(suo.widget[0].id));
   } finally { srv.close(); }
 });

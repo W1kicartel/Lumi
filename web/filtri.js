@@ -50,7 +50,8 @@ export function periodoLocale(nome, oggi = iso(new Date())) {
   return [oggi, oggi];
 }
 // da filtro «della persona» a filtri del server
-let io = null; get('/stato').then(s => { io = s.utente?.id; }).catch(() => {});
+// «io» serve per i filtri «utente = io»: chi risolve aspetta prima «pronto» (altrimenti «io» varrebbe null = «nessuno»)
+let io = null; export const pronto = get('/stato').then(s => { io = s.utente?.id; }).catch(() => {});
 export function risolvi(def, filtri) {
   return filtri.flatMap(f => {
     const c = campoDi(def, f.campo); if (!c) return [];

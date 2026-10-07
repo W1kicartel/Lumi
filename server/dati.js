@@ -171,6 +171,7 @@ export function elenca(db, entita, { filtri = [], cerca = '', ordina = [], pagin
       default:
         if (!OP[f.op || '=']) throw new ErroreDati(`Operatore sconosciuto «${f.op}»`);
         if ((f.op || '=') === '=' && f.valore == null) where.push(`${col} IS NULL`);
+        else if ((f.op || '=') === '=' && c?.tipo === 'si_no' && !val(f.valore)) where.push(`(${col} = 0 OR ${col} IS NULL)`);   // «no» = falso o mai impostato
         else { where.push(`${col} ${OP[f.op || '=']} ?`); par.push(val(f.valore)); }
     }
   }
@@ -206,7 +207,7 @@ export function elenca(db, entita, { filtri = [], cerca = '', ordina = [], pagin
 function confrontaFiltro(v, f) {
   const x = v, y = f.valore;
   switch (f.op || '=') {
-    case '=': return x == y; case '!=': case '<>': return x != y;
+    case '=': return y === false ? !x : x == y; case '!=': case '<>': return x != y;
     case '<': return x < y; case '<=': return x <= y; case '>': return x > y; case '>=': return x >= y;
     case 'vuoto': return x == null || x === ''; case 'nonvuoto': return !(x == null || x === '');
     case 'contiene': return String(x ?? '').toLowerCase().includes(String(y).toLowerCase());

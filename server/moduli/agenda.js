@@ -102,14 +102,17 @@ export default function registra({ r, db, S, D, P, serve, ErroreHttp }) {
   }));
   r('GET', '/api/cruscotto', ({ ctx }) => {
     serve(ctx); const c = leggiCruscotto(), dati = calcolaTutti(c.widget, ctx);
-    // i widget su entità che l'utente non può vedere non si mostrano proprio
-    const widget = c.widget.filter(w => !dati[w.id]?.negato && (!w.entita || P.puo(ctx, w.entita, 'leggi')));
-    return { nome: c.nome, widget, dati, puoModificare: P.puoSchema(ctx) };
+    // i widget su entità che l'utente non può vedere non si mostrano proprio; quelli in errore (es. su un campo che gli è
+    // nascosto) li vede solo chi può sistemarli
+    const widget = c.widget.filter(w => !dati[w.id]?.negato && (!w.entita || P.puo(ctx, w.entita, 'leggi')) && (!dati[w.id]?.errore || P.puoSchema(ctx)));
+    return { nome: c.nome, widget, dati: Object.fromEntries(widget.map(w => [w.id, dati[w.id]])), puoModificare: P.puoSchema(ctx) };
   });
   r('PUT', '/api/cruscotto', ({ ctx, corpo }) => {
     if (!P.puoSchema(serve(ctx))) throw new P.ErrorePermesso('Solo chi personalizza il gestionale cambia il cruscotto');
     const widget = (Array.isArray(corpo?.widget) ? corpo.widget : []).slice(0, 40).map(w => validaWidget(w));
-    const def = { nome: String(corpo.nome || 'Cruscotto').slice(0, 80), widget };
+    // i widget su sezioni che questa persona non vede non li ha ricevuti: restano come erano, non si perdono
+    const nonVisti = leggiCruscotto().widget.filter(w => w.entita && !P.puo(ctx, w.entita, 'leggi') && !widget.some(x => x.id === w.id));
+    const def = { nome: String(corpo.nome || 'Cruscotto').slice(0, 80), widget: [...widget, ...nonVisti] };
     db.prepare("INSERT INTO _agenda_cruscotti (id, utente, def, modificato) VALUES ('casa', NULL, ?, ?) ON CONFLICT(id) DO UPDATE SET def = excluded.def, modificato = excluded.modificato").run(JSON.stringify(def), new Date().toISOString());
     return { ok: true, widget };
   });
@@ -128,7 +131,7 @@ export default function registra({ r, db, S, D, P, serve, ErroreHttp }) {
     const ok = id => ['creato', 'modificato'].includes(id) || visibile(ctx, def, S.campo(def, id));
     const filtri = (v.filtri || []).filter(f => ok(f.campo));
     return { ...v, id: x.id, entita: x.entita, perTutti: !x.utente, mia: x.utente === ctx.utente.id, colonne: (v.colonne || []).filter(ok), filtri,
-      raggruppa: v.raggruppa && ok(v.raggruppa) ? v.raggruppa : null, incompleta: filtri.length !== (v.filtri || []).length || undefined };
+      raggruppa: v.raggruppa && ok(v.raggruppa) ? v.raggruppa : null, ordina: v.ordina && ok(v.ordina.campo) ? v.ordina : null, incompleta: filtri.length !== (v.filtri || []).length || undefined };
   };
   r('GET', '/api/viste/:e', ({ ctx, p }) => {
     serve(ctx); defLeggibile(ctx, p.e);

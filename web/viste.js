@@ -1,7 +1,7 @@
 // Le viste generiche: lista (tabella o kanban) e scheda. Tutto si genera dallo schema dell'entità.
 import { h, api, get, toast, formatta, destra, chip, ErroreApi } from './ui.js';
 import { editor, titoloDi } from './campi.js';
-import { costruttore, risolvi, apriPop, tipoDi, caricaPersone } from './filtri.js';
+import { costruttore, risolvi, apriPop, tipoDi, caricaPersone, pronto } from './filtri.js';
 
 const COLONNE_MAX = 7;
 const visibile = c => !c.archiviato && !c.nascosto_in_lista && !['righe', 'testo_lungo', 'immagine', 'file', 'indirizzo'].includes(c.tipo);
@@ -105,7 +105,8 @@ export function lista(def, contenitore, { schema, poteri = {} }) {
   const numerico = c => ['valuta', 'numero', 'durata'].includes(c.tipo) || (c.tipo === 'calcolato' && ['valuta', 'numero'].includes(tipoDi(c)));
   let giro = 0;
   async function ricarica() {
-    const mio = ++giro, fs = risolvi(def, filtri), gruppi = raggruppa && modo === 'tabella' && !archiviati;
+    const mio = ++giro; await pronto;
+    const fs = risolvi(def, filtri), gruppi = raggruppa && modo === 'tabella' && !archiviati;
     const par = new URLSearchParams({ p: gruppi ? 1 : pagina, n: modo === 'kanban' || gruppi ? 500 : 50 });
     if (q) par.set('q', q); if (archiviati) par.set('arch', '1');
     if (fs.length) par.set('f', JSON.stringify(fs));

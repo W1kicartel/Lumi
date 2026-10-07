@@ -117,6 +117,7 @@ export function aggrega(db, rich, ctx, opz = {}) {
   const campoData = rich.campoData || (perTempo || rich.periodo || rich.da ? primoCampoData(def) : null);
   if (campoData && nascosto(campoData)) throw new D.ErroreDati(`Campo sconosciuto «${campoData}»`);
   if (per && !perTempo && nascosto(per)) throw new D.ErroreDati(`Campo sconosciuto «${per}»`);
+  if (per && !perTempo && !raggruppabile(S.campo(def, per))) throw new D.ErroreDati(`Non si può raggruppare per «${S.campo(def, per).nome}»`);
   let filtri = risolviFiltri(def, rich.filtri, { adesso, fuso });
   for (const f of filtri) if (nascosto(f.campo)) throw new D.ErroreDati(`Filtro su un campo sconosciuto «${f.campo}»`);
   const pr = rich.da && rich.a ? { da: String(rich.da), a: String(rich.a) } : periodo(rich.periodo, { adesso, fuso });
@@ -162,6 +163,8 @@ export function aggrega(db, rich, ctx, opz = {}) {
   out.gruppi = elenco.map(g => ({ chiave: g.chiave, etichetta: g.etichetta, conta: g.righe.length, valori: calcolaMisure(g.righe) }));
   return out;
 }
+// si raggruppa per i campi che hanno pochi valori ripetuti (una relazione «molti» o le righe figlie non hanno senso)
+const raggruppabile = c => ['scelta', 'stato', 'utente', 'si_no', 'calcolato'].includes(c.tipo) || (c.tipo === 'relazione' && !c.molti);
 export function primoCampoData(def) { const c = S.campiAttivi(def); return (c.find(x => x.tipo === 'data_ora') || c.find(x => x.tipo === 'data'))?.id || 'creato'; }
 // una misura è in euro se il campo è una valuta, o un calcolato che usa valute (anche nelle righe figlie: SOMMA(righe.totale))
 export function isValuta(db, def, id, prof = 0) {
