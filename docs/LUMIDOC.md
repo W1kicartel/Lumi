@@ -55,7 +55,7 @@ Gli errori tornano al modello in parole: argomenti sbagliati («args.righe[0].pr
 | `fattura_controlla` | legge | Gli stessi controlli dell'esportazione FatturaPA |
 | `fattura_esporta_xml` | legge | Il file FatturaPA arriva al browser come download |
 | `fattura_stampa` | legge | La stampa in HTML: da lì «Stampa → Salva come PDF» |
-| `fatture_da_incassare` | legge | Fatture emesse non pagate, al netto di ritenuta e note di credito, scadute, per cliente |
+| `fatture_da_incassare` | legge | Fatture emesse non pagate, al netto di ritenuta, note di credito e rate già pagate, scadute, per cliente |
 | `fatture_da_pagare` | legge | Fatture ricevute da pagare, scadute, per fornitore |
 
 `crea_fatture` (generato dallo schema) lascia il posto a `fattura_nuova`. `modifica_fatture` resta, per le bozze e per segnare una fattura pagata. Su una fattura emessa la sua scheda non parte e il modello legge di proporre la nota di credito. Il blocco vero sta comunque nel motore dei dati (`fatture-regole.js`).
@@ -98,5 +98,5 @@ In `test/prova-lumi-documenti.test.mjs` il vecchio todo sulla scheda ora passa.
 ## Cosa manca
 
 - **Mandare la fattura** (email/PEC/SDI): non c'è ancora un connettore di posta. Lumi lo dice e propone di salvare il file.
-- Nelle **fatture da incassare** le rate già pagate di una fattura pagata solo in parte non si tolgono.
+- Nelle **fatture da incassare**, oltre 500 fatture aperte le rate già pagate non si tolgono (lo strumento lo dice).
 - **Ritenuta e cassa** si deducono dalla storia, non da un'impostazione dell'azienda: la prima fattura con la ritenuta va detta a parole.

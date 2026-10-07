@@ -137,13 +137,14 @@ export default function registra({ db, S, D, P, meta, lumi }) {
     const f = { tipo: a.tipo || 'TD01', cliente: cl.id, data: a.data || giornoDi(new Date()), righe };
     if (a.scadenza) f.scadenza = a.scadenza;
     if (a.causale) f.causale = String(a.causale).slice(0, 2000);
-    // ritenuta e cassa: dette dalla persona, altrimenti come nelle fatture già emesse; la ritenuta mai per il forfettario né verso
-    // un privato (un consumatore non è sostituto d'imposta: art. 25 DPR 600/73)
+    // ritenuta e cassa: dette dalla persona, altrimenti come nelle fatture già emesse. La ritenuta non si deduce mai verso un
+    // privato (un consumatore non è sostituto d'imposta: art. 25 DPR 600/73) e non c'è mai nel forfettario
     const prima = storico(ctx, cl);
-    let pct = typeof a.ritenuta === 'number' && a.ritenuta > 0 ? a.ritenuta : null, dedotta = false;
-    if (a.ritenuta === true) { pct = Number(prima?.ritenuta) || null; if (!pct) throw new Problema('Di quanto è la ritenuta d\'acconto? Chiedilo alla persona (per un professionista di solito è il 20%).'); }
-    else if (a.ritenuta == null && !forf && !fc.privato && Number(prima?.ritenuta)) { pct = Number(prima.ritenuta); dedotta = true; }
-    if (pct && forf) { pct = null; avvisi.push(c(l, 'av-no-ritenuta')); }
+    let pct = null, dedotta = false;
+    if (forf) { if (a.ritenuta) avvisi.push(c(l, 'av-no-ritenuta')); }
+    else if (typeof a.ritenuta === 'number' && a.ritenuta > 0) pct = a.ritenuta;
+    else if (a.ritenuta === true) { pct = Number(prima?.ritenuta) || null; if (!pct) throw new Problema('Di quanto è la ritenuta d\'acconto? Chiedilo alla persona (per un professionista di solito è il 20%).'); }
+    else if (a.ritenuta == null && !fc.privato && Number(prima?.ritenuta)) { pct = Number(prima.ritenuta); dedotta = true; }
     if (pct) {
       // il tipo dipende da chi emette: persona fisica (codice fiscale di 16 caratteri) RT01, società RT02 (TipoRitenutaType, XSD 1.2.2)
       const tipoDa = String(az.codice_fiscale || '').length === 16 ? 'RT01' : pivaValida(az.codice_fiscale || '').valore ? 'RT02' : 'RT01';
@@ -323,7 +324,14 @@ export default function registra({ db, S, D, P, meta, lumi }) {
     esegui: prova(async ({ ctx, args }) => {
       const filtri = [{ campo: 'stato', op: 'in', valore: ['emessa', 'inviata'] }];
       if (args.cliente) filtri.push({ campo: 'cliente', op: '=', valore: trovaCliente(ctx, args.cliente).id });
-      return { ...riassumi(aperte(ctx, FATTURE, filtri), 'cliente', x => (STORNI.includes(x.tipo) ? -1 : 1)), nota: 'le rate già pagate di una fattura non pagata del tutto non sono tolte' };
+      // le rate già segnate pagate di una fattura pagata solo in parte si tolgono (fino a 500 fatture aperte, poi si dice)
+      const righe = aperte(ctx, FATTURE, filtri), rate = campo(sezione(FATTURE), 'rate');
+      if (rate && righe.length <= 500) for (const x of righe) {
+        let r; try { r = D.leggi(db, FATTURE, x.id, ctx).rate || []; } catch { r = []; }
+        const pagato = r.filter(y => y.pagata).reduce((t, y) => t + (Number(y.importo) || 0), 0);
+        if (pagato) x.netto = c2((Number(x.netto ?? x.totale) || 0) - pagato);
+      }
+      return { ...riassumi(righe, 'cliente', x => (STORNI.includes(x.tipo) ? -1 : 1)), ...(rate && righe.length > 500 ? { nota: 'oltre 500 fatture aperte le rate già pagate non sono tolte' } : {}) };
     }),
   });
   lumi.strumento({

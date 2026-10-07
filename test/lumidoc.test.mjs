@@ -251,6 +251,11 @@ test('«quanto mi devono i clienti?»: emesse non pagate, al netto della ritenut
   assert.ok(x.elenco.some(e => e.documento === 'Fattura 12' && e.importo === 295.8));
   assert.equal(x.per_cliente[0].cliente, 'Rossi Srl');
   assert.match(r.testo, new RegExp(`${x.totale} €`));
+  // una fattura pagata in parte (una rata segnata pagata): resta da incassare solo il resto
+  await k.api('POST', '/dati/fatture', { cliente: rossi.id, numero: '14', data: '2026-10-02', stato: 'emessa', righe: [{ descrizione: 'Assistenza', quantita: 1, prezzo: 100, aliquota: 22 }],
+    rate: [{ data: '2026-10-02', importo: 100, pagata: true }, { data: '2026-11-02', importo: 22 }] });
+  const dopo = await (await genera(k)).lista.find(s => s.nome === 'fatture_da_incassare').leggi({ cliente: 'Rossi Srl' });
+  assert.equal(dopo.elenco.find(e => e.documento === 'Fattura 14').importo, 22);
   // e i fornitori: nessuna fattura ricevuta da pagare
   assert.deepEqual((await (await genera(k)).lista.find(s => s.nome === 'fatture_da_pagare').leggi({})).totale, 0);
 });
