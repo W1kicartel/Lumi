@@ -4,16 +4,17 @@
 // così una vista salvata «questo mese» resta questo mese anche il mese prossimo.
 import { h, get, chip } from './ui.js';
 import { editor } from './campi.js';
+import { t, data as dataLingua, leggiNumero } from './lingua.js';
 
 // il foglio di stile del costruttore e dei popover, una volta sola
 if (!document.querySelector('link[href="/filtri.css"]')) document.head.append(h('link', { rel: 'stylesheet', href: '/filtri.css' }));
 
 const TESTI = ['testo', 'testo_lungo', 'email', 'telefono', 'url', 'codice_a_barre', 'contatore', 'indirizzo'];
 const NUMERI = ['numero', 'valuta', 'percentuale', 'durata'];
-export const SISTEMA = [{ id: 'creato', nome: 'Creato il', tipo: 'data_ora' }, { id: 'modificato', nome: 'Modificato il', tipo: 'data_ora' }];
-const PERIODI = { oggi: 'oggi', ieri: 'ieri', settimana: 'questa settimana', mese: 'questo mese', ultimi_7: 'ultimi 7 giorni', ultimi_30: 'ultimi 30 giorni', anno: "quest'anno" };
-const NOMI_OP = { '=': 'è', '!=': 'non è', '>': '>', '>=': '≥', '<': '<', '<=': '≤', tra: 'fra', contiene: 'contiene', inizia: 'inizia con', vuoto: 'è vuoto', nonvuoto: 'non è vuoto',
-  in: 'è uno di', periodo: '', prima: 'prima del', dopo: 'dal', vero: 'è vero', falso: 'è falso', si: 'sì', no: 'no' };
+export const SISTEMA = [{ id: 'creato', nome: t('viste.creato-il'), tipo: 'data_ora' }, { id: 'modificato', nome: t('viste.modificato-il'), tipo: 'data_ora' }];
+const PERIODI = Object.fromEntries(['oggi', 'ieri', 'settimana', 'mese', 'ultimi_7', 'ultimi_30', 'anno'].map(k => [k, t('viste.periodo-' + k)]));
+const NOMI_OP = { '=': t('viste.op-uguale'), '!=': t('viste.op-diverso'), '>': '>', '>=': '≥', '<': '<', '<=': '≤', tra: t('viste.op-tra'), contiene: t('viste.op-contiene'), inizia: t('viste.op-inizia'), vuoto: t('viste.op-vuoto'), nonvuoto: t('viste.op-nonvuoto'),
+  in: t('viste.op-in'), periodo: '', prima: t('viste.op-prima'), dopo: t('viste.op-dopo'), vero: t('viste.op-vero'), falso: t('viste.op-falso'), si: t('comune.si-min'), no: t('comune.no-min') };
 
 // un calcolato senza formato: è un sì/no se la formula è un confronto (giacenza <= soglia), un numero se fa conti
 const tipoCalcolato = c => c.formato || (/^\s*SE\s*\(/i.test(c.formula || '') ? 'testo' : /(<=|>=|<>|[<>=]|\bE\b|\bO\b|\bNON\b|\bVUOTO\b)/.test(c.formula || '') ? 'si_no' : /[-+*/]|SOMMA|MEDIA|ARROTONDA/i.test(c.formula || '') ? 'numero' : 'testo');
@@ -76,16 +77,16 @@ let persone = null;
 export const caricaPersone = () => (persone ||= get('/agenda-persone').catch(() => []));
 export function etichetta(def, f) {
   const c = campoDi(def, f.campo); if (!c) return f.campo;
-  const v = f.valore, data = x => (x ? new Date(x + 'T12:00:00').toLocaleDateString('it-IT') : '…');
+  const v = f.valore, data = x => (x ? dataLingua(x + 'T12:00:00') : '…');
   let testo;
   if (f.op === 'periodo') testo = PERIODI[v] || v;
   else if (['vuoto', 'nonvuoto', 'si', 'no', 'vero', 'falso'].includes(f.op)) testo = NOMI_OP[f.op];
-  else if (f.op === 'in') testo = (v || []).map(x => c.opzioni?.find(o => o.id === x)?.nome || x).join(' o ');
-  else if (f.op === 'tra') testo = ['data', 'data_ora'].includes(tipoDi(c)) ? `${data(v?.[0])} – ${data(v?.[1])}` : `${v?.[0]} e ${v?.[1]}`;
+  else if (f.op === 'in') testo = (v || []).map(x => c.opzioni?.find(o => o.id === x)?.nome || x).join(t('viste.o'));
+  else if (f.op === 'tra') testo = ['data', 'data_ora'].includes(tipoDi(c)) ? `${data(v?.[0])} – ${data(v?.[1])}` : t('viste.tra-e', { a: v?.[0], b: v?.[1] });
   else if (['prima', 'dopo'].includes(f.op)) testo = `${NOMI_OP[f.op]} ${data(v)}`;
-  else if (f.op === '=' && tipoDi(c) === 'utente') return `${c.nome}: ${v === '@io' ? 'io' : v?.nome ?? v}`;
-  else if (f.op === 'contiene' && tipoDi(c) === 'scelta_multipla') testo = `contiene ${c.opzioni?.find(o => o.id === v)?.nome || v}`;
-  else testo = `${NOMI_OP[f.op] || f.op} ${v === '@io' ? 'me' : v?.titolo ?? v?.nome ?? v}`;
+  else if (f.op === '=' && tipoDi(c) === 'utente') return `${c.nome}: ${v === '@io' ? t('viste.io') : v?.nome ?? v}`;
+  else if (f.op === 'contiene' && tipoDi(c) === 'scelta_multipla') testo = `${NOMI_OP.contiene} ${c.opzioni?.find(o => o.id === v)?.nome || v}`;
+  else testo = `${NOMI_OP[f.op] || f.op} ${v === '@io' ? t('viste.me') : v?.titolo ?? v?.nome ?? v}`;
   return f.op === 'in' || f.op === 'periodo' ? `${c.nome}: ${testo}` : `${c.nome} ${testo}`;
 }
 
@@ -111,23 +112,23 @@ export function costruttore(def, filtri, { cambia, schema }) {
   const barra = h('div.filtri');
   const aggiorna = () => { disegna(); cambia([...attuali]); };
   function disegna() {
-    const piu = h('button.btn.piccolo', { type: 'button', testo: '+ Filtro', on: { click: () => modifica(piu, null) } });
+    const piu = h('button.btn.piccolo', { type: 'button', testo: t('viste.piu-filtro'), on: { click: () => modifica(piu, null) } });
     barra.replaceChildren(...attuali.map((f, i) => {
-      const el = h('span.filtro', h('span.filtro-t', { testo: etichetta(def, f), title: 'Cambia il filtro', on: { click: () => modifica(el, i) } }),
-        h('button', { type: 'button', title: 'Togli', testo: '×', on: { click: () => { attuali.splice(i, 1); aggiorna(); } } }));
+      const el = h('span.filtro', h('span.filtro-t', { testo: etichetta(def, f), title: t('viste.cambia-filtro'), on: { click: () => modifica(el, i) } }),
+        h('button', { type: 'button', title: t('comune.togli'), testo: '×', on: { click: () => { attuali.splice(i, 1); aggiorna(); } } }));
       return el;
-    }), piu, ...(attuali.length > 1 ? [h('button.btn.piccolo.nudo', { type: 'button', testo: 'Togli tutti', on: { click: () => { attuali = []; aggiorna(); } } })] : []));
+    }), piu, ...(attuali.length > 1 ? [h('button.btn.piccolo.nudo', { type: 'button', testo: t('viste.togli-tutti'), on: { click: () => { attuali = []; aggiorna(); } } })] : []));
   }
   function modifica(ancora, i) {
     const f = i == null ? null : attuali[i];
     const campi = filtrabili(def);
-    const sCampo = h('select.campo', h('option', { value: '', testo: 'Scegli il campo…' }), campi.map(c => h('option', { value: c.id, testo: c.nome, selected: f?.campo === c.id })));
+    const sCampo = h('select.campo', h('option', { value: '', testo: t('viste.scegli-campo') }), campi.map(c => h('option', { value: c.id, testo: c.nome, selected: f?.campo === c.id })));
     const sOp = h('select.campo'), zonaValore = h('div.pop-valore'), err = h('div.errore-campo');
     let leggiValore = () => null;
     const disegnaOp = () => {
       const c = campoDi(def, sCampo.value); if (!c) { sOp.replaceChildren(); zonaValore.replaceChildren(); return; }
       const ops = operatori(c);
-      sOp.replaceChildren(...ops.map(o => h('option', { value: o, testo: o === 'periodo' ? 'nel periodo' : NOMI_OP[o], selected: f?.campo === c.id ? f.op === o : false })));
+      sOp.replaceChildren(...ops.map(o => h('option', { value: o, testo: o === 'periodo' ? t('viste.nel-periodo') : NOMI_OP[o], selected: f?.campo === c.id ? f.op === o : false })));
       disegnaValore();
     };
     const disegnaValore = () => {
@@ -158,12 +159,12 @@ export function costruttore(def, filtri, { cambia, schema }) {
         zonaValore.append(e); leggiValore = () => { const id = e.leggi(); return id ? { id, titolo: titolo ?? id } : undefined; }; return;
       }
       if (t === 'utente') {
-        const s = h('select.campo', h('option', { value: '@io', testo: 'Io' })); zonaValore.append(s);
+        const s = h('select.campo', h('option', { value: '@io', testo: t('viste.io-maiuscolo') })); zonaValore.append(s);
         caricaPersone().then(l => { s.append(...l.map(p => h('option', { value: p.id, testo: p.nome }))); if (v) s.value = v.id ?? v; });
         leggiValore = () => (s.value === '@io' ? '@io' : { id: s.value, nome: s.selectedOptions[0]?.textContent }); return;
       }
-      const num = NUMERI.includes(t), conv = x => (num ? Number(String(x).replace(',', '.')) : x);
-      const a = h('input.campo', { type: 'text', inputMode: num ? 'decimal' : 'text', value: (op === 'tra' ? v?.[0] : v) ?? '', placeholder: num ? '0' : 'testo' });
+      const num = NUMERI.includes(t), conv = x => (num ? leggiNumero(x) ?? NaN : x);
+      const a = h('input.campo', { type: 'text', inputMode: num ? 'decimal' : 'text', value: (op === 'tra' ? v?.[0] : v) ?? '', placeholder: num ? '0' : t('viste.testo') });
       const b = h('input.campo', { type: 'text', inputMode: 'decimal', value: v?.[1] ?? '' });
       zonaValore.append(op === 'tra' ? h('div.pop-due', a, b) : a);
       leggiValore = () => {
@@ -175,15 +176,15 @@ export function costruttore(def, filtri, { cambia, schema }) {
     sCampo.addEventListener('change', disegnaOp); sOp.addEventListener('change', disegnaValore);
     const applica = ev => {
       ev?.preventDefault();
-      if (!sCampo.value) { err.textContent = 'Scegli un campo'; return; }
+      if (!sCampo.value) { err.textContent = t('viste.scegli-un-campo'); return; }
       const op = sOp.value, valore = ['vuoto', 'nonvuoto', 'si', 'no'].includes(op) ? null : leggiValore();
-      if (valore === undefined) { err.textContent = 'Manca il valore'; return; }
+      if (valore === undefined) { err.textContent = t('viste.manca-valore'); return; }
       const nuovo = { campo: sCampo.value, op, valore };
       if (i == null) attuali.push(nuovo); else attuali[i] = nuovo;
       pop.chiudi(); aggiorna();
     };
-    const pop = apriPop(ancora, h('form', { on: { submit: applica } }, h('div.pop-titolo', i == null ? 'Nuovo filtro' : 'Cambia il filtro'),
-      sCampo, sOp, zonaValore, err, h('div.pop-azioni', h('button.btn.pieno.piccolo', { type: 'submit', testo: 'Applica' }))));
+    const pop = apriPop(ancora, h('form', { on: { submit: applica } }, h('div.pop-titolo', i == null ? t('viste.nuovo-filtro') : t('viste.cambia-filtro')),
+      sCampo, sOp, zonaValore, err, h('div.pop-azioni', h('button.btn.pieno.piccolo', { type: 'submit', testo: t('viste.applica') }))));
     if (f) disegnaOp();
   }
   disegna();

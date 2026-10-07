@@ -3,6 +3,7 @@
 // persona o per risorsa), trascina per spostare, clic su uno spazio vuoto per creare con la data già messa.
 // Il cruscotto: widget salvati nel server (numeri, grafici disegnati a mano in SVG, «cosa richiede attenzione», ultime modifiche).
 import { costruttore, risolvi, apriPop, etichetta } from '../filtri.js';
+import { locale, numero, soldi, soldiCorto, numeroCorto, giorniSettimana, primoGiorno } from '../lingua.js';
 
 let h, api, get, toast, icona;
 const prefs = (k, v) => { try { if (v === undefined) return JSON.parse(localStorage.getItem('kubo.agenda.' + k) || 'null'); localStorage.setItem('kubo.agenda.' + k, JSON.stringify(v)); } catch { return null; } };
@@ -12,9 +13,11 @@ const conData = e => !e.nascosta && e.campi.some(c => !c.archiviato && ['data', 
 const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const giorno = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
 const piu = (s, n) => { const d = giorno(s); d.setDate(d.getDate() + n); return iso(d); };
-const lunedi = s => piu(s, -((giorno(s).getDay() + 6) % 7));
+// il primo giorno della settimana secondo la lingua (lunedì in Italia, domenica negli Stati Uniti e in Brasile)
+const lunedi = s => piu(s, -((giorno(s).getDay() - primoGiorno() % 7 + 7) % 7));
 const oggi = () => iso(new Date());
-const GIORNI = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
+const SETTIMANA = giorniSettimana(), GIORNI = SETTIMANA.map(g => g.nome);   // nell'ordine della settimana della lingua
+const nomeGiorno = d => GIORNI[SETTIMANA.findIndex(g => g.dow === d.getDay())];
 const ora = m => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 const minutiDi = d => d.getHours() * 60 + d.getMinutes();
 const PX_ORA = 52, PASSO = 15;
@@ -93,9 +96,9 @@ async function calendario(contenuto, k, entita, vistaUrl) {
     strumenti.replaceChildren(...[sCampo, sCol, h('div.lista-modi', ['mese', 'settimana', 'giorno'].map(bVista))].filter(Boolean));
   }
   function disegna() {
-    const [da, a] = intervallo(), mese = giorno(centro).toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
-    etichettaPeriodo.textContent = vista === 'mese' ? mese : vista === 'giorno' ? giorno(centro).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-      : `${giorno(da).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })} – ${giorno(a).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+    const [da, a] = intervallo(), mese = giorno(centro).toLocaleDateString(locale(), { month: 'long', year: 'numeric' });
+    etichettaPeriodo.textContent = vista === 'mese' ? mese : vista === 'giorno' ? giorno(centro).toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+      : `${giorno(da).toLocaleDateString(locale(), { day: 'numeric', month: 'short' })} – ${giorno(a).toLocaleDateString(locale(), { day: 'numeric', month: 'short', year: 'numeric' })}`;
     if (dati.troncato) toast('Troppi elementi in questo periodo: ne mostro una parte', true);
     if (vista === 'mese') corpo.replaceChildren(vistaMese(da));
     else corpo.replaceChildren(vistaOre(vista === 'giorno' ? [centro] : Array.from({ length: 7 }, (_, i) => piu(da, i))));
@@ -160,7 +163,7 @@ async function calendario(contenuto, k, entita, vistaUrl) {
     let inizio = 7 * 60, fine = 21 * 60;
     if (!tuttoGiorno) for (const e of dati.eventi) { const m = minutiDi(new Date(e.inizio)); inizio = Math.min(inizio, Math.floor(m / 60) * 60); fine = Math.max(fine, Math.min(24 * 60, Math.ceil((m + e.durata) / 60) * 60)); }
     const alto = (fine - inizio) / 60 * PX_ORA;
-    const intest = colonne.map(col => h('div.ag-col-testa', { class: col.g === oggi() && !c ? 'oggi' : '' }, c ? h('b', col.nome) : [h('span', GIORNI[(giorno(col.g).getDay() + 6) % 7]), h('b', String(giorno(col.g).getDate()))]));
+    const intest = colonne.map(col => h('div.ag-col-testa', { class: col.g === oggi() && !c ? 'oggi' : '' }, c ? h('b', col.nome) : [h('span', nomeGiorno(giorno(col.g))), h('b', String(giorno(col.g).getDate()))]));
     if (tuttoGiorno) {
       return h('div.ag-ore', { stile: { '--colonne': colonne.length } }, h('div.ag-righello'), intest, h('div.ag-righello'),
         colonne.map(col => {
@@ -224,16 +227,14 @@ async function calendario(contenuto, k, entita, vistaUrl) {
 // =====================================================================================================================
 const PERIODI = { oggi: 'Oggi', settimana: 'Questa settimana', mese: 'Questo mese', anno: "Quest'anno", ultimi_7: 'Ultimi 7 giorni', ultimi_30: 'Ultimi 30 giorni', ultimi_84: 'Ultime 12 settimane', ultimi_365: 'Ultimo anno', sempre: 'Sempre' };
 const PRIMA = { oggi: 'a ieri', settimana: 'alla settimana scorsa', mese: 'al mese scorso', anno: "all'anno scorso" }, COME = { oggi: 'ieri', settimana: 'la settimana scorsa', mese: 'il mese scorso', anno: "l'anno scorso" };
-const eur = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }), nf = new Intl.NumberFormat('it-IT', { maximumFractionDigits: 1 });
-const eurCorto = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', notation: 'compact', maximumFractionDigits: 1 }), nfCorto = new Intl.NumberFormat('it-IT', { notation: 'compact', maximumFractionDigits: 1 });
-const valore = (v, valuta) => (v == null ? '—' : valuta ? eur.format(v) : nf.format(v));
+const valore = (v, valuta) => (v == null ? '—' : valuta ? soldi(v) : numero(v, 1));
 
 async function cruscotto(contenuto, k) {
   const saluto = (() => { const o = new Date().getHours(); return o < 13 ? 'Buongiorno' : o < 18 ? 'Buon pomeriggio' : 'Buonasera'; })();
   const griglia = h('div.cr-griglia'), azioni = h('div.cr-azioni');
   let c = null, modifica = false;
   contenuto.replaceChildren(
-    h('div.testa', h('h1', `${saluto}, ${k.stato.utente.nome.split(' ')[0]}`, h('small.cr-data', new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' }))), azioni),
+    h('div.testa', h('h1', `${saluto}, ${k.stato.utente.nome.split(' ')[0]}`, h('small.cr-data', new Date().toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long' }))), azioni),
     h('div.corpo', griglia));
   // le modifiche dei colleghi aggiornano i numeri (al massimo una volta ogni 2 secondi), finché si resta qui
   let tRic; const altrui = () => { if (modifica) return; clearTimeout(tRic); tRic = setTimeout(carica, 2000); };
@@ -340,8 +341,8 @@ function grafico(w, d) {
   const W = 640, H = 200, sx = 44, dx = 8, su = 10, giu = 24, max = Math.max(...vals, 0) || 1;
   const passo = scala(max), top = Math.ceil(max / passo) * passo, y = v => su + (H - su - giu) * (1 - v / top), larg = (W - sx - dx) / g.length;
   const ns = 'http://www.w3.org/2000/svg', s = (tag, attr = {}, ...figli) => { const e = document.createElementNS(ns, tag); for (const [a, v] of Object.entries(attr)) e.setAttribute(a, v); e.append(...figli); return e; };
-  const corto = v => (valuta ? eurCorto.format(v) : nfCorto.format(v));
-  const nomeX = k => (w.per === 'mese' ? new Date(k + '-01T12:00').toLocaleDateString('it-IT', { month: 'short' }) : w.per === 'anno' ? k : new Date(k + 'T12:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }));
+  const corto = v => (valuta ? soldiCorto(v) : numeroCorto(v));
+  const nomeX = k => (w.per === 'mese' ? new Date(k + '-01T12:00').toLocaleDateString(locale(), { month: 'short' }) : w.per === 'anno' ? k : new Date(k + 'T12:00').toLocaleDateString(locale(), { day: 'numeric', month: 'short' }));
   const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, class: 'cr-svg', role: 'img', 'aria-label': `${w.titolo}: grafico` });
   for (let v = 0; v <= top + 1e-9; v += passo) svg.append(s('line', { x1: sx, x2: W - dx, y1: y(v), y2: y(v), class: v === 0 ? 'cr-base' : 'cr-griglia-l' }), s('text', { x: sx - 6, y: y(v) + 4, 'text-anchor': 'end', class: 'cr-asse' }, corto(v)));
   const ogni = Math.ceil(g.length / 6);
@@ -396,6 +397,6 @@ function apriLista(entita, filtri = [], periodo = null) {
 function ultime(d) {
   if (!d.voci?.length) return h('div.nota', 'Ancora nessuna modifica.');
   const verbo = { crea: 'ha creato', modifica: 'ha modificato', elimina: 'ha archiviato', ripristina: 'ha ripristinato' };
-  const quando = q => { const m = Math.round((Date.now() - new Date(q)) / 6e4); return m < 1 ? 'adesso' : m < 60 ? `${m} min fa` : m < 24 * 60 ? `${Math.round(m / 60)} h fa` : new Date(q).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }); };
+  const quando = q => { const m = Math.round((Date.now() - new Date(q)) / 6e4); return m < 1 ? 'adesso' : m < 60 ? `${m} min fa` : m < 24 * 60 ? `${Math.round(m / 60)} h fa` : new Date(q).toLocaleDateString(locale(), { day: 'numeric', month: 'short' }); };
   return h('ul.cr-ultime', d.voci.map(v => h('li', h('span', h('b', v.chi), ` ${verbo[v.tipo] || v.tipo} `, h('a', { href: `#/e/${v.entita}/${v.riga}`, testo: v.titolo || 'un elemento' }), h('span.nota', ` in ${v.nomeEntita.toLowerCase()}`)), h('span.nota', quando(v.quando)))));
 }

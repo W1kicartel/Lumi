@@ -1,6 +1,7 @@
 // Piccoli attrezzi dell'interfaccia: chiamate al server, creazione di elementi, avvisi, icone, formati.
+import { t, numero, soldi, data, dataOra } from './lingua.js';
 
-export class ErroreApi extends Error { constructor(stato, corpo) { super(corpo?.errore || `Errore ${stato}`); this.stato = stato; this.corpo = corpo || {}; } }
+export class ErroreApi extends Error { constructor(stato, corpo) { super(corpo?.errore || t('comune.errore-n', { stato })); this.stato = stato; this.corpo = corpo || {}; } }
 export async function api(metodo, percorso, corpo) {
   const r = await fetch('/api' + percorso, { method: metodo, credentials: 'same-origin',
     headers: { 'X-Kubo': '1', ...(corpo !== undefined ? { 'Content-Type': 'application/json' } : {}) }, body: corpo !== undefined ? JSON.stringify(corpo) : undefined });
@@ -62,19 +63,19 @@ export function icona(nome) {
 export const NOMI_ICONE = Object.keys(TRATTI);
 
 // formati
-const eur = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }), nf = new Intl.NumberFormat('it-IT', { maximumFractionDigits: 2 });
+// numeri, valuta dell'azienda e date nel formato della lingua (lingua.js)
 export const COLORI = ['grigio', 'verde', 'rosso', 'blu', 'giallo', 'viola'];
 export function chip(o) { return h('span.chip', { stile: { '--c': `var(--${o?.colore || 'grigio'})` }, testo: o?.nome ?? '' }); }
 export function formatta(c, v) {
   if (v == null || v === '' || (Array.isArray(v) && !v.length)) return '';
   const tipo = c.tipo === 'calcolato' ? c.formato || (typeof v === 'boolean' ? 'si_no' : typeof v === 'number' ? 'numero' : 'testo') : c.tipo;
   switch (tipo) {
-    case 'valuta': return eur.format(v);
-    case 'numero': case 'durata': return nf.format(v);
-    case 'percentuale': return nf.format(v) + '%';
-    case 'si_no': return v ? 'Sì' : 'No';
-    case 'data': return new Date(v + 'T00:00:00').toLocaleDateString('it-IT');
-    case 'data_ora': return new Date(v).toLocaleString('it-IT', { dateStyle: 'short', timeStyle: 'short' });
+    case 'valuta': return soldi(v);
+    case 'numero': case 'durata': return numero(v);
+    case 'percentuale': return t('comune.percento', { n: numero(v) });
+    case 'si_no': return v ? t('comune.si') : t('comune.no');
+    case 'data': return data(v);
+    case 'data_ora': return dataOra(v);
     case 'scelta': case 'stato': return chip(c.opzioni?.find(o => o.id === v) || { nome: v });
     case 'scelta_multipla': return h('span', v.map(x => chip(c.opzioni?.find(o => o.id === x) || { nome: x })));
     case 'relazione': return Array.isArray(v) ? v.map(x => x.titolo).join(', ') : v.titolo ?? v;

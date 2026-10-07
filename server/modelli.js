@@ -17,8 +17,10 @@ export function leggi(id) {
   if (!/^[a-z0-9_-]+$/.test(id)) throw new Error('Modello sconosciuto');
   return JSON.parse(readFileSync(join(CARTELLA, id + '.json'), 'utf8'));
 }
+// chi adatta un modello prima di installarlo (le lingue: server/moduli/lingue.js traduce i nomi): f(modello, db) → modello
+export const ritocchi = [];
 export function installa(db, id, { utente = null } = {}) {
-  const m = leggi(id);
+  let m = leggi(id); for (const f of ritocchi) m = f(m, db) || m;
   return transazione(db, () => {
     const nuove = m.entita.filter(e => !S.leggi(db, e.id));
     S.applicaTutte(db, nuove, { utente });

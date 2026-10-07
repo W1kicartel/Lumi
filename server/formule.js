@@ -8,7 +8,8 @@ export class ErroreFormula extends Error {
   constructor(messaggio, pos) { super(messaggio); this.pos = pos; }
 }
 
-const PAROLE = { E: 'and', AND: 'and', O: 'or', OR: 'or', NON: 'not', NOT: 'not', VERO: true, TRUE: true, FALSO: false, FALSE: false };
+const PAROLE = { E: 'and', AND: 'and', O: 'or', OR: 'or', NON: 'not', NOT: 'not', VERO: true, TRUE: true, FALSO: false, FALSE: false,
+  VERDADERO: true, VRAI: true, FAUX: false, WAHR: true, FALSCH: false, VERDADEIRO: true };   // vero e falso nelle altre lingue
 
 function tokenizza(s) {
   const t = []; let i = 0;
@@ -63,7 +64,7 @@ export function analizza(sorgente) {
         prendi(); const arg = [];
         if (vedi().k !== ')') { do { arg.push(espr(0)); } while (vedi().k === 'sep' && prendi()); }
         atteso(')');
-        const f = x.v.toUpperCase(); if (!(f in FUNZIONI)) throw new ErroreFormula(`Funzione sconosciuta ${x.v}`, x.pos);
+        const su = x.v.toUpperCase(), f = CANONICO[su] || su; if (!(f in FUNZIONI)) throw new ErroreFormula(`Funzione sconosciuta ${x.v}`, x.pos);
         return { t: 'fn', f, arg, pos: x.pos };
       }
       return { t: 'nome', v: x.v, pos: x.pos };
@@ -124,6 +125,22 @@ Object.assign(FUNZIONI, { SUM: FUNZIONI.SOMMA, AVERAGE: FUNZIONI.MEDIA, COUNT: F
   ROUND: FUNZIONI.ARROTONDA, ABS: FUNZIONI.ASS, CONCAT: FUNZIONI.CONCATENA, UPPER: FUNZIONI.MAIUSCOLO, LOWER: FUNZIONI.MINUSCOLO,
   LEN: FUNZIONI.LUNGHEZZA, TODAY: FUNZIONI.OGGI, NOW: FUNZIONI.ADESSO, DAYS: FUNZIONI.GIORNI, ADDDAYS: FUNZIONI.AGGIUNGIGIORNI,
   YEAR: FUNZIONI.ANNO, MONTH: FUNZIONI.MESE });
+// …e con i nomi di Excel in spagnolo, francese, tedesco e portoghese (del Brasile): ogni nome diventa quello italiano già
+// nell'analisi, così SE/IF/SI/WENN restano pigri allo stesso modo. Con o senza accenti (DÍAS e DIAS).
+export const ALTRI_NOMI = {
+  SOMMA: ['SUMA', 'SOMME', 'SUMME', 'SOMA'], MEDIA: ['PROMEDIO', 'MOYENNE', 'MITTELWERT', 'MÉDIA'],
+  CONTA: ['CONTAR', 'CONTARA', 'NB', 'NBVAL', 'ANZAHL', 'ANZAHL2', 'CONT.VALORES', 'CONT.NÚM'],
+  SE: ['SI', 'WENN'], VUOTO: ['ESBLANCO', 'ESTVIDE', 'ISTLEER', 'ÉCÉL.VAZIA'],
+  ARROTONDA: ['REDONDEAR', 'ARRONDI', 'RUNDEN', 'ARRED'], CONCATENA: ['CONCATENAR', 'CONCATENER', 'VERKETTEN'],
+  MAIUSCOLO: ['MAYUSC', 'MAJUSCULE', 'GROSS', 'MAIÚSCULA'], MINUSCOLO: ['MINUSC', 'MINUSCULE', 'KLEIN', 'MINÚSCULA'],
+  LUNGHEZZA: ['LARGO', 'NBCAR', 'LÄNGE', 'NÚM.CARACT'], OGGI: ['HOY', 'AUJOURDHUI', "AUJOURD'HUI", 'HEUTE', 'HOJE'],
+  ADESSO: ['AHORA', 'MAINTENANT', 'JETZT', 'AGORA'], GIORNI: ['DÍAS', 'JOURS', 'TAGE', 'DIAS'],
+  AGGIUNGIGIORNI: ['SUMARDIAS', 'AJOUTERJOURS', 'TAGEADDIEREN', 'SOMARDIAS'],
+  ANNO: ['AÑO', 'ANNÉE', 'JAHR', 'ANO'], MESE: ['MES', 'MOIS', 'MONAT', 'MÊS'],
+};
+const SENZA_ACCENTI = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+const CANONICO = {};
+for (const [it, altri] of Object.entries(ALTRI_NOMI)) for (const n of altri) { CANONICO[n] = it; CANONICO[SENZA_ACCENTI(n)] = it; }
 
 const verita = v => (Array.isArray(v) ? v.length > 0 : !!v && v !== '0');
 function confronta(a, b) {
