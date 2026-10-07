@@ -10,6 +10,7 @@ import { transazione, meta } from './db.js';
 const CARTELLA = join(dirname(fileURLToPath(import.meta.url)), '..', 'modelli');
 export function elenco() {
   return readdirSync(CARTELLA).filter(f => f.endsWith('.json')).map(f => JSON.parse(readFileSync(join(CARTELLA, f), 'utf8')))
+    .sort((a, b) => (a.ordine ?? 0) - (b.ordine ?? 0))   // «ordine»: i modelli aggiuntivi (es. fatture) vanno dopo quelli di settore
     .map(m => ({ id: m.id, nome: m.nome, descrizione: m.descrizione, entita: m.entita.filter(e => !e.nascosta).map(e => e.nome) }));
 }
 export function leggi(id) {
