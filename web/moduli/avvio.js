@@ -10,7 +10,7 @@ export async function primoAvvio(app) {
   foglio();
   const { domande, tipiche } = await get('/avvio/domande');
   const r = { ...tipiche.altro, settore: null }, toccate = new Set();   // le risposte; quelle toccate a mano non le cambia il settore
-  let azienda = '', squadra = [{ nome: '', email: '', ruolo: 'collaboratore' }], ruoli = [], i = -1;
+  let azienda = '', squadra = [{ nome: '', email: '', ruolo: 'collaboratore' }], ruoli = [], ruoliDi = null, i = -1;
   const account = { nome: '', email: '', password: '' };
   const passi = () => domande.filter(d => !d.se || Object.entries(d.se).every(([k, v]) => v.includes(r[k])));
   const scegli = (d, v) => {
@@ -50,8 +50,10 @@ export async function primoAvvio(app) {
   }
 
   async function persone(d) {
-    if (!ruoli.length) ruoli = await api('POST', '/avvio/piano', { risposte: r }).then(x => x.ruoli).catch(() => []);
+    // i ruoli dipendono dal settore: se si torna indietro e lo si cambia, si rileggono
+    if (ruoliDi !== r.settore) { ruoli = await api('POST', '/avvio/piano', { risposte: r }).then(x => x.ruoli).catch(() => []); ruoliDi = r.settore; }
     const tutti = [{ id: 'collaboratore', nome: 'Collaboratore (vede e modifica, non elimina)' }, ...ruoli.map(x => ({ id: x.id, nome: x.nome })), { id: 'lettura', nome: 'Solo lettura' }];
+    for (const p of squadra) if (!tutti.some(x => x.id === p.ruolo)) p.ruolo = 'collaboratore';
     const lista = h('div.avvio-persone');
     const riga = (p, n) => h('div.avvio-persona',
       h('input.campo', { placeholder: 'Nome', value: p.nome, 'aria-label': 'Nome', on: { input: ev => { p.nome = ev.target.value; } } }),
