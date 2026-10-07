@@ -29,7 +29,7 @@ export function creaServer(db) {
 
   function ctxDi(req) {
     const auth = req.headers.authorization || '';
-    const token = auth.startsWith('Bearer ') ? auth.slice(7) : (req.headers.cookie || '').split(/;\s*/).find(x => x.startsWith('kubo='))?.slice(7);
+    const token = auth.startsWith('Bearer ') ? auth.slice(7) : (req.headers.cookie || '').split(/;\s*/).find(x => x.startsWith('kubo='))?.slice(5);
     return { token, ctx: U.contesto(db, token) };
   }
   const serve = ctx => { if (!ctx) throw new ErroreHttp(401, 'Accedi per continuare'); return ctx; };
