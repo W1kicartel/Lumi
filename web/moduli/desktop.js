@@ -84,7 +84,7 @@ async function paginaBackup(contenuto, k) {
   function elenco() {
     if (!s.elenco.length) return h('div.vuoto', 'Nessun backup ancora. Il primo arriva da solo entro pochi minuti, oppure fallo adesso.');
     return h('div.desktop-scorri', h('table.tabella.desktop-tabella', h('thead', h('tr', h('th', 'Quando'), h('th', 'Tipo'), h('th', 'Dimensione'), h('th', ''))),
-      h('tbody', s.elenco.map(b => h('tr', h('td', { testo: quando(b.quando), title: b.nome }), h('td', { testo: TIPI[b.tipo] || b.tipo }), h('td', { testo: peso(b.dimensione) }),
+      h('tbody', s.elenco.map(b => h('tr', h('td', { testo: quando(b.quando), title: b.nome }), h('td', { testo: (TIPI[b.tipo] || b.tipo) + (b.accanto ? ' · accanto ai dati' : '') }), h('td', { testo: peso(b.dimensione) }),
         h('td.desktop-azioni-riga', h('a.btn.piccolo.nudo', { href: `/api/backup/file/${encodeURIComponent(b.nome)}`, download: b.nome }, 'Scarica'),
           h('button.btn.piccolo', { type: 'button', on: { click: () => ripristina(b) } }, 'Ripristina'),
           h('button.btn.piccolo.nudo.elimina', { type: 'button', title: 'Elimina questo backup', 'aria-label': 'Elimina questo backup', on: { click: () => elimina(b) } }, '×')))))));
