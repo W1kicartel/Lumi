@@ -47,7 +47,7 @@ Dopo l'emissione cambiano solo:
 - le note interne;
 - le rate segnate come pagate.
 
-Tutto il resto si rifiuta con «La fattura N è emessa: non si modifica più. Correggila con una nota di credito o di debito.»: righe, prezzi, cliente, numero, data, tipo, ritenuta. Il rifiuto vale anche per le righe, le rate e i DDT scritti da soli, cioè dalle API delle sezioni nascoste.
+Tutto il resto si rifiuta con «La fattura N è emessa: non si modifica più. Correggila con una nota di credito o di debito.»: righe, prezzi, cliente, numero, data, tipo, ritenuta. Il rifiuto vale anche per le righe, le rate e i DDT scritti da soli: dalle API delle sezioni nascoste, dall'import da file, spostando una riga su un'altra fattura o ripristinandone una archiviata.
 
 Una fattura emessa **non si elimina**, perché lascerebbe un buco nella numerazione. Si storna con la nota di credito.
 
@@ -84,7 +84,7 @@ La firma digitale che la PA pretende non la mette Kubo: il file si firma con lo 
 
 ## Fatture ricevute
 
-Nella pagina **Fatture elettroniche → Ricevute** si trascinano i file scaricati dal cassetto fiscale o dalla PEC: `.xml` e `.xml.p7m`. Si chiama con `POST /api/fatture/ricevute { nome, dati (base64) }`.
+Nella pagina **Fatture elettroniche → Ricevute** si trascinano i file scaricati dal cassetto fiscale o dalla PEC: `.xml` e `.xml.p7m`. Si chiama con `POST /api/fatture/ricevute { nome, dati (base64) }`. Un file entra fino a 3,5 MB: il server accetta richieste fino a 5 MB e il base64 pesa un terzo in più.
 
 - **La busta `.p7m`** (CMS SignedData) si apre con un lettore ASN.1 di poche righe, in `fatture-p7m.js`. Legge:
   - lunghezze definite e indefinite;
@@ -129,7 +129,9 @@ All'avvio, a chi può personalizzare, l'interfaccia chiede se aggiungere i campi
 - sezioni e campi mancanti;
 - opzioni mancanti;
 - il prezzo delle righe passa da centesimi a euro con 8 decimali, e i valori si convertono;
-- la ritenuta diventa un campo vero: le fatture già emesse tengono l'importo con cui sono uscite.
+- la ritenuta diventa un campo vero: le fatture già emesse tengono l'importo con cui sono uscite;
+- le sezioni nuove (DDT, fornitori, fatture ricevute) entrano insieme, con l'automazione della data di pagamento;
+- prima il bollo non entrava nei totali: le fatture già emesse col bollo prendono «Il bollo lo paghi tu» e il totale resta quello di allora. Le bozze seguono la regola nuova (bollo addebitato al cliente).
 
 I fornitori dei modelli di settore (negozio, officina, ristorante) prendono via, CAP, comune, nazione e PEC.
 
