@@ -75,6 +75,7 @@ export default function registra({ r, db, S, D, P, meta, serve, ErroreHttp }) {
   // fatture
   r('POST', '/api/documenti/prepara', ({ ctx }) => { puoImpostare(ctx); return { aggiunti: completaClienti(db, S) }; });
   r('POST', '/api/documenti/fattura-da/:e/:id', ({ ctx, p }) => fatturaDa(db, { S, D, P, meta, ErroreHttp }, p.e, p.id, serve(ctx)));
+  r('POST', '/api/documenti/nota-di-credito/:id', ({ ctx, p }) => notaDiCredito(db, { S, D, P, ErroreHttp }, p.id, serve(ctx)));
   r('GET', '/api/documenti/fatturapa/:id', ({ ctx, p }) => { const { errori } = preparaXml(db, { S, D, meta }, p.id, serve(ctx)); return { errori }; });
   r('POST', '/api/documenti/fatturapa/:id', ({ ctx, p }) => {
     const { errori, az, f, cliente } = preparaXml(db, { S, D, meta }, p.id, serve(ctx));
@@ -251,11 +252,25 @@ export function fatturaDa(db, { S, D, P, meta, ErroreHttp }, e, id, ctx) {
   return D.crea(db, FATTURE, valori, ctx);
 }
 
+// la nota di credito che storna una fattura emessa: stesse righe e stesso cliente, importi positivi, fattura collegata
+export function notaDiCredito(db, { S, D, P, ErroreHttp }, id, ctx) {
+  P.verifica(ctx, FATTURE, 'crea');
+  const f = D.leggi(db, FATTURE, id, ctx), fdef = S.leggi(db, FATTURE);
+  if (!f.numero || f.stato === 'bozza') throw new ErroreHttp(400, 'Si storna solo una fattura emessa: questa è ancora in bozza');
+  if (f.tipo === 'TD04') throw new ErroreHttp(400, 'È già una nota di credito');
+  const valori = { tipo: 'TD04', cliente: f.cliente?.id ?? null, collegata: f.id, riferimento: `Storno della fattura ${f.numero} del ${String(f.data).split('-').reverse().join('/')}`,
+    ritenuta: f.ritenuta, ritenuta_tipo: f.ritenuta_tipo, ritenuta_causale: f.ritenuta_causale, bollo: f.bollo, modalita: f.modalita,
+    righe: (f.righe || []).map(r => ({ descrizione: r.descrizione, quantita: r.quantita, prezzo: r.prezzo, sconto: r.sconto, aliquota: r.aliquota, natura: r.natura })) };
+  for (const k of Object.keys(valori)) if (!S.campo(fdef, k) || S.campo(fdef, k).archiviato) delete valori[k];
+  return D.crea(db, FATTURE, valori, ctx);
+}
+
 function preparaXml(db, { S, D, meta }, id, ctx) {
   completaClienti(db, S);
   const f = D.leggi(db, FATTURE, id, ctx), az = azienda(db, meta);
   const fdef = S.leggi(db, FATTURE), entCliente = S.campo(fdef, 'cliente').entita;
   let cliente = {};
   if (f.cliente?.id) { try { cliente = D.leggi(db, entCliente, f.cliente.id, ctx, { conRighe: false }); } catch { cliente = {}; } }
+  if (f.collegata?.id) { try { const c = D.leggi(db, FATTURE, f.collegata.id, ctx, { conRighe: false }); f.collegata_dati = { numero: c.numero, data: c.data }; } catch { /* non visibile: si esporta senza */ } }
   return { errori: controlla(az, f, cliente), az, f, cliente };
 }

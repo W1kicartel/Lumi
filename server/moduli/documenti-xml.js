@@ -119,7 +119,9 @@ export function xml(az, f, cliente, { progressivo = '00001' } = {}) {
       ['TipoDocumento', f.tipo || 'TD01'], ['Divisa', 'EUR'], ['Data', f.data], ['Numero', testoPA(f.numero, 20)],
       se(conti.ritenuta > 0, ['DatiRitenuta', [['TipoRitenuta', f.ritenuta_tipo || 'RT01'], ['ImportoRitenuta', d2(conti.ritenuta)], ['AliquotaRitenuta', d2(f.ritenuta)], ['CausalePagamento', f.ritenuta_causale || 'A']]]),
       se(f.bollo, ['DatiBollo', [['BolloVirtuale', 'SI'], ['ImportoBollo', '2.00']]]),
-      ['ImportoTotaleDocumento', d2(conti.totale)], ...causali]]]],
+      ['ImportoTotaleDocumento', d2(conti.totale)], ...causali]],
+      // la fattura che una nota di credito storna (preparata da documenti.js con numero e data)
+      se(f.collegata_dati?.numero, ['DatiFattureCollegate', [['IdDocumento', testoPA(f.collegata_dati?.numero, 20)], se(f.collegata_dati?.data, ['Data', f.collegata_dati?.data])]])]],
     ['DatiBeniServizi', [
       ...conti.linee.map(l => ['DettaglioLinee', [['NumeroLinea', String(l.n)], ['Descrizione', testoPA(l.descrizione, 1000) || '-'], ['Quantita', qta(l.quantita)],
         ['PrezzoUnitario', d2(l.prezzo)], se(l.sconto, ['ScontoMaggiorazione', [['Tipo', l.sconto > 0 ? 'SC' : 'MG'], ['Percentuale', d2(Math.abs(l.sconto))]]]),

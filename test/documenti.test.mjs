@@ -15,7 +15,7 @@ import { pivaValida, cfValido, ibanValido } from '../server/moduli/documenti-ita
 import { totali } from '../server/moduli/documenti-calcoli.js';
 import { xml, controlla, testoPA } from '../server/moduli/documenti-xml.js';
 import { rendi, modelloPredefinito, singolare } from '../server/moduli/documenti-stampa.js';
-import { attivaFatture, salvaAzienda, salvaLogo, leggiLogo, stampa, completaClienti, fatturaDa } from '../server/moduli/documenti.js';
+import { attivaFatture, salvaAzienda, salvaLogo, leggiLogo, stampa, completaClienti, fatturaDa, notaDiCredito } from '../server/moduli/documenti.js';
 
 const QUI = dirname(fileURLToPath(import.meta.url));
 A.attiva(); attivaFatture(D);
@@ -220,4 +220,18 @@ test('crea fattura da un preventivo (IVA del documento) e da una commessa (una r
   assert.deepEqual(h.righe.map(r => [r.aliquota, r.natura]), [[0, 'N2.2']]); assert.equal(h.totale, 850);
   assert.ok(stampa(db, { S, D, meta }, 'fatture', h.id, null).html.includes('franchigia da IVA'));
   assert.ok(xml({ ...AZ, regime: 'RF19' }, { ...h, numero: '1', stato: 'emessa' }, { ...CLIENTE }).xml.includes('<RiferimentoNormativo>Operazione in franchigia da IVA'));
+});
+
+test('nota di credito: storna una fattura emessa e nel file XML c\'è la fattura collegata', () => {
+  const db = gestionale(); const P = { verifica() {} }, ErroreHttp = class extends Error { constructor(s, m) { super(m); } };
+  const cl = D.crea(db, 'clienti', { nome: 'Rossi' });
+  const f = D.crea(db, 'fatture', { cliente: cl.id, data: '2026-02-10', righe: [{ descrizione: 'Consulenza', prezzo: 100, aliquota: 22 }] });
+  assert.throws(() => notaDiCredito(db, { S, D, P, ErroreHttp }, f.id, null), /bozza/);
+  D.modifica(db, 'fatture', f.id, { stato: 'emessa' });
+  const nc = D.leggi(db, 'fatture', notaDiCredito(db, { S, D, P, ErroreHttp }, f.id, null).id);
+  assert.equal(nc.tipo, 'TD04'); assert.equal(nc.collegata.id, f.id); assert.equal(nc.totale, 122); assert.equal(nc.riferimento, 'Storno della fattura 1 del 10/02/2026');
+  assert.equal(nc.nome_documento, 'Nota di credito in bozza');
+  const x = xml(AZ, { ...nc, numero: '2', stato: 'emessa', collegata_dati: { numero: '1', data: '2026-02-10' } }, CLIENTE).xml;
+  assert.match(x, /<\/DatiGeneraliDocumento>\s*<DatiFattureCollegate>\s*<IdDocumento>1<\/IdDocumento>\s*<Data>2026-02-10<\/Data>/);
+  assert.match(x, /<TipoDocumento>TD04<\/TipoDocumento>/);
 });

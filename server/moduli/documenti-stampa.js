@@ -89,8 +89,6 @@ const CSS = `@font-face { font-family: Geist; src: url(/font/Geist-Variable.woff
 html, body { margin: 0; background: #fff; color: #111; font: 9.5pt/1.45 Geist, "Helvetica Neue", Arial, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 .foglio { max-width: 210mm; margin: 0 auto; padding: 12mm 14mm; }
 @media print { .foglio { padding: 0; max-width: none; } }
-@media screen and (max-width: 600px) { .foglio { padding: 6mm 5mm; } .testa, .fondo { flex-direction: column; gap: 5mm; } .doc { text-align: left; } .dettagli { margin-left: 0; } .dettagli td { padding: .6mm 4mm .6mm 0; }
-  .parti { justify-content: flex-start; } .dest { min-width: 0; max-width: none; width: 100%; } .tot { width: 100%; } table.righe th, table.righe td { padding-left: 1mm; padding-right: 1mm; } }
 .testa { display: flex; justify-content: space-between; gap: 10mm; align-items: flex-start; padding-bottom: 6mm; border-bottom: 1.5pt solid var(--c); }
 .mittente { font-size: 8.5pt; color: #444; } .mittente b { display: block; font-size: 11pt; color: #111; margin-bottom: 1mm; }
 .mittente img { display: block; max-height: 18mm; max-width: 60mm; margin-bottom: 3mm; }
@@ -110,7 +108,9 @@ table.righe tr { break-inside: avoid; } .dx { text-align: right; white-space: no
 .iva { border-collapse: collapse; font-size: 8pt; } .iva th, .iva td { padding: 1mm 4mm 1mm 0; text-align: right; } .iva th { color: #888; font-weight: 500; } .iva th:first-child, .iva td:first-child { text-align: left; }
 .tot { width: 68mm; align-self: flex-start; border-collapse: collapse; font-variant-numeric: tabular-nums; } .tot td { padding: 1.3mm 0; } .tot td:last-child { text-align: right; }
 .tot .grande td { font-size: 12.5pt; font-weight: 650; border-top: 1pt solid #111; padding-top: 2.5mm; color: var(--c); }
-.piede { margin-top: 10mm; padding-top: 3mm; border-top: .5pt solid #ddd; font-size: 7.5pt; color: #888; text-align: center; }`;
+.piede { margin-top: 10mm; padding-top: 3mm; border-top: .5pt solid #ddd; font-size: 7.5pt; color: #888; text-align: center; }
+@media screen and (max-width: 600px) { .foglio { padding: 6mm 5mm; } .testa, .fondo { flex-direction: column; gap: 5mm; } .doc { text-align: left; } .dettagli { margin-left: 0; } .dettagli td { padding: .6mm 4mm .6mm 0; }
+  .parti { justify-content: flex-start; } .dest { min-width: 0; max-width: none; width: 100%; } .tot { width: 100%; } table.righe th, table.righe td { padding-left: 1mm; padding-right: 1mm; } }`;
 
 // ctx: { azienda (testi), logo (data URL o null), dati (la pila dei segnaposto), linee, riepilogo, totali }, tutto già formattato
 export function documentoHtml(m, ctx) {

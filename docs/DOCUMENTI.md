@@ -97,6 +97,8 @@ Il modello **Fatture e fattura elettronica** (`modelli/fatture.json`) si aggiung
 - con le stesse righe: per le vendite al banco i prezzi si scorporano dall'IVA; una commessa diventa una riga sola con il suo prezzo;
 - con il riferimento al documento di partenza.
 
+**Nota di credito.** Su una fattura emessa c'è il bottone **Nota di credito**. Crea una nota (TD04) in bozza con le stesse righe e lo stesso cliente, a importi positivi, e la collega alla fattura. Nel file XML la fattura stornata finisce in `DatiFattureCollegate`, con il suo numero e la sua data.
+
 **I clienti.** Se installi il modello delle fatture accanto a un modello di settore, ai clienti si aggiungono i campi per la fattura elettronica: codice fiscale, codice destinatario, PEC, indirizzo, CAP, comune, provincia e nazione. Si aggiungono e basta: nessun valore cambia. Un vecchio campo «Partita IVA / CF» viene letto come partita IVA se ha 11 cifre e come codice fiscale se ha 16 caratteri.
 
 ## FatturaPA
@@ -138,7 +140,7 @@ Se lo SDI scarta una fattura, correggila in Kubo ed esportala di nuovo: il file 
 - Le fatture alla Pubblica Amministrazione: servono il formato FPA12, il codice ufficio di 6 caratteri, il CIG/CUP e la firma.
 - L'invio diretto allo SDI, le ricevute dentro Kubo, le fatture passive (quelle che ricevi) e la conservazione a norma.
 - Cassa previdenziale, sconti in valore, prezzi unitari con più di due decimali e il cliente persona fisica con Nome e Cognome separati: oggi tutto va in `Denominazione`, che lo SDI accetta.
-- Il blocco delle modifiche dopo l'emissione: oggi una fattura emessa si può ancora correggere. Una volta inviata, per correggerla si fa una nota di credito.
+- Il blocco delle modifiche dopo l'emissione: oggi una fattura emessa si può ancora correggere. Una volta inviata, per correggerla si fa una nota di credito (c'è il bottone).
 
 ## API
 
@@ -153,6 +155,7 @@ Tutte le chiamate vogliono l'accesso. Quelle che scrivono vogliono l'intestazion
 | `GET /api/documenti/stampa/:e/:id` | `{ titolo, html, totali }` del documento |
 | `POST /api/documenti/anteprima/:e/:id` | come sopra, con il modello passato nel corpo e non ancora salvato |
 | `POST /api/documenti/fattura-da/:e/:id` | crea una fattura in bozza dal documento |
+| `POST /api/documenti/nota-di-credito/:id` | crea la nota di credito che storna una fattura emessa |
 | `GET /api/documenti/fatturapa/:id` | `{ errori }`: i controlli prima dell'esportazione |
 | `POST /api/documenti/fatturapa/:id` | `{ nome, xml }`, oppure 422 con l'elenco di cosa manca |
 | `POST /api/documenti/prepara` | aggiunge ai clienti i campi per la fattura elettronica |

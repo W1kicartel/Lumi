@@ -221,6 +221,13 @@ export default {
         try { const n = await k.api('POST', `/documenti/fattura-da/${def.id}/${riga.id}`); k.toast('Fattura in bozza creata'); location.hash = `#/e/fatture/${n.id}`; }
         catch (e) { k.toast(e.message, true); ev.target.disabled = false; }
       } } }));
+    if (def.id === 'fatture' && def.puo?.crea && riga.numero && riga.tipo !== 'TD04' && ['emessa', 'pagata'].includes(riga.stato))
+      out.push(h('button.btn', { testo: 'Nota di credito', title: 'Storna questa fattura con una nota di credito in bozza', on: { click: async ev => {
+        if (!confirm(`Creare una nota di credito che storna la fattura ${riga.numero}?`)) return;
+        ev.target.disabled = true;
+        try { const n = await k.api('POST', `/documenti/nota-di-credito/${riga.id}`); k.toast('Nota di credito in bozza creata'); location.hash = `#/e/fatture/${n.id}`; }
+        catch (e) { k.toast(e.message, true); ev.target.disabled = false; }
+      } } }));
     if (def.id === 'fatture') out.push(h('button.btn', { testo: 'FatturaPA', title: 'Controlla e scarica il file XML per lo SDI', on: { click: () => fatturaPA(riga, k) } }));
     if (stampabile(def)) out.push(h('button.btn', { title: 'Anteprima, stampa e PDF', on: { click: () => apriStampa(def, riga, k) } }, k.icona('documento'), 'Stampa'));
     return out;

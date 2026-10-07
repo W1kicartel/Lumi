@@ -57,6 +57,7 @@
       { "id": "scadenza", "nome": "Scadenza", "tipo": "data" },
       { "id": "scaduta", "nome": "Scaduta", "tipo": "calcolato", "formula": "stato = \"emessa\" E NON VUOTO(scadenza) E scadenza < OGGI()" },
       { "id": "riferimento", "nome": "Riferimento", "tipo": "testo" },
+      { "id": "collegata", "nome": "Fattura stornata o collegata", "tipo": "relazione", "entita": "fatture" },
       { "id": "righe", "nome": "Righe", "tipo": "righe", "entita": "righe_fattura", "campo": "fattura" },
       { "id": "imponibile", "nome": "Imponibile", "tipo": "calcolato", "formula": "SOMMA(righe.totale)", "formato": "valuta" },
       { "id": "imposta", "nome": "IVA (si calcola da sola)", "tipo": "valuta" },
