@@ -1,0 +1,31 @@
+/* Connettori: catalogo e pagina generata dal manifesto (classi «conn-») */
+.conn { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; max-width: 960px; }
+.conn > * { min-width: 0; }
+.conn h2 { font-size: 15px; font-weight: 600; margin: 0 0 14px; }
+.conn-griglia { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); gap: 12px; }
+.conn-carta { display: grid; gap: 6px; align-content: start; padding: 16px; background: var(--pannello); border: 1px solid var(--linea); border-radius: var(--raggio); text-decoration: none; color: inherit; transition: border-color .15s, transform .15s; }
+.conn-carta:hover { border-color: var(--testo); transform: translateY(-1px); }
+.conn-carta p { margin: 0; color: var(--tenue); font-size: 13.5px; }
+.conn-carta-testa { display: flex; align-items: center; gap: 8px; }
+.conn-carta-testa b { flex: 1; min-width: 0; }
+.conn-spazio { flex: 1; }
+.conn-campi { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 14px 18px; margin-bottom: 14px; }
+.conn-campi label { display: grid; gap: 4px; align-content: start; min-width: 0; }
+.conn-campi .campo { width: 100%; box-sizing: border-box; }
+.conn-riga { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+.conn-valore { flex: 1 1 200px; min-width: 0; overflow-wrap: anywhere; font-size: 12.5px; padding: 7px 9px; border: 1px solid var(--linea); border-radius: 8px; background: var(--sopra); }
+.conn-salvato { color: var(--tenue); font-size: 13.5px; }
+.conn-spunta { display: flex; gap: 10px; align-items: flex-start; margin: 4px 0 14px; font-size: 13.5px; }
+.conn-spunta input { margin-top: 3px; }
+.conn-mappa { margin-bottom: 14px; } .conn-mappa > b { display: block; margin-bottom: 8px; }
+.conn-giro { display: grid; gap: 4px; padding: 10px 0; border-bottom: 1px solid var(--linea); } .conn-giro:last-child { border-bottom: 0; }
+.conn-giro .btn { justify-self: start; }
+.conn-scorri { overflow-x: auto; border-radius: var(--raggio); }
+.conn-tabella td { white-space: normal; max-width: 420px; } .conn-tabella tbody tr { cursor: default; }
+.conn-elenco { margin: 0 0 12px; padding-left: 18px; }
+.conn-somma { display: inline-block; margin-top: 6px; font-size: 12px; overflow-wrap: anywhere; }
+.conn-velo { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 16px; background: color-mix(in srgb, var(--sfondo) 78%, transparent); backdrop-filter: blur(6px); }
+.conn-finestra { width: min(480px, 100%); display: grid; gap: 12px; }
+.conn-anteprima { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 14px; margin: 0; }
+.conn-anteprima dt { color: var(--tenue); } .conn-anteprima dd { margin: 0; overflow-wrap: anywhere; }
+@media (max-width: 640px) { .conn-tabella td { max-width: 240px; } }

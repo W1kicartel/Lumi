@@ -378,7 +378,7 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
       permessi: Object.entries(man.permessi || {}).map(([sem, p]) => ({ entita: S.leggi(db, entitaDi(id, sem))?.nome || sem, ...p })),
       impostazioni: (man.impostazioni || []).map(i => ({ id: i.id, nome: tr(man, l, `imp.${i.id}`, i.nome), aiuto: tr(man, l, `aiuto.${i.id}`, i.aiuto) || null, tipo: i.tipo || 'testo', segreto: !!i.segreto,
         opzioni: i.opzioni || null, ...(i.segreto ? { salvato: salvati.has(i.id), ...(i.generato ? { valore: segreto(id, i.id), generato: true } : {}) } : { valore: imp[i.id] ?? i.predefinito ?? null }) })),
-      webhook: man.entrata ? { percorso: `/api/connettori/${id}/in${man.entrata.firma?.tipo === 'token' ? '/' + (salvati.has(man.entrata.firma.segreto) ? '…' : '') : ''}`, firma: man.entrata.firma?.tipo || 'nessuna' } : null,
+      webhook: man.entrata ? { percorso: `/api/connettori/${id}/in`, firma: man.entrata.firma?.tipo || 'nessuna' } : null,
       oauth: man.oauth ? { tipo: man.oauth.tipo || 'codice', collegato: !!tok?.access_token, scade: tok?.scade || null, rinnovo: !!tok?.refresh_token } : null,
       pubbliche: Object.keys(man.pubbliche || {}),
       giri: Object.entries(man.pianificati || {}).map(([g, d]) => ({ id: g, nome: tr(man, l, `giro.${g}`, d.nome || g), ogni: d.ogni || null, alle: d.alle || null,
@@ -395,7 +395,7 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
   r('GET', '/api/connettori/azioni', async ({ ctx, req }) => {
     serve(ctx); await pronti; const l = linguaDi(req, ctx), out = [];
     for (const [id, c] of tutti) if (attivo(id)) for (const [a, d] of Object.entries(c.man.azioni || {}))
-      if (d.su && P.puo(ctx, entitaDi(id, d.su), d.scrive ? 'modifica' : 'leggi')) out.push({ connettore: id, nomeConnettore: c.man.nome, azione: a, nome: tr(c.man, l, `az.${a}`, d.nome), su: entitaDi(id, d.su), scrive: !!d.scrive });
+      if (d.su && P.puo(ctx, entitaDi(id, d.su), d.scrive ? 'modifica' : 'leggi')) out.push({ connettore: id, nomeConnettore: c.man.nome, azione: a, nome: tr(c.man, l, `az.${a}`, d.nome), su: entitaDi(id, d.su), scrive: !!d.scrive, input: Object.keys(d.input || {}) });
     return out;
   });
   r('GET', '/api/connettori/:id', async ({ ctx, p, req }) => { titolare(ctx); await pronti; conn(p.id); return scheda(p.id, linguaDi(req, ctx), true); });
