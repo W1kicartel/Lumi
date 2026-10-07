@@ -16,7 +16,7 @@ services:
       # i backup su un disco del server, fuori dal volume (in Kubo → Backup scegli la cartella /backup-esterni)
       # - /mnt/disco-backup/kubo:/backup-esterni
     ports:
-      - "4380:4380"   # toglila se usi solo Caddy da internet
+      - "127.0.0.1:4380:4380"   # solo da questo server; da fuori si passa da Caddy
   caddy:
     image: caddy:2
     restart: unless-stopped

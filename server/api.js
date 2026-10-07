@@ -13,6 +13,7 @@ import * as M from './modelli.js';
 import * as U from './auth.js';
 import { meta } from './db.js';
 import { readdirSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
 
 // I moduli (server/moduli/*.js): ognuno esporta di default registra(k) e aggiunge le sue rotte e i suoi ascoltatori.
 // k = { r, db, S, D, P, A, M, U, meta, serve, ErroreHttp, manda }. Si caricano in ordine alfabetico. Una rotta riceve anche
@@ -27,9 +28,16 @@ const VERSIONE = '0.1.0';
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json',
   '.svg': 'image/svg+xml', '.png': 'image/png', '.woff2': 'font/woff2', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json' };
 
+// l'indirizzo di chi chiama: dietro un proxy fidato (KUBO_PROXY=1, es. Caddy) quello di X-Forwarded-For
+const indirizzo = req => (process.env.KUBO_PROXY === '1' && req.headers['x-forwarded-for'] ? String(req.headers['x-forwarded-for']).split(',')[0].trim() : req.socket.remoteAddress);
+const locale = ip => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(ip);
+
 class ErroreHttp extends Error { constructor(stato, m, extra = {}) { super(m); this.stato = stato; this.extra = extra; } }
 
 export function creaServer(db) {
+  // codice di avvio: finché non c'è un titolare, chi si collega da un altro computer deve conoscerlo
+  const codiceAvvio = randomBytes(4).toString('hex').toUpperCase();
+  if (U.quanti(db) === 0 && process.env.NODE_ENV !== 'test') console.log(`Primo avvio da un altro computer: codice ${codiceAvvio}`);
   const clienti = new Set();   // connessioni SSE: { res, ctx }
   const manda = (ev) => { for (const c of clienti) if (!ev.entita || P.puo(c.ctx, ev.entita, 'leggi')) c.res.write(`data: ${JSON.stringify(ev)}\n\n`); };
   D.ascolta((ev, _db, ctx) => { if (!ev.interno) manda({ tipo: ev.tipo, entita: ev.entita, id: ev.id, da: ctx?.utente?.id ?? null }); });
@@ -57,11 +65,13 @@ export function creaServer(db) {
   // «prima»: un modulo può agire prima di una rotta di un altro (es. il backup prima di cambiare lo schema o di un import)
   const ganci = [], prima = (metodo, percorso, f) => ganci.push({ metodo, re: new RegExp('^' + percorso.replace(/:(\w+)/g, '[^/]+') + '$'), f });
 
-  r('GET', '/api/stato', ({ ctx }) => ({ versione: VERSIONE, configurato: U.quanti(db) > 0, azienda: meta.leggi(db, 'azienda'), utente: ctx?.utente ?? null,
+  r('GET', '/api/stato', ({ ctx, ip }) => ({ versione: VERSIONE, configurato: U.quanti(db) > 0, serveCodice: U.quanti(db) === 0 && !locale(ip), azienda: meta.leggi(db, 'azienda'), utente: ctx?.utente ?? null,
     poteri: ctx ? { schema: P.puoSchema(ctx), utenti: P.puoUtenti(ctx) } : null, modelli: JSON.parse(meta.leggi(db, 'modelli') || '[]') }));
   r('GET', '/api/modelli', () => M.elenco());
-  r('POST', '/api/configura', ({ corpo, risposta }) => {
+  r('POST', '/api/configura', ({ corpo, risposta, ip }) => {
     if (U.quanti(db) > 0) throw new ErroreHttp(409, 'Già configurato');
+    // il primo avvio (chi lo fa diventa titolare): da questo computer, oppure da fuori con il codice stampato nel log (Docker, VPS)
+    if (!locale(ip) && String(corpo.codice || '').trim().toUpperCase() !== codiceAvvio) throw new ErroreHttp(403, 'Serve il codice di avvio: lo trovi nel terminale o nel log di Kubo');
     const { azienda, nome, email, password, modelli = [] } = corpo;
     if (!azienda) throw new ErroreHttp(400, 'Manca il nome dell\'azienda');
     U.creaUtente(db, { nome, email, password, ruolo: 'titolare' });
@@ -161,7 +171,7 @@ export function creaServer(db) {
       if (!rotta) throw new ErroreHttp(404, 'Non trovato');
       const p = Object.fromEntries(Object.entries(percorso.match(rotta.re).groups || {}).map(([k, v]) => [k, decodeURIComponent(v)]));
       for (const g of ganci) if (g.metodo === req.method && g.re.test(percorso)) await g.f({ ctx, percorso, corpo });
-      const out = await rotta.f({ req, res, ctx, token, p, q: url.searchParams, corpo, risposta, ip: req.socket.remoteAddress });
+      const out = await rotta.f({ req, res, ctx, token, p, q: url.searchParams, corpo, risposta, ip: indirizzo(req) });
       if (res.headersSent) return;   // la rotta ha già risposto da sé (streaming di Lumi, file, scaricamenti)
       res.writeHead(200, risposta.intestazioni).end(JSON.stringify(out ?? null));
     } catch (e) {

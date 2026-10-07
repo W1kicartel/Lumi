@@ -31,14 +31,16 @@ async function primoAvvio() {
   const modelli = await get('/modelli');
   const f = Object.fromEntries(['azienda', 'nome', 'email', 'password'].map(k => [k, h('input.campo', { name: k, type: k === 'password' ? 'password' : k === 'email' ? 'email' : 'text', required: true, minLength: k === 'password' ? 8 : undefined, autocomplete: k === 'password' ? 'new-password' : undefined })]));
   const err = h('div');
+  const codice = stato.serveCodice ? h('input.campo.mono', { name: 'codice', required: true, autocomplete: 'off', placeholder: 'es. 3FA9C2D1' }) : null;
   const form = h('form.scatola', { on: { submit: async ev => {
     ev.preventDefault(); err.replaceChildren();
     const scelti = [...form.querySelectorAll('input[name=modello]:checked')].map(x => x.value);
-    try { await api('POST', '/configura', { azienda: f.azienda.value, nome: f.nome.value, email: f.email.value, password: f.password.value, modelli: scelti }); location.hash = ''; location.reload(); }
+    try { await api('POST', '/configura', { azienda: f.azienda.value, nome: f.nome.value, email: f.email.value, password: f.password.value, modelli: scelti, codice: codice?.value }); location.hash = ''; location.reload(); }
     catch (e) { err.replaceChildren(h('div.avviso', e.message)); }
   } } },
     h('h1', 'Benvenuto in Kubo'), h('p', 'Il gestionale che si monta come vuoi tu. Parti da un modello, poi cambia tutto quello che vuoi.'),
-    err, h('div.riga', h('label.etichetta', 'Nome dell\'azienda'), f.azienda),
+    err, codice ? h('div.riga', h('label.etichetta', 'Codice di avvio (è scritto nel terminale o nel log dove gira Kubo)'), codice) : null,
+    h('div.riga', h('label.etichetta', 'Nome dell\'azienda'), f.azienda),
     h('div.riga', h('label.etichetta', 'Il tuo nome'), f.nome), h('div.riga', h('label.etichetta', 'Email'), f.email),
     h('div.riga', h('label.etichetta', 'Password (almeno 8 caratteri)'), f.password),
     h('label.etichetta', 'Da dove partiamo? (se ne possono aggiungere altri dopo)'),
