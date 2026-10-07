@@ -204,7 +204,8 @@ export default function registra({ r, db, S, D, P, serve, ErroreHttp, manda }) {
       // chi trova lo zip non deve poter entrare con le sessioni aperte né riprendere i caricamenti a metà
       { const c = new DatabaseSync(copia); c.exec('DELETE FROM _sessioni; DROP TABLE IF EXISTS _import_caricamenti; VACUUM'); c.close(); }
       const allegati = fileDaSalvare(db), peso = allegati.reduce((s, f) => s + f.dimensione, 0), conAllegati = peso <= 1024 * 1024 * 1024;
-      const ora = new Date(), nome = `kubo-backup-${ora.toISOString().slice(0, 16).replace(/[T:]/g, '-')}.zip`;
+      const ora = new Date(), d = n => String(n).padStart(2, '0');   // nel nome l'ora di qui, non quella UTC
+      const nome = `kubo-backup-${ora.getFullYear()}-${d(ora.getMonth() + 1)}-${d(ora.getDate())}-${d(ora.getHours())}-${d(ora.getMinutes())}.zip`;
       const zip = scriviZip([
         { nome: 'kubo.db', dati: readFileSync(copia) },
         { nome: 'LEGGIMI.txt', dati: `Backup di Kubo del ${ora.toLocaleString('it-IT')}.\r\n\r\nPer ripristinarlo: ferma Kubo, metti kubo.db${conAllegati ? ' e la cartella file' : ''} nella cartella dei dati (quella di --dati, di solito ./dati) al posto di quelli che ci sono, poi riaccendi.\r\n${conAllegati ? '' : '\r\nGli allegati superano 1 GB e non sono nello zip: copia a mano la cartella dati/file.\r\n'}` },
