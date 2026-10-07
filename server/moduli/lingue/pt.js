@@ -281,6 +281,7 @@ export default {
   'lumidoc-totale': 'Total',
   'lumidoc-ritenuta': 'Retenção na fonte {aliquota}%',
   'lumidoc-netto': 'A receber',
+  'lumidoc-netto-nota': 'Líquido a favor do cliente',
   'lumidoc-av-sdi': 'Para a fatura eletrônica: {_messaggio}',
   'lumidoc-nuova': 'Nova fatura',
   'lumidoc-in-bozza': 'Ela nasce como rascunho: confira e depois emita.',

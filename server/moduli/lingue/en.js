@@ -281,6 +281,7 @@ export default {
   'lumidoc-totale': 'Total',
   'lumidoc-ritenuta': 'Withholding tax {aliquota}%',
   'lumidoc-netto': 'To collect',
+  'lumidoc-netto-nota': 'Net credited to the customer',
   'lumidoc-av-sdi': 'For the e-invoice: {_messaggio}',
   'lumidoc-nuova': 'New invoice',
   'lumidoc-in-bozza': 'It starts as a draft: check it, then issue it.',

@@ -226,6 +226,11 @@ test('«nota di credito della fattura 12»: lo strumento dedicato, uguale al bot
   assert.equal(p.schede[0].titolo, 'Nota di credito parziale');
   assert.match(testoScheda(p.schede[0]), /Storna: fattura 12 del 30\/09\/2026/); assert.match(testoScheda(p.schede[0]), /Totale: 61,00 €/);
   assert.match(testoScheda(p.schede[0]), /Ritenuta d'acconto 20%: − 10,00 €/);
+  // uno storno negativo o a quantità zero aumenterebbe il credito invece di toglierlo: si ferma
+  const ncp = (await genera(k)).lista.find(s => s.nome === 'fattura_nota_di_credito');
+  assert.match((await ncp.proponi({ fattura: '12', righe: [{ descrizione: 'Abbuono', prezzo: -50 }] })).errore, /più di zero/);
+  assert.match((await ncp.proponi({ fattura: '12', righe: [{ n: 1, quantita: 0 }] })).errore, /più di zero/);
+  assert.match((await ncp.proponi({ fattura: '12', righe: [{ n: 1, quantita: -1 }] })).errore, /più di zero/);
   // ora la totale: supererebbe quello che resta (la parziale è già lì) → il modello lo legge
   copione = [usa('fattura_nota_di_credito', { fattura: '12' }), c => { assert.match(ultimo(c).errore, /supera quello che resta/); return dice('Della 12 resta da stornare meno del totale.'); }];
   await conversa(k, 'nota di credito della fattura 12');
@@ -234,7 +239,7 @@ test('«nota di credito della fattura 12»: lo strumento dedicato, uguale al bot
     righe: [{ descrizione: 'Consulenza', quantita: 3, prezzo: 80, aliquota: 22 }] });
   copione = [usa('fattura_nota_di_credito', { fattura: '13' }), dice('Nota di credito pronta in bozza.')];
   const r = await conversa(k, 'nota di credito della fattura 13');
-  assert.match(testoScheda(r.schede[0]), /Totale: 292,80 €/); assert.match(testoScheda(r.schede[0]), /Da incassare: 244,80 €/);
+  assert.match(testoScheda(r.schede[0]), /Totale: 292,80 €/); assert.match(testoScheda(r.schede[0]), /Netto a credito del cliente: 244,80 €/);
   const nc = await k.api('GET', `/dati/fatture/${r.traccia[0].esito.risultato.id}`), ufficiale = await k.api('POST', `/documenti/nota-di-credito/${f13.id}`);
   for (const c of ['tipo', 'totale', 'ritenuta', 'ritenuta_tipo', 'ritenuta_causale', 'imposta', 'stato']) assert.deepEqual(nc[c], ufficiale[c], c);
   assert.equal(nc.collegata.id, f13.id);
@@ -305,4 +310,15 @@ test('permessi: chi ha solo la lettura vede gli strumenti che leggono, e il serv
     const r = await k.chiama('POST', '/api/lumi/strumenti/fattura_nuova/anteprima', { args: { cliente: 'Rossi Srl', righe: [{ descrizione: 'X', prezzo: 1 }] } });
     assert.equal(r.stato, 403);
   } finally { await k.accedi('titolare@esempio.it', 'prova-kubo-1'); }
+});
+
+test('forfettario: la cassa dedotta da una fattura fatta in ordinario (IVA 22% sul contributo) qui è senza IVA', async () => {
+  await k.api('POST', '/dati/fatture', { cliente: rossi.id, numero: '90', data: new Date().toLocaleDateString('sv'), stato: 'emessa', cassa_tipo: 'TC22', cassa: 4, cassa_iva: 22,
+    righe: [{ descrizione: 'Consulenza', quantita: 1, prezzo: 100, aliquota: 22 }] });
+  await k.api('PUT', '/documenti/azienda', { ...AZIENDA, regime: 'RF19' });
+  try {
+    const p = await (await genera(k)).lista.find(s => s.nome === 'fattura_nuova').proponi({ cliente: 'Rossi Srl', righe: [{ descrizione: 'Consulenza', prezzo: 1000 }] });
+    const t = testoScheda(p);
+    assert.match(t, /Contributo cassa 4%: 40,00 €/); assert.match(t, /IVA: 0,00 €/); assert.ok(p.avvisi.some(a => /cassa del 4%/.test(a))); assert.match(t, /Totale: 1042,00 €/);
+  } finally { await k.api('PUT', '/documenti/azienda', AZIENDA); }
 });

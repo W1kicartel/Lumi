@@ -281,6 +281,7 @@ export default {
   'lumidoc-totale': 'Gesamt',
   'lumidoc-ritenuta': 'Quellensteuer {aliquota} %',
   'lumidoc-netto': 'Zu kassieren',
+  'lumidoc-netto-nota': 'Netto zugunsten des Kunden',
   'lumidoc-av-sdi': 'Für die E-Rechnung: {_messaggio}',
   'lumidoc-nuova': 'Neue Rechnung',
   'lumidoc-in-bozza': 'Sie entsteht als Entwurf: prüf sie und stell sie dann aus.',

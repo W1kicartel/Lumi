@@ -292,6 +292,7 @@ export default {
   'lumidoc-totale': 'Totale',
   'lumidoc-ritenuta': "Ritenuta d'acconto {aliquota}%",
   'lumidoc-netto': 'Da incassare',
+  'lumidoc-netto-nota': 'Netto a credito del cliente',
   'lumidoc-av-sdi': 'Per la fattura elettronica: {_messaggio}',
   'lumidoc-nuova': 'Nuova fattura',
   'lumidoc-in-bozza': 'Nasce in bozza: la controlli e poi la emetti.',

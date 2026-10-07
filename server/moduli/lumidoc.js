@@ -91,7 +91,7 @@ export default function registra({ db, S, D, P, meta, lumi }) {
     if (conti.bollo) out.push([c(l, 'bollo'), f.bollo_tuo ? c(l, 'bollo-tuo') : soldi(conti.bollo, l)]);
     out.push([c(l, 'totale'), soldi(conti.totale, l)]);
     if (conti.ritenuta) out.push([c(l, 'ritenuta', { aliquota: num(f.ritenuta, l) }), `− ${soldi(conti.ritenuta, l)}`]);
-    if (conti.netto !== conti.totale) out.push([c(l, 'netto'), soldi(conti.netto, l)]);
+    if (conti.netto !== conti.totale) out.push([c(l, STORNI.includes(f.tipo) ? 'netto-nota' : 'netto'), soldi(conti.netto, l)]);   // su una nota il netto torna al cliente
     return out;
   }
   const avvisiSdi = (errori, l) => errori.map(x => c(l, 'av-sdi', { _messaggio: traduci(x, l) }));
@@ -158,7 +158,8 @@ export default function registra({ db, S, D, P, meta, lumi }) {
       Object.assign(f, { cassa_tipo: cassa.tipo, cassa: Number(cassa.aliquota), ...(cassa.iva != null && cassa.iva !== '' ? { cassa_iva: Number(cassa.iva) } : {}) });
       if (!a.cassa) avvisi.push(c(l, 'av-cassa', { aliquota: num(cassa.aliquota, l) }));
     }
-    if (forf && f.cassa_tipo && f.cassa_iva == null) f.cassa_iva = 0;
+    // nel forfettario anche il contributo è senza IVA, anche se l'ultima fattura (fatta in ordinario) l'aveva al 22%
+    if (forf && f.cassa_tipo) f.cassa_iva = 0;
     // il bollo: dovuto se le operazioni senza IVA superano 77,47 € (documenti-calcoli.js, con la fonte); di solito lo paga il cliente
     if (contiFattura(f).serveBollo) { f.bollo = true; if (a.bollo_tuo) f.bollo_tuo = true; avvisi.push(c(l, 'av-bollo')); }
     for (const k of Object.keys(f)) if (k !== 'righe' && !campo(fdef, k)) delete f[k];
@@ -223,9 +224,13 @@ export default function registra({ db, S, D, P, meta, lumi }) {
       righe = a.righe.map(x => {
         if (x.n != null) {
           const o = righe[x.n - 1]; if (!o) throw new Problema(`La fattura ${f.numero} ha ${righe.length} righe: la riga ${x.n} non c'è.`);
-          const q = x.quantita ?? o.quantita; if (Number(q) > Number(o.quantita ?? 1)) throw new Problema(`Della riga ${x.n} si stornano al massimo ${o.quantita}.`);
+          const q = x.quantita ?? o.quantita;
+          if (!(Number(q) > 0)) throw new Problema(`La quantità da stornare della riga ${x.n} deve essere più di zero.`);
+          if (Number(q) > Number(o.quantita ?? 1)) throw new Problema(`Della riga ${x.n} si stornano al massimo ${o.quantita}.`);
           return { ...o, quantita: q };
         }
+        // uno storno è sempre un importo positivo (è la nota di credito a toglierlo): un negativo aumenterebbe il credito
+        if (!(Number(x.prezzo) > 0) || (x.quantita != null && !(Number(x.quantita) > 0))) throw new Problema('L\'importo da stornare (prezzo e quantità) deve essere più di zero: chiedi quanto stornare.');
         const aliquote = [...new Set(righe.map(r => `${Number(r.aliquota) || 0}|${r.natura || ''}`))];
         if (x.aliquota == null && aliquote.length > 1) throw new Problema(`La fattura ${f.numero} ha più aliquote IVA: chiedi su quale si fa lo storno di «${x.descrizione}».`);
         const [al, nat] = x.aliquota != null ? [Number(x.aliquota), Number(x.aliquota) ? '' : righe.find(r => !Number(r.aliquota))?.natura || ''] : aliquote[0].split('|');
