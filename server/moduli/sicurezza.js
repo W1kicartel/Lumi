@@ -72,11 +72,12 @@ export default function registra({ r, db, D, P, U, meta, serve, ErroreHttp, cont
     // 1. sessione: scade se ferma da troppo; altrimenti si segna l'ultimo uso (al massimo una scrittura al minuto)
     let nuovoCtx;
     if (token && ctx && !ctx.viaToken) {
-      const s = db.prepare('SELECT inizio, ultimo, ip FROM _sessioni WHERE token = ?').get(String(token));
+      const s = db.prepare('SELECT inizio, ultimo, ip, agente FROM _sessioni WHERE token = ?').get(String(token));
       if (s) {
         const ora = Date.now(), ultimo = Date.parse(s.ultimo || s.inizio || '') || ora;
         if (ora - ultimo > imp.inattivita() * 6e4) { U.esci(db, token); nuovoCtx = { ctx: null }; ctx = null; }
-        else if (!s.ultimo || ora - ultimo > 6e4 || s.ip !== ip) db.prepare('UPDATE _sessioni SET inizio = COALESCE(inizio, ?), ultimo = ?, ip = ? WHERE token = ?').run(new Date(ora).toISOString(), new Date(ora).toISOString(), String(ip || '').slice(0, 60), String(token));
+        else if (!s.ultimo || ora - ultimo > 6e4 || s.ip !== ip || !s.agente) db.prepare("UPDATE _sessioni SET inizio = COALESCE(inizio, ?), ultimo = ?, ip = ?, agente = COALESCE(NULLIF(agente, ''), ?) WHERE token = ?")
+          .run(new Date(ora).toISOString(), new Date(ora).toISOString(), String(ip || '').slice(0, 60), String(req.headers['user-agent'] || '').slice(0, 200), String(token));
       }
     }
     // 2. password da cambiare: finché non la cambia, solo le rotte per cambiarla

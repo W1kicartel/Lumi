@@ -71,6 +71,35 @@ export function risolvi(def, filtri) {
   });
 }
 
+// ---------- filtri nell'indirizzo: #/e/<entità>?f=[…] ----------
+// Il cruscotto e «Da vedere» aprono la lista con un indirizzo che porta i filtri (si può aprire in un'altra scheda o
+// mandare a un collega). Arrivano nella forma del server (= vero, < «@oggi», < una data e ora…) e diventano quelli della
+// lista (si, no, prima, dopo, periodo), che la persona poi vede e cambia come i suoi.
+const oggiLocale = () => iso(new Date());
+export function daServer(filtri = [], periodo = null) {
+  const giornoRel = v => { const m = /^@oggi([+-]\d+)?$/.exec(v); return m ? piu(oggiLocale(), Number(m[1] || 0)) : /^\d{4}-\d{2}-\d{2}/.test(v) ? v.slice(0, 10) : null; };
+  return [...(Array.isArray(filtri) ? filtri : []).flatMap(f => {
+    if (!f || typeof f.campo !== 'string') return [];
+    if (f.op === '=' && f.valore === true) return [{ campo: f.campo, op: 'si' }];
+    if (f.op === '=' && f.valore === false) return [{ campo: f.campo, op: 'no' }];
+    if (typeof f.valore === 'string' && (f.valore.startsWith('@oggi') || /^\d{4}-\d{2}-\d{2}T/.test(f.valore)) && ['<', '>='].includes(f.op)) {
+      const g = giornoRel(f.valore); return g ? [{ campo: f.campo, op: f.op === '<' ? 'prima' : 'dopo', valore: g }] : [];
+    }
+    if (typeof f.valore === 'string' && f.valore.startsWith('@') && f.valore !== '@io') return [];
+    return [{ campo: f.campo, op: String(f.op || '='), valore: f.valore ?? null }];
+  }), ...(periodo?.campo ? [periodo] : [])];
+}
+export const urlLista = (entita, filtri, periodo) => { const l = daServer(filtri, periodo); return `#/e/${entita}${l.length ? '?f=' + encodeURIComponent(JSON.stringify(l)) : ''}`; };
+// all'apertura della lista: i filtri dell'indirizzo diventano quelli salvati della lista, poi l'indirizzo torna pulito
+export function filtriDaIndirizzo(entita) {
+  const [via, q] = location.hash.split('?'); if (!q) return;
+  try {
+    const f = JSON.parse(new URLSearchParams(q).get('f') || '[]');
+    if (Array.isArray(f)) { const k = 'kubo.lista.' + entita, s = JSON.parse(localStorage.getItem(k) || '{}'); localStorage.setItem(k, JSON.stringify({ ...s, filtri: f.slice(0, 30), vista: null, raggruppa: null })); }
+  } catch { /* un indirizzo rovinato: la lista si apre senza filtri */ }
+  history.replaceState(null, '', via);
+}
+
 // ---------- etichetta del filtro ----------
 let persone = null;
 export const caricaPersone = () => (persone ||= get('/agenda-persone').catch(() => []));
@@ -83,6 +112,7 @@ export function etichetta(def, f) {
   else if (f.op === 'in') testo = (v || []).map(x => c.opzioni?.find(o => o.id === x)?.nome || x).join(' o ');
   else if (f.op === 'tra') testo = ['data', 'data_ora'].includes(tipoDi(c)) ? `${data(v?.[0])} – ${data(v?.[1])}` : `${v?.[0]} e ${v?.[1]}`;
   else if (['prima', 'dopo'].includes(f.op)) testo = `${NOMI_OP[f.op]} ${data(v)}`;
+  else if (['=', '!='].includes(f.op) && ['scelta', 'stato'].includes(tipoDi(c))) testo = `${NOMI_OP[f.op]} ${c.opzioni?.find(o => o.id === v)?.nome ?? v}`;   // il nome, non l'id
   else if (f.op === '=' && tipoDi(c) === 'utente') return `${c.nome}: ${v === '@io' ? 'io' : v?.nome ?? v}`;
   else if (f.op === 'contiene' && tipoDi(c) === 'scelta_multipla') testo = `contiene ${c.opzioni?.find(o => o.id === v)?.nome || v}`;
   else testo = `${NOMI_OP[f.op] || f.op} ${v === '@io' ? 'me' : v?.titolo ?? v?.nome ?? v}`;
