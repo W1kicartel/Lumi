@@ -253,9 +253,10 @@ export function attivaFatture(D) {
     // i conti che scrive il server: l'IVA per aliquota sul totale delle righe (come vuole la FatturaPA), la ritenuta solo
     // sulle righe soggette, il contributo della cassa. Su una fattura bloccata restano quelli dell'emissione.
     if (!bloccata(ev.prima)) {
-      const conti = contiFattura(f);
+      // (solo nei campi veri: in un gestionale non ancora aggiornato «importo_ritenuta» è ancora un calcolato)
+      const conti = contiFattura(f), veri = new Set((Schema.leggi(db, FATTURE)?.campi || []).filter(c => !c.archiviato && c.tipo === 'valuta').map(c => c.id));
       for (const [k, v] of [['imposta', conti.imposta], ['importo_ritenuta', conti.ritenuta], ['contributo_cassa', conti.cassa?.importo ?? 0]])
-        if (DERIVATI.has(k) && k in f && cent(v) !== cent(f[k])) cambi[k] = v;
+        if (DERIVATI.has(k) && veri.has(k) && cent(v) !== cent(f[k])) cambi[k] = v;
     }
     if (Object.keys(cambi).length) D.modifica(db, FATTURE, f.id, cambi, null, { interno: true });
   });

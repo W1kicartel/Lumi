@@ -36,6 +36,20 @@ async function integra(k, riga, bottone) {
   catch (e) { k.toast(e.message, true); if (bottone) bottone.disabled = false; }
 }
 
+// ---------- la scheda di una fattura emessa ----------
+// i campi si riconoscono dall'etichetta (il motore non mette l'id nel DOM); restano vivi solo quelli che il server accetta
+const MODIFICABILI = new Set(['stato', 'pagata_il', 'note_interne', 'inviata_il', 'rate']);
+function chiudiScheda(segno, def) {
+  const testa = segno.closest('.testa'), scheda = testa?.parentElement; if (!scheda) return;
+  testa.querySelector('.btn.pericolo')?.remove(); scheda.classList.add('fatture-chiusa');
+  const perNome = new Map(def.campi.filter(c => !c.archiviato).map(c => [c.nome, c]));
+  for (const blocco of scheda.querySelectorAll('.griglia > div')) {
+    const c = perNome.get(String(blocco.querySelector(':scope > label.etichetta')?.firstChild?.textContent || '').trim());
+    if (!c || MODIFICABILI.has(c.id)) continue;
+    blocco.querySelectorAll('input,select,textarea,button').forEach(x => { x.disabled = true; });
+  }
+}
+
 // ---------- import dei file ----------
 const base64 = file => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1] || ''); r.onerror = () => no(r.error); r.readAsDataURL(file); });
 async function importa(k, files, esito) {
@@ -90,9 +104,9 @@ async function ricevute(corpo, k) {
   const carica = async () => {
     let l; try { l = (await get(`/dati/${RICEVUTE}?n=200&o=data:desc`)).righe; } catch (e) { daIntegrare.replaceChildren(h('div.avviso', e.message)); return; }
     const aperte = l.filter(r => r.inversione && !r.integrata), dapagare = l.filter(r => r.stato === 'da_pagare');
-    const tabella = (righe, azione) => h('table.tabella', h('tbody', righe.map(r => h('tr',
+    const tabella = (righe, azione) => h('div.fatture-scorre', h('table.tabella', h('tbody', righe.map(r => h('tr',
       h('td', h('a', { href: `#/e/${RICEVUTE}/${r.id}`, testo: r.numero })), h('td', r.fornitore?.titolo || ''), h('td', data(r.data)),
-      h('td.num', soldi(r.netto ?? r.totale ?? 0)), h('td', r.scadenza ? data(r.scadenza) : ''), h('td.num', azione(r))))));
+      h('td.num', soldi(r.netto ?? r.totale ?? 0)), h('td', r.scadenza ? data(r.scadenza) : ''), h('td.num', azione(r)))))));
     daIntegrare.replaceChildren(
       h('h2.fatture-sotto', t('fatture.da-integrare'), h('span.nota', ' ', String(aperte.length))),
       aperte.length ? tabella(aperte, r => h('button.btn.piccolo', { testo: t('fatture.crea-integrazione'), on: { click: ev => integra(k, r, ev.target) } })) : h('p.nota', t('fatture.niente-da-integrare')),
@@ -109,10 +123,10 @@ async function bollo(corpo, k, anno) {
   let b; try { b = await get(`/fatture/bollo?anno=${anno}`); } catch (e) { corpo.replaceChildren(h('div.avviso', e.message)); return; }
   const anni = h('div.fatture-anni', h('button.btn.nudo', { testo: '←', title: String(anno - 1), on: { click: () => bollo(corpo, k, anno - 1) } }), h('b', String(anno)),
     h('button.btn.nudo', { testo: '→', title: String(anno + 1), on: { click: () => bollo(corpo, k, anno + 1) } }));
-  corpo.replaceChildren(h('div.foglio', anni,
+  corpo.replaceChildren(h('div.foglio', anni, h('div.fatture-scorre',
     h('table.tabella', h('thead', h('tr', h('th', t('fatture.trimestre')), h('th.num', t('fatture.fatture-con-bollo')), h('th.num', t('fatture.da-versare')), h('th', t('fatture.entro')), h('th', t('fatture.codice-tributo')))),
       h('tbody', b.trimestri.map(x => h('tr', h('td', t('fatture.trimestre-n', { n: x.trimestre })), h('td.num', String(x.fatture)), h('td.num', soldi(x.importo)), h('td', x.importo ? data(x.scadenza) : '—'), h('td', x.tributo)))),
-      h('tfoot', h('tr', h('td', t('fatture.totale')), h('td.num', String(b.trimestri.reduce((s, x) => s + x.fatture, 0))), h('td.num', soldi(b.totale)), h('td'), h('td')))),
+      h('tfoot', h('tr', h('td', t('fatture.totale')), h('td.num', String(b.trimestri.reduce((s, x) => s + x.fatture, 0))), h('td.num', soldi(b.totale)), h('td'), h('td'))))),
     h('p.nota', t('fatture.bollo-nota'))));
 }
 
@@ -122,9 +136,9 @@ async function numerazione(corpo, k, anno) {
   const anni = h('div.fatture-anni', h('button.btn.nudo', { testo: '←', on: { click: () => numerazione(corpo, k, anno - 1) } }), h('b', String(anno)),
     h('button.btn.nudo', { testo: '→', on: { click: () => numerazione(corpo, k, anno + 1) } }));
   corpo.replaceChildren(h('div.foglio', anni,
-    n.serie.length ? h('table.tabella', h('thead', h('tr', h('th', t('fatture.serie')), h('th.num', t('fatture.emesse')), h('th.num', t('fatture.ultimo')), h('th', t('fatture.mancano')))),
+    n.serie.length ? h('div.fatture-scorre', h('table.tabella', h('thead', h('tr', h('th', t('fatture.serie')), h('th.num', t('fatture.emesse')), h('th.num', t('fatture.ultimo')), h('th', t('fatture.mancano')))),
       h('tbody', n.serie.map(s => h('tr', h('td', s.serie || t('fatture.serie-principale')), h('td.num', String(s.emesse)), h('td.num', String(s.ultimo)),
-        h('td', s.mancano.length ? h('span.fatture-no', s.mancano.join(', ')) : h('span.fatture-si', '✓ ', t('fatture.nessun-buco'))))))) : h('p.nota', t('fatture.nessuna-emessa')),
+        h('td', s.mancano.length ? h('span.fatture-no', s.mancano.join(', ')) : h('span.fatture-si', '✓ ', t('fatture.nessun-buco')))))))) : h('p.nota', t('fatture.nessuna-emessa')),
     h('p.nota', t('fatture.numerazione-nota'))));
 }
 
@@ -153,7 +167,13 @@ export default {
       if (riga.inversione && !riga.integrata) out.push(h('button.btn', { testo: t('fatture.crea-integrazione'), title: t('fatture.integra-nota'), on: { click: ev => integra(k, riga, ev.target) } }));
     }
     // una fattura emessa non si modifica più: lo si dice subito, accanto ai bottoni
-    if (def.id === 'fatture' && bloccata(riga)) { caricaCss(); out.unshift(h('span.fatture-bloccata', { title: t('fatture.bloccata-nota') }, t('fatture.bloccata'))); }
+    if (def.id === 'fatture' && bloccata(riga)) {
+      caricaCss();
+      const segno = h('span.fatture-bloccata', { title: t('fatture.bloccata-nota') }, t('fatture.bloccata'));
+      out.unshift(segno);
+      // la scheda è disegnata dal motore: appena c'è, si spengono i campi che il server non lascerebbe cambiare e «Archivia»
+      setTimeout(() => chiudiScheda(segno, def), 0);
+    }
     return out;
   },
 };

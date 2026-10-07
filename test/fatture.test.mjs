@@ -200,11 +200,15 @@ test('un gestionale installato col modello vecchio si aggiorna senza perdere nie
   const db = apri(); M.installa(db, 'fatture');
   // il modello com'era prima: prezzo in valuta, niente campi nuovi
   const rf = S.leggi(db, 'righe_fattura'); S.applica(db, { ...rf, campi: rf.campi.filter(c => !['sconto_importo', 'no_ritenuta'].includes(c.id)).map(c => (c.id === 'prezzo' ? { ...c, tipo: 'valuta' } : c.id === 'totale' ? { ...c, formula: 'ARROTONDA(quantita * prezzo * (1 - sconto / 100); 2)' } : c)) });
-  const cl = D.crea(db, 'clienti', { nome: 'Rossi' }), f = D.crea(db, 'fatture', { cliente: cl.id, righe: [{ descrizione: 'x', prezzo: 12.5, aliquota: 22 }] });
+  const fa = S.leggi(db, 'fatture'); S.applica(db, { ...fa, campi: fa.campi.map(c => (c.id === 'importo_ritenuta' ? { id: c.id, nome: c.nome, tipo: 'calcolato', formula: 'ARROTONDA(imponibile * ritenuta / 100; 2)', formato: 'valuta' } : c)) });
+  const cl = D.crea(db, 'clienti', { nome: 'Rossi' }), f = D.crea(db, 'fatture', { cliente: cl.id, ritenuta: 20, righe: [{ descrizione: 'x', prezzo: 12.5, aliquota: 22 }, { descrizione: 'spese', prezzo: 10, aliquota: 0, natura: 'N1' }] });
+  D.modifica(db, 'fatture', f.id, { stato: 'emessa' });
   assert.equal(S.leggi(db, 'righe_fattura').campi.find(c => c.id === 'prezzo').tipo, 'valuta');
   const r = aggiornaModello(db, S); assert.ok(r.fatto.includes('righe_fattura'));
   assert.equal(S.leggi(db, 'righe_fattura').campi.find(c => c.id === 'prezzo').tipo, 'numero');
   assert.equal(D.leggi(db, 'fatture', f.id).righe[0].prezzo, 12.5);
+  // l'emessa tiene la ritenuta con cui è uscita (20% di 22,50, spese comprese come faceva la formula di prima)
+  assert.equal(D.leggi(db, 'fatture', f.id).importo_ritenuta, 4.5);
   assert.ok(S.leggi(db, 'righe_fattura').campi.some(c => c.id === 'sconto_importo'));
   assert.deepEqual(aggiornaModello(db, S).fatto, [], 'la seconda volta non c\'è niente da fare');
 });

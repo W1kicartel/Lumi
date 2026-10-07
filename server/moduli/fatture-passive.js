@@ -76,7 +76,7 @@ body{font:13px/1.45 system-ui,sans-serif;color:#111;margin:24px;background:#fff}
 table{width:100%;border-collapse:collapse;margin:12px 0}th,td{text-align:left;padding:6px 8px;border-bottom:1px solid #eee;vertical-align:top}th{font-size:11px;color:#666;font-weight:600}td.n,th.n{text-align:right;white-space:nowrap}
 .tot{margin-left:auto;width:min(320px,100%)}.tot td{border:0;padding:3px 8px}.tot tr:last-child td{font-weight:700;border-top:1px solid #111}
 @media print{body{margin:0}}</style></head><body>
-<h1>${E(d.tipo)} ${esc(d.numero)}</h1><div>${esc(dataL(d.data))}${d.causale ? ` · ${esc(d.causale)}` : ''}</div>
+<h1>${E('fattura')} ${esc(d.numero)} <small style="display:inline">${esc(d.tipo)}</small></h1><div>${esc(dataL(d.data))}${d.causale ? ` · ${esc(d.causale)}` : ''}</div>
 <div class="soggetti">${sog('fornitore', f)}${sog('cliente', c)}</div>
 <table><thead><tr><th>${E('descrizione')}</th><th class="n">${E('quantita')}</th><th class="n">${E('prezzo')}</th><th class="n">${E('iva')}</th><th class="n">${E('totale')}</th></tr></thead><tbody>
 ${d.righe.map(r => `<tr><td>${esc(r.descrizione)}</td><td class="n">${esc(r.quantita)} ${esc(r.unita)}</td><td class="n">${esc(eur(r.prezzo))}</td><td class="n">${r.aliquota ? esc(r.aliquota) + '%' : esc(r.natura || '0%')}</td><td class="n">${esc(eur(r.totale))}</td></tr>`).join('\n')}

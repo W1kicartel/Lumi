@@ -141,17 +141,21 @@ export function aggiornaModello(db, S, { utente = null } = {}) {
     });
     const mancanti = e.campi.filter(n => !def.campi.some(c => c.id === n.id));
     if (mancanti.length) { def.campi.push(...mancanti); cambiato = true; }
+    const ritenutaNuova = e.id === FATTURE && v.campi.some(c => c.id === 'importo_ritenuta' && c.tipo === 'calcolato');
     if (cambiato) { S.applica(db, def, { utente }); fatto.push(e.id); }
+    // la ritenuta era un calcolato su tutto l'imponibile: ora è un campo vero (in centesimi). Le fatture già emesse tengono l'importo
+    // con cui sono uscite (la formula di prima; il prezzo è già passato a euro con 8 decimali), le bozze lo ricalcolano alla prossima modifica
+    if (ritenutaNuova) db.prepare(`UPDATE d_${FATTURE} SET c_importo_ritenuta = (SELECT CAST(ROUND(IFNULL(SUM(ROUND(IFNULL(r.c_quantita, 1) * IFNULL(r.c_prezzo, 0) * (1 - IFNULL(r.c_sconto, 0) / 100.0) * 100, 0)), 0) * IFNULL(d_${FATTURE}.c_ritenuta, 0) / 100.0) AS INTEGER) FROM d_righe_fattura r WHERE r.c_fattura = d_${FATTURE}.id AND r.archiviato = 0)`).run();
   }
   return { fatto };
 }
 
 // le etichette della vista della fattura ricevuta, nelle sei lingue
 const ETICHETTE = {
-  it: { fornitore: 'Fornitore', cliente: 'Cliente', piva: 'P.IVA', cf: 'CF', descrizione: 'Descrizione', quantita: 'Quantità', prezzo: 'Prezzo', iva: 'IVA', totale: 'Totale', imponibile: 'Imponibile', ritenuta: 'Ritenuta', scadenza: 'Scadenza', modalita: 'Modalità', importo: 'Importo' },
-  en: { fornitore: 'Supplier', cliente: 'Customer', piva: 'VAT no.', cf: 'Tax code', descrizione: 'Description', quantita: 'Quantity', prezzo: 'Price', iva: 'VAT', totale: 'Total', imponibile: 'Taxable amount', ritenuta: 'Withholding', scadenza: 'Due date', modalita: 'Method', importo: 'Amount' },
-  es: { fornitore: 'Proveedor', cliente: 'Cliente', piva: 'NIF-IVA', cf: 'Código fiscal', descrizione: 'Descripción', quantita: 'Cantidad', prezzo: 'Precio', iva: 'IVA', totale: 'Total', imponibile: 'Base imponible', ritenuta: 'Retención', scadenza: 'Vencimiento', modalita: 'Forma de pago', importo: 'Importe' },
-  fr: { fornitore: 'Fournisseur', cliente: 'Client', piva: 'N° TVA', cf: 'Code fiscal', descrizione: 'Description', quantita: 'Quantité', prezzo: 'Prix', iva: 'TVA', totale: 'Total', imponibile: 'Montant HT', ritenuta: 'Retenue', scadenza: 'Échéance', modalita: 'Mode', importo: 'Montant' },
-  de: { fornitore: 'Lieferant', cliente: 'Kunde', piva: 'USt-IdNr.', cf: 'Steuernummer', descrizione: 'Beschreibung', quantita: 'Menge', prezzo: 'Preis', iva: 'MwSt.', totale: 'Gesamt', imponibile: 'Nettobetrag', ritenuta: 'Quellensteuer', scadenza: 'Fällig am', modalita: 'Zahlungsart', importo: 'Betrag' },
-  pt: { fornitore: 'Fornecedor', cliente: 'Cliente', piva: 'Nº IVA', cf: 'Código fiscal', descrizione: 'Descrição', quantita: 'Quantidade', prezzo: 'Preço', iva: 'IVA', totale: 'Total', imponibile: 'Base tributável', ritenuta: 'Retenção', scadenza: 'Vencimento', modalita: 'Forma', importo: 'Valor' },
+  it: { fattura: 'Fattura', fornitore: 'Fornitore', cliente: 'Cliente', piva: 'P.IVA', cf: 'CF', descrizione: 'Descrizione', quantita: 'Quantità', prezzo: 'Prezzo', iva: 'IVA', totale: 'Totale', imponibile: 'Imponibile', ritenuta: 'Ritenuta', scadenza: 'Scadenza', modalita: 'Modalità', importo: 'Importo' },
+  en: { fattura: 'Invoice', fornitore: 'Supplier', cliente: 'Customer', piva: 'VAT no.', cf: 'Tax code', descrizione: 'Description', quantita: 'Quantity', prezzo: 'Price', iva: 'VAT', totale: 'Total', imponibile: 'Taxable amount', ritenuta: 'Withholding', scadenza: 'Due date', modalita: 'Method', importo: 'Amount' },
+  es: { fattura: 'Factura', fornitore: 'Proveedor', cliente: 'Cliente', piva: 'NIF-IVA', cf: 'Código fiscal', descrizione: 'Descripción', quantita: 'Cantidad', prezzo: 'Precio', iva: 'IVA', totale: 'Total', imponibile: 'Base imponible', ritenuta: 'Retención', scadenza: 'Vencimiento', modalita: 'Forma de pago', importo: 'Importe' },
+  fr: { fattura: 'Facture', fornitore: 'Fournisseur', cliente: 'Client', piva: 'N° TVA', cf: 'Code fiscal', descrizione: 'Description', quantita: 'Quantité', prezzo: 'Prix', iva: 'TVA', totale: 'Total', imponibile: 'Montant HT', ritenuta: 'Retenue', scadenza: 'Échéance', modalita: 'Mode', importo: 'Montant' },
+  de: { fattura: 'Rechnung', fornitore: 'Lieferant', cliente: 'Kunde', piva: 'USt-IdNr.', cf: 'Steuernummer', descrizione: 'Beschreibung', quantita: 'Menge', prezzo: 'Preis', iva: 'MwSt.', totale: 'Gesamt', imponibile: 'Nettobetrag', ritenuta: 'Quellensteuer', scadenza: 'Fällig am', modalita: 'Zahlungsart', importo: 'Betrag' },
+  pt: { fattura: 'Fatura', fornitore: 'Fornecedor', cliente: 'Cliente', piva: 'Nº IVA', cf: 'Código fiscal', descrizione: 'Descrição', quantita: 'Quantidade', prezzo: 'Preço', iva: 'IVA', totale: 'Total', imponibile: 'Base tributável', ritenuta: 'Retenção', scadenza: 'Vencimento', modalita: 'Forma', importo: 'Valor' },
 };
