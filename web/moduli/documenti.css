@@ -1,0 +1,34 @@
+/* Documenti: anteprima di stampa, dati dell'azienda, editor dei modelli. Stesse variabili di stile.css. */
+.documenti-velo { position: fixed; inset: 0; z-index: 50; background: color-mix(in srgb, #000 45%, transparent); display: grid; place-items: center; padding: 24px; animation: documenti-entra .14s ease-out; }
+@keyframes documenti-entra { from { opacity: 0; } }
+.documenti-finestra { width: min(980px, 100%); max-height: calc(100vh - 48px); display: flex; flex-direction: column; background: var(--pannello); border: 1px solid var(--linea); border-radius: 14px; box-shadow: 0 30px 80px rgba(0,0,0,.3); overflow: hidden; }
+.documenti-barra { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 14px 12px 20px; border-bottom: 1px solid var(--linea); }
+.documenti-barra b { font-weight: 600; letter-spacing: -.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.documenti-spazio { flex: 1; }
+.documenti-tavolo { background: var(--sopra); padding: 24px; overflow: auto; flex: 1; min-height: 0; display: flex; justify-content: center; }
+.documenti-foglio { width: 210mm; max-width: 100%; height: 297mm; border: 0; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.12), 0 12px 32px rgba(0,0,0,.10); border-radius: 2px; flex: none; }
+.documenti-controlli { padding: 20px 24px 24px; overflow: auto; } .documenti-controlli li { margin-bottom: 8px; } .documenti-controlli p { margin: 0 0 10px; color: var(--tenue); }
+.documenti-schede { display: flex; gap: 4px; background: var(--sopra); padding: 3px; border-radius: 9px; }
+.documenti-schede a { text-decoration: none; padding: 5px 12px; border-radius: 7px; color: var(--tenue); font-size: 14px; }
+.documenti-schede a.si { background: var(--pannello); color: var(--testo); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.documenti-riga-logo { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+.documenti-cornice { width: 180px; height: 72px; border: 1px dashed var(--linea-forte); border-radius: 8px; display: grid; place-items: center; background: #fff; overflow: hidden; }
+.documenti-logo { max-width: 160px; max-height: 60px; object-fit: contain; }
+.documenti-pronto { list-style: none; padding: 0; margin: 4px 0 10px; color: var(--tenue); } .documenti-pronto li { padding: 3px 0; } .documenti-pronto li.ok { color: var(--ok); }
+.documenti-editor { display: grid; grid-template-columns: minmax(320px, 420px) 1fr; gap: 20px; align-items: start; }
+.documenti-moduli { display: flex; flex-direction: column; gap: 14px; position: sticky; top: 70px; max-height: calc(100vh - 90px); overflow: auto; }
+.documenti-titolo { display: flex; align-items: center; gap: 6px; font-size: 16px; }
+.documenti-voce .nota { margin-top: 4px; }
+.documenti-in-riga { display: flex; gap: 12px; align-items: center; } .documenti-in-riga input[type=color] { width: 56px; padding: 2px; height: 36px; }
+.documenti-spunta { display: flex; gap: 8px; align-items: center; font-size: 14px; cursor: pointer; }
+.documenti-colonna { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) auto; gap: 6px; margin-bottom: 6px; align-items: center; }
+.documenti-colonna:has(select) { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) 92px auto; }
+.documenti-colonna .campo { padding: 6px 8px; font-size: 13.5px; }
+.documenti-mosse { display: flex; }
+.documenti-aiuto { font-size: 13px; color: var(--tenue); border-top: 1px solid var(--linea); padding-top: 12px; }
+.documenti-aiuto summary { cursor: pointer; color: var(--testo); } .documenti-aiuto code { font-family: "Geist Mono", ui-monospace, monospace; font-size: 12px; word-break: break-word; }
+.documenti-azioni { display: flex; justify-content: space-between; gap: 8px; border-top: 1px solid var(--linea); padding-top: 14px; }
+.documenti-tavolo-editor { border-radius: var(--raggio); border: 1px solid var(--linea); min-height: 70vh; }
+@media (max-width: 1100px) { .documenti-editor { grid-template-columns: 1fr; } .documenti-moduli { position: static; max-height: none; } }
+@media (max-width: 860px) { .documenti-velo { padding: 0; } .documenti-finestra { max-height: 100vh; height: 100vh; border-radius: 0; } .documenti-tavolo { padding: 10px; } }
+.documenti-colore { width: 72px !important; height: 38px; padding: 3px !important; cursor: pointer; }

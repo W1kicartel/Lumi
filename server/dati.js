@@ -26,6 +26,12 @@ export function prossimoNumero(db, serie, formato, quando = new Date()) {
     .replace(/\{N(?::(\d+))?\}/g, (_, k) => String(r.ultimo).padStart(Number(k || 1), '0'));
 }
 
+// ---------- validatori dei campi testo ----------
+// Un campo testo con «valida»: "<nome>" passa dal validatore registrato con quel nome (i moduli ne aggiungono, per esempio
+// piva, codice_fiscale e iban in moduli/documenti-italia.js). Il validatore riceve il testo e restituisce { valore } o { errore }.
+const VALIDATORI = {};
+export const validatore = (nome, f) => { VALIDATORI[nome] = f; };
+
 // ---------- da valore API a valore del database ----------
 function normalizza(db, def, c, v, { prima } = {}) {
   if (v === undefined) return undefined;
@@ -54,7 +60,11 @@ function normalizza(db, def, c, v, { prima } = {}) {
     }
     case 'utente': if (!db.prepare('SELECT 1 FROM _utenti WHERE id = ?').get(String(v))) no(`«${c.nome}»: utente sconosciuto`); return String(v);
     case 'file': case 'immagine': return JSON.stringify(Array.isArray(v) ? v : [v]);
-    default: return String(v).trim();
+    default: {
+      const t = String(v).trim();
+      if (c.valida && VALIDATORI[c.valida]) { const r = VALIDATORI[c.valida](t); if (r.errore) no(`«${c.nome}»: ${r.errore}`); return r.valore; }
+      return t;
+    }
   }
 }
 

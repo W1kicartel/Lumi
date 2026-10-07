@@ -51,9 +51,15 @@ export function registra(db, { utente = null, tipo, entita = null, riga = null, 
 // id brevi, ordinabili nel tempo (stile ULID, base 32 Crockford)
 const B32 = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
 import { randomBytes } from 'node:crypto';
+// monotoni: nello stesso millisecondo la parte casuale cresce di uno, così le righe create insieme restano in ordine
+let ultimo = { t: 0, r: null };
 export function nuovoId() {
-  let t = Date.now(), s = '';
+  const ora = Date.now(); let r;
+  if (ora <= ultimo.t && ultimo.r) { r = ultimo.r.slice(); for (let i = 7; i >= 0; i--) { if (r[i] < 31) { r[i]++; break; } r[i] = 0; } }
+  else r = [...randomBytes(8)].map(x => x % 32);
+  ultimo = { t: Math.max(ora, ultimo.t), r };
+  let t = ultimo.t, s = '';
   for (let i = 0; i < 9; i++) { s = B32[t % 32] + s; t = Math.floor(t / 32); }
-  const r = randomBytes(8); for (let i = 0; i < 8; i++) s += B32[r[i] % 32];
+  for (const x of r) s += B32[x];
   return s;
 }
