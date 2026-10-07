@@ -195,7 +195,7 @@ export function scriviXlsx(intestazioni, righe, { foglio = 'Dati' } = {}) {
     if (v.dataOra) { const d = new Date(v.dataOra); return `<c r="${ref}" s="4"><v>${aSeriale(`${d.getFullYear()}-${due(d.getMonth() + 1)}-${due(d.getDate())}T${due(d.getHours())}:${due(d.getMinutes())}:00`)}</v></c>`; }
     return `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${xml(v)}</t></is></c>`;
   };
-  const larg = intestazioni.map((t, i) => Math.min(50, Math.max(8, String(t).length + 2, ...righe.slice(0, 200).map(r => { const v = r[i]; return v == null ? 0 : typeof v === 'object' ? 12 : String(v).length + 1; }))));
+  const larg = intestazioni.map((t, i) => Math.min(50, Math.max(8, String(t).length + 2, ...righe.slice(0, 200).map(r => { const v = r[i]; return v == null ? 0 : typeof v === 'object' ? 12 : String(v).length + 2; }))));
   const corpo = [intestazioni.map((t, i) => `<c r="${lettera(i)}1" s="1" t="inlineStr"><is><t xml:space="preserve">${xml(t)}</t></is></c>`).join('')]
     .concat(righe.map((r, j) => r.map((v, i) => cella(v, lettera(i) + (j + 2))).join(''))).map((c, j) => `<row r="${j + 1}">${c}</row>`).join('');
   const ultima = `${lettera(Math.max(0, intestazioni.length - 1))}${righe.length + 1}`;

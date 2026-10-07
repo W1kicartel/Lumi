@@ -120,6 +120,12 @@ test('import: anteprima, abbinamento, doppioni, errori, prova senza salvare, nuo
     // OpenAPI dallo schema
     const oa = (await chiama('GET', '/api/openapi.json')).json;
     assert.equal(oa.openapi, '3.0.3'); assert.ok(oa.paths['/api/dati/noleggi'].post); assert.equal(oa.components.schemas.noleggi.properties.revisione.format, 'date');
+    // i collegamenti si trovano per nome (o per id), date e importi all'italiana
+    await chiama('POST', '/api/dati/fornitori', { nome: 'Ceramiche Rossi' });
+    const fa = await carica('articoli.csv', Buffer.from('Nome;Fornitore;Prezzo;Giacenza\nVaso;ceramiche rossi;€ 1.234,50;3\nPiatto;Sconosciuto;2;1\n'));
+    const ia = (await chiama('POST', '/api/import/esegui', { caricamento: fa.id, entita: 'articoli', abbinamento: { Nome: 'nome', Fornitore: 'fornitore', Prezzo: 'prezzo', Giacenza: 'giacenza' } })).json;
+    assert.deepEqual([ia.create, ia.erroriTotali], [1, 1]); assert.match(ia.errori[0].messaggio, /Sconosciuto/);
+    const vaso = (await chiama('GET', '/api/dati/articoli?q=Vaso')).json.righe[0]; assert.equal(vaso.fornitore.titolo, 'Ceramiche Rossi'); assert.equal(vaso.prezzo, 1234.5);
     // il caricamento di un altro non si usa
     assert.equal((await chiama('POST', '/api/import/anteprima', { caricamento: '0'.repeat(17) })).stato, 404);
   } finally { srv.close(); }

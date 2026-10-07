@@ -36,6 +36,7 @@ function paginaImporta(contenuto, k, entita) {
   modello.hidden = scelta.value === '__nuova';
   const zona = h('label.import-zona', h('input', { type: 'file', accept: '.xlsx,.csv,.txt,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', hidden: true, on: { change: ev => ev.target.files[0] && parti(ev.target.files[0]) } }),
     h('b', 'Scegli un file Excel (.xlsx) o CSV'), h('span.nota', 'oppure trascinalo qui. La prima riga deve avere i nomi delle colonne.'));
+  zona.tabIndex = 0; zona.addEventListener('keydown', ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); zona.querySelector('input').click(); } });
   zona.addEventListener('dragover', ev => { ev.preventDefault(); zona.classList.add('sopra'); });
   zona.addEventListener('dragleave', () => zona.classList.remove('sopra'));
   zona.addEventListener('drop', ev => { ev.preventDefault(); zona.classList.remove('sopra'); if (ev.dataTransfer.files[0]) parti(ev.dataTransfer.files[0]); });

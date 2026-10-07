@@ -76,7 +76,7 @@ function grezzo(def, r) {
       if (c.tipo === 'valuta') v = v / 100;
       else if (c.tipo === 'si_no') v = !!v;
       else if (['scelta_multipla', 'file', 'immagine'].includes(c.tipo)) { try { v = JSON.parse(v); } catch { v = []; } }
-      if (['file', 'immagine'].includes(c.tipo) && Array.isArray(v)) v = v.map(x => ({ ...x, url: `/api/file/${def.id}/${r.id}/${c.id}/${x.id}` }));
+      if (['file', 'immagine'].includes(c.tipo) && Array.isArray(v)) v = v.filter(x => x && typeof x === 'object').map(x => ({ ...x, url: `/api/file/${def.id}/${r.id}/${c.id}/${x.id}` }));
     } else if (c.tipo === 'si_no') v = false;
     else if (c.tipo === 'scelta_multipla') v = [];
     o[c.id] = v ?? null;

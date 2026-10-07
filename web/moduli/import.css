@@ -4,7 +4,7 @@
 .import-lato { grid-column: 2; grid-row: 1 / span 3; display: flex; flex-direction: column; gap: 16px; }
 .import-dove { display: grid; gap: 4px; margin-bottom: 14px; } .import-dove .import-riga { margin: 0; align-items: center; } .import-dove select.campo, .import-dove > input.campo { max-width: 420px; }
 .import-zona { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 38px 20px; border: 1.5px dashed var(--linea-forte); border-radius: var(--raggio); cursor: pointer; text-align: center; transition: border-color .15s, background .15s; }
-.import-zona:hover, .import-zona.sopra { border-color: var(--testo); background: var(--sopra); }
+.import-zona:hover, .import-zona:focus-visible, .import-zona.sopra { border-color: var(--testo); background: var(--sopra); outline: none; }
 .import-zona b { font-weight: 600; }
 .import progress { width: 100%; height: 6px; margin-top: 10px; accent-color: var(--testo); }
 .import .foglio + .foglio, .import > div:nth-child(2) > .foglio { margin-top: 16px; }
