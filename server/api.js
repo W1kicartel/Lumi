@@ -54,6 +54,8 @@ export function creaServer(db) {
 
   const rotte = [];
   const r = (metodo, percorso, f) => rotte.push({ metodo, re: new RegExp('^' + percorso.replace(/:(\w+)/g, '(?<$1>[^/]+)') + '$'), f });
+  // «prima»: un modulo può agire prima di una rotta di un altro (es. il backup prima di cambiare lo schema o di un import)
+  const ganci = [], prima = (metodo, percorso, f) => ganci.push({ metodo, re: new RegExp('^' + percorso.replace(/:(\w+)/g, '[^/]+') + '$'), f });
 
   r('GET', '/api/stato', ({ ctx }) => ({ versione: VERSIONE, configurato: U.quanti(db) > 0, azienda: meta.leggi(db, 'azienda'), utente: ctx?.utente ?? null,
     poteri: ctx ? { schema: P.puoSchema(ctx), utenti: P.puoUtenti(ctx) } : null, modelli: JSON.parse(meta.leggi(db, 'modelli') || '[]') }));
@@ -120,7 +122,7 @@ export function creaServer(db) {
   r('PUT', '/api/ruoli/:id', ({ ctx, p, corpo }) => { if (!P.puoUtenti(serve(ctx))) throw new P.ErrorePermesso(); P.salvaRuolo(db, { ...corpo, id: p.id }); return P.ruolo(db, p.id); });
 
   r('GET', '/api/moduli', () => moduliWeb());
-  for (const m of MODULI_SERVER) if (typeof m.registra === 'function') m.registra({ r, db, S, D, P, A, M, U, meta, serve, ErroreHttp, manda });
+  for (const m of MODULI_SERVER) if (typeof m.registra === 'function') m.registra({ r, prima, db, S, D, P, A, M, U, meta, serve, ErroreHttp, manda });
 
   async function statico(req, res, percorso) {
     // il motore delle formule è lo stesso nel server e nel browser
@@ -158,6 +160,7 @@ export function creaServer(db) {
       const rotta = rotte.find(x => x.metodo === req.method && x.re.test(percorso));
       if (!rotta) throw new ErroreHttp(404, 'Non trovato');
       const p = Object.fromEntries(Object.entries(percorso.match(rotta.re).groups || {}).map(([k, v]) => [k, decodeURIComponent(v)]));
+      for (const g of ganci) if (g.metodo === req.method && g.re.test(percorso)) await g.f({ ctx, percorso, corpo });
       const out = await rotta.f({ req, res, ctx, token, p, q: url.searchParams, corpo, risposta, ip: req.socket.remoteAddress });
       if (res.headersSent) return;   // la rotta ha già risposto da sé (streaming di Lumi, file, scaricamenti)
       res.writeHead(200, risposta.intestazioni).end(JSON.stringify(out ?? null));

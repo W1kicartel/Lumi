@@ -5,6 +5,7 @@ Ogni file `*.js` di questa cartella esporta di default `registra(k)`. Il server 
 `k` contiene:
 
 - `r(metodo, percorso, f)`, per aggiungere una rotta come `r('GET', '/api/agenda/:e', ({ ctx, p, q, corpo }) => …)`. La funzione riceve anche `req` e `res`: se risponde da sé (per esempio in streaming, come Lumi), il server non aggiunge niente;
+- `prima(metodo, percorso, f)`, per agire prima di una rotta di un altro (il backup prima di cambiare lo schema): `f({ ctx, percorso, corpo })`;
 - `db`, il database;
 - i moduli del motore: `S` schema, `D` dati, `P` permessi, `A` automazioni, `M` modelli, `U` utenti;
 - `meta`, le impostazioni chiave → valore;
