@@ -3,7 +3,8 @@
 /* ---------- calendario ---------- */
 .ag-barra { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
 .ag-nav { display: flex; align-items: center; gap: 6px; }
-.ag-periodo { font-weight: 600; letter-spacing: -.01em; margin-left: 8px; text-transform: capitalize; font-size: 16px; }
+.ag-periodo { font-weight: 600; letter-spacing: -.01em; margin-left: 8px; font-size: 16px; }
+.ag-periodo::first-letter { text-transform: uppercase; }
 .ag-strumenti { display: flex; gap: 8px; align-items: center; }
 .ag-corpo { transition: opacity .15s; } .ag-corpo.ag-carica { opacity: .55; }
 
@@ -52,7 +53,8 @@
 .ag-tuttogiorno { min-height: 260px; border-left: 1px solid var(--linea); padding: 6px; display: flex; flex-direction: column; gap: 4px; cursor: cell; }
 
 /* ---------- cruscotto ---------- */
-.cr-data { display: block; font-size: 14px; font-weight: 450; color: var(--tenue); letter-spacing: 0; margin-top: 2px; text-transform: capitalize; }
+.cr-data { display: block; font-size: 14px; font-weight: 450; color: var(--tenue); letter-spacing: 0; margin-top: 2px; }
+.cr-data::first-letter { text-transform: uppercase; }
 .cr-azioni { display: flex; gap: 8px; }
 .cr-griglia { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; align-items: start; }
 .cr-widget { background: var(--pannello); border: 1px solid var(--linea); border-radius: 14px; padding: 16px 18px; min-width: 0; display: flex; flex-direction: column; gap: 10px; transition: border-color .15s; }

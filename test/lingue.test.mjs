@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
 import { apri } from '../server/db.js';
 import { creaServer } from '../server/api.js';
 import { attiva } from '../server/automazioni.js';
@@ -47,6 +48,13 @@ test('ogni t() del codice ha la sua chiave in italiano, e ogni chiave italiana s
   assert.deepEqual(nonUsate, [], 'chiavi che nessun file usa');
 });
 
+test('ogni file dell\'interfaccia toccato dalle lingue si legge (sintassi)', () => {
+  for (const f of [...fileWeb(), join(RADICE, 'web', 'lumi', 'lingua.js'), join(RADICE, 'web', 'lumi', 'motore.js')]) {
+    const r = spawnSync(process.execPath, ['--check', f], { encoding: 'utf8' });
+    assert.equal(r.status, 0, `${f}: ${r.stderr}`);
+  }
+});
+
 test('i testi del motore web passano tutti da t(): niente frasi italiane scritte a mano', () => {
   // le stringhe fra apici con una parola italiana maiuscola seguita da altre parole sono frasi per chi usa Kubo
   const frase = /(['`])(?:Salva|Crea|Nuov[oa]|Archivia|Ripristina|Elimina|Togli|Aggiungi|Cerca|Nessun|Accedi|Benvenuto|Personalizza|Colonne|Filtri?|Persone|Gestione|Esci|Vista|Ruol[oi])\b[^'`]*\1/;
@@ -54,6 +62,16 @@ test('i testi del motore web passano tutti da t(): niente frasi italiane scritte
     readFileSync(f, 'utf8').split('\n').forEach((riga, i) => {
       if (/^\s*\/\//.test(riga)) return;
       assert.ok(!frase.test(riga.replace(/t\('[^']*'/g, '')), `${f.split('/').pop()}:${i + 1} ha un testo fuori dal catalogo: ${riga.trim().slice(0, 90)}`);
+    });
+  }
+});
+
+test('nei moduli tradotti (agenda, cruscotto, Lumi, lingua) bottoni, titoli e segnaposto passano da t()', () => {
+  const scritto = /\b(testo|title|placeholder|nome): '(?:\+ )?[A-ZÀ-Úa-zà-ú][a-zà-ú]+[ '][^']*'/;
+  for (const f of ['agenda.js', 'lumi.js', 'lingue.js'].map(x => join(RADICE, 'web', 'moduli', x))) {
+    readFileSync(f, 'utf8').split('\n').forEach((riga, i) => {
+      if (/^\s*\/\//.test(riga)) return;
+      assert.ok(!scritto.test(riga), `${f.split('/').pop()}:${i + 1}: ${riga.trim().slice(0, 100)}`);
     });
   }
 });

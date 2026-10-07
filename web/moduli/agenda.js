@@ -57,7 +57,7 @@ async function calendario(contenuto, k, entita, vistaUrl) {
   const bVista = v => h('button.btn.piccolo', { class: v === vista ? 'pieno' : '', testo: t('moduli.ag-vista-' + v), on: { click: () => { vista = v; ricorda(); carica(); } } });
   contenuto.replaceChildren(
     h('div.testa', h('h1', def.nome), h('a.btn.nudo', { href: `#/e/${def.id}`, title: t('moduli.ag-torna-lista') }, t('moduli.ag-lista')),
-      def.puo.crea ? h('button.btn.pieno', { testo: '+ Nuovo', on: { click: () => crea(ora9(centro)) } }) : null),
+      def.puo.crea ? h('button.btn.pieno', { testo: t('viste.nuovo'), on: { click: () => crea(ora9(centro)) } }) : null),
     h('div.corpo', h('div.ag-barra',
       h('div.ag-nav', h('button.btn.piccolo', { testo: '‹', title: t('moduli.ag-prima'), on: { click: () => vai(-1) } }), h('button.btn.piccolo', { testo: t('moduli.ag-oggi'), on: { click: () => { centro = oggi(); ricorda(); carica(); } } }),
         h('button.btn.piccolo', { testo: '›', title: t('moduli.ag-dopo'), on: { click: () => vai(1) } }), etichettaPeriodo),
@@ -226,6 +226,10 @@ async function calendario(contenuto, k, entita, vistaUrl) {
 // CRUSCOTTO
 // =====================================================================================================================
 const PERIODI = Object.fromEntries(['oggi', 'settimana', 'mese', 'anno', 'ultimi_7', 'ultimi_30', 'ultimi_84', 'ultimi_365', 'sempre'].map(k => [k, t('moduli.ag-periodo-' + k)]));
+// i titoli dei widget del cruscotto predefinito (server/moduli/agenda.js) sono in italiano nei dati: si mostrano nella
+// lingua di chi guarda finché nessuno li cambia (un titolo scritto a mano resta com'è)
+const TITOLI = { "Incassato oggi": 'incassato-oggi', "Incassato questo mese": 'incassato-mese', "Vendite oggi": 'vendite-oggi', "Incassi degli ultimi 30 giorni": 'incassi-30', "Appuntamenti oggi": 'appuntamenti-oggi', "Appuntamenti per settimana": 'appuntamenti-settimana', "Preventivi in attesa": 'preventivi-attesa', "Commesse aperte": 'commesse-aperte', "Accettato questo mese": 'accettato-mese', "Preventivi accettati per mese": 'preventivi-mese', "Articoli da riordinare": 'articoli-riordinare', "Materiali da riordinare": 'materiali-riordinare', "Ordini in ritardo": 'ordini-ritardo', "Vendite aperte da più di 2 giorni": 'vendite-aperte', "Commesse in ritardo": 'commesse-ritardo', "Preventivi senza risposta da 7 giorni": 'preventivi-senza-risposta', "Appuntamenti passati da chiudere": 'appuntamenti-chiudere', "Pacchetti scaduti con sedute": 'pacchetti-scaduti', "Cosa richiede attenzione": 'attenzione', "Ultime modifiche": 'ultime' };
+const nomeW = x => { if (!x) return x; if (TITOLI[x]) return t('moduli.ag-def-' + TITOLI[x]); const m = /^(.+): nuovi questo mese$/.exec(x); return m ? t('moduli.ag-def-nuovi-mese', { nome: m[1] }) : x; };
 const valore = (v, valuta) => (v == null ? '—' : valuta ? soldi(v) : numeroL(v, 1));
 
 async function cruscotto(contenuto, k) {
@@ -245,12 +249,12 @@ async function cruscotto(contenuto, k) {
   function disegna() {
     azioni.replaceChildren(...(c.puoModificare ? (modifica
       ? [h('button.btn', { testo: t('moduli.ag-piu-aggiungi'), on: { click: ev => editorWidget(ev.currentTarget, null) } }), h('button.btn.pieno', { testo: t('moduli.ag-fatto'), on: { click: () => { modifica = false; disegna(); } } })]
-      : [h('button.btn.nudo', { on: { click: () => { modifica = true; disegna(); } } }, icona('matita'), t('moduli.ag-modifica')]) : []));
+      : [h('button.btn.nudo', { on: { click: () => { modifica = true; disegna(); } } }, icona('matita'), t('moduli.ag-modifica'))]) : []));
     griglia.classList.toggle('in-modifica', modifica);
     if (!c.widget.length) { griglia.replaceChildren(h('div.vuoto', 'Il cruscotto è vuoto. ', c.puoModificare ? 'Premi «Modifica» per aggiungere numeri e grafici.' : '')); return; }
     griglia.replaceChildren(...c.widget.map((w, i) => {
       const d = c.dati[w.id] || {};
-      const testa = h('div.cr-testa', h('span.cr-titolo', { title: w.titolo || '' }, w.titolo || t('moduli.ag-senza-titolo')), w.periodo && w.tipo !== 'grafico' ? h('span.cr-periodo', PERIODI[w.periodo] || '') : null,
+      const testa = h('div.cr-testa', h('span.cr-titolo', { title: nomeW(w.titolo) || '' }, nomeW(w.titolo) || t('moduli.ag-senza-titolo')), w.periodo && w.tipo !== 'grafico' ? h('span.cr-periodo', PERIODI[w.periodo] || '') : null,
         modifica ? h('span.cr-mod', h('button.btn.nudo.piccolo', { title: t('moduli.ag-prima'), testo: '←', disabled: i === 0, on: { click: () => muovi(i, -1) } }), h('button.btn.nudo.piccolo', { title: t('moduli.ag-dopo'), testo: '→', disabled: i === c.widget.length - 1, on: { click: () => muovi(i, 1) } }),
           h('button.btn.nudo.piccolo', { title: t('moduli.ag-cambia'), on: { click: ev => editorWidget(ev.currentTarget, i) } }, icona('matita')), h('button.btn.nudo.piccolo.pericolo', { title: t('comune.togli'), testo: '×', on: { click: () => { c.widget.splice(i, 1); salva(); } } })) : null);
       let dentro;
@@ -263,7 +267,7 @@ async function cruscotto(contenuto, k) {
   function numero(w, d) {
     const v = d.totali?.[0], val = d.valuta?.[0], prima = d.prima?.[0];
     let conf = null;
-    if (prima != null && v != null && PRIMA[w.periodo]) {
+    if (prima != null && v != null && ['oggi', 'settimana', 'mese', 'anno'].includes(w.periodo)) {   // i periodi con un «prima» da confrontare
       const diff = v - prima, pct = prima ? Math.round(diff / Math.abs(prima) * 100) : null;
       conf = h('div.cr-conf', { class: diff > 0 ? 'su' : diff < 0 ? 'giu' : '' }, diff === 0 ? t('moduli.ag-come-' + w.periodo) : `${diff > 0 ? '▲' : '▼'} ${t('moduli.ag-rispetto-' + w.periodo, { diff: pct != null ? t('comune.percento', { n: numeroL(Math.abs(pct)) }) : valore(Math.abs(diff), val), prima: valore(prima, val) })}`);
     }
@@ -287,7 +291,7 @@ async function cruscotto(contenuto, k) {
       const def = entita.find(e => e.id === w.entita) || entita[0]; if (def && !['attenzione', 'ultime'].includes(w.tipo)) w.entita = def.id;
       const numeri = def ? def.campi.filter(x => !x.archiviato && (['valuta', 'numero', 'durata', 'percentuale'].includes(x.tipo) || x.tipo === 'calcolato')) : [];
       const date = def ? [...def.campi.filter(x => !x.archiviato && ['data', 'data_ora'].includes(x.tipo)), { id: 'creato', nome: t('viste.creato-il') }] : [];
-      const titolo = h('input.campo', { value: w.titolo || '', placeholder: 'Es. Incassato oggi', on: { input: () => { w.titolo = titolo.value; } } });
+      const titolo = h('input.campo', { value: w.titolo || '', placeholder: t('moduli.ag-es-titolo'), on: { input: () => { w.titolo = titolo.value; } } });
       const parti = [h('div.pop-titolo', i == null ? t('moduli.ag-nuovo-widget') : t('moduli.ag-cambia-widget')),
         riga(t('moduli.ag-tipo'), sel([['numero', t('moduli.ag-w-numero')], ['grafico', t('moduli.ag-w-grafico')], ['attenzione', t('moduli.ag-w-attenzione')], ['ultime', t('moduli.ag-w-ultime')]], w.tipo, v => { w.tipo = v; if (v === 'grafico') { w.per ||= 'giorno'; w.periodo = w.periodo && w.periodo.startsWith('ultimi') ? w.periodo : 'ultimi_30'; w.largo = true; } disegnaForm(); })),
         riga(t('moduli.ag-titolo'), titolo)];
@@ -342,7 +346,7 @@ function grafico(w, d) {
   const ns = 'http://www.w3.org/2000/svg', s = (tag, attr = {}, ...figli) => { const e = document.createElementNS(ns, tag); for (const [a, v] of Object.entries(attr)) e.setAttribute(a, v); e.append(...figli); return e; };
   const corto = v => (valuta ? soldiCorto(v) : numeroCorto(v));
   const nomeX = k => (w.per === 'mese' ? new Date(k + '-01T12:00').toLocaleDateString(locale(), { month: 'short' }) : w.per === 'anno' ? k : new Date(k + 'T12:00').toLocaleDateString(locale(), { day: 'numeric', month: 'short' }));
-  const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, class: 'cr-svg', role: 'img', 'aria-label': t('moduli.ag-aria-grafico', { titolo: w.titolo }) });
+  const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, class: 'cr-svg', role: 'img', 'aria-label': t('moduli.ag-aria-grafico', { titolo: nomeW(w.titolo) }) });
   for (let v = 0; v <= top + 1e-9; v += passo) svg.append(s('line', { x1: sx, x2: W - dx, y1: y(v), y2: y(v), class: v === 0 ? 'cr-base' : 'cr-griglia-l' }), s('text', { x: sx - 6, y: y(v) + 4, 'text-anchor': 'end', class: 'cr-asse' }, corto(v)));
   const ogni = Math.ceil(g.length / 6);
   g.forEach((x, i) => { if (i % ogni === 0 || i === g.length - 1 && g.length < 14) svg.append(s('text', { x: sx + larg * (i + 0.5), y: H - 6, 'text-anchor': 'middle', class: 'cr-asse' }, nomeX(x.chiave))); });
@@ -378,9 +382,9 @@ function scala(max) { const p = 10 ** Math.floor(Math.log10(max / 3)), n = max /
 function attenzione(d) {
   if (!d.voci?.length) return h('div.nota', 'Niente da segnalare.');
   const tutto = d.voci.every(v => !v.totale);
-  if (tutto) return h('div.cr-tutto-ok', '✓ Tutto in ordine: niente da sistemare.');
+  if (tutto) return h('div.cr-tutto-ok', t('moduli.ag-tutto-ok'));
   return h('ul.cr-attenzione', d.voci.filter(v => v.totale).map(v => h('li',
-    h('a.cr-att-testa', { href: `#/e/${v.entita}`, title: t('moduli.ag-vedi-elenco'), on: { click: () => apriLista(v.entita, v.filtri) } }, h('b', v.titolo), h('span.cr-conta', String(v.totale))),
+    h('a.cr-att-testa', { href: `#/e/${v.entita}`, title: t('moduli.ag-vedi-elenco'), on: { click: () => apriLista(v.entita, v.filtri) } }, h('b', nomeW(v.titolo)), h('span.cr-conta', String(v.totale))),
     h('div.cr-att-righe', v.righe.map(r => h('a', { href: `#/e/${v.entita}/${r.id}`, testo: r.titolo })), v.totale > v.righe.length ? h('a.nota', { href: `#/e/${v.entita}`, testo: t('moduli.ag-e-altri', { n: v.totale - v.righe.length }), on: { click: () => apriLista(v.entita, v.filtri) } }) : null))));
 }
 // dal cruscotto alla lista con gli stessi filtri: le date relative del server («@oggi-7») diventano «prima del» / «dal»
@@ -394,7 +398,7 @@ function apriLista(entita, filtri = [], periodo = null) {
   try { const k = 'kubo.lista.' + entita, s = JSON.parse(localStorage.getItem(k) || '{}'); localStorage.setItem(k, JSON.stringify({ ...s, filtri: l, vista: null, raggruppa: null })); } catch {}
 }
 function ultime(d) {
-  if (!d.voci?.length) return h('div.nota', 'Ancora nessuna modifica.');
+  if (!d.voci?.length) return h('div.nota', t('moduli.ag-nessuna-modifica'));
   const verbo = { crea: t('moduli.ag-ha-creato'), modifica: t('moduli.ag-ha-modificato'), elimina: t('moduli.ag-ha-archiviato'), ripristina: t('moduli.ag-ha-ripristinato') };
   // «5 min fa», «5 min ago», «hace 5 min»… dal formato della lingua (Intl.RelativeTimeFormat)
   const rel = new Intl.RelativeTimeFormat(locale(), { style: 'short' });
