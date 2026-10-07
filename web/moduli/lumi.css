@@ -7,3 +7,6 @@
 .kubo-lumi-interruttore { display: inline-flex; gap: 8px; align-items: center; font-size: 14px; margin-right: 14px; }
 .kubo-lumi-esempi { margin: 6px 0 0; padding-left: 18px; } .kubo-lumi-esempi li { margin: 4px 0; }
 @media (max-width: 860px) { .con-lumi .app { padding-top: 50px; } .con-lumi .testa { padding-top: 18px; } }
+/* due classi hanno lo stesso nome in Kubo (stile.css) e nel motore di Lumi: dentro Lumi valgono le sue */
+.lumi-mascotte .corpo { padding: 0; }
+.lumi .cerca { max-width: none; }
