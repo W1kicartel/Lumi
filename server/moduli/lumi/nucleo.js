@@ -39,7 +39,10 @@ const TESTI = {
     kAltro: 'Claude error ({s}): {m}', input: 'Could not read a tool input.',
   },
 };
-const testo = (l, k, p = {}) => String((TESTI[l] || TESTI.it)[k] || k).replace(/\{(\w)\}/g, (x, c) => p[c] ?? x);
+// le altre lingue di Kubo (es, fr, de, pt): le istruzioni sono quelle inglesi, con la lingua della risposta; i messaggi brevi in inglese
+const RISPOSTA = { en: 'English', es: 'Spanish (Spain), addressing the user as «tú»', fr: 'French, addressing the user as «vous»', de: 'German, addressing the user as «du»', pt: 'Brazilian Portuguese, addressing the user as «você»' };
+export const LINGUE_LUMI = ['it', ...Object.keys(RISPOSTA)];
+const testo = (l, k, p = {}) => String((TESTI[l] || TESTI.en)[k] || k).replace(/\{(\w)\}/g, (x, c) => p[c] ?? x);
 
 // le istruzioni di sistema: generiche, uguali per ogni conversazione dell'azienda (così la cache del prompt vale sempre)
 export function sistema({ azienda = '', lingua = 'it', istruzioni = '' } = {}) {
@@ -65,7 +68,7 @@ Privacy
 
 How you answer
 - Speed matters: start the visible answer right away.
-- Reply in English, in short natural sentences, like an experienced colleague. Usually one or two sentences.
+- Reply in ${RISPOSTA[lingua] || RISPOSTA.en}, in short natural sentences, like an experienced colleague. Usually one or two sentences.
 - No long lists or tables in the text: for figures and lists use the mostra tool, then comment in one sentence.
 - Put only the two or three key figures or words of the answer in **bold**.
 - Never make things up: every number, name or date comes from the question's context, a tool or a file. If something is missing, say so.
@@ -215,7 +218,7 @@ export function creaGestore(c = {}) {
     const r = await conf.fetch(`${conf.deepgramBase}/v1/auth/grant`, { method: 'POST', headers: { Authorization: `Token ${conf.deepgram}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ ttl_seconds: 60 }) });
     const j = await r.json().catch(() => ({}));
     if (!r.ok || !j.access_token) throw new Error(j?.err_msg || j?.message || `Deepgram: HTTP ${r.status}`);
-    return { token: j.access_token, scade: j.expires_in ?? 60, modello: conf.deepgramModello, lingua: lingua === 'en' ? 'en' : 'it' };
+    return { token: j.access_token, scade: j.expires_in ?? 60, modello: conf.deepgramModello, lingua: LINGUE_LUMI.includes(lingua) ? lingua : 'it' };
   }
 
   async function carica(corpo, lingua, json) {
@@ -244,7 +247,7 @@ export function creaGestore(c = {}) {
     let corpo;
     try { const t = await req.text(); if (t.length > conf.maxCorpo) return json({ errore: testo('it', 'grande') }, 413); corpo = JSON.parse(t); } catch { corpo = null; }
     if (!corpo || typeof corpo !== 'object') return json({ errore: testo('it', 'corpo') }, 400);
-    const lingua = corpo.lingua === 'en' ? 'en' : 'it';
+    const lingua = LINGUE_LUMI.includes(corpo.lingua) ? corpo.lingua : 'it';
     if (conf.autorizza) { let ok = false; try { ok = await conf.autorizza(req); } catch { ok = false; } if (!ok) return json({ errore: testo(lingua, 'autorizza') }, 401); }
     if (corpo.azione === 'stato') return json({ claude: !!conf.chiave, voce: !!conf.deepgram, modello: conf.modello });
     if (corpo.azione !== 'elimina-file' && troppe(`${conf.ip(req) || req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || '?'}|${origine}`)) return json({ errore: testo(lingua, 'troppe') }, 429);
