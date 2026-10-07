@@ -124,7 +124,7 @@ test('cataloghi del server: stesse chiavi e stessi parametri in tutte le lingue'
 test('ogni messaggio di errore del server è nel catalogo (si riconosce e si traduce)', () => {
   const file = [...readdirSync(join(RADICE, 'server')).filter(f => f.endsWith('.js')).map(f => join(RADICE, 'server', f)),
     ...readdirSync(join(RADICE, 'server', 'moduli')).filter(f => f.endsWith('.js') && f !== 'lingue.js').map(f => join(RADICE, 'server', 'moduli', f))];
-  const re = /(?:new (?:\w+\.)?(?:ErroreHttp\(\d+, |ErroreDati\(|ErroreSchema\(|ErroreAccesso\(|ErrorePermesso\(|ErroreFormula\()|\bno\(|\b(?:err|e|problemi|errori)\.push\()(['`])((?:\\.|(?!\1).)*)\1/g;
+  const re = /(?:new (?:\w+\.)?(?:ErroreHttp\(\d+, |ErroreDati\(|ErroreSchema\(|ErroreAccesso\(|ErrorePermesso\(|ErroreFormula\()|\bno\(|\b(?:err|e|problemi|errori)\.push\(|\berrori\[[\w.]+\] = |throw new Error\()(['`])((?:\\.|(?!\1).)*)\1/g;
   const mancano = [];
   let quanti = 0;
   for (const f of file) for (const m of readFileSync(f, 'utf8').matchAll(re)) {

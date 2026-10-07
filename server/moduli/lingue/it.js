@@ -49,6 +49,9 @@ export default {
   'filtro-campo': 'Filtro su un campo sconosciuto «{campo}»',
   'operatore': 'Operatore sconosciuto «{op}»',
   'obbligatorio': '«{campo}» è obbligatorio',
+  'non-campo-di': '«{campo}» non è un campo di {entita}',
+  'non-modificabile': '«{campo}» non si può modificare',
+  'percorso-non-valido': 'Percorso non valido',
   // schema.js e automazioni.js
   'id-entita': 'id entità non valido «{id}» (minuscole, numeri, _)',
   'manca-nome': 'manca il nome',
