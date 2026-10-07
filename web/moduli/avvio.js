@@ -101,7 +101,7 @@ export async function primoAvvio(app) {
 }
 
 // ---------- il giro guidato: quattro tappe sopra l'interfaccia vera ----------
-const nomi = k => { const l = k.schema.filter(e => !e.nascosta).slice(0, 3).map(e => e.nome.toLowerCase()); return l.length ? `: ${l.join(', ')}…` : ''; };
+const nomi = k => { const l = k.schema.filter(e => !e.nascosta).slice(0, 3).map(e => e.nome.toLowerCase()); return l.length ? ` (${l.join(', ')}…)` : ''; };
 const TAPPE = [
   { dove: () => document.querySelector('.lato nav'), titolo: 'Le tue sezioni', testo: k => `Qui c'è tutto il gestionale${nomi(k)}. Ogni sezione è una lista che puoi cercare, filtrare, ordinare e vedere a colonne.` },
   { prima: k => { const e = k.schema.find(x => !x.nascosta); if (e) location.hash = `#/e/${e.id}`; }, dove: () => document.querySelector('.testa a[href^="#/personalizza/"]'),
@@ -155,7 +155,7 @@ async function pagina(contenuto, k) {
   } } }, 'Rimetti i dati d\'esempio');
   contenuto.replaceChildren(h('div.testa', h('h1', 'Dati d\'esempio e giro guidato')),
     h('div.corpo', h('div.foglio.avvio-pagina',
-      stato.esempi ? [h('p', `Ci sono ${stato.esempi} righe d'esempio: clienti, movimenti e appuntamenti finti, per provare Kubo senza paura. Quando sei pronto toglile: spariscono tutte (anche quelle che hai ritoccato), la numerazione riparte da 1 e quello che hai inserito tu resta.`), stato.titolare ? togli : h('p.nota', 'Solo il titolare può toglierli.')]
+      stato.esempi ? [h('p', `Ci sono ${stato.esempi} righe d'esempio: clienti, movimenti e appuntamenti finti, per provare Kubo senza paura. Quando sei pronto toglile: spariscono tutte (anche quelle che hai ritoccato), quello che hai inserito tu resta e, dove non c'è ancora niente di tuo, la numerazione riparte da 1.`), stato.titolare ? togli : h('p.nota', 'Solo il titolare può toglierli.')]
         : [h('p', 'Non ci sono dati d\'esempio.'), stato.titolare ? metti : null],
       h('hr'), h('p', 'Vuoi rivedere dove sono le cose?'), h('button.btn', { type: 'button', on: { click: () => giro(k) } }, 'Rifai il giro guidato'))));
 }

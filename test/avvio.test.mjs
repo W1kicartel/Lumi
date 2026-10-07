@@ -204,7 +204,7 @@ test('API: avvio guidato completo, persone con il ruolo, Lumi spento, cruscotto,
     const d = (await chiama('GET', '/api/avvio/domande')).json; assert.ok(d.domande.length >= 10); assert.equal(d.tipiche.negozio.magazzino, true);
     const risposte = { settore: 'negozio', magazzino: false, persone: 'poche', lumi: false, esempi: true, squadra: [{ nome: 'Giulia', email: 'giulia@prova.it', ruolo: 'banco' }] };
     assert.deepEqual((await chiama('POST', '/api/avvio/piano', { risposte })).json.sezioni, ['Clienti', 'Fornitori', 'Articoli', 'Vendite', 'Ordini ai fornitori']);
-    assert.ok([400, 401].includes((await chiama('POST', '/api/avvio/configura', { azienda: 'Bottega', nome: 'T', email: 't@prova.it', password: 'corta', risposte })).stato));
+    assert.equal((await chiama('POST', '/api/avvio/configura', { azienda: 'Bottega', nome: 'T', email: 't@prova.it', password: 'corta', risposte })).stato, 400);
     assert.equal(U.quanti(db), 0);   // niente a metà
     const c = await chiama('POST', '/api/avvio/configura', { azienda: 'Bottega Prova', nome: 'Titolare', email: 't@prova.it', password: 'password-lunga', risposte });
     assert.equal(c.stato, 200, JSON.stringify(c.json)); assert.ok(c.json.esempi > 10);
@@ -228,6 +228,11 @@ test('API: avvio guidato completo, persone con il ruolo, Lumi spento, cruscotto,
     assert.equal((await chiama('GET', '/api/dati/vendite')).json.totale, 0);
     assert.ok((await chiama('POST', '/api/avvio/esempi')).json.creati > 10);
     assert.equal((await chiama('POST', '/api/avvio/esempi')).stato, 409);
+    // con un webhook attivo gli esempi non si rimettono: finirebbero anche negli altri programmi
+    assert.ok((await chiama('DELETE', '/api/avvio/esempi')).json.tolti > 10);
+    db.prepare('INSERT INTO _import_webhook (id, def, segreto, creato) VALUES (?, ?, ?, ?)').run('w1', JSON.stringify({ nome: 'x', url: 'http://127.0.0.1:9/', entita: '*', eventi: ['crea'], attivo: true }), 's', new Date().toISOString());
+    assert.equal((await chiama('POST', '/api/avvio/esempi')).stato, 409);
+    assert.equal(quantiEsempi(db), 0);
   } finally { srv.close(); }
 });
 

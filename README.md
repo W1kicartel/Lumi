@@ -18,7 +18,7 @@ cd kubo
 npm start          # http://localhost:4380 · i dati in ./dati/kubo.db
 ```
 
-Al primo avvio parte l'**avvio guidato**: il nome dell'attività, una domanda per schermata (che lavoro fai, se hai un magazzino, se prendi appuntamenti, se emetti fatture, chi lavora con te, se vuoi Lumi), e alla fine «vuoi vedere Kubo con dei dati d'esempio?». Dopo, un giro di quattro tappe ti mostra dove sono le cose. I dati d'esempio si tolgono con un clic e la numerazione riparte da 1.
+Al primo avvio parte l'**avvio guidato**: il nome dell'attività, una domanda per schermata (che lavoro fai, se hai un magazzino, se prendi appuntamenti, se emetti fatture, chi lavora con te, se vuoi Lumi), e alla fine «vuoi vedere Kubo con dei dati d'esempio?». Dopo, un giro di quattro tappe ti mostra dove sono le cose. I dati d'esempio si tolgono con un clic; dove non hai ancora inserito niente, la numerazione riparte da 1.
 
 | | |
 |---|---|
