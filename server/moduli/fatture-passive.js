@@ -66,7 +66,7 @@ const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').re
 export function vistaHtml(xml, indice = 0, { etichette = {}, lingua = 'it' } = {}) {
   const { fornitore: f, cliente: c, fatture } = leggiFattura(xml), d = fatture[indice] || fatture[0];
   const E = k => esc(etichette[k] || k);
-  const eur = x => new Intl.NumberFormat(lingua, { style: 'currency', currency: d.divisa || 'EUR', maximumFractionDigits: 8 }).format(x);
+  const eur = x => new Intl.NumberFormat(lingua, { style: 'currency', currency: /^[A-Z]{3}$/.test(d.divisa) ? d.divisa : 'EUR', maximumFractionDigits: 8 }).format(x);
   const dataL = s => (s ? new Date(`${s}T12:00:00`).toLocaleDateString(lingua) : '');
   const sog = (t, s) => `<div class="sog"><small>${E(t)}</small><b>${esc(s.nome)}</b><span>${esc([s.via, [s.cap, s.comune, s.provincia].filter(Boolean).join(' '), s.nazione].filter(Boolean).join(', '))}</span>` +
     `<span>${s.piva ? `${E('piva')} ${esc(s.paese)}${esc(s.piva)}` : ''}${s.codice_fiscale ? ` · ${E('cf')} ${esc(s.codice_fiscale)}` : ''}</span></div>`;

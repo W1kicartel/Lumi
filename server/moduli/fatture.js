@@ -34,7 +34,8 @@ export default function registra({ r, prima, db, S, D, P, meta, serve, ErroreHtt
     serve(ctx); D.leggi(db, RICEVUTE, p.id, ctx, { conRighe: false });   // con i permessi di chi guarda
     const x = db.prepare('SELECT xml, indice FROM _fatture_xml WHERE id = ?').get(p.id);
     if (!x) throw new ErroreHttp(404, 'Questa fattura ricevuta non ha il file XML');
-    return { html: vistaHtml(x.xml, x.indice, { lingua: q.get('lingua') || 'it', etichette: ETICHETTE[q.get('lingua')] || ETICHETTE.it }) };
+    const lingua = Object.hasOwn(ETICHETTE, q.get('lingua') || '') ? q.get('lingua') : 'it';   // solo le sei lingue: Intl non riceve testo libero
+    return { html: vistaHtml(x.xml, x.indice, { lingua, etichette: ETICHETTE[lingua] }) };
   });
   r('POST', '/api/fatture/integrazione/:id', ({ ctx, p, corpo }) => { serve(ctx); sezione(FATTURE); return integrazione(db, { S, D, P, ErroreHttp }, p.id, corpo || {}, ctx); });
   r('GET', '/api/fatture/bollo', ({ ctx, q }) => bolloAnno(db, { D, P }, Number(q.get('anno')) || new Date().getFullYear(), serve(ctx)));
