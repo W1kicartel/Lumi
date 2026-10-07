@@ -81,7 +81,11 @@ export function creaServer(db) {
   r('PUT', '/api/schema/:id', ({ ctx, p, corpo }) => {
     if (!P.puoSchema(serve(ctx))) throw new P.ErrorePermesso('Non puoi personalizzare il gestionale');
     if (corpo.id !== p.id) throw new ErroreHttp(400, 'id diverso');
-    return S.applica(db, corpo, { utente: ctx.utente.id, forza: !!corpo.__forza });
+    // chi non vede un campo (nascosto al suo ruolo) non può archiviarlo senza saperlo: i campi nascosti tornano com'erano
+    const prima = S.leggi(db, p.id), def = { ...corpo, campi: [...(corpo.campi || [])] };
+    for (const c of prima?.campi || []) if (P.statoCampo(ctx, p.id, c.id) === 'nascosto' && !def.campi.some(x => x.id === c.id)) def.campi.push(c);
+    delete def.__forza; delete def.puo;
+    return S.applica(db, def, { utente: ctx.utente.id, forza: !!corpo.__forza });
   });
   r('DELETE', '/api/schema/:id', ({ ctx, p }) => { if (!P.puoSchema(serve(ctx))) throw new P.ErrorePermesso(); S.archiviaEntita(db, p.id, { utente: ctx.utente.id }); return { ok: true }; });
   r('POST', '/api/modelli/:id', ({ ctx, p }) => { if (!P.puoSchema(serve(ctx))) throw new P.ErrorePermesso(); return M.installa(db, p.id, { utente: ctx.utente.id }); });
