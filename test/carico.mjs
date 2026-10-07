@@ -70,5 +70,9 @@ for (const [nome, metodo, percorso, corpo] of prove) {
   risultati.push({ prova: nome, 'sola (ms)': Math.round(sole[2]), '10 insieme, la più lenta (ms)': Math.round(Math.max(...insieme)), esito });
 }
 console.table(risultati);
+// il cruscotto widget per widget (per capire dove va il tempo)
+const cr = (await chiama('GET', '/api/cruscotto', null, titolare)).j, widget = [];
+for (const w of cr.widget) { const t = performance.now(); await chiama('POST', '/api/cruscotto/anteprima', w, titolare).catch(() => null); widget.push({ widget: w.titolo, tipo: w.tipo, ms: Math.round(performance.now() - t) }); }
+console.table(widget);
 srv.close(); db.close(); rmSync(cartella, { recursive: true, force: true });
 process.exit(0);

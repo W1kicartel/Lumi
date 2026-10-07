@@ -5,7 +5,7 @@
 //   + - * / · confronti fra numeri o fra testi · E O NON · SE(cond; a; b) · ASS · ARROTONDA(x; cifre) · OGGI() · GIORNI(a; b)
 //   SOMMA(righe.x) → sottoquery sulle righe figlie · relazione.campo → sottoquery sulla riga collegata
 // Tutto il resto (%, ^, CONTA, testo & numeri…) torna null e dati.js usa la strada di prima, in memoria.
-// Anche gli indici: data, data e ora, stato e (archiviato, creato) per ogni entità, creati la prima volta che servono.
+// Anche gli indici: data, data e ora e (creato, id) per ogni entità, creati la prima volta che servono.
 import * as S from '../schema.js';
 import { analizza } from '../formule.js';
 import { orologio } from '../formule.js';
@@ -111,10 +111,11 @@ function nodo(db, def, n, tab, prof) {
 const fatti = new WeakMap();
 export function indici(db, def) {
   if (!fatti.has(db)) fatti.set(db, new Set());
-  const T = S.tabella(def.id), cols = S.campiAttivi(def).filter(c => S.haColonna(c) && ['data', 'data_ora', 'stato'].includes(c.tipo)).map(c => c.id);
+  const T = S.tabella(def.id), cols = S.campiAttivi(def).filter(c => S.haColonna(c) && ['data', 'data_ora'].includes(c.tipo)).map(c => c.id);   // stato no: pochi valori, l'indice inganna SQLite sui periodi
   const chiave = def.id + ':' + cols.join(','); if (fatti.get(db).has(chiave)) return; fatti.get(db).add(chiave);
   try {
-    db.exec(`CREATE INDEX IF NOT EXISTS x_${def.id}__creato ON ${T}(archiviato, creato DESC, id DESC)`);
+    // l'ordine predefinito delle liste; senza «archiviato» davanti, se no SQLite lo preferisce all'indice della data nei periodi
+    db.exec(`DROP INDEX IF EXISTS x_${def.id}__creato`); db.exec(`CREATE INDEX IF NOT EXISTS x_${def.id}__ordine ON ${T}(creato DESC, id DESC)`);
     for (const c of cols) db.exec(`CREATE INDEX IF NOT EXISTS x_${def.id}_${c} ON ${T}(${S.colonna(c)})`);
   } catch { /* una tabella appena cambiata: si riprova la prossima volta */ fatti.get(db).delete(chiave); }
 }

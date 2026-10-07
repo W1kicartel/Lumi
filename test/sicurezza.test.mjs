@@ -241,6 +241,6 @@ test('percorso SQL dei calcolati: stessi risultati del motore, filtri e ordiname
     const rich = { entita: 'vendite', misure: [{ misura: 'somma', campo: 'totale' }, { misura: 'somma', campo: 'pezzi' }], per: 'mese', da: '2026-10-01', a: '2026-10-31' };
     const veloce = aggrega(db, rich, null), salva = D.estensioni.sqlCalcolato; D.estensioni.sqlCalcolato = null;
     try { assert.deepEqual(veloce.totali, aggrega(db, rich, null).totali); } finally { D.estensioni.sqlCalcolato = salva; }
-    assert.ok(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = 'x_vendite__creato'").get());
+    assert.ok(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = 'x_vendite__ordine'").get());
   } finally { k.chiudi(); }
 });

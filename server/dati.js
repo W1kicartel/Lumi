@@ -243,7 +243,8 @@ function elencaLeggero(db, def, campi, { W, par, ord, dopo, limite }, ctx) {
   }
   const T = S.tabella(def.id), max = Math.max(1, Math.min(200000, Number(limite) || 20000));
   const totale = db.prepare(`SELECT COUNT(*) n FROM ${T} ${W}`).get(...par).n;
-  const righe = db.prepare(`SELECT ${sel.join(', ')} FROM ${T} ${W} ORDER BY ${ord.join(', ')} LIMIT ?`).all(...par, max);
+  // senza ordine se ci stanno tutte: così SQLite usa l'indice del filtro (la data) invece di quello dell'ordinamento
+  const righe = db.prepare(`SELECT ${sel.join(', ')} FROM ${T} ${W}${totale > max ? ` ORDER BY ${ord.join(', ')}` : ''} LIMIT ?`).all(...par, max);
   for (const { c, sq } of usati) {
     if (sq) { if (sq.tipo === 'b') for (const r of righe) r[c.id] = r[c.id] == null ? null : !!r[c.id]; continue; }
     if (c.tipo === 'valuta') for (const r of righe) r[c.id] = r[c.id] == null ? null : Number(r[c.id]) / 100;
