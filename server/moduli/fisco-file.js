@@ -3,7 +3,7 @@
 import { xml as escXml } from './import-formati.js';
 
 // ---------- LIPE ----------
-// Specifiche tecniche «Comunicazione IVA Trimestrale» (codice fornitura IVP18, schema fornituraIvp_2018_v1.xsd, namespace
+// Validata contro gli schemi ufficiali in test/fisco/lipe (test/lipe-xsd.test.mjs). Specifiche tecniche «Comunicazione IVA Trimestrale» (codice fornitura IVP18, schema fornituraIvp_2018_v1.xsd, namespace
 // urn:www.agenziaentrate.gov.it:specificheTecniche:sco:ivp), Allegato A del provv. AdE 27/3/2017 e aggiornamenti successivi.
 // Importi con la virgola e due decimali (DatoVP_Type/DatoVN_Type); un modulo per mese (mensili) o uno per trimestre.
 // Per i trimestrali il quarto trimestre si indica con Trimestre = 5 e senza rigo VP14 né interessi (controlli dei righi VP12 e VP14).
@@ -33,7 +33,8 @@ export function lipe({ cf, piva, anno, periodicita, trimestre, periodi, metodoAc
     righe.push('      </iv:Modulo>');
   });
   righe.push('    </iv:DatiContabili>', '  </iv:Comunicazione>', '</iv:Fornitura>', '');
-  // IT + codice fiscale di chi trasmette + _LI_ + progressivo univoco di 5 caratteri alfanumerici (qui: anno a due cifre, T, trimestre, 0)
+  // IT + identificativo fiscale di chi trasmette + _LI_ + progressivo [A-Za-z0-9] fino a 5 caratteri (qui: anno a due cifre, T, trimestre, 0).
+  // Fonte: «Modalità di trasmissione dati» allegata al provv. AdE 27/3/2017 (test/fisco/lipe/Modalita-trasmissione-dati.pdf).
   const nome = `IT${String(cf).toUpperCase()}_LI_${String(anno).slice(2)}T${trimestre}0.xml`;
   return { nome, xml: righe.join('\n') };
 }
