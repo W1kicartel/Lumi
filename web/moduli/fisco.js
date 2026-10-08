@@ -183,12 +183,12 @@ async function impostazioni(dove, k, imp) {
   const testo = (id, extra = {}) => h('input.campo', { name: id, value: imp[id] ?? '', disabled: !puo, autocomplete: 'off', ...extra });
   const campi = { regime: sel('regime', ['forfettario', 'semplificato', 'ordinario'], 'fisco.regime-'), periodicita: sel('periodicita', ['trimestrale', 'mensile'], 'fisco.periodicita-'),
     ateco: testo('ateco', { placeholder: '74.10.10' }), coefficiente: num('coefficiente', { max: 100, placeholder: imp.coefficienteAteco ?? '' }),
-    gestione: sel('gestione', ['artigiani', 'commercianti', 'separata', 'cassa', 'nessuna'], 'fisco.gestione-'), riduzione35: chk('riduzione35'), aliquotaRidotta: chk('aliquotaRidotta'),
+    gestione: sel('gestione', ['artigiani', 'commercianti', 'separata', 'cassa', 'nessuna'], 'fisco.gestione-'), riduzione35: chk('riduzione35'), ante1996: chk('ante1996'), aliquotaRidotta: chk('aliquotaRidotta'),
     impostaAnnoPrecedente: num('impostaAnnoPrecedente'), accontiVersatiAnnoPrecedente: num('accontiVersatiAnnoPrecedente'), contributiVersati: num('contributiVersati'),
     sedeInps: testo('sedeInps'), matricolaInps: testo('matricolaInps'), creditoAnnoPrecedente: num('creditoAnnoPrecedente'), accontoIvaStorico: num('accontoIvaStorico'), accontoIvaPrevisto: num('accontoIvaPrevisto'),
     camerale: num('camerale'), provinciaCciaa: testo('provinciaCciaa', { maxLength: 2 }), bollo: chk('bollo'), sostituto: chk('sostituto') };
   const riga = id => h('div', { class: campi[id].type === 'checkbox' ? 'fisco-spunta' : '' }, campi[id].type === 'checkbox' ? h('label', campi[id], ' ', t('fisco.imp-' + id.toLowerCase())) : [h('label.etichetta', t('fisco.imp-' + id.toLowerCase())), campi[id]], h('small.nota', t('fisco.impn-' + id.toLowerCase())));
-  const gruppi = [['regime', ['regime', 'periodicita', 'ateco', 'coefficiente']], ['inps', ['gestione', 'riduzione35', 'sedeInps', 'matricolaInps', 'contributiVersati']],
+  const gruppi = [['regime', ['regime', 'periodicita', 'ateco', 'coefficiente']], ['inps', ['gestione', 'riduzione35', 'ante1996', 'sedeInps', 'matricolaInps', 'contributiVersati']],
     ['forfettario', ['aliquotaRidotta', 'impostaAnnoPrecedente', 'accontiVersatiAnnoPrecedente']], ['iva', ['creditoAnnoPrecedente', 'accontoIvaStorico', 'accontoIvaPrevisto', 'bollo']],
     ['altro', ['sostituto', 'camerale', 'provinciaCciaa']]];
   const errore = h('div');

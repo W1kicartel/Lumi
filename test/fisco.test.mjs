@@ -86,7 +86,12 @@ test('forfettario: reddito, INPS, imposta 5/15%, acconti e soglie', () => {
   assert.ok(f.avvisi.includes('vicino-85') && f.avvisi.includes('contributi-stimati'));
   assert.deepEqual(f.accontiQuestAnno.map(x => [x.codice, x.importo, x.scadenza]), [['1790', 1500, '2026-07-20'], ['1791', 1500, '2026-11-30']]);
   const art = R.contributiInps({ gestione: 'artigiani', reddito: 30000, riduzione35: true });
-  assert.equal(art.fissi, 2938.65); assert.equal(art.eccedenza, Math.round((30000 - 18808) * 24 * 0.65) / 100);
+  assert.equal(art.fissi, 2938.88);                               // 4.521,36 × 65% (Circ. INPS 14/2026) assert.equal(art.eccedenza, Math.round((30000 - 18808) * 24 * 0.65) / 100);
+  // massimale: 93.707 € con anzianità al 31/12/1995, 122.295 € per chi è iscritto dal 1996 (Circ. INPS 14/2026 par. 4)
+  const vecchio = R.contributiInps({ gestione: 'artigiani', reddito: 150000, ante1996: true }), nuovo = R.contributiInps({ gestione: 'artigiani', reddito: 150000 });
+  assert.equal(vecchio.eccedenza, Math.round((56224 - 18808) * 24 + (93707 - 56224) * 25) / 100);
+  assert.equal(nuovo.eccedenza, Math.round((56224 - 18808) * 24 + (122295 - 56224) * 25) / 100);
+  assert.equal(Math.round((vecchio.fissi + vecchio.eccedenza) * 100) / 100, 22871.95);   // il massimo IVS della circolare (22.864,51) + 7,44 di maternità
   assert.equal(R.forfettario({ anno: 2026, incassato: 101000, aliquotaRidotta: true }).aliquota, 5);
   assert.ok(R.forfettario({ anno: 2026, incassato: 101000 }).avvisi.includes('oltre-100'));
   assert.deepEqual(R.accontiForfettario(50, 2026), []);

@@ -145,6 +145,8 @@ export default {
   'fisco.impn-gestione': "Pour les caisses professionnelles, Kubo ne calcule pas les cotisations.",
   'fisco.imp-riduzione35': "Réduction de 35 % des cotisations",
   'fisco.impn-riduzione35': "Seulement les artisans et commerçants forfaitaires qui l'ont demandée à l'INPS.",
+  'fisco.imp-ante1996': "Cotisations versées avant 1996",
+  'fisco.impn-ante1996': "Si vous avez cotisé avant le 31/12/1995, le plafond est de 93 707 € au lieu de 122 295 €.",
   'fisco.imp-aliquotaridotta': "Taux de 5 % (cinq premières années)",
   'fisco.impn-aliquotaridotta': "Pour les nouvelles activités qui remplissent les conditions ; sinon 15 %.",
   'fisco.imp-impostaannoprecedente': "Impôt de substitution de l'an dernier (€)",

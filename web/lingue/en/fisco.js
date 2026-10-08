@@ -145,6 +145,8 @@ export default {
   'fisco.impn-gestione': "Kubo does not calculate contributions for professional funds.",
   'fisco.imp-riduzione35': "35% contribution reduction",
   'fisco.impn-riduzione35': "Only flat-rate craftsmen and traders who requested it from INPS.",
+  'fisco.imp-ante1996': "Contributions paid before 1996",
+  'fisco.impn-ante1996': "If you have contributions from before 31/12/1995, the cap is €93,707 instead of €122,295.",
   'fisco.imp-aliquotaridotta': "5% rate (first five years)",
   'fisco.impn-aliquotaridotta': "For new businesses that meet the legal requirements; otherwise 15%.",
   'fisco.imp-impostaannoprecedente': "Last year's substitute tax (€)",

@@ -38,7 +38,7 @@ export const SEZIONE_CORRISPETTIVI = { id: CORRISPETTIVI, nome: 'Corrispettivi',
   { id: 'aliquota', nome: 'IVA %', tipo: 'percentuale', predefinito: 22 }, { id: 'note', nome: 'Note', tipo: 'testo' }] };
 
 // ---------- impostazioni ----------
-const PREDEFINITE = { regime: null, periodicita: 'trimestrale', ateco: '', coefficiente: null, gestione: 'nessuna', riduzione35: false, aliquotaRidotta: false,
+const PREDEFINITE = { regime: null, periodicita: 'trimestrale', ateco: '', coefficiente: null, gestione: 'nessuna', riduzione35: false, ante1996: false, aliquotaRidotta: false,
   annoInizio: null, creditoAnnoPrecedente: 0, accontoIvaStorico: null, accontoIvaPrevisto: null, impostaAnnoPrecedente: null, accontiVersatiAnnoPrecedente: null,
   contributiVersati: null, sedeInps: '', matricolaInps: '', camerale: null, provinciaCciaa: '', sostituto: false, bollo: false, annoRiferimento: null };
 // i valori «dell'anno scorso» (crediti, acconti, imposta, contributi versati) valgono solo per l'anno in cui sono stati inseriti:
@@ -71,7 +71,7 @@ export function salvaImpostazioni(db, meta, corpo = {}) {
   if (s.coefficiente != null && (s.coefficiente <= 0 || s.coefficiente > 100)) sbagliato('coefficiente');
   if (!('annoRiferimento' in corpo) || s.annoRiferimento == null) s.annoRiferimento = new Date().getFullYear();
   if (!Number.isInteger(s.annoRiferimento) || s.annoRiferimento < 2000 || s.annoRiferimento > 2100) sbagliato('annoRiferimento');
-  for (const k of ['riduzione35', 'aliquotaRidotta', 'sostituto', 'bollo']) s[k] = !!s[k];
+  for (const k of ['riduzione35', 'ante1996', 'aliquotaRidotta', 'sostituto', 'bollo']) s[k] = !!s[k];
   for (const k of ['sedeInps', 'matricolaInps', 'provinciaCciaa']) s[k] = String(s[k] || '').trim().toUpperCase().slice(0, 20);
   meta.scrivi(db, 'fisco.impostazioni', JSON.stringify(s));
   return impostazioni(db, meta);
@@ -212,7 +212,7 @@ export function incassato(k, ctx, anno) {
 }
 export function cruscottoForfettario(k, ctx, anno, { piu = 0 } = {}) {
   const imp = perAnno(impostazioni(k.db, k.meta), anno), { incassato: inc, senzaData } = incassato(k, ctx, anno), prima = incassato(k, ctx, anno - 1);
-  const base = { coefficiente: imp.coefficienteUsato, gestione: imp.gestione, riduzione35: imp.riduzione35, aliquotaRidotta: imp.aliquotaRidotta, anno };
+  const base = { coefficiente: imp.coefficienteUsato, gestione: imp.gestione, riduzione35: imp.riduzione35, ante1996: imp.ante1996, aliquotaRidotta: imp.aliquotaRidotta, anno };
   const precedente = R.forfettario({ ...base, anno: anno - 1, incassato: prima.incassato });
   const impostaPrec = imp.impostaAnnoPrecedente ?? precedente.imposta;
   const acconti = R.accontiForfettario(impostaPrec, anno), versati = acconti.reduce((s, x) => s + cent(x.importo), 0);

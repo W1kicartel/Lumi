@@ -145,6 +145,8 @@ export default {
   'fisco.impn-gestione': "Für Berufskassen berechnet Kubo keine Beiträge.",
   'fisco.imp-riduzione35': "Beitragsermäßigung um 35 %",
   'fisco.impn-riduzione35': "Nur pauschale Handwerker und Händler, die sie bei der INPS beantragt haben.",
+  'fisco.imp-ante1996': "Beiträge vor 1996 gezahlt",
+  'fisco.impn-ante1996': "Mit Beitragszeiten vor dem 31.12.1995 liegt die Obergrenze bei 93.707 € statt 122.295 €.",
   'fisco.imp-aliquotaridotta': "Satz von 5 % (erste fünf Jahre)",
   'fisco.impn-aliquotaridotta': "Für neue Tätigkeiten mit den gesetzlichen Voraussetzungen; sonst 15 %.",
   'fisco.imp-impostaannoprecedente': "Ersatzsteuer des Vorjahres (€)",

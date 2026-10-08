@@ -145,6 +145,8 @@ export default {
   'fisco.impn-gestione': "Para las cajas profesionales Kubo no calcula las cotizaciones.",
   'fisco.imp-riduzione35': "Reducción del 35% de las cotizaciones",
   'fisco.impn-riduzione35': "Solo artesanos y comerciantes a tanto alzado que la han pedido al INPS.",
+  'fisco.imp-ante1996': "Cotizaciones anteriores a 1996",
+  'fisco.impn-ante1996': "Si cotizabas antes del 31/12/1995, el tope es de 93.707 € en lugar de 122.295 €.",
   'fisco.imp-aliquotaridotta': "Tipo del 5% (primeros cinco años)",
   'fisco.impn-aliquotaridotta': "Para actividades nuevas que cumplen los requisitos; si no, 15%.",
   'fisco.imp-impostaannoprecedente': "Impuesto sustitutivo del año pasado (€)",

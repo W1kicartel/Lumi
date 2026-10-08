@@ -145,6 +145,8 @@ export default {
   'fisco.impn-gestione': "Per le casse professionali Kubo non calcola i contributi.",
   'fisco.imp-riduzione35': "Riduzione del 35% dei contributi",
   'fisco.impn-riduzione35': "Solo forfettari artigiani e commercianti che l'hanno chiesta all'INPS.",
+  'fisco.imp-ante1996': "Contributi versati prima del 1996",
+  'fisco.impn-ante1996': "Se hai anzianità contributiva al 31/12/1995 il massimale è 93.707 € invece di 122.295 €.",
   'fisco.imp-aliquotaridotta': "Aliquota del 5% (primi cinque anni)",
   'fisco.impn-aliquotaridotta': "Per le attività nuove con i requisiti di legge; altrimenti 15%.",
   'fisco.imp-impostaannoprecedente': "Imposta sostitutiva dell'anno scorso (€)",

@@ -137,25 +137,27 @@ export function coefficienteAteco(codice) {
 }
 
 // ---------- INPS 2026 ----------
-// Artigiani e commercianti: minimale 18.808 €, contributi fissi annui sul minimale, aliquote 24% / 24,48% fino a 56.224 €,
-// +1% oltre (Circ. INPS 14 del 9/2/2026, riportata in docs/ricerca/COMMERCIALISTA.md: verifica gli importi nel Cassetto
-// previdenziale). Massimale per chi è iscritto dal 1996: 122.295 € (stesso valore della gestione separata, Circ. 8/2026).
-// Riduzione del 35% per i forfettari che la chiedono (L. 190/2014 c.77). Gestione separata: 26,07% fino al massimale (Circ. 8/2026).
+// Fonte: Circolare INPS n. 14 del 9/2/2026 (letta sul testo ufficiale). Artigiani e commercianti: minimale di reddito 18.808 €;
+// contributo annuo sul minimale 4.521,36 € artigiani (4.513,92 IVS + 7,44 maternità) e 4.611,64 € commercianti (4.604,20 IVS e
+// indennizzo + 7,44 maternità); aliquote 24% / 24,48% fino a 56.224 €, 25% / 25,48% oltre; massimale 93.707 € per chi ha
+// anzianità contributiva al 31/12/1995, 122.295 € per chi è iscritto dal 1/1/1996 senza anzianità precedente (non frazionabile).
+// Riduzione del 35% per i forfettari che la chiedono (L. 190/2014 c.77, domanda entro il 28/2). Gestione separata: 26,07% fino a
+// 122.295 € (Circ. INPS 8/2026). Differimento di 30 giorni dei versamenti con le imposte: +0,40% (Circ. 14/2026 par. 5).
 export const INPS = {
-  anno: 2026, minimale: 18808, fascia: 56224, massimale: 122295,
-  artigiani: { fissi: 4521, aliquota: 24, oltre: 25, causaleFissi: 'AF', causale: 'AP' },
-  commercianti: { fissi: 4612, aliquota: 24.48, oltre: 25.48, causaleFissi: 'CF', causale: 'CP' },
+  anno: 2026, minimale: 18808, fascia: 56224, massimale: 122295, massimaleAnte1996: 93707,
+  artigiani: { fissi: 4521.36, aliquota: 24, oltre: 25, causaleFissi: 'AF', causale: 'AP' },
+  commercianti: { fissi: 4611.64, aliquota: 24.48, oltre: 25.48, causaleFissi: 'CF', causale: 'CP' },
   separata: { aliquota: 26.07, causale: 'PXX' },   // causale PXX per chi non ha altra copertura (P10 per i pensionati e iscritti altrove)
-  riduzione: 35,
+  riduzione: 35, maggiorazioneDifferimento: 0.4,
 };
 // rate dei contributi fissi: 16/5, 20/8, 16/11, 16/2 dell'anno dopo (Circ. INPS 14/2026)
 export const rateFisseInps = anno => [scad(anno, 5, 16), scad(anno, 8, 20), scad(anno, 11, 16), scad(anno + 1, 2, 16)];
 
-export function contributiInps({ gestione, reddito, riduzione35 = false }) {
+export function contributiInps({ gestione, reddito, riduzione35 = false, ante1996 = false }) {
   const r = Math.max(0, Number(reddito) || 0);
   if (gestione === 'artigiani' || gestione === 'commercianti') {
     const g = INPS[gestione], k = riduzione35 ? (100 - INPS.riduzione) / 100 : 1;
-    const base = Math.min(r, INPS.massimale);
+    const base = Math.min(r, ante1996 ? INPS.massimaleAnte1996 : INPS.massimale);
     const fino = Math.max(0, Math.min(base, INPS.fascia) - INPS.minimale), oltre = Math.max(0, base - INPS.fascia);
     const fissi = euro(intero(g.fissi * 100 * k)), eccedenza = euro(intero((fino * g.aliquota + oltre * g.oltre) * k));
     return { gestione, fissi, eccedenza, totale: euro(cent(fissi) + cent(eccedenza)), causaleFissi: g.causaleFissi, causale: g.causale };
@@ -182,10 +184,10 @@ export function accontiForfettario(base, anno) {
 }
 
 // Il cruscotto del forfettario per un anno: incassato (cassa), reddito, contributi, imposta, acconti e avvisi sulle soglie.
-export function forfettario({ incassato = 0, coefficiente = COEFF_ALTRE, gestione = 'nessuna', riduzione35 = false, aliquotaRidotta = false,
+export function forfettario({ incassato = 0, coefficiente = COEFF_ALTRE, gestione = 'nessuna', riduzione35 = false, ante1996 = false, aliquotaRidotta = false,
   contributiVersati = null, impostaAnnoPrecedente = null, accontiVersati = 0, anno, ricaviAnnoPrecedente = null }) {
   const inc = cent(incassato), lordo = intero(inc * coefficiente / 100);
-  const inps = contributiInps({ gestione, reddito: euro(lordo), riduzione35 });
+  const inps = contributiInps({ gestione, reddito: euro(lordo), riduzione35, ante1996 });
   // si deducono i contributi VERSATI nell'anno (principio di cassa): se non li conosci si usa la stima dell'anno, e lo diciamo
   const dedotti = contributiVersati != null && contributiVersati !== '' ? cent(contributiVersati) : cent(inps.totale);
   const imponibile = Math.max(0, lordo - dedotti), aliquota = aliquotaRidotta ? SOSTITUTIVA_START : SOSTITUTIVA;

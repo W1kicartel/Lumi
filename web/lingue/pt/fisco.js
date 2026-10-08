@@ -145,6 +145,8 @@ export default {
   'fisco.impn-gestione': "Para as caixas profissionais o Kubo não calcula as contribuições.",
   'fisco.imp-riduzione35': "Redução de 35% das contribuições",
   'fisco.impn-riduzione35': "Só artesãos e comerciantes forfetários que a pediram ao INPS.",
+  'fisco.imp-ante1996': "Contribuições pagas antes de 1996",
+  'fisco.impn-ante1996': "Se você contribuiu antes de 31/12/1995, o teto é de 93.707 € em vez de 122.295 €.",
   'fisco.imp-aliquotaridotta': "Alíquota de 5% (primeiros cinco anos)",
   'fisco.impn-aliquotaridotta': "Para atividades novas que cumprem os requisitos; senão 15%.",
   'fisco.imp-impostaannoprecedente': "Imposto substitutivo do ano passado (€)",
