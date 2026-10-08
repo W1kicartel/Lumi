@@ -15,7 +15,7 @@ function pasqua(a) {
   const mese = Math.floor((i + m - 7 * n + 114) / 31), giorno = ((i + m - 7 * n + 114) % 31) + 1;
   return Date.UTC(a, mese - 1, giorno);
 }
-// festività nazionali (L. 260/1949 e successive; 4 ottobre di nuovo festa nazionale dal 2026, legge approvata nell'ottobre 2025: verifica)
+// festività nazionali (L. 260/1949 e successive; 4 ottobre di nuovo festa nazionale dal 1/1/2026: L. 8/10/2025 n. 151, GU n. 236 del 10/10/2025)
 export function festivo(s) {
   const d = new Date(s + 'T00:00:00Z'), a = d.getUTCFullYear(), md = s.slice(5);
   if (d.getUTCDay() === 0 || d.getUTCDay() === 6) return true;
@@ -170,7 +170,9 @@ export function contributiInps({ gestione, reddito, riduzione35 = false, ante199
 }
 
 // Le date degli acconti e del saldo delle imposte sui redditi: 30/6 e 30/11 (art. 17 DPR 435/2001); per i soggetti ISA e i
-// forfettari il primo termine può essere prorogato (2026: 20/7, fonte ecnews 2026, verifica ogni anno).
+// forfettari il primo termine può essere prorogato (2026: 20/7, decreto approvato dal Consiglio dei ministri il 22/5/2026 insieme al
+// taglio delle accise; chi paga nei 30 giorni dopo, entro il 19-20/8, aggiunge lo 0,80% secondo le fonti di settore: da
+// ricontrollare ogni anno sul testo in Gazzetta).
 export const PROROGHE_GIUGNO = { 2026: '2026-07-20' };
 export const scadenzaGiugno = anno => PROROGHE_GIUGNO[anno] || scad(anno, 6, 30);
 export const scadenzaNovembre = anno => scad(anno, 11, 30);
