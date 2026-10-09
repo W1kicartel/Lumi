@@ -30,7 +30,9 @@ test('Satispay: attivazione con il codice (RSA), link firmato, callback riletto 
   });
   try {
     const v = await vendita(K);
-    await accendi(K, 'satispay', { base: S.url, segreti: { codice: 'ABC123' }, impostazioni: { indirizzo: 'https://kubo.esempio.it' } });
+    // niente indirizzo nel connettore: per il callback vale l'indirizzo pubblico di Kubo della Libreria
+    assert.equal((await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: 'https://kubo.esempio.it' })).stato, 200);
+    await accendi(K, 'satispay', { base: S.url, segreti: { codice: 'ABC123' } });
     const a = await K.chiama('POST', '/api/connettori/satispay/azioni/attiva', { args: {} }); assert.equal(a.stato, 200, JSON.stringify(a.json)); assert.equal(a.json.key_id, 'kid-1');
     const pag = (await K.chiama('GET', '/api/connettori/satispay')).json;
     assert.ok(!JSON.stringify(pag).includes('PRIVATE KEY')); assert.equal(pag.impostazioni.find(i => i.id === 'codice').salvato, false);   // il codice vale una volta: tolto
@@ -98,7 +100,13 @@ test('Nexi XPay: link con il MAC, esito server-to-server con MAC verificato → 
   const K = await kubo(['fatture']);
   try {
     const f = await fattura(K);
-    await accendi(K, 'nexi-xpay', { segreti: { chiave: 'chiave-mac-prova' }, impostazioni: { alias: 'ALIAS_WEB_00012345', indirizzo: 'https://kubo.esempio.it' } });
+    await accendi(K, 'nexi-xpay', { segreti: { chiave: 'chiave-mac-prova' }, impostazioni: { alias: 'ALIAS_WEB_00012345' } });
+    // l'indirizzo è facoltativo: senza (né qui né nella Libreria, né un http) niente link; con quello https della Libreria sì
+    const no = await K.chiama('POST', '/api/connettori/nexi-xpay/azioni/link_fattura', { args: { fattura: f.id } });
+    assert.notEqual(no.stato, 200); assert.match(JSON.stringify(no.json), /indirizzo pubblico https di Kubo/);
+    assert.equal((await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: 'http://192.168.1.20:8080' })).stato, 200);
+    assert.match(JSON.stringify((await K.chiama('POST', '/api/connettori/nexi-xpay/azioni/link_fattura', { args: { fattura: f.id } })).json), /indirizzo pubblico https di Kubo/);
+    assert.equal((await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: 'https://kubo.esempio.it' })).stato, 200);
     const l = await K.chiama('POST', '/api/connettori/nexi-xpay/azioni/link_fattura', { args: { fattura: f.id } });
     assert.equal(l.stato, 200, JSON.stringify(l.json));
     const u = new URL(l.json.url), p = Object.fromEntries(u.searchParams);

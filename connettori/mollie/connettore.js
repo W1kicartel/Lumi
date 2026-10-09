@@ -3,14 +3,15 @@
 // Quindi: un codice segreto in fondo all'indirizzo (firma «token») e si crede solo all'API, rileggendo GET /v2/payments/{id}.
 // Il pagamento porta «metadata.kubo» = il riferimento di Kubo (kubo-v-<id> o kubo-f-<id>).
 // Kubo sul computer senza indirizzo pubblico: il giro «controlla» rilegge ogni 15 minuti i pagamenti ancora aperti.
-import { RICHIEDE_INCASSI, PERMESSI_INCASSI, azioniLink, testiLink, incassa, daIncassare, riferimento, nomeRiga } from '../_soldi/comuni.js';
+import { RICHIEDE_INCASSI, PERMESSI_INCASSI, azioniLink, testiLink, incassa, daIncassare, riferimento, nomeRiga, pubblicoDi } from '../_soldi/comuni.js';
 
 const FINITI = ['paid', 'failed', 'canceled', 'expired'];
 const valore = n => Number(n).toFixed(2);   // Mollie vuole la stringa con due decimali: «60.00»
-// l'indirizzo del webhook: l'indirizzo pubblico di Kubo + il codice segreto generato all'accensione
-const webhook = k => k.imp.indirizzo && k.segreti.webhook ? `${String(k.imp.indirizzo).replace(/\/+$/, '')}/api/connettori/mollie/in/${k.segreti.webhook}` : undefined;
+// l'indirizzo del webhook: l'indirizzo pubblico di Kubo (il suo o, se vuoto, quello https della Libreria) + il codice segreto
+// generato all'accensione
+const webhook = k => pubblicoDi(k) && k.segreti.webhook ? `${pubblicoDi(k)}/api/connettori/mollie/in/${k.segreti.webhook}` : undefined;
 // redirectUrl serve quasi sempre (https://docs.mollie.com/reference/create-payment): il sito, se no l'indirizzo di Kubo
-const ritorno = k => k.imp.ritorno || k.imp.indirizzo || 'https://www.mollie.com';
+const ritorno = k => k.imp.ritorno || pubblicoDi(k) || 'https://www.mollie.com';
 const metodo = m => ['banktransfer', 'directdebit'].includes(m) ? 'bonifico' : 'carta';
 
 function ricorda(k, id) { const a = [...(k.stato.leggi('aperti') || []).filter(x => x !== id), id].slice(-200); k.stato.scrivi('aperti', a); }
@@ -100,7 +101,7 @@ export default {
       'Crea l\'account su mollie.com e completa la verifica dell\'attività.',
       'Attiva i metodi di pagamento che vuoi (carte, PayPal, bonifico, Satispay…).',
       'Copia la chiave API da Sviluppatori → Chiavi API (prima test_…, poi live_…).',
-      'In Kubo incollala nella pagina di Mollie con l\'indirizzo pubblico di Kubo, se ce l\'hai.',
+      'In Kubo incollala nella pagina di Mollie con l\'indirizzo pubblico di Kubo, se ce l\'hai (se hai impostato l\'indirizzo pubblico di Kubo nella Libreria, puoi lasciarlo vuoto).',
       'Accendi il connettore: Kubo crea il codice segreto del webhook e lo mette da solo in ogni pagamento.',
       'Senza indirizzo pubblico Kubo controlla i pagamenti aperti ogni 15 minuti.',
       'Prova con un link di pagamento da una vendita e paga in modalità test.',
@@ -116,7 +117,7 @@ export default {
       ...testiLink('Payment link', 'sale', 'invoice'), 'az.terminale': 'Charge on the Mollie terminal', 'giro.controlla': 'Check open payments',
       'cat.costoNota': 'No monthly fee or setup cost: you pay per successful transaction. Indicative prices for Italy: European cards from 1.8% + €0.25, SEPA bank transfer €0.25, PayPal €0.10 plus the PayPal fee, Satispay and other methods at their own rates; the Mollie POS has the cost of the terminal. Current prices on mollie.com/it/pricing.',
       'cat.serve': [{ cosa: 'API key (test_… to try, live_… to get paid)', dove: 'Mollie Dashboard → Developers → API keys' }, { cosa: 'POS terminal code (term_…), only if you use the POS', dove: 'Mollie Dashboard → Point of sale → Terminals' }],
-      'cat.passi': ['Create an account on mollie.com and complete the business verification.', 'Enable the payment methods you want (cards, PayPal, bank transfer, Satispay…).', 'Copy the API key from Developers → API keys (test_… first, then live_…).', 'In Kubo paste it on the Mollie page along with Kubo\'s public address, if you have one.', 'Switch the connector on: Kubo creates the webhook secret code and puts it in every payment by itself.', 'Without a public address Kubo checks open payments every 15 minutes.', 'Try a payment link from a sale and pay in test mode.'] },
+      'cat.passi': ['Create an account on mollie.com and complete the business verification.', 'Enable the payment methods you want (cards, PayPal, bank transfer, Satispay…).', 'Copy the API key from Developers → API keys (test_… first, then live_…).', 'In Kubo paste it on the Mollie page along with Kubo\'s public address, if you have one (if you set Kubo\'s public address in the Library, you can leave it empty).', 'Switch the connector on: Kubo creates the webhook secret code and puts it in every payment by itself.', 'Without a public address Kubo checks open payments every 15 minutes.', 'Try a payment link from a sale and pay in test mode.'] },
     es: { descrizione: 'Enlaces de pago y TPV de Mollie: las ventas y facturas se marcan pagadas solas.', 'imp.chiave': 'Clave API (test_… o live_…)', 'imp.indirizzo': 'Dirección pública de Kubo (para el webhook)', 'imp.webhook': 'Código secreto del webhook (va al final de la dirección)', 'imp.ritorno': 'Página tras el pago (p. ej. tu web)', 'imp.terminale': 'Terminal TPV de Mollie (term_…)',
       ...testiLink('Enlace de pago', 'venta', 'factura'), 'az.terminale': 'Cobrar en el TPV de Mollie', 'giro.controlla': 'Revisar los pagos abiertos' },
     fr: { descrizione: 'Liens de paiement et TPE Mollie : les ventes et factures se marquent payées toutes seules.', 'imp.chiave': 'Clé API (test_… ou live_…)', 'imp.indirizzo': 'Adresse publique de Kubo (pour le webhook)', 'imp.webhook': 'Code secret du webhook (à la fin de l\'adresse)', 'imp.ritorno': 'Page après le paiement (ex. votre site)', 'imp.terminale': 'Terminal TPE Mollie (term_…)',

@@ -113,7 +113,11 @@ test('BigCommerce: varianti a pagine, giacenza con adjustments/absolute, webhook
     const l = await articolo(K, 'BC-M-L'); assert.equal(l.nome, 'Maglia L'); assert.equal(l.prezzo, 32); assert.equal(l.giacenza, 1);
     await K.chiama('PATCH', `/api/dati/articoli/${l.id}`, { giacenza: 5 }); await aspetta(K);
     assert.deepEqual(aggiustamenti[0], { reason: 'Kubo', items: [{ location_id: 2, variant_id: 12, quantity: 5 }] });
-    const w = await K.chiama('POST', '/api/connettori/bigcommerce/azioni/webhook', { args: { indirizzo: 'https://kubo.bottega.example' } });
+    // l'indirizzo è facoltativo: senza (né qui né nella Libreria) un errore chiaro; vuoto vale quello della Libreria
+    const no = await K.chiama('POST', '/api/connettori/bigcommerce/azioni/webhook', { args: {} });
+    assert.notEqual(no.stato, 200); assert.match(JSON.stringify(no.json), /indirizzo pubblico https di Kubo/); assert.equal(ganci.length, 0);
+    assert.equal((await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: 'https://kubo.bottega.example' })).stato, 200);
+    const w = await K.chiama('POST', '/api/connettori/bigcommerce/azioni/webhook', { args: {} });
     assert.equal(w.json.ok, true, JSON.stringify(w.json)); assert.equal(ganci[0].destination, `https://kubo.bottega.example/api/connettori/bigcommerce/in/${codice}`);
     const ev = JSON.stringify({ scope: 'store/order/statusUpdated', store_id: '1', data: { type: 'order', id: 100, status: { previous_status_id: 7, new_status_id: 11 } }, hash: 'h1' });
     assert.equal((await manda(K, '/api/connettori/bigcommerce/in/sbagliato', ev)).stato, 401);

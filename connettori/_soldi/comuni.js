@@ -5,6 +5,7 @@
 //   incassa                       segna pagata la vendita o la fattura, con i controlli di importo, valuta e «già pagata»
 //   azioniLink                    le due azioni «link di pagamento» (vendita, fattura) di un servizio, con anteprima e Lumi
 //   RICHIEDE_INCASSI, PERMESSI_INCASSI   vendite (modello negozio) e fatture (modello fatture), tutte e due facoltative
+//   pubblicoDi                    l'indirizzo pubblico https di Kubo: quello del connettore o, se vuoto, quello della Libreria
 //   tokenClient                   un token OAuth «client credentials» con Basic, tenuto in memoria finché vale
 //   meta, xmlPassiva              per i connettori SDI: l'azienda e l'import di una fattura passiva (fatture.js)
 import { importa } from '../../server/moduli/fatture.js';
@@ -27,6 +28,9 @@ export function daIncassare(k, sem, r) {
   return Math.round(Number(netto ?? k.valore(r, sem, 'totale') ?? 0) * 100) / 100;
 }
 export const nomeRiga = (k, sem, r) => `${sem === 'fatture' ? 'Fattura' : 'Vendita'} ${k.valore(r, sem, 'numero') || r.numero || r.id}`;
+// l'indirizzo pubblico di Kubo per i ritorni e i webhook: l'impostazione del connettore («indirizzo»), se no quello unico
+// della Libreria (k.pubblico) purché sia https (i servizi di pagamento lo vogliono); senza barra finale, o ''
+export const pubblicoDi = (k, campo = 'indirizzo') => (String(k.imp?.[campo] || '').trim() || (/^https:\/\//i.test(k.pubblico || '') ? k.pubblico : '')).replace(/\/+$/, '');
 export const giorno = (k, quando = Date.now()) => new Date(quando).toLocaleDateString('sv-SE', { timeZone: k.fuso() });
 
 // segna pagata: «rif» è il riferimento (stringa) o { sem, id }. Torna l'esito da mettere nel registro

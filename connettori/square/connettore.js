@@ -5,14 +5,15 @@
 // (https://developer.squareup.com/docs/webhooks/step3validate): l'indirizzo deve essere identico a quello scritto in Square.
 // Il corpo non basta: pagamento, ordine e checkout si rileggono dall'API.
 import { createHmac, timingSafeEqual, randomUUID } from 'node:crypto';
-import { RICHIEDE_INCASSI, PERMESSI_INCASSI, azioniLink, testiLink, incassa, daIncassare, daRiferimento, riferimento, nomeRiga } from '../_soldi/comuni.js';
+import { RICHIEDE_INCASSI, PERMESSI_INCASSI, azioniLink, testiLink, incassa, daIncassare, daRiferimento, riferimento, nomeRiga, pubblicoDi } from '../_soldi/comuni.js';
 
 const VERSIONE = '2026-09-16';
 const base = k => k.base || (k.imp.ambiente === 'produzione' ? 'https://connect.squareup.com' : 'https://connect.squareupsandbox.com');
 const opz = k => ({ bearer: k.segreti.token, intestazioni: { 'Square-Version': VERSIONE } });
 const errore = r => new Error(r.json?.errors?.[0]?.detail || `Square ha risposto ${r.stato}`);
-// l'indirizzo di notifica da scrivere in Square: l'indirizzo pubblico di Kubo + /api/connettori/square/in
-const notifica = k => k.imp.indirizzo ? `${String(k.imp.indirizzo).replace(/\/+$/, '')}/api/connettori/square/in` : null;
+// l'indirizzo di notifica da scrivere in Square: l'indirizzo pubblico di Kubo (il suo o, se vuoto, quello https della Libreria)
+// + /api/connettori/square/in
+const notifica = k => pubblicoDi(k) ? `${pubblicoDi(k)}/api/connettori/square/in` : null;
 const sicuro = id => /^[\w-]{1,192}$/.test(String(id || ''));
 const metodo = t => t === 'CASH' ? 'contanti' : t === 'BANK_ACCOUNT' ? 'bonifico' : 'carta';
 
@@ -113,7 +114,7 @@ export default {
     passi: [
       'Crea l\'account Square nel tuo Paese (Spagna, Francia o Irlanda) e un\'applicazione nella Developer Console.',
       'Copia l\'access token e il Location ID e incollali in Kubo; scegli l\'ambiente (prova o produzione).',
-      'Scrivi in Kubo l\'indirizzo pubblico di Kubo.',
+      'Scrivi in Kubo l\'indirizzo pubblico di Kubo (se hai impostato l\'indirizzo pubblico di Kubo nella Libreria, puoi lasciarlo vuoto).',
       'In Webhooks → Subscriptions aggiungi l\'indirizzo …/api/connettori/square/in, identico, con gli eventi payment.created, payment.updated e terminal.checkout.updated.',
       'Copia la signature key della sottoscrizione in Kubo e accendi il connettore.',
       'Per il negozio, abbina lo Square Terminal e scrivi in Kubo il suo Device ID.',
@@ -130,7 +131,7 @@ export default {
       ...testiLink('Payment link', 'sale', 'invoice'), 'az.terminale': 'Charge on the Square Terminal',
       'cat.costoNota': 'No monthly fee: you pay per transaction. Indicative prices with European cards: in store about 1.25% in Spain, 1.65% in France and 1.75% in Ireland; online about 1.4% + €0.25. The reader or Square Terminal is bought separately. Square is not available in Italy. Current prices on the Square site of your country.',
       'cat.serve': [{ cosa: 'Application access token (Sandbox to try, Production to get paid)', dove: 'Square Developer Console → Applications → your app → Credentials' }, { cosa: 'Location ID of the shop', dove: 'Square Developer Console → your app → Locations' }, { cosa: 'Webhook signature key', dove: 'Square Developer Console → your app → Webhooks → Subscriptions' }],
-      'cat.passi': ['Create the Square account in your country (Spain, France or Ireland) and an application in the Developer Console.', 'Copy the access token and the Location ID into Kubo; pick the environment (test or production).', 'Enter Kubo\'s public address in Kubo.', 'In Webhooks → Subscriptions add the address …/api/connettori/square/in, exactly, with the events payment.created, payment.updated and terminal.checkout.updated.', 'Copy the subscription\'s signature key into Kubo and switch the connector on.', 'For the shop, pair the Square Terminal and enter its Device ID in Kubo.', 'Try a payment link from a sale in Sandbox.'] },
+      'cat.passi': ['Create the Square account in your country (Spain, France or Ireland) and an application in the Developer Console.', 'Copy the access token and the Location ID into Kubo; pick the environment (test or production).', 'Enter Kubo\'s public address in Kubo (if you set Kubo\'s public address in the Library, you can leave it empty).', 'In Webhooks → Subscriptions add the address …/api/connettori/square/in, exactly, with the events payment.created, payment.updated and terminal.checkout.updated.', 'Copy the subscription\'s signature key into Kubo and switch the connector on.', 'For the shop, pair the Square Terminal and enter its Device ID in Kubo.', 'Try a payment link from a sale in Sandbox.'] },
     es: { descrizione: 'Enlaces de pago y Square Terminal (España, Francia, Irlanda): las ventas y facturas se marcan pagadas solas.', 'imp.token': 'Access token', 'imp.firma': 'Clave de firma del webhook', 'imp.luogo': 'Location ID (la tienda en Square)', 'imp.ambiente': 'Entorno', 'imp.indirizzo': 'Dirección pública de Kubo (para el webhook)', 'imp.ritorno': 'Página tras el pago (p. ej. tu web)', 'imp.terminale': 'Device ID del Square Terminal',
       ...testiLink('Enlace de pago', 'venta', 'factura'), 'az.terminale': 'Cobrar en el Square Terminal' },
     fr: { descrizione: 'Liens de paiement et Square Terminal (Espagne, France, Irlande) : les ventes et factures se marquent payées toutes seules.', 'imp.token': 'Access token', 'imp.firma': 'Clé de signature du webhook', 'imp.luogo': 'Location ID (la boutique dans Square)', 'imp.ambiente': 'Environnement', 'imp.indirizzo': 'Adresse publique de Kubo (pour le webhook)', 'imp.ritorno': 'Page après le paiement (ex. votre site)', 'imp.terminale': 'Device ID du Square Terminal',
