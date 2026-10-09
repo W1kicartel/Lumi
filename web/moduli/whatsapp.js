@@ -14,6 +14,8 @@ const euro = n => new Intl.NumberFormat(locale(), { style: 'currency', currency:
 const COLORE = { approvato: 'verde', in_attesa: 'giallo', rifiutato: 'rosso', in_pausa: 'giallo', disattivato: 'grigio', inviato: 'blu', consegnato: 'blu', letto: 'verde', fallito: 'rosso', bloccato: 'rosso', coda: 'grigio', ricevuto: 'grigio' };
 const chipStato = (h, s) => h('span.chip', { stile: { '--c': `var(--${COLORE[s] || 'grigio'})` }, testo: t('whatsapp.s-' + s) });
 const finestra = f => (f?.aperta ? t('whatsapp.finestra-aperta', { ora: ora(f.scade) }) : t('whatsapp.finestra-chiusa'));
+// un solo ascoltatore degli eventi in tempo reale, sostituito a ogni disegno (altrimenti si moltiplicherebbero)
+let ascolto = null;
 const VARIABILI = ['cliente.nome', 'cliente.email', 'riga.quando', 'riga._titolo', 'riga.totale', 'riga.scadenza', 'azienda.nome', 'ricetta.link', 'fisso:'];
 
 async function pagina(contenuto, k, a, b) {
@@ -27,10 +29,12 @@ async function pagina(contenuto, k, a, b) {
   contenuto.replaceChildren(h('div.testa', h('h1', 'WhatsApp'), attivo, h('div.wa-schede', voce('conversazioni', st.nonLetti ? `${t('whatsapp.conversazioni')} · ${st.nonLetti}` : t('whatsapp.conversazioni')),
     voce('modelli', t('whatsapp.modelli')), voce('automazioni', t('whatsapp.automazioni')), st.titolare ? voce('impostazioni', t('whatsapp.impostazioni')) : null)), corpo);
   const ridisegna = () => pagina(contenuto, k, a, b);
-  const evento = e => { if (e.detail?.tipo === 'whatsapp' && location.hash.startsWith('#/whatsapp') && scheda === 'conversazioni') ridisegna(); };
-  window.addEventListener('kubo:evento', evento); window.addEventListener('hashchange', () => window.removeEventListener('kubo:evento', evento), { once: true });
+  // un messaggio nuovo ridisegna le conversazioni, ma non mentre si sta scrivendo una risposta
+  if (ascolto) window.removeEventListener('kubo:evento', ascolto);
+  ascolto = e => { if (e.detail?.tipo === 'whatsapp' && location.hash.startsWith('#/whatsapp') && scheda === 'conversazioni' && !document.querySelector('.wa-testo')?.value) ridisegna(); };
+  window.addEventListener('kubo:evento', ascolto);
   try {
-    if (scheda === 'conversazioni') await conversazioni(corpo, k, st, a === 'c' ? b : null, ridisegna);
+    if (scheda === 'conversazioni') await conversazioni(corpo, k, st, a === 'c' && b ? decodeURIComponent(b) : null, ridisegna);
     if (scheda === 'modelli') await modelli(corpo, k, st, ridisegna);
     if (scheda === 'automazioni') await automazioni(corpo, k, st, ridisegna);
     if (scheda === 'impostazioni') await impostazioni(corpo, k, st, ridisegna);
@@ -195,6 +199,7 @@ async function storia(k, riga) {
 
 export default {
   nome: 'whatsapp',
+  avvio(k) { if (!document.querySelector('link[href="/moduli/whatsapp.css"]')) document.head.append(k.h('link', { rel: 'stylesheet', href: '/moduli/whatsapp.css' })); },
   lato: () => [{ href: '#/whatsapp', icona: 'utenti', nome: 'WhatsApp' }],
   rotte: { whatsapp: (contenuto, k, a, b) => pagina(contenuto, k, a, b) },
   azioniScheda(def, riga, k) {

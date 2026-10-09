@@ -24,11 +24,11 @@ const MODELLI = [
   { id: '3', name: 'offerta_autunno', language: 'it', status: 'APPROVED', category: 'MARKETING', components: [{ type: 'BODY', text: 'Ciao {{1}}, questa settimana sconto del 10%!' }] },
   { id: '4', name: 'vecchio', language: 'it', status: 'REJECTED', category: 'UTILITY', rejected_reason: 'INVALID_FORMAT', components: [{ type: 'BODY', text: 'x' }] },
 ];
-const fintoMeta = () => finto({
+const fintoMeta = (modelli = MODELLI) => finto({
   'GET /v24.0/1065403522': () => ({ verified_name: 'Bottega', display_phone_number: '+39 02 0000000', quality_rating: 'GREEN' }),
   'POST /v24.0/1065403522/messages': (p, c) => ({ messaging_product: 'whatsapp', messages: [{ id: `wamid.out${Math.random().toString(36).slice(2, 8)}` }] }),
   'POST /v24.0/1065403522/media': () => ({ id: 'media-1' }),
-  'GET /v24.0/1022901293/message_templates': () => ({ data: MODELLI }),
+  'GET /v24.0/1022901293/message_templates': () => ({ data: modelli }),
   'POST /v24.0/1022901293/message_templates': (p, c) => ({ id: '99', status: 'PENDING', category: c.category }),
   'POST /v24.0/1022901293/subscribed_apps': () => ({ success: true }),
 });
@@ -317,4 +317,39 @@ test('cataloghi: messaggi del modulo nelle sei lingue, contratto del catalogo de
     for (const i of c.impostazioni) for (const l of ['en', 'es', 'fr', 'de', 'pt']) assert.ok(c.testi[l][`imp.${i.id}`], `${c.id} ${l} imp.${i.id}`);
     for (const f of ['testo', 'modello', 'documento', 'modelli', 'creaModello']) assert.equal(typeof c.whatsapp[f], 'function', `${c.id}.${f}`);
   }
+});
+
+test('preventivo con PDF: la ricetta sul motore manda il modello con il documento nell\'intestazione; sconosciuti come contatti; permessi', async () => {
+  const K = await kubo(['professionista']);
+  const S = await fintoMeta([...MODELLI, { id: '5', name: 'preventivo_pdf', language: 'it', status: 'APPROVED', category: 'UTILITY', components: [{ type: 'HEADER', format: 'DOCUMENT' }, { type: 'BODY', text: 'Ciao {{1}}, ti mandiamo il preventivo {{2}}.' }] }]);
+  try {
+    await accendi(K, 'whatsapp', { base: S.url, segreti: { token: 'EAAtoken', segreto_app: 'app-segreta' }, impostazioni: { numero_id: '1065403522', waba_id: '1022901293' } });
+    const c = await cliente(K, 'Paolo Gialli', '335 123 4567');
+    await K.chiama('POST', '/api/whatsapp/consensi', { cliente: c.id, categoria: 'servizio', stato: 'si', fonte: 'contratto', testo: 'Ok a preventivi e fatture su WhatsApp.' });
+    const mod = (await K.chiama('POST', '/api/whatsapp/modelli/sincronizza')).json; assert.equal(mod.find(m => m.nome === 'preventivo_pdf').intestazione, 'DOCUMENT');
+    const r = await K.chiama('PUT', '/api/whatsapp/ricette/documento', { attiva: true, modello: 'preventivo_pdf', lingua: 'it' }); assert.equal(r.json.sezione, 'preventivi');
+    const prev = (await K.chiama('POST', '/api/dati/preventivi', { data: '2026-10-09', cliente: c.id, oggetto: 'Logo', stato: 'bozza', voci: [{ descrizione: 'Logo e marchio', quantita: 1, prezzo: 450 }] })).json;
+    await K.chiama('PATCH', `/api/dati/preventivi/${prev.id}`, { stato: 'inviato' });
+    const t = await aspetta(() => S.chiamate.find(x => x.corpo?.template?.name === 'preventivo_pdf'));
+    assert.ok(t, 'il preventivo è partito');
+    assert.deepEqual(t.corpo.template.components[0], { type: 'header', parameters: [{ type: 'document', document: { id: 'media-1', filename: t.corpo.template.components[0].parameters[0].document.filename } }] });
+    assert.match(t.corpo.template.components[0].parameters[0].document.filename, /\.pdf$/); assert.equal(t.corpo.template.components[1].parameters[0].text, 'Paolo Gialli');
+    const up = S.chiamate.find(x => x.percorso === '/v24.0/1065403522/media'); assert.match(up.intestazioni['content-type'], /^multipart\/form-data; boundary=/); assert.match(String(up.corpo), /%PDF-1\.4/);
+    // una seconda modifica non lo rimanda
+    await K.chiama('PATCH', `/api/dati/preventivi/${prev.id}`, { oggetto: 'Logo e biglietti' });
+    await new Promise(r => setTimeout(r, 150)); assert.equal(S.chiamate.filter(x => x.corpo?.template?.name === 'preventivo_pdf').length, 1);
+    // chi scrive e non è in rubrica: con «lead» diventa un contatto da qualificare
+    await K.chiama('PUT', '/api/whatsapp/impostazioni', { sconosciuti: 'lead' });
+    const b = entrata('393390000001', 'Vorrei un preventivo per un sito'); await manda(K, '/api/connettori/whatsapp/in', b, { 'X-Hub-Signature-256': firmaMeta('app-segreta', b) });
+    const nuovo = (await K.chiama('GET', '/api/whatsapp/conversazioni')).json.find(x => x.numero === '+393390000001');
+    assert.equal(nuovo.nome, 'Mario'); assert.ok(nuovo.cliente); assert.match((await K.chiama('GET', `/api/dati/clienti/${nuovo.cliente}`)).json.note, /da qualificare/);
+    // permessi: un utente senza la modifica dei clienti legge ma non scrive, e non vede le impostazioni
+    assert.equal((await K.chiama('POST', '/api/utenti', { nome: 'Ospite', email: 'ospite@esempio.it', password: 'password-ospite', ruolo: 'lettura' })).stato, 200);
+    await K.chiama('POST', '/api/esci'); await K.chiama('POST', '/api/accedi', { email: 'ospite@esempio.it', password: 'password-ospite' });
+    const st = await K.chiama('GET', '/api/whatsapp/stato');
+    assert.equal(st.stato, 200); assert.equal(st.json.titolare, false);
+    assert.equal((await K.chiama('POST', '/api/whatsapp/invia', { cliente: c.id, testo: 'ciao' })).stato, 403);
+    assert.equal((await K.chiama('PUT', '/api/whatsapp/impostazioni', { limiteGiorno: 1 })).stato, 403);
+    assert.ok(!(await K.chiama('GET', '/api/lumi/strumenti')).json.strumenti.some(x => x.nome === 'whatsapp_scrivi'));
+  } finally { await K.chiudi(); await S.chiudi(); }
 });
