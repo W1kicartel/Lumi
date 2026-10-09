@@ -221,7 +221,7 @@ export function confronto(k, ctx, ordine) {
   }
   return { ordine: { id: o.id, numero: o.numero, stato: o.stato, fornitore: titoloDi(o.fornitore), data: o.data },
     ordinato: euro(ordinato), ricevuto: euro(ricevuto), da_ricevere: euro(ordinato - ricevuto), fattura, candidate, ricevimenti: ricevimenti(db, o.id),
-    righe: righe.map(r => ({ articolo: titoloDi(r.articolo), quantita: num(r.quantita), ricevuta: num(r.ricevuta), costo: num(r.costo) })) };
+    righe: righe.map(r => ({ id: r.id, articolo: titoloDi(r.articolo), quantita: num(r.quantita), ricevuta: num(r.ricevuta), manca: Math.max(0, num(r.quantita) - num(r.ricevuta)), costo: num(r.costo) })) };
 }
 export function abbinaFattura(k, ctx, ordine, fattura) {
   const { db, D } = k, imp = pronti(k);

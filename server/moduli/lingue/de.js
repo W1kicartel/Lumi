@@ -1,5 +1,20 @@
 // Servermeldungen auf Deutsch (gleiche Schlüssel wie it.js).
 export default {
+  // acquisti.js
+  'acq-scorta': "Der Zielbestand liegt zwischen dem 1- und 12-Fachen der Schwelle",
+  'acq-sezione': "Ungültiger Bereich: {sezione}",
+  'acq-magazzino': "Es braucht einen Bereich mit Lagerbestand (Artikel, Ersatzteile, Material…)",
+  'acq-non-pronti': "Der Einkauf ist noch nicht eingerichtet: Richte den Einkauf ein",
+  'acq-nessun-articolo': "Keine Artikel zu bestellen",
+  'acq-quantita': "Ungültige Menge für „{articolo}“",
+  'acq-fornitore': "Der Lieferant von „{articolo}“ fehlt",
+  'acq-ordine-gia': "Die Bestellung {numero} ist bereits {stato}",
+  'acq-riga': "Unbekannte Zeile in dieser Bestellung",
+  'acq-niente': "Nichts anzunehmen",
+  'acq-quantita-manca': "Ungültige Menge für „{articolo}“: es fehlen {n}",
+  'acq-fattura-altrui': "Diese Rechnung ist nicht vom Lieferanten der Bestellung oder schon einer anderen Bestellung zugeordnet",
+  'acq-ordine-aperto': "Keine offene Bestellung mit diesen Angaben gefunden",
+  'acq-solo-gestore': "Nur wer das System anpassen darf, richtet den Einkauf ein",
   // tesoreria.js, tesoreria-file.js, tesoreria-regole.js
   'tes-termini': "Ungültige Zahlungsbedingungen: „{termini}“ (Beispiele: RD, 30 DF, 30/60/90 DFFM, 60 DFFM+10)",
   'tes-xml-inatteso': "Ungültiges XML: unerwartetes </{nome}>",

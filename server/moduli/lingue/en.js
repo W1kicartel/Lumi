@@ -1,5 +1,20 @@
 // Server messages in English (same keys as it.js).
 export default {
+  // acquisti.js
+  'acq-scorta': "The target stock goes from 1 to 12 times the threshold",
+  'acq-sezione': "Invalid section: {sezione}",
+  'acq-magazzino': "A section with stock levels is needed (items, spare parts, materials…)",
+  'acq-non-pronti': "Purchasing isn't set up yet: set up purchasing",
+  'acq-nessun-articolo': "No items to order",
+  'acq-quantita': "Invalid quantity for «{articolo}»",
+  'acq-fornitore': "The supplier of «{articolo}» is missing",
+  'acq-ordine-gia': "Order {numero} is already {stato}",
+  'acq-riga': "Unknown line in this order",
+  'acq-niente': "Nothing to receive",
+  'acq-quantita-manca': "Invalid quantity for «{articolo}»: {n} still missing",
+  'acq-fattura-altrui': "This invoice isn't from the order's supplier, or it's already matched to another order",
+  'acq-ordine-aperto': "No open order found with these details",
+  'acq-solo-gestore': "Only people who can customise the system set up purchasing",
   // tesoreria.js, tesoreria-file.js, tesoreria-regole.js
   'tes-termini': "Invalid payment terms: «{termini}» (examples: RD, 30 DF, 30/60/90 DFFM, 60 DFFM+10)",
   'tes-xml-inatteso': "Invalid XML: unexpected </{nome}>",

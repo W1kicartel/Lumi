@@ -1,5 +1,20 @@
 // Mensajes del servidor en español (mismas claves que it.js).
 export default {
+  // acquisti.js
+  'acq-scorta': "El stock objetivo va de 1 a 12 veces el umbral",
+  'acq-sezione': "Sección no válida: {sezione}",
+  'acq-magazzino': "Hace falta una sección con existencias (artículos, recambios, materiales…)",
+  'acq-non-pronti': "Las compras aún no están listas: prepara las compras",
+  'acq-nessun-articolo': "Ningún artículo que pedir",
+  'acq-quantita': "Cantidad no válida para «{articolo}»",
+  'acq-fornitore': "Falta el proveedor de «{articolo}»",
+  'acq-ordine-gia': "El pedido {numero} ya está {stato}",
+  'acq-riga': "Línea desconocida en este pedido",
+  'acq-niente': "Nada que recibir",
+  'acq-quantita-manca': "Cantidad no válida para «{articolo}»: faltan {n}",
+  'acq-fattura-altrui': "Esta factura no es del proveedor del pedido, o ya está asociada a otro pedido",
+  'acq-ordine-aperto': "No encuentro un pedido abierto con estos datos",
+  'acq-solo-gestore': "Solo quien puede personalizar prepara las compras",
   // tesoreria.js, tesoreria-file.js, tesoreria-regole.js
   'tes-termini': "Condiciones de pago no válidas: «{termini}» (ejemplos: RD, 30 DF, 30/60/90 DFFM, 60 DFFM+10)",
   'tes-xml-inatteso': "XML no válido: </{nome}> inesperado",

@@ -2,6 +2,21 @@
 // {parametri}. server/moduli/lingue.js li riconosce e li riscrive nella lingua dell'utente con la stessa chiave.
 // I parametri con «_» davanti sono messaggi anche loro (si traducono a loro volta). Le altre lingue: stesse chiavi.
 export default {
+  // acquisti.js
+  'acq-scorta': "La scorta obiettivo va da 1 a 12 volte la soglia",
+  'acq-sezione': "Sezione non valida: {sezione}",
+  'acq-magazzino': "Serve una sezione con la giacenza (articoli, ricambi, materiali…)",
+  'acq-non-pronti': "Gli acquisti non sono ancora pronti: prepara gli acquisti",
+  'acq-nessun-articolo': "Nessun articolo da ordinare",
+  'acq-quantita': "Quantità non valida per «{articolo}»",
+  'acq-fornitore': "Manca il fornitore di «{articolo}»",
+  'acq-ordine-gia': "L'ordine {numero} è già {stato}",
+  'acq-riga': "Riga sconosciuta in questo ordine",
+  'acq-niente': "Niente da ricevere",
+  'acq-quantita-manca': "Quantità non valida per «{articolo}»: ne mancano {n}",
+  'acq-fattura-altrui': "Questa fattura non è del fornitore dell'ordine, o è già abbinata a un altro ordine",
+  'acq-ordine-aperto': "Non trovo un ordine aperto con questi dati",
+  'acq-solo-gestore': "Solo chi può personalizzare prepara gli acquisti",
   // tesoreria.js, tesoreria-file.js, tesoreria-regole.js
   'tes-termini': "Termini di pagamento non validi: «{termini}» (esempi: RD, 30 DF, 30/60/90 DFFM, 60 DFFM+10)",
   'tes-xml-inatteso': "XML non valido: </{nome}> inatteso",

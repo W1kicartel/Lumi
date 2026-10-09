@@ -1,5 +1,20 @@
 // Messages du serveur en français (mêmes clés que it.js).
 export default {
+  // acquisti.js
+  'acq-scorta': "Le stock cible va de 1 à 12 fois le seuil",
+  'acq-sezione': "Section non valide : {sezione}",
+  'acq-magazzino': "Il faut une section avec le stock (articles, pièces détachées, matériaux…)",
+  'acq-non-pronti': "Les achats ne sont pas encore prêts : préparez les achats",
+  'acq-nessun-articolo': "Aucun article à commander",
+  'acq-quantita': "Quantité non valide pour « {articolo} »",
+  'acq-fornitore': "Le fournisseur de « {articolo} » manque",
+  'acq-ordine-gia': "La commande {numero} est déjà {stato}",
+  'acq-riga': "Ligne inconnue dans cette commande",
+  'acq-niente': "Rien à réceptionner",
+  'acq-quantita-manca': "Quantité non valide pour « {articolo} » : il en manque {n}",
+  'acq-fattura-altrui': "Cette facture n'est pas du fournisseur de la commande, ou elle est déjà rapprochée d'une autre commande",
+  'acq-ordine-aperto': "Aucune commande ouverte trouvée avec ces données",
+  'acq-solo-gestore': "Seules les personnes qui peuvent personnaliser préparent les achats",
   // tesoreria.js, tesoreria-file.js, tesoreria-regole.js
   'tes-termini': "Conditions de paiement non valides : « {termini} » (exemples : RD, 30 DF, 30/60/90 DFFM, 60 DFFM+10)",
   'tes-xml-inatteso': "XML non valide : </{nome}> inattendu",
