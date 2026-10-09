@@ -74,3 +74,41 @@ test('eBay: refresh token con Basic, inventario collegato per SKU con «next», 
     assert.deepEqual(spediti[0][1].lineItems, [{ lineItemId: 'li1', quantity: 1 }]); assert.equal(spediti[0][1].shippingCarrierCode, 'POSTE_ITALIANE');
   } finally { await K.chiudi(); await S.chiudi(); }
 });
+
+test('Etsy: OAuth PKCE del nucleo, x-api-key con il segreto condiviso, ricevute pagate → vendite con il cliente, inventario riscritto, tracking', async () => {
+  const K = await kubo(), scambi = [], inventari = [], tracking = [];
+  const inventario = { products: [{ product_id: 1, sku: 'ET-COLLANA', is_deleted: false, offerings: [{ offering_id: 9, quantity: 4, is_enabled: true, price: { amount: 2500, divisor: 100, currency_code: 'EUR' } }], property_values: [] },
+    { product_id: 2, sku: 'ET-ALTRA', offerings: [{ offering_id: 10, quantity: 1, is_enabled: true, price: { amount: 1000, divisor: 100 } }], property_values: [{ property_id: 200, property_name: 'Colore', value_ids: [1], values: ['Blu'], scale_id: null }] }],
+    price_on_property: [], quantity_on_property: [], sku_on_property: [200] };
+  const S = await finto({
+    'POST /v3/public/oauth/token': (p, c) => { scambi.push(c); return c.client_id === 'kstr' && !c.client_secret ? { access_token: '123.etsy', refresh_token: '123.rinnovo', expires_in: 3600, token_type: 'Bearer' } : { stato: 400, corpo: { error: 'invalid_grant' } }; },
+    'GET /v3/application/users/me': () => ({ user_id: 123, shop_id: 456 }),
+    'GET /v3/application/shops/456/listings': () => ({ count: 1, results: [{ listing_id: 777, inventory: inventario }] }),
+    'GET /v3/application/listings/777/inventory': () => inventario,
+    'PUT /v3/application/listings/777/inventory': (p, c) => { inventari.push(c); return inventario; },
+    'GET /v3/application/shops/456/receipts': () => ({ count: 1, results: [{ receipt_id: 3001, name: 'Lucia Bruni', first_line: 'Via Garibaldi 5', zip: '50123', city: 'Firenze', state: 'FI', is_paid: true, status: 'Paid', updated_timestamp: 1760000000,
+      transactions: [{ sku: 'ET-COLLANA', title: 'Collana', quantity: 1, price: { amount: 2500, divisor: 100 } }] }] }),
+    'POST /v3/application/shops/456/receipts/:id/tracking': (p, c) => { tracking.push([p.id, c]); return { receipt_id: Number(p.id) }; },
+  });
+  try {
+    const collana = await nuovoArticolo(K, 'ET-COLLANA', 4, 25);
+    await accendi(K, 'etsy', { base: S.url, segreti: { keystring: 'kstr', shared_secret: 'ssec' } });
+    const u = new URL((await K.chiama('POST', '/api/connettori/etsy/oauth/inizio', { base: K.base })).json.url);
+    assert.equal(u.origin + u.pathname, 'https://www.etsy.com/oauth/connect'); assert.equal(u.searchParams.get('client_id'), 'kstr'); assert.equal(u.searchParams.get('code_challenge_method'), 'S256');
+    assert.match(u.searchParams.get('scope'), /listings_w/);
+    const rit = await fetch(`${K.base}/api/connettori/etsy/oauth/ritorno?code=c1&state=${u.searchParams.get('state')}`, { redirect: 'manual' });
+    assert.match(rit.headers.get('location'), /oauth=ok/); assert.equal(scambi[0].code_verifier.length, 43);
+    assert.equal((await K.chiama('POST', '/api/connettori/etsy/prova')).json.ok, true);
+    const me = S.chiamate.find(c => c.percorso === '/v3/application/users/me');
+    assert.equal(me.intestazioni['x-api-key'], 'kstr:ssec'); assert.equal(me.intestazioni.authorization, 'Bearer 123.etsy');
+    assert.deepEqual((await K.chiama('POST', '/api/connettori/etsy/giri/offerte')).json.risultato, { collegati: 1, sconosciuti: 1 });
+    await K.chiama('PATCH', `/api/dati/articoli/${collana.id}`, { giacenza: 2 }); await aspetta(K);
+    assert.equal(inventari.length, 1, JSON.stringify((await K.chiama('GET', '/api/connettori/etsy')).json.registro.slice(0, 3)));
+    assert.deepEqual(inventari[0].products[0], { sku: 'ET-COLLANA', property_values: [], offerings: [{ price: 25, quantity: 2, is_enabled: true }] });
+    assert.equal(inventari[0].products[1].offerings[0].quantity, 1); assert.deepEqual(inventari[0].sku_on_property, [200]);
+    const o = await K.chiama('POST', '/api/connettori/etsy/giri/ordini'); assert.deepEqual(o.json.risultato, { vendite: 1, ignorati: 0 }, JSON.stringify(o.json));
+    const v = (await K.chiama('GET', '/api/dati/vendite')).json.righe[0]; assert.equal(v.totale, 25); assert.equal(v.cliente.titolo, 'Lucia Bruni');
+    const r = await K.chiama('POST', '/api/connettori/etsy/azioni/spedito', { args: { vendita: v.numero, tracking: 'SDA555', corriere: 'SDA' } });
+    assert.equal(r.json.ok, true, JSON.stringify(r.json)); assert.deepEqual(tracking[0], ['3001', { tracking_code: 'SDA555', carrier_name: 'SDA' }]);
+  } finally { await K.chiudi(); await S.chiudi(); }
+});
