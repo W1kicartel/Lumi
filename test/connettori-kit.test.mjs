@@ -65,3 +65,73 @@ test('webhook: verifica GET, risposta su misura, stato su misura per la firma sb
   } finally { await K.chiudi(); }
 });
 
+
+test('OAuth: client_secret_basic, corpo JSON, senza PKCE, valori del ritorno e del token in k.oauth.extra(), redirect su misura, device code', async () => {
+  const chiamate = [];
+  const S = await finto({
+    'POST /token': (p, c, { intestazioni }) => {
+      chiamate.push({ c, auth: intestazioni.authorization, tipo: intestazioni['content-type'] });
+      if (c.grant_type === 'urn:ietf:params:oauth:grant-type:device_code') return chiamate.filter(x => x.c.device_code).length < 2 ? { stato: 400, corpo: { error: 'authorization_pending' } } : { access_token: 'at-dev', expires_in: 3600 };
+      return { access_token: 'at-1', refresh_token: 'rt-1', expires_in: 3600, api_domain: 'https://www.zohoapis.eu' };
+    },
+    'POST /device': (p, c) => { chiamate.push({ c, device: true }); return { data: { device_code: 'dc-1', user_code: 'ABCD-1234', verification_uri: 'https://servizio.example/device', interval: 1, expires_in: 300 } }; },
+  });
+  const K = await kuboCon({ conto: `export default { id: 'conto', nome: 'Conto', permessi: {},
+    impostazioni: [{ id: 'client_id', nome: 'Id', segreto: true }, { id: 'client_secret', nome: 'Segreto', segreto: true }, { id: 'runame', nome: 'RuName' }],
+    oauth: { autorizza: k => k.base + '/auth', token: k => k.base + '/token', dispositivo: k => k.base + '/device', scope: 'contabilita', basic: true, corpo: 'json', pkce: false,
+      conserva: ['realmId', 'api_domain'], redirect: k => k.imp.runame || null },
+    azioni: { extra: { nome: 'Extra', esegui: async (_, k) => ({ extra: k.oauth.extra(), token: await k.oauth.token() }) } } };` });
+  try {
+    K.n.perProva('conto', { base: S.url });
+    assert.equal((await K.chiama('PUT', '/api/connettori/conto', { segreti: { client_id: 'cid', client_secret: 'csec' } })).stato, 200);
+    const pag = (await K.chiama('GET', '/api/connettori/conto')).json.oauth; assert.equal(pag.dispositivo, true); assert.equal(pag.ritorno, '/api/connettori/conto/oauth/ritorno');
+    const u = new URL((await K.chiama('POST', '/api/connettori/conto/oauth/inizio', { base: K.base })).json.url);
+    assert.equal(u.searchParams.get('code_challenge'), null); assert.equal(u.searchParams.get('redirect_uri'), `${K.base}/api/connettori/conto/oauth/ritorno`);
+    const r = await fetch(`${K.base}/api/connettori/conto/oauth/ritorno?state=${u.searchParams.get('state')}&code=cod-1&realmId=9130`, { redirect: 'manual' });
+    assert.match(r.headers.get('location'), /oauth=ok/);
+    const t = chiamate.at(-1); assert.equal(t.auth, 'Basic ' + Buffer.from('cid:csec').toString('base64')); assert.match(t.tipo, /json/);
+    assert.deepEqual(t.c, { grant_type: 'authorization_code', code: 'cod-1', redirect_uri: `${K.base}/api/connettori/conto/oauth/ritorno` });   // niente segreto né verificatore nel corpo
+    const x = (await K.chiama('POST', '/api/connettori/conto/azioni/extra', { args: {} })).json;
+    assert.deepEqual(x.extra, { realmId: '9130', api_domain: 'https://www.zohoapis.eu' }); assert.equal(x.token, 'at-1');
+    // il redirect_uri su misura (il RuName di eBay) vale per l'autorizzazione e per lo scambio del codice
+    await K.chiama('PUT', '/api/connettori/conto', { impostazioni: { runame: 'Bottega-Kubo-PRD-abc' } });
+    const u2 = new URL((await K.chiama('POST', '/api/connettori/conto/oauth/inizio', { base: K.base })).json.url); assert.equal(u2.searchParams.get('redirect_uri'), 'Bottega-Kubo-PRD-abc');
+    await fetch(`${K.base}/api/connettori/conto/oauth/ritorno?state=${u2.searchParams.get('state')}&code=cod-2`, { redirect: 'manual' });
+    assert.equal(chiamate.at(-1).c.redirect_uri, 'Bottega-Kubo-PRD-abc');
+    assert.equal((await K.chiama('POST', '/api/connettori/conto/azioni/extra', { args: {} })).json.extra.realmId, '9130');   // resta dopo un nuovo collegamento
+    // device code: la risposta dentro «data» (Fatture in Cloud), il client_id nel corpo JSON, poi l'attesa e il collegamento
+    const d = (await K.chiama('POST', '/api/connettori/conto/oauth/dispositivo')).json;
+    assert.deepEqual(d, { codice: 'ABCD-1234', indirizzo: 'https://servizio.example/device', intervallo: 2, scade: 300 });
+    assert.deepEqual(chiamate.find(c => c.device).c, { client_id: 'cid', scope: 'contabilita' });
+    assert.deepEqual((await K.chiama('POST', '/api/connettori/conto/oauth/dispositivo/controlla')).json, { attesa: true });
+    assert.deepEqual((await K.chiama('POST', '/api/connettori/conto/oauth/dispositivo/controlla')).json, { collegato: true });
+  } finally { await K.chiudi(); await S.chiudi(); }
+});
+
+test('indirizzo pubblico unico (k.pubblico), input facoltativi negli strumenti di Lumi, k.sincro.scollega', async () => {
+  const K = await kuboCon({ pub: `export default { id: 'pub', nome: 'Pub', permessi: { clienti: { leggi: true } },
+    impostazioni: [{ id: 'codice', nome: 'Codice', segreto: true, generato: true }],
+    entrata: { firma: { tipo: 'token', segreto: 'codice' }, gestisci: () => 'ok' },
+    azioni: { nota: { nome: 'Nota', su: 'clienti', lumi: true, input: { riga: { tipo: 'relazione', entita: 'clienti', nome: 'Il cliente' }, testo: { tipo: 'testo', nome: 'Il testo', facoltativo: true } },
+      esegui: async ({ riga, testo }, k) => ({ cliente: riga.id, testo: testo ?? null, pubblico: k.pubblico }) } } };` });
+  try {
+    assert.equal((await K.chiama('GET', '/api/connettori/impostazioni')).json.pubblico, '');
+    assert.equal((await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: 'ftp://kubo.bottega.it' })).stato, 400);
+    assert.equal((await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: 'https://kubo.bottega.it/' })).json.pubblico, 'https://kubo.bottega.it');
+    const pag = (await K.chiama('GET', '/api/connettori/pub')).json; assert.equal(pag.webhook.url, 'https://kubo.bottega.it/api/connettori/pub/in'); assert.equal(pag.pubblico, 'https://kubo.bottega.it');
+    const cl = (await K.chiama('POST', '/api/dati/clienti', { nome: 'Rossi' })).json;
+    const x = (await K.chiama('POST', '/api/connettori/pub/azioni/nota', { args: { riga: cl.id } })).json;
+    assert.deepEqual(x, { cliente: cl.id, testo: null, pubblico: 'https://kubo.bottega.it' });
+    const s = (await K.chiama('GET', '/api/lumi/strumenti')).json.strumenti.find(t => t.nome === 'connettore_pub_nota');
+    assert.ok(s, 'strumento'); if (s.schema) assert.deepEqual(s.schema.required, ['riga']);
+    // scollega: per remoto, per riga, tutta la sezione
+    const k = K.n.k('pub'); k.sincro.collega('clienti', cl.id, 'x1'); k.sincro.collega('clienti', 'altra', 'x2'); k.sincro.collega('clienti', 'terza', 'x3');
+    assert.equal(k.sincro.scollega('clienti', { remoto: 'x1' }), 1); assert.equal(k.sincro.locale('clienti', 'x1'), null);
+    assert.equal(k.sincro.scollega('clienti', { riga: 'altra' }), 1); assert.equal(k.sincro.remoto('clienti', 'altra'), null);
+    assert.equal(k.sincro.scollega('clienti'), 1);
+    // un collaboratore non cambia l'indirizzo pubblico
+    await K.chiama('POST', '/api/utenti', { nome: 'C', email: 'c@esempio.it', password: 'password-lunga', ruolo: 'collaboratore' });
+    K.esci(); await K.chiama('POST', '/api/accedi', { email: 'c@esempio.it', password: 'password-lunga' });
+    assert.equal((await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: 'https://altro.example' })).stato, 403);
+  } finally { await K.chiudi(); }
+});
