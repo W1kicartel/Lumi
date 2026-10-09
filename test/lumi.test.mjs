@@ -122,7 +122,7 @@ test('la chiave sta in un file con permessi 600 accanto al database, non nel dat
     await configura(k);
     assert.equal((await k.chiama('PUT', '/api/lumi/impostazioni', { chiave: CHIAVE })).stato, 200);
     assert.ok(readdirSync(cartella).includes('lumi-chiave'));
-    assert.equal(statSync(join(cartella, 'lumi-chiave')).mode & 0o777, 0o600);
+    if (process.platform !== 'win32') assert.equal(statSync(join(cartella, 'lumi-chiave')).mode & 0o777, 0o600);   // su Windows i permessi Unix non esistono
     assert.equal(k.db.prepare("SELECT COUNT(*) n FROM _meta WHERE valore LIKE '%sk-ant%'").get().n, 0);
     assert.equal((await k.chiama('PUT', '/api/lumi/impostazioni', { togliChiave: true })).json.chiave, false);
     assert.ok(!readdirSync(cartella).includes('lumi-chiave'));

@@ -1,0 +1,12 @@
+# Fine riga LF su ogni sistema: su Windows Git convertirebbe i file in CRLF, e gli XML attesi delle prove (e i file
+# serviti dall'app) non sarebbero più uguali byte per byte.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.icns binary
+*.woff2 binary
+*.p7m binary
+*.zip binary
+*.db binary

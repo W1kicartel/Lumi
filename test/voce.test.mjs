@@ -47,6 +47,8 @@ process.stdin.on('data', b => {
 `;
 const audio = (secondi, primo = 0) => { const a = new Float32Array(Math.round(secondi * 16000)); a[0] = primo; return Buffer.from(a.buffer); };
 let k;
+// il motore finto è uno script con «#!»: Windows non lo esegue direttamente (lì la voce locale è sherpa-onnx, provato a parte)
+const SOLO_POSIX = process.platform === 'win32' && 'su Windows il motore finto con #! non si esegue';
 
 async function avvia(db = apri()) {
   const srv = creaServer(db); await new Promise(r => srv.listen(0, '127.0.0.1', r));
@@ -80,7 +82,7 @@ after(async () => {
 const registro = () => (existsSync(REGISTRO) ? readFileSync(REGISTRO, 'utf8') : '');
 const nelTemp = () => readdirSync(temp);
 
-test('lo stato di Lumi dice che motore c\'è e, dopo averlo preparato, che la voce locale è pronta', async () => {
+test('lo stato di Lumi dice che motore c\'è e, dopo averlo preparato, che la voce locale è pronta', { skip: SOLO_POSIX }, async () => {
   let s = (await k.chiama('POST', '/api/lumi', { azione: 'stato' })).json;
   assert.equal(s.voceMotore, 'mac');
   for (let i = 0; i < 50 && !s.voceLocale; i++) { await new Promise(r => setTimeout(r, 40)); s = (await k.chiama('POST', '/api/lumi', { azione: 'stato' })).json; }
@@ -89,7 +91,7 @@ test('lo stato di Lumi dice che motore c\'è e, dopo averlo preparato, che la vo
   assert.equal((await k.chiama('GET', '/api/lumi/impostazioni')).json.voceLocale, 'mac');
 });
 
-test('trascrive: il testo torna senza spazi attorno, e il file temporaneo (0600) non resta mai', async () => {
+test('trascrive: il testo torna senza spazi attorno, e il file temporaneo (0600) non resta mai', { skip: SOLO_POSIX }, async () => {
   const r = await k.voce(audio(1));
   assert.equal(r.stato, 200);
   assert.deepEqual(r.json, { testo: 'campioni 16000', motore: 'mac' });
@@ -97,7 +99,7 @@ test('trascrive: il testo torna senza spazi attorno, e il file temporaneo (0600)
   assert.match(registro(), /richiesta \d+ 16000/);
 });
 
-test('autenticazione e permessi: senza accesso 401, senza X-Lumi 403, con Lumi spento 400', async () => {
+test('autenticazione e permessi: senza accesso 401, senza X-Lumi 403, con Lumi spento 400', { skip: SOLO_POSIX }, async () => {
   assert.equal((await k.voce(audio(1), { cookie: false })).stato, 401);
   assert.equal((await k.voce(audio(1), { xLumi: false })).stato, 403);
   assert.equal((await k.chiama('PUT', '/api/lumi/impostazioni', { attivo: false })).stato, 200);
@@ -112,7 +114,7 @@ test('autenticazione e permessi: senza accesso 401, senza X-Lumi 403, con Lumi s
   await k.accedi('titolare@esempio.it', 'prova-lumi-1');
 });
 
-test('limiti: vuoto o non float32 → 400, oltre 60 secondi → 413 (e il corpo non arriva al motore)', async () => {
+test('limiti: vuoto o non float32 → 400, oltre 60 secondi → 413 (e il corpo non arriva al motore)', { skip: SOLO_POSIX }, async () => {
   const prima = registro();
   assert.equal((await k.voce(Buffer.alloc(0))).stato, 400);
   assert.equal((await k.voce(Buffer.alloc(10))).stato, 400);
@@ -124,7 +126,7 @@ test('limiti: vuoto o non float32 → 400, oltre 60 secondi → 413 (e il corpo 
   assert.deepEqual(nelTemp(), []);
 });
 
-test('la fila: richieste insieme passano una alla volta, ognuna con la sua risposta', async () => {
+test('la fila: richieste insieme passano una alla volta, ognuna con la sua risposta', { skip: SOLO_POSIX }, async () => {
   writeFileSync(REGISTRO, '');
   const rr = await Promise.all([0.5, 0.75, 1, 1.25].map(s => k.voce(audio(s, 5))));
   assert.deepEqual(rr.map(r => r.stato), [200, 200, 200, 200]);
@@ -133,7 +135,7 @@ test('la fila: richieste insieme passano una alla volta, ognuna con la sua rispo
   assert.deepEqual(nelTemp(), []);
 });
 
-test('oltre quattro in fila: «occupata» (503), le altre finiscono', async () => {
+test('oltre quattro in fila: «occupata» (503), le altre finiscono', { skip: SOLO_POSIX }, async () => {
   const rr = await Promise.all([...Array(7)].map(() => k.voce(audio(0.5, 5))));
   const stati = rr.map(r => r.stato).sort();
   assert.ok(stati.filter(s => s === 200).length >= 4, stati.join());
@@ -142,7 +144,7 @@ test('oltre quattro in fila: «occupata» (503), le altre finiscono', async () =
   assert.deepEqual(nelTemp(), []);
 });
 
-test('il motore che sbaglia o cade: 502, file cancellato, e la richiesta dopo riparte con un processo nuovo', async () => {
+test('il motore che sbaglia o cade: 502, file cancellato, e la richiesta dopo riparte con un processo nuovo', { skip: SOLO_POSIX }, async () => {
   const rotto = await k.voce(audio(1, 9));
   assert.equal(rotto.stato, 502); assert.match(rotto.json.errore, /non ha risposto/);
   const caduto = await k.voce(audio(1, 7));
@@ -152,7 +154,7 @@ test('il motore che sbaglia o cade: 502, file cancellato, e la richiesta dopo ri
   assert.equal(dopo.stato, 200); assert.equal(dopo.json.testo, 'campioni 16000');
 });
 
-test('limite al minuto per persona, lo stesso delle domande', async () => {
+test('limite al minuto per persona, lo stesso delle domande', { skip: SOLO_POSIX }, async () => {
   assert.equal((await k.chiama('PUT', '/api/lumi/impostazioni', { limite: 1 })).stato, 200);
   const rr = [];
   for (let i = 0; i < 3; i++) rr.push((await k.voce(audio(0.5))).stato);
@@ -208,7 +210,7 @@ test('i file audio lasciati da Lumi chiuso di colpo si tolgono all\'avvio (solo 
   assert.deepEqual(readdirSync(d).sort(), ['altro.f32', `lumi-voce-${process.pid}-1.f32`]);
 });
 
-test('creaVoceLocale da sola: senza motore rifiuta, con il finto risponde in ordine, e il riposo chiude il processo', async () => {
+test('creaVoceLocale da sola: senza motore rifiuta, con il finto risponde in ordine, e il riposo chiude il processo', { skip: SOLO_POSIX }, async () => {
   const niente = creaVoceLocale({ scelta: null });
   assert.equal(niente.disponibile(), false);
   await assert.rejects(niente.trascrivi(new Float32Array(10)), /assente/);

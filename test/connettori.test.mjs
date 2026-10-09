@@ -293,7 +293,7 @@ export default { id: 'mio', nome: 'Mio', impostazioni: [{ id: 'url', nome: 'Url'
     await n.pianificatore(Date.now() + 5 * 36e5); assert.equal(n.k('mio').stato.leggi('n'), 2);
     // la chiave dei segreti sta in un file 600 accanto ai dati
     await chiama('PUT', '/api/connettori/stripe', { segreti: { chiave: 'sk_test_zzz' } });
-    const { statSync } = await import('node:fs'); assert.equal(statSync(join(dir, 'connettori-chiave')).mode & 0o777, 0o600);
+    const { statSync } = await import('node:fs'); if (process.platform !== 'win32') assert.equal(statSync(join(dir, 'connettori-chiave')).mode & 0o777, 0o600);   // su Windows i permessi Unix non esistono
     // solo il titolare
     await chiama('POST', '/api/utenti', { nome: 'C', email: 'c@esempio.it', password: 'password-lunga', ruolo: 'collaboratore' });
     biscotto = ''; await chiama('POST', '/api/accedi', { email: 'c@esempio.it', password: 'password-lunga' });
