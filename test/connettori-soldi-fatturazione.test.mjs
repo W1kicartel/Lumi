@@ -47,3 +47,38 @@ test('Aruba: un solo accesso, upload dell\'XML in base64, esito scartato segnala
     assert.equal((ric.righe || ric).length, 1);
   } finally { await K.chiudi(); await S.chiudi(); }
 });
+
+test('Fatture in Cloud: token manuale, clienti a pagine abbinati per partita IVA, fattura copiata con le aliquote e inviata allo SDI, spese → fatture ricevute', async () => {
+  const K = await kubo(['fatture']); let documento = null, inviato = 0;
+  const auth = int => assert.equal(int.authorization, 'Bearer fic-manuale');
+  const S = await finto({
+    'GET /user/companies': (p, c, { intestazioni }) => { auth(intestazioni); return { data: { companies: [{ id: 4242, name: 'Bottega Prova srl' }] } }; },
+    'GET /c/4242/entities/clients': (p, c, { q, intestazioni }) => { auth(intestazioni); return q.get('page') === '1'
+      ? { current_page: 1, last_page: 2, data: [{ id: 11, name: 'Rossi srl', vat_number: '00743110157', email: 'amministrazione@rossi.example', ei_code: 'ABC1234' }] }
+      : { current_page: 2, last_page: 2, data: [{ id: 12, name: 'Verdi snc', vat_number: '01234567897', address_city: 'Bergamo' }] }; },
+    'GET /c/4242/info/vat_types': () => ({ data: [{ id: 0, value: 22, is_disabled: false }, { id: 3, value: 10, is_disabled: false }, { id: 21, value: 0, ei_type: 'N2.2', is_disabled: false }] }),
+    'POST /c/4242/issued_documents': (p, c) => { documento = c.data; return { data: { id: 9001 } }; },
+    'POST /c/4242/issued_documents/:id/e_invoice/send': p => { inviato++; assert.equal(p.id, '9001'); return { data: { name: 'IT12345678903_a1b2c.xml', date: '2026-10-09' } }; },
+    'GET /c/4242/received_documents': (p, c, { q }) => { assert.equal(q.get('type'), 'expense');
+      return { data: [{ id: 501, type: 'expense', entity: { name: 'Carta & Co srl', vat_number: '07654321095' }, date: '2026-09-20', invoice_number: 'C-55', amount_net: 100, amount_vat: 22, amount_gross: 122, description: 'Cancelleria' }] }; },
+  });
+  try {
+    const f = await fattura(K);
+    await accendi(K, 'fatture-in-cloud', { base: S.url, segreti: { token: 'fic-manuale' } });
+    assert.equal((await K.chiama('POST', '/api/connettori/fatture-in-cloud/prova')).json.ok, true);
+    // Rossi c'è già in Kubo (stessa partita IVA): si abbina e prende email; Verdi è nuovo
+    const g = await K.chiama('POST', '/api/connettori/fatture-in-cloud/giri/clienti');
+    assert.deepEqual(g.json.risultato, { creati: 1, aggiornati: 1, uguali: 0 }, JSON.stringify(g.json));
+    assert.deepEqual((await K.chiama('POST', '/api/connettori/fatture-in-cloud/giri/clienti')).json.risultato, { creati: 0, aggiornati: 0, uguali: 2 });
+    const r = await K.chiama('POST', '/api/connettori/fatture-in-cloud/azioni/invia', { args: { fattura: f.id } });
+    assert.equal(r.stato, 200, JSON.stringify(r.json)); assert.equal(r.json.documento, 9001); assert.equal(inviato, 1);
+    assert.equal(documento.type, 'invoice'); assert.equal(documento.entity.id, 11); assert.equal(documento.entity.vat_number, '00743110157'); assert.equal(documento.date, '2026-09-01');
+    assert.deepEqual(documento.items_list, [{ name: 'Riparazione', qty: 1, net_price: 100, discount: 0, vat: { id: 0 } }]);
+    assert.equal((await K.chiama('GET', `/api/dati/fatture/${f.id}`)).json.stato, 'inviata');
+    assert.equal((await K.chiama('POST', '/api/connettori/fatture-in-cloud/azioni/invia', { args: { fattura: f.id } })).stato, 502);
+    assert.deepEqual((await K.chiama('POST', '/api/connettori/fatture-in-cloud/giri/ricevute')).json.risultato, { importate: 1, gia: 0 });
+    assert.deepEqual((await K.chiama('POST', '/api/connettori/fatture-in-cloud/giri/ricevute')).json.risultato, { importate: 0, gia: 1 });
+    const ric = (await K.chiama('GET', '/api/dati/fatture_ricevute')).json, x = (ric.righe || ric)[0];
+    assert.equal(x.numero, 'C-55'); assert.equal(x.totale, 122); assert.equal(x.fornitore.titolo, 'Carta & Co srl');
+  } finally { await K.chiudi(); await S.chiudi(); }
+});
