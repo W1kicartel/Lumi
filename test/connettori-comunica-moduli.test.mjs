@@ -53,6 +53,26 @@ test('Typeform: firma sha256= base64 giusta e sbagliata; risposta → cliente + 
   } finally { await K.chiudi(); }
 });
 
+test('Typeform senza webhook: giro con token (Bearer, since), titoli dai gruppi di domande, cursore', async () => {
+  const K = await kubo(['studio']);
+  const S = await finto({
+    'GET /me': () => ({ alias: 'Studio Bianchi', email: 'studio@esempio.it' }),
+    'GET /forms/:id': () => ({ id: 'lT4Z3j', title: 'Contattaci', fields: [{ id: 'g1', title: 'I tuoi dati', type: 'group', properties: { fields: [{ id: 'f1', title: 'Nome', type: 'short_text' }, { id: 'f2', title: 'Email', type: 'email' }] } }, { id: 'f3', title: 'Richiesta', type: 'long_text' }] }),
+    'GET /forms/:id/responses': (p, c, { q }) => ({ total_items: 1, page_count: 1, items: q.get('since') > '2026-10-09T08:00:00Z' ? [] : [{ landing_id: 'tokA', token: 'tokA', response_id: 'tokA', submitted_at: '2026-10-09T08:00:00Z',
+      answers: [{ type: 'text', text: 'Rita Sala', field: { id: 'f1', type: 'short_text' } }, { type: 'email', email: 'rita.sala@esempio.it', field: { id: 'f2', type: 'email' } }, { type: 'text', text: 'Un preventivo per due', field: { id: 'f3', type: 'long_text' } }] }] }),
+  });
+  try {
+    await accendi(K, 'typeform', { base: S.url, segreti: { token: 'tfp_prova' }, impostazioni: { moduli: 'lT4Z3j' } });
+    assert.equal((await K.chiama('POST', '/api/connettori/typeform/prova')).json.messaggio, 'Studio Bianchi');
+    const g = (await K.chiama('POST', '/api/connettori/typeform/giri/risposte')).json; assert.equal(g.esito, 'ok', JSON.stringify(g)); assert.deepEqual(g.risultato, { creati: 1, presenti: 0 });
+    const x = S.chiamate.find(c => c.percorso.endsWith('/responses')); assert.equal(x.intestazioni.authorization, 'Bearer tfp_prova'); assert.equal(x.q.completed, 'true'); assert.match(x.q.since, /^\d{4}-\d{2}-\d{2}T/);
+    const [c] = await righe(K, 'clienti'); assert.equal(c.nome, 'Rita Sala'); assert.match(c.note, /Typeform · modulo «Contattaci»[\s\S]*Richiesta: Un preventivo per due/);
+    const ant = (await K.chiama('POST', '/api/connettori/typeform/azioni/leggi_risposte', { args: {}, anteprima: true })).json; assert.deepEqual(ant.righe[0], ['Moduli', 'lT4Z3j']);
+    assert.deepEqual((await K.chiama('POST', '/api/connettori/typeform/azioni/leggi_risposte', { args: {} })).json, { creati: 0, presenti: 0 });   // il cursore è andato avanti
+    assert.equal((await righe(K, 'clienti')).length, 1);
+  } finally { await K.chiudi(); await S.chiudi(); }
+});
+
 test('Tally: Tally-Signature base64 giusta e sbagliata; scelte dagli id ai testi; provenienza «sito»; trovato per telefono', async () => {
   const K = await kubo(['professionista']);
   try {
