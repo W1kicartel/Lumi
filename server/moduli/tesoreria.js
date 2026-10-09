@@ -191,6 +191,8 @@ export function registraPagamenti(k, ctx, chiavi, { data = oggiIso(), importo = 
   const scelte = [...new Set(chiavi)].map(c => { const s = perChiave.get(c); if (!s) throw new Error(`Scadenza sconosciuta: ${c}`); return s; });
   if (!scelte.length) throw new Error('Nessuna scadenza scelta');
   if (importo != null && scelte.length > 1) throw new Error('Un importo parziale vale per una scadenza sola');
+  // anche un acconto (che non tocca il documento) vuole il permesso di modificare la fattura: chi la vede soltanto non incassa
+  for (const e of new Set(scelte.map(s => s.origine.entita))) k.P.verifica(ctx, e, 'modifica');
   return transazione(db, () => {
     const fatte = [];
     for (const s of scelte) {
@@ -218,6 +220,7 @@ export function annullaPagamento(k, ctx, chiave) {
   const { db, D } = k; tabelle(db);
   const s = scadenzario(k, ctx).find(x => x.chiave === chiave);
   if (!s) throw new Error(`Scadenza sconosciuta: ${chiave}`);
+  k.P.verifica(ctx, s.origine.entita, 'modifica');
   return transazione(db, () => {
     db.prepare('DELETE FROM _tesoreria_pagamenti WHERE chiave = ?').run(chiave);
     if (s.rata) D.modifica(db, RATE, s.rata, { pagata: false }, ctx);
@@ -246,6 +249,7 @@ export function creaDistinta(k, ctx, { tipo, chiavi, data = null, adesso = new D
     scelte.push(s);
   }
   if (!scelte.length) throw new Error('Scegli almeno una scadenza');
+  k.P.verifica(ctx, verso === 'attiva' ? FATTURE : RICEVUTE, 'modifica');
   const quando = data && DATA.test(data) ? data : null, oggi = adesso.toISOString().slice(0, 10);
   let f;
   if (tipo === 'riba') {
@@ -350,6 +354,7 @@ export function abbina(k, ctx, movimento, chiavi, { distinta = null } = {}) {
   const m = movimenti(k, ctx).find(x => x.id === String(movimento));
   if (!m) throw new Error('Movimento sconosciuto');
   if (m.stato !== 'da_abbinare') throw new Error('Il movimento è già abbinato');
+  k.P.verifica(ctx, e, 'modifica');
   const sc = scadenzario(k, ctx), scelte = chiavi.map(c => sc.find(s => s.chiave === c)).filter(Boolean);
   if (scelte.length !== chiavi.length || !scelte.length) throw new Error('Scadenza sconosciuta');
   const verso = m.importo > 0 ? 'attiva' : 'passiva';
@@ -368,6 +373,7 @@ export function ignora(k, ctx, movimento) {
   const { db } = k, e = sezioneMovimenti(k); tabelle(db);
   const m = movimenti(k, ctx).find(x => x.id === String(movimento));
   if (!m) throw new Error('Movimento sconosciuto');
+  k.P.verifica(ctx, e, 'modifica');
   db.prepare('INSERT OR REPLACE INTO _tesoreria_abbinamenti (movimento, sezione, chiavi, ignorato, quando, utente) VALUES (?, ?, ?, 1, ?, ?)').run(m.id, e, '[]', new Date().toISOString(), ctx?.utente?.id ?? null);
   ricopia(k, ctx, e, m.id, 'ignorato', []);
   return { ok: true };
@@ -376,6 +382,7 @@ export function disabbina(k, ctx, movimento) {
   const { db } = k; tabelle(db);
   const a = db.prepare('SELECT * FROM _tesoreria_abbinamenti WHERE movimento = ?').get(String(movimento));
   if (!a) throw new Error('Il movimento non è abbinato');
+  k.P.verifica(ctx, a.sezione, 'modifica');
   return transazione(db, () => {
     const chiavi = db.prepare('SELECT DISTINCT chiave FROM _tesoreria_pagamenti WHERE movimento = ?').all(a.movimento).map(x => x.chiave);
     for (const c of chiavi) {
@@ -409,6 +416,7 @@ export function registraSollecito(k, ctx, { cliente, livello, chiavi = [], oggi 
   const { db } = k; tabelle(db);
   const s = solleciti(k, ctx, { oggi }).find(x => x.cliente === String(cliente));
   if (!s) throw new Error('Questo cliente non ha scadenze scadute');
+  k.P.verifica(ctx, FATTURE, 'modifica');
   const lv = Number(livello) || s.livello;
   if (!(lv >= 1 && lv <= 3)) throw new Error('Livello del sollecito non valido');
   db.prepare('INSERT INTO _tesoreria_solleciti (cliente, data, livello, chiavi, importo, utente) VALUES (?, ?, ?, ?, ?, ?)')
@@ -552,6 +560,7 @@ export default function registra(k) {
   r('GET', '/api/tesoreria/distinte', ({ ctx }) => { lettore(ctx); return distinte(db); });
   r('GET', '/api/tesoreria/distinte/:id/file', ({ ctx, p, res }) => {
     lettore(ctx); const d = distinte(db).find(x => x.id === p.id); if (!d) throw new ErroreHttp(404, 'Distinta sconosciuta');
+    P.verifica(ctx, d.tipo === 'sct' ? RICEVUTE : FATTURE, 'leggi');
     const f = db.prepare('SELECT file FROM _tesoreria_distinte WHERE id = ?').get(p.id).file;
     return scarica(res, d.file, d.tipo === 'riba' ? 'text/plain; charset=us-ascii' : 'application/xml; charset=utf-8', f);
   });

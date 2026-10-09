@@ -338,6 +338,16 @@ test('API: prepara, impostazioni, scadenze, estratto, banca, distinta da scarica
     assert.equal((await chiama('GET', '/api/tesoreria/termini?termini=boh')).stato, 422);
     const lumi = (await chiama('GET', '/api/lumi/strumenti')).json.strumenti.map(s => s.nome);
     assert.ok(lumi.includes('tesoreria_scadenzario') && lumi.includes('tesoreria_abbina_movimento'));
+    // chi vede le fatture ma non le modifica legge lo scadenzario e non incassa (nemmeno un acconto)
+    assert.equal((await chiama('PUT', '/api/ruoli/lettore', { nome: 'Lettore', entita: { fatture: { leggi: true }, clienti: { leggi: true }, rate_fattura: { leggi: true } } })).stato, 200);
+    assert.equal((await chiama('POST', '/api/utenti', { nome: 'Lettore', email: 'l@prova.it', password: 'password-lunga-2', ruolo: 'lettore' })).stato, 200);
+    const fx = (await chiama('POST', '/api/dati/fatture', { cliente: cl.id, data: '2026-09-02', scadenza: '2026-10-02', stato: 'emessa', righe: [{ descrizione: 'Altro', quantita: 1, prezzo: 100, aliquota: 22 }] })).json;
+    const titolare = biscotto;
+    biscotto = ''; assert.equal((await chiama('POST', '/api/accedi', { email: 'l@prova.it', password: 'password-lunga-2' })).stato, 200);
+    assert.equal((await chiama('GET', '/api/tesoreria/scadenze?verso=attiva')).json.scadenze.length, 1);
+    assert.equal((await chiama('POST', '/api/tesoreria/pagamenti', { chiavi: [`f:${fx.id}:1`], importo: 10 })).stato, 403);
+    assert.equal((await chiama('POST', '/api/tesoreria/distinte', { tipo: 'riba', chiavi: [`f:${fx.id}:1`] })).stato, 403);
+    biscotto = titolare;
     // chi non vede le fatture non vede la tesoreria
     assert.equal((await chiama('PUT', '/api/ruoli/banco', { nome: 'Banco', entita: { clienti: { leggi: true } } })).stato, 200);
     assert.equal((await chiama('POST', '/api/utenti', { nome: 'Banco', email: 'b@prova.it', password: 'password-lunga-1', ruolo: 'banco' })).stato, 200);
