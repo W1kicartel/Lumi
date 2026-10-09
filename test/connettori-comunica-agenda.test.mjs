@@ -227,3 +227,33 @@ test('CalDAV: scoperta del calendario (principal → home → calendari), PUT co
     const l = await K.chiama('POST', '/api/connettori/caldav/azioni/calendari', { args: {} }); assert.deepEqual(l.json.calendari.map(c => c.nome), ['Studio & casa']);
   } finally { await K.chiudi(); await S.chiudi(); }
 });
+
+test('Zoom: token Server-to-Server (account_credentials, Basic), riunione dall\'azione con anteprima e link nelle note, spostata e cancellata con l\'appuntamento', async () => {
+  const K = await kubo(['studio']), riunioni = new Map();
+  const S = await finto({
+    'POST /oauth/token': (p, c, { intestazioni: h }) => (h.authorization === 'Basic ' + Buffer.from('cid:csec').toString('base64') && c.grant_type === 'account_credentials' && c.account_id === 'acc-1'
+      ? { access_token: 'tok-zoom', token_type: 'bearer', expires_in: 3599 } : { stato: 401, corpo: { reason: 'Invalid client_id or client_secret' } }),
+    'POST /v2/users/me/meetings': (p, c) => { const id = 85746065 + riunioni.size; riunioni.set(String(id), c); return { stato: 201, corpo: { id, join_url: `https://zoom.us/j/${id}?pwd=prova`, start_url: 'https://zoom.us/s/x' } }; },
+    'PATCH /v2/meetings/:id': (p, c) => { Object.assign(riunioni.get(p.id), c); return { stato: 204, corpo: '' }; },
+    'DELETE /v2/meetings/:id': p => { riunioni.delete(p.id); return { stato: 204, corpo: '' }; },
+  });
+  try {
+    await accendi(K, 'zoom', { base: S.url, segreti: { client_id: 'cid', client_secret: 'csec' }, impostazioni: { account_id: 'acc-1' } });
+    assert.equal((await K.chiama('POST', '/api/connettori/zoom/prova')).json.ok, true);
+    const sv = (await K.chiama('POST', '/api/dati/servizi', { nome: 'Consulenza online', durata: 45 })).json, cl = (await K.chiama('POST', '/api/dati/clienti', { nome: 'Elena Rossi' })).json;
+    const a = (await K.chiama('POST', '/api/dati/appuntamenti', { quando: '2026-10-15T14:00:00.000Z', cliente: cl.id, servizio: sv.id, note: 'Portare gli esami' })).json;
+    const ant = await K.chiama('POST', '/api/connettori/zoom/azioni/crea_riunione', { args: { appuntamento: a.id }, anteprima: true });
+    assert.equal(ant.stato, 200, JSON.stringify(ant.json)); assert.deepEqual(ant.json.righe[0], ['Appuntamento', 'Elena Rossi · Consulenza online']); assert.deepEqual(ant.json.righe[2], ['Durata', '45 min']);
+    assert.equal(riunioni.size, 0);   // l'anteprima non crea niente
+    const r = await K.chiama('POST', '/api/connettori/zoom/azioni/crea_riunione', { args: { appuntamento: a.id } }); assert.equal(r.stato, 200, JSON.stringify(r.json));
+    assert.equal(r.json.link, 'https://zoom.us/j/85746065?pwd=prova');
+    const m = riunioni.get('85746065'); assert.equal(m.start_time, '2026-10-15T14:00:00Z'); assert.equal(m.duration, 45); assert.equal(m.type, 2); assert.equal(m.topic, 'Elena Rossi · Consulenza online');
+    assert.equal(S.chiamate.find(c => c.percorso === '/v2/users/me/meetings').intestazioni.authorization, 'Bearer tok-zoom');
+    assert.equal((await K.chiama('GET', `/api/dati/appuntamenti/${a.id}`)).json.note, 'Portare gli esami\nZoom: https://zoom.us/j/85746065?pwd=prova');
+    // l'appuntamento si sposta: la riunione segue (stesso link); si annulla: la riunione si cancella. Il token si riusa
+    await K.chiama('PATCH', `/api/dati/appuntamenti/${a.id}`, { quando: '2026-10-16T08:30:00.000Z' }); await coda(K);
+    assert.equal(riunioni.get('85746065').start_time, '2026-10-16T08:30:00Z');
+    await K.chiama('PATCH', `/api/dati/appuntamenti/${a.id}`, { stato: 'annullato' }); await coda(K);
+    assert.equal(riunioni.size, 0); assert.equal(S.chiamate.filter(c => c.percorso === '/oauth/token').length, 1);   // un solo token (vale un'ora) dalla prova in poi
+  } finally { await K.chiudi(); await S.chiudi(); }
+});
