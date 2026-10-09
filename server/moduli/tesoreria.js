@@ -23,7 +23,9 @@ import { transazione } from '../db.js';
 
 export const FATTURE = 'fatture', RATE = 'rate_fattura', RICEVUTE = 'fatture_ricevute', MOVIMENTI = 'movimenti_banca', PREVISIONI = 'previsioni_cassa';
 const VALIDE = ['emessa', 'inviata', 'pagata'];
-const SENZA_INCASSO = ['TD04', 'TD16', 'TD17', 'TD18', 'TD19', 'TD20', 'TD21', 'TD22', 'TD23', 'TD26', 'TD27', 'TD28'];
+// non si incassano: le note di credito e le autofatture (integrazioni TD16-TD19, regolarizzazione TD20, splafonamento TD21,
+// estrazioni dal deposito IVA TD22-TD23, autoconsumo TD27, San Marino TD28). TD26 (cessione di beni ammortizzabili) ha un cliente che paga: resta
+const SENZA_INCASSO = ['TD04', 'TD16', 'TD17', 'TD18', 'TD19', 'TD20', 'TD21', 'TD22', 'TD23', 'TD27', 'TD28'];
 export const oggiIso = () => new Date().toISOString().slice(0, 10);
 const DATA = /^\d{4}-\d{2}-\d{2}$/;
 
