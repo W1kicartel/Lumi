@@ -6,16 +6,33 @@
 // Un altro intermediario (Aruba, A-Cube) è un altro connettore con lo stesso «xmlDi» qui sotto e le sue chiamate.
 import * as X from '../../server/moduli/documenti-xml.js';
 import { azienda } from '../../server/moduli/documenti.js';
+import { meta } from '../../server/db.js';
 
-// l'XML di una fattura di Kubo, con gli stessi controlli dell'esportazione (documenti.js) e il progressivo d'invio comune
-export function xmlDi(k, f) {
-  const az = azienda(k.db, { leggi: (db, c) => db.prepare('SELECT valore FROM _meta WHERE chiave = ?').get(c)?.valore ?? null });
+// azienda, cliente e fattura pronti per l'XML, con gli stessi controlli dell'esportazione (documenti.js)
+function prepara(k, f) {
+  const az = azienda(k.db, meta);
   let cliente = {}; if (f.cliente?.id) { try { cliente = k.dati.leggi('clienti', f.cliente.id); } catch { cliente = {}; } }
   // una nota di credito (TD04) porta i dati della fattura che corregge (DatiFattureCollegate), come nell'esportazione
   if (f.collegata?.id && !f.collegata_dati) { try { const c = k.dati.leggi('fatture', f.collegata.id); f = { ...f, collegata_dati: { numero: c.numero, data: c.data } }; } catch { /* non leggibile: si invia senza */ } }
   const errori = X.controlla(az, f, cliente); if (errori.length) throw new Error(errori[0]);
+  return { az, f, cliente };
+}
+// il progressivo dell'ultimo invio di ogni fattura, in _meta: lo riusano le copie (stesso nome del file mandato allo SDI)
+const inviato = id => `documenti.fatturapa.${id}`;
+
+// l'XML da mandare allo SDI: ogni chiamata prende un progressivo d'invio nuovo dal contatore comune (mai ripetuto)
+export function xmlDi(k, f) {
+  const p = prepara(k, f);
   const progressivo = X.progressivoDa(Number(k.D.prossimoNumero(k.db, 'fatturapa', '{N}')));
-  return X.xml(az, f, cliente, { progressivo });   // → { nome, xml }
+  if (f.id) meta.scrivi(k.db, inviato(f.id), progressivo);
+  return X.xml(p.az, p.f, p.cliente, { progressivo });   // → { nome, xml }
+}
+// una copia dell'XML (archivio, email): non consuma progressivi. Riusa quello dell'ultimo invio allo SDI; se la fattura
+// non è mai partita, uno fisso ricavato dal suo id (X.progressivoCopia, come il pacchetto del commercialista)
+export function copiaXmlDi(k, f) {
+  const p = prepara(k, f);
+  const progressivo = (f.id && meta.leggi(k.db, inviato(f.id))) || X.progressivoCopia(f.id);
+  return X.xml(p.az, p.f, p.cliente, { progressivo });   // → { nome, xml }
 }
 const base = k => k.base || (k.imp.ambiente === 'produzione' ? 'https://sdi.openapi.it' : 'https://test.sdi.openapi.it');
 // una bozza o una fattura annullata non va allo SDI

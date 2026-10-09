@@ -114,6 +114,9 @@ function scrivi(nodo, rientro = '') {
 const se = (cond, nodo) => (cond ? nodo : null);
 
 export const progressivoDa = n => Number(n).toString(36).toUpperCase().padStart(5, '0').slice(-5);
+// il progressivo di una copia mai inviata (archivio, email, pacchetto del commercialista): fisso, ricavato dall'id della
+// fattura (le cifre esadecimali in fondo), così due copie hanno lo stesso nome e il contatore d'invio non si tocca
+export const progressivoCopia = id => progressivoDa(parseInt(String(id ?? '').replace(/[^0-9a-f]/gi, '').slice(-8) || '1', 16));
 export const nomeFile = (az, progressivo) => `IT${pulito(az.piva).replace(/^IT/, '')}_${progressivo}.xml`;
 
 export function xml(az, f, cliente, { progressivo = '00001' } = {}) {
