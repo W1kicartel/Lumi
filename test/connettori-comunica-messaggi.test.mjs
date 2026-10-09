@@ -26,8 +26,12 @@ test('Telegram: il titolare si collega con il codice, il cliente con il suo link
     assert.deepEqual(g.json.risultato, { letti: 1, esiti: ['titolare collegato'] }, JSON.stringify(g.json));
     assert.equal(inviati.at(-1).chat_id, 111);
     assert.equal(S.chiamate.filter(c => c.percorso.endsWith('/getUpdates')).at(-1).corpo.offset, undefined);
-    await K.chiama('POST', '/api/connettori/telegram/giri/controlla');
+    // anche il gruppo della squadra: in un gruppo il comando arriva con il nome del bot
+    code.push({ update_id: 11, message: { chat: { id: -100200, type: 'group' }, text: `/start@bottega_bot ${codice}` } });
+    assert.deepEqual((await K.chiama('POST', '/api/connettori/telegram/giri/controlla')).json.risultato.esiti, ['titolare collegato']);
     assert.equal(S.chiamate.filter(c => c.percorso.endsWith('/getUpdates')).at(-1).corpo.offset, 11);
+    await K.chiama('POST', '/api/connettori/telegram/giri/controlla');
+    assert.equal(S.chiamate.filter(c => c.percorso.endsWith('/getUpdates')).at(-1).corpo.offset, 12);
     // il cliente: il link personale, poi il webhook (con l'indirizzo pubblico)
     const cl = (await K.chiama('POST', '/api/dati/clienti', { nome: 'Anna Bianchi', telefono: '333 1234567' })).json;
     const link = (await K.chiama('POST', '/api/connettori/telegram/azioni/link_cliente', { args: { cliente: cl.id } })).json;
@@ -51,7 +55,7 @@ test('Telegram: il titolare si collega con il codice, il cliente con il suo link
     // il cliente risponde: il messaggio arriva al titolare
     const risp = JSON.stringify({ update_id: 22, message: { chat: { id: 222 }, text: 'Grazie, passo alle 18' } });
     assert.equal((await manda(K, '/api/connettori/telegram/in', risp, { 'X-Telegram-Bot-Api-Secret-Token': sw })).json.esito, 'messaggio inoltrato');
-    assert.deepEqual([inviati.at(-1).chat_id, inviati.at(-1).text], [111, 'Anna Bianchi: Grazie, passo alle 18']);
+    assert.deepEqual(inviati.slice(-2).map(m => [m.chat_id, m.text]), [[111, 'Anna Bianchi: Grazie, passo alle 18'], [-100200, 'Anna Bianchi: Grazie, passo alle 18']]);
     // una vendita nuova: un avviso al titolare, una volta sola (anche se la vendita poi cambia)
     const prima = inviati.length;
     const art = (await K.chiama('POST', '/api/dati/articoli', { nome: 'Vaso', codice: 'V1', prezzo: 30, giacenza: 9, soglia: 2 })).json;
@@ -59,7 +63,7 @@ test('Telegram: il titolare si collega con il codice, il cliente con il suo link
     await coda(K);
     await K.chiama('PATCH', `/api/dati/vendite/${v.id}`, { note: 'ritira domani' }); await coda(K);
     const avvisi = inviati.slice(prima).filter(m => /Nuova vendita/.test(m.text));
-    assert.equal(avvisi.length, 1, JSON.stringify(inviati.slice(prima))); assert.match(avvisi[0].text, /^Nuova vendita V-\d{4}-0001: 60,00 € · Anna Bianchi$/); assert.equal(avvisi[0].chat_id, 111);
+    assert.equal(avvisi.length, 2, JSON.stringify(inviati.slice(prima))); assert.deepEqual(avvisi.map(a => a.chat_id), [111, -100200]); assert.match(avvisi[0].text, /^Nuova vendita V-\d{4}-0001: 60,00 € · Anna Bianchi$/)
     // /stop scollega il cliente
     await manda(K, '/api/connettori/telegram/in', JSON.stringify({ update_id: 23, message: { chat: { id: 222 }, text: '/stop' } }), { 'X-Telegram-Bot-Api-Secret-Token': sw });
     assert.equal((await K.chiama('POST', '/api/connettori/telegram/azioni/manda_cliente', { args: { cliente: cl.id, testo: 'x' } })).stato, 502);

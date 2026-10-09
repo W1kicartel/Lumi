@@ -25,7 +25,8 @@ const clienteDaChat = (k, chat) => Object.entries(k.stato.leggi('chat') || {}).f
 // un aggiornamento di Telegram (dal webhook o da getUpdates)
 async function aggiorna(k, u) {
   const m = u.message; if (!m?.chat?.id || typeof m.text !== 'string') return 'ignorato';
-  const chat = m.chat.id, t = m.text.trim(), [cmd, arg] = t.split(/\s+/, 2);
+  // in un gruppo il comando arriva come «/start@nome_bot <codice>»: così il titolare collega anche la chat della squadra
+  const chat = m.chat.id, t = m.text.trim(), [c0, arg] = t.split(/\s+/, 2), cmd = c0.replace(/@\w+$/, '');
   if (cmd === '/start' && arg && k.segreti.codice && stessoSegreto(arg, k.segreti.codice)) {
     if (!titolari(k).includes(chat)) k.stato.scrivi('titolari', [...titolari(k), chat].slice(-10));
     await manda(k, chat, 'Fatto: qui arriveranno gli avvisi di Kubo.'); return 'titolare collegato';
