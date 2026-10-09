@@ -119,3 +119,22 @@ test('Skebby: token con le credenziali (una volta), SMS di alta qualità con il 
     assert.equal((await K.chiama('POST', '/api/connettori/skebby/azioni/manda_sms', { args: { cliente: senza.id, testo: 'x' } })).stato, 502);
   } finally { await K.chiudi(); await S.chiudi(); }
 });
+
+test('Brevo: la fattura emessa al cliente con la stampa e l\'XML FatturaPA in allegato (base64)', async () => {
+  const K = await kubo(['negozio', 'fatture']), CH = 'xkeysib-' + 'b2'.repeat(30) + '-AbCdEfGh12345678';
+  const S = await finto({ 'POST /smtp/email': () => ({ stato: 201, corpo: { messageId: '<m2@smtp-relay.mailin.fr>' } }) });
+  try {
+    assert.equal((await K.chiama('PUT', '/api/documenti/azienda', { ragione_sociale: 'Bottega Prova srl', piva: '12345678903', codice_fiscale: '12345678903', regime: 'RF01', via: 'Via dei Mille 10', cap: '20121', comune: 'Milano', provincia: 'MI', email: 'info@bottega.example', iban: 'IT60X0542811101000000123456', aliquota: 22 })).stato, 200);
+    await K.chiama('POST', '/api/documenti/prepara');
+    const cl = (await K.chiama('POST', '/api/dati/clienti', { nome: 'Rossi srl', piva: '00743110157', via: 'Corso Italia 5', cap: '10121', comune: 'Torino', provincia: 'TO', codice_destinatario: 'ABC1234', email: 'rossi@cliente.example' })).json;
+    const f = (await K.chiama('POST', '/api/dati/fatture', { cliente: cl.id, data: '2026-09-01', righe: [{ descrizione: 'Riparazione', quantita: 1, prezzo: 100, aliquota: 22 }] })).json;
+    assert.equal((await K.chiama('PATCH', `/api/dati/fatture/${f.id}`, { stato: 'emessa' })).stato, 200);
+    await accendi(K, 'brevo', { base: S.url, segreti: { chiave: CH }, impostazioni: { mittente_email: 'fatture@bottega.example', mittente_nome: 'Bottega' } });
+    const r = await K.chiama('POST', '/api/connettori/brevo/azioni/invia_fattura', { args: { doc: f.id } });
+    assert.equal(r.stato, 200, JSON.stringify(r.json)); assert.equal(r.json.a, 'rossi@cliente.example');
+    const c = S.chiamate[0].corpo;
+    assert.deepEqual(c.sender, { email: 'fatture@bottega.example', name: 'Bottega' }); assert.match(c.subject, /^Fattura \S+ del 01\/09\/2026$/);
+    assert.deepEqual(c.attachment.map(a => a.name.split('.').pop()), ['html', 'xml']);
+    assert.match(Buffer.from(c.attachment[1].content, 'base64').toString(), /<ImportoTotaleDocumento>122\.00</);
+  } finally { await K.chiudi(); await S.chiudi(); }
+});

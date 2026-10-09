@@ -39,6 +39,13 @@ function documento(sem, nomeDoc) {
   };
 }
 
+// le azioni «manda la fattura / il preventivo per email» per un connettore che ha già il suo manifesto (es. Brevo)
+export function azioniDocumenti(invia) {
+  const az = { invia_fattura: documento('fatture', 'fattura'), invia_preventivo: documento('preventivi', 'preventivo') };
+  for (const a of Object.values(az)) { const e = a.esegui; a.esegui = (i, k) => e(i, k, { invia }); }
+  return az;
+}
+export const TESTI_DOCUMENTI = l => ({ 'az.invia_fattura': TESTI[l]['az.invia_fattura'], 'az.invia_preventivo': TESTI[l]['az.invia_preventivo'] });
 // def: { id, nome, descrizione, base, oauth?, impostazioni, prova, invia, catalogo, testi }
 export function connettoreEmail(def) {
   const az = { manda_email: {
@@ -51,9 +58,8 @@ export function connettoreEmail(def) {
       const r = await def.invia(k, { ...mittente(k), a, aNome: nomeDi(k, cliente), oggetto, testo, html: html(testo), allegati: [] });
       return { a, id: r?.id ?? null };
     },
-  }, invia_fattura: documento('fatture', 'fattura'), invia_preventivo: documento('preventivi', 'preventivo') };
-  // le azioni sui documenti chiamano invia() del connettore
-  for (const n of ['invia_fattura', 'invia_preventivo']) { const e = az[n].esegui; az[n].esegui = (i, k) => e(i, k, def); }
+  } };
+  Object.assign(az, azioniDocumenti(def.invia));
   return {
     id: def.id, nome: def.nome, versione: 1, icona: 'documento', ...(def.base ? { base: def.base } : {}), ...(def.oauth ? { oauth: def.oauth } : {}), descrizione: def.descrizione,
     impostazioni: [...def.impostazioni, ...impostazioniMittente],
