@@ -4,9 +4,10 @@ import assert from 'node:assert/strict';
 import { finto, kubo, accendi, manda, firmaHmacDi } from './connettori-finto.mjs';
 
 // un cliente con l'indirizzo e una sua vendita
+let nArticoli = 0;
 async function venditaConCliente(K, { nome = 'Mario Rossi', indirizzo = 'Via Roma 12, 20121 Milano (MI)' } = {}) {
   const c = (await K.chiama('POST', '/api/dati/clienti', { nome, email: 'mario.rossi@esempio.it', telefono: '3330000000', indirizzo })).json;
-  const a = (await K.chiama('POST', '/api/dati/articoli', { nome: 'Vaso', codice: 'SP-VASO', prezzo: 40, giacenza: 5 })).json;
+  const a = (await K.chiama('POST', '/api/dati/articoli', { nome: 'Vaso', codice: `SP-VASO-${++nArticoli}`, prezzo: 40, giacenza: 5 })).json;
   return (await K.chiama('POST', '/api/dati/vendite', { cliente: c.id, righe: [{ articolo: a.id, quantita: 1, prezzo: 40 }] })).json;
 }
 
@@ -124,5 +125,33 @@ test('DHL: spedizione Express con Basic e conto, tracking unificato con DHL-API-
     assert.deepEqual((await K.chiama('POST', '/api/connettori/dhl/giri/stati')).json.risultato, { lette: 1, consegnate: 1 });
     assert.match((await K.chiama('GET', `/api/dati/vendite/${v.id}`)).json.note, /Spedizione DHL 1234567890: Consegnato/);
     assert.deepEqual((await K.chiama('POST', '/api/connettori/dhl/giri/stati')).json.risultato, { lette: 0, consegnate: 0 });
+  } finally { await K.chiudi(); await S.chiudi(); }
+});
+
+test('UPS e FedEx: token client credentials (Basic per UPS, form per FedEx), tracking collegato alla vendita, consegnato esce dal giro', async () => {
+  const K = await kubo(); let consegnato = false;
+  const S = await finto({
+    'POST /security/v1/oauth/token': (p, c, { intestazioni }) => (intestazioni.authorization === 'Basic ' + Buffer.from('ups-id:ups-sec').toString('base64') && c.grant_type === 'client_credentials' ? { access_token: 'ups-tok', expires_in: '14399' } : { stato: 401, corpo: {} }),
+    'GET /api/track/v1/details/:n': (p, c, { intestazioni }) => (intestazioni.authorization !== 'Bearer ups-tok' || !intestazioni.transid || intestazioni.transactionsrc !== 'Kubo' ? { stato: 401, corpo: {} }
+      : { trackResponse: { shipment: [{ package: [{ trackingNumber: p.n, currentStatus: { description: consegnato ? 'Consegnato' : 'In transito', type: consegnato ? 'D' : 'I' }, activity: [{ location: { address: { city: 'Napoli' } }, status: { type: consegnato ? 'D' : 'I' }, date: '20261009' }] }] }] } }),
+    'POST /oauth/token': (p, c) => (c.client_id === 'fx-id' && c.client_secret === 'fx-sec' ? { access_token: 'fx-tok', expires_in: 3599 } : { stato: 401, corpo: {} }),
+    'POST /track/v1/trackingnumbers': (p, c, { intestazioni }) => (intestazioni.authorization !== 'Bearer fx-tok' ? { stato: 401, corpo: {} }
+      : { output: { completeTrackResults: [{ trackingNumber: c.trackingInfo[0].trackingNumberInfo.trackingNumber, trackResults: [{ latestStatusDetail: { code: 'IT', statusByLocale: 'In transito', scanLocation: { city: 'Bologna' } } }] }] } }),
+  });
+  try {
+    await accendi(K, 'ups', { base: S.url, segreti: { client_id: 'ups-id', client_secret: 'ups-sec' } });
+    await accendi(K, 'fedex', { base: S.url, segreti: { client_id: 'fx-id', client_secret: 'fx-sec' } });
+    assert.equal((await K.chiama('POST', '/api/connettori/ups/prova')).json.ok, true); assert.equal((await K.chiama('POST', '/api/connettori/fedex/prova')).json.ok, true);
+    const v = await venditaConCliente(K, { nome: 'Rocco Esposito', indirizzo: 'Via Toledo 100, 80134 Napoli (NA)' });
+    const c = await K.chiama('POST', '/api/connettori/ups/azioni/collega', { args: { vendita: v.numero, tracking: '1Z 999 AA1 01 2345 6784' } });
+    assert.equal(c.json.tracking, '1Z999AA10123456784', JSON.stringify(c.json)); assert.equal(c.json.dove, 'Napoli');
+    assert.equal((await K.chiama('POST', '/api/connettori/ups/azioni/dove', { args: { chi: 'Esposito' } })).json.stato, 'In transito');
+    consegnato = true;
+    assert.deepEqual((await K.chiama('POST', '/api/connettori/ups/giri/stati')).json.risultato, { lette: 1, consegnate: 1 });
+    assert.match((await K.chiama('GET', `/api/dati/vendite/${v.id}`)).json.note, /Spedizione UPS 1Z999AA10123456784: Consegnato/);
+    const v2 = await venditaConCliente(K, { nome: 'Nadia Galli' });
+    const f = await K.chiama('POST', '/api/connettori/fedex/azioni/collega', { args: { vendita: v2.numero, tracking: '794843185271' } });
+    assert.equal(f.json.stato, 'In transito', JSON.stringify(f.json)); assert.equal(f.json.consegnato, false);
+    assert.deepEqual((await K.chiama('POST', '/api/connettori/fedex/giri/stati')).json.risultato, { lette: 1, consegnate: 0 });
   } finally { await K.chiudi(); await S.chiudi(); }
 });
