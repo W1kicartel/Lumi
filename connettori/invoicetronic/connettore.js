@@ -1,4 +1,4 @@
-// Fatturazione elettronica tramite Invoicetronic: Kubo genera l'XML FatturaPA con lo stesso «xmlDi» di Openapi SDI e
+// Fatturazione elettronica tramite Invoicetronic: Lumi genera l'XML FatturaPA con lo stesso «xmlDi» di Openapi SDI e
 // Invoicetronic lo trasmette allo SDI. API REST su https://api.invoicetronic.com/v1, Basic con la chiave API come utente
 // e password vuota; la chiave di prova (sandbox) e quella vera usano lo stesso indirizzo (https://invoicetronic.com/en/docs/apikeys/,
 // https://invoicetronic.com/en/docs/sandbox/). Invio: POST /send/xml con l'XML (application/xml) → { id }. Esiti SDI: GET /update
@@ -30,7 +30,7 @@ async function* nuovi(k, percorso, cursore, extra = {}) {
 
 export default {
   id: 'invoicetronic', nome: 'Invoicetronic', versione: 1, icona: 'documento',
-  descrizione: 'Manda allo SDI le fatture elettroniche di Kubo con Invoicetronic e scarica esiti e fatture dei fornitori.',
+  descrizione: 'Manda allo SDI le fatture elettroniche di Lumi con Invoicetronic e scarica esiti e fatture dei fornitori.',
   catalogo: { categoria: 'fatturazione', sito: 'https://invoicetronic.com', costo: 'a-consumo', costoNota: 'A pacchetti di fatture (inviate e ricevute), con la sandbox gratuita per le prove: vedi il listino aggiornato sul sito di Invoicetronic',
     serve: [{ cosa: 'Chiave API (di prova per la sandbox, poi quella vera)', dove: 'Dashboard Invoicetronic → API Keys', link: 'https://dashboard.invoicetronic.com' }],
     passi: ['Registrati su Invoicetronic e apri la dashboard', 'Aggiungi la tua azienda (partita IVA) e completa la delega per lo SDI', 'Copia la chiave API di prova', 'Incollala qui e accendi il connettore', 'Prova l\'invio di una fattura emessa e «Sincronizza ora» per esiti e passive', 'Quando le prove vanno, sostituisci la chiave con quella vera'],
@@ -88,13 +88,13 @@ export default {
     } },
   },
   testi: {
-    en: { descrizione: 'Send Kubo e-invoices to SDI with Invoicetronic and download outcomes and supplier invoices.', 'imp.chiave': 'Invoicetronic API key', 'az.invia': 'Send to SDI', 'giro.esiti': 'SDI outcomes', 'giro.passive': 'Supplier invoices',
+    en: { descrizione: 'Send Lumi e-invoices to SDI with Invoicetronic and download outcomes and supplier invoices.', 'imp.chiave': 'Invoicetronic API key', 'az.invia': 'Send to SDI', 'giro.esiti': 'SDI outcomes', 'giro.passive': 'Supplier invoices',
       'cat.costoNota': 'In bundles of invoices (sent and received), with a free sandbox for testing: see the current price list on the Invoicetronic website',
       'cat.serve': [{ cosa: 'API key (test key for the sandbox, then the live one)', dove: 'Invoicetronic dashboard → API Keys' }],
       'cat.passi': ['Sign up to Invoicetronic and open the dashboard', 'Add your company (VAT number) and complete the SDI delegation', 'Copy the test API key', 'Paste it here and switch the connector on', 'Try sending an issued invoice and «Sync now» for outcomes and supplier invoices', 'When the tests work, replace the key with the live one'] },
-    es: { descrizione: 'Envía al SDI las facturas electrónicas de Kubo con Invoicetronic y descarga resultados y facturas de proveedores.', 'imp.chiave': 'Clave API de Invoicetronic', 'az.invia': 'Enviar al SDI', 'giro.esiti': 'Resultados del SDI', 'giro.passive': 'Facturas de proveedores' },
-    fr: { descrizione: 'Envoyez au SDI les factures électroniques de Kubo avec Invoicetronic et téléchargez résultats et factures fournisseurs.', 'imp.chiave': 'Clé API Invoicetronic', 'az.invia': 'Envoyer au SDI', 'giro.esiti': 'Résultats du SDI', 'giro.passive': 'Factures fournisseurs' },
-    de: { descrizione: 'Sende Kubos E-Rechnungen mit Invoicetronic an SDI und lade Ergebnisse und Lieferantenrechnungen herunter.', 'imp.chiave': 'Invoicetronic-API-Schlüssel', 'az.invia': 'An SDI senden', 'giro.esiti': 'SDI-Ergebnisse', 'giro.passive': 'Lieferantenrechnungen' },
-    pt: { descrizione: 'Envie ao SDI as faturas eletrônicas do Kubo com Invoicetronic e baixe resultados e faturas de fornecedores.', 'imp.chiave': 'Chave API da Invoicetronic', 'az.invia': 'Enviar ao SDI', 'giro.esiti': 'Resultados do SDI', 'giro.passive': 'Faturas de fornecedores' },
+    es: { descrizione: 'Envía al SDI las facturas electrónicas de Lumi con Invoicetronic y descarga resultados y facturas de proveedores.', 'imp.chiave': 'Clave API de Invoicetronic', 'az.invia': 'Enviar al SDI', 'giro.esiti': 'Resultados del SDI', 'giro.passive': 'Facturas de proveedores' },
+    fr: { descrizione: 'Envoyez au SDI les factures électroniques de Lumi avec Invoicetronic et téléchargez résultats et factures fournisseurs.', 'imp.chiave': 'Clé API Invoicetronic', 'az.invia': 'Envoyer au SDI', 'giro.esiti': 'Résultats du SDI', 'giro.passive': 'Factures fournisseurs' },
+    de: { descrizione: 'Sende Lumis E-Rechnungen mit Invoicetronic an SDI und lade Ergebnisse und Lieferantenrechnungen herunter.', 'imp.chiave': 'Invoicetronic-API-Schlüssel', 'az.invia': 'An SDI senden', 'giro.esiti': 'SDI-Ergebnisse', 'giro.passive': 'Lieferantenrechnungen' },
+    pt: { descrizione: 'Envie ao SDI as faturas eletrônicas do Lumi com Invoicetronic e baixe resultados e faturas de fornecedores.', 'imp.chiave': 'Chave API da Invoicetronic', 'az.invia': 'Enviar ao SDI', 'giro.esiti': 'Resultados do SDI', 'giro.passive': 'Faturas de fornecedores' },
   },
 };

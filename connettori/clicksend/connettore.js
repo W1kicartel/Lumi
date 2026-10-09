@@ -5,7 +5,7 @@ import { azioneSms, giroPromemoria, impostazioniPromemoria, testiSms, impPrefiss
 const base = k => `${k.base || 'https://rest.clicksend.com'}/v3`;
 const accesso = k => ({ basic: [k.imp.utente, k.segreti.chiave] });
 async function sms(k, numero, testo) {
-  const r = await k.http.post(`${base(k)}/sms/send`, { ...accesso(k), json: { messages: [{ source: 'kubo', to: numero, body: testo, ...(k.imp.mittente ? { from: k.imp.mittente } : {}) }] } });
+  const r = await k.http.post(`${base(k)}/sms/send`, { ...accesso(k), json: { messages: [{ source: 'lumi', to: numero, body: testo, ...(k.imp.mittente ? { from: k.imp.mittente } : {}) }] } });
   const m = r.json?.data?.messages?.[0];
   if (!r.ok || !m) throw new Error(`ClickSend: ${r.json?.response_msg || `HTTP ${r.stato}`}`);
   if (m.status !== 'SUCCESS') throw new Error(`ClickSend: SMS rifiutato (${m.status})`);

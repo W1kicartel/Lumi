@@ -6,7 +6,7 @@ const base = k => k.base || (k.imp.regione === 'ue' ? 'https://api.eu.mailgun.ne
 const auth = k => ({ basic: ['api', k.segreti.chiave] });
 const q = s => String(s).replace(/["\r\n]/g, '_');
 export function multipart(campi, file = []) {
-  const conf = `kubo${randomBytes(12).toString('hex')}`, parti = [];
+  const conf = `lumi${randomBytes(12).toString('hex')}`, parti = [];
   for (const [n, v] of campi) if (v != null) parti.push(Buffer.from(`--${conf}\r\nContent-Disposition: form-data; name="${q(n)}"\r\n\r\n${v}\r\n`, 'utf8'));
   for (const f of file) parti.push(Buffer.from(`--${conf}\r\nContent-Disposition: form-data; name="attachment"; filename="${q(f.nome)}"\r\nContent-Type: ${f.tipo}\r\n\r\n`, 'utf8'), f.contenuto, Buffer.from('\r\n'));
   parti.push(Buffer.from(`--${conf}--\r\n`));

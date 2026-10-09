@@ -4,7 +4,7 @@
 // ufficiali per PrestaShop e WooCommerce, packlink-dev/ecommerce_module_core): POST /shipments crea la bozza e dà il
 // riferimento, GET /shipments/{rif} lo stato e i tracking, GET /shipments/{rif}/track la cronologia, POST
 // /shipments/callback registra l'indirizzo degli eventi. Gli eventi non sono firmati: l'indirizzo porta il codice segreto
-// di Kubo e la spedizione si rilegge sempre dall'API.
+// di Lumi e la spedizione si rilegge sempre dall'API.
 import { venditaDa, venditaDiChi, destinatario, segnaSpedizione, tondo, RICHIEDE_SPEDIZIONI } from '../_negozi/comune.js';
 
 const api = (k, p) => `${(k.base || 'https://api.packlink.com').replace(/\/$/, '')}/v1${p}`;
@@ -22,7 +22,7 @@ function bozza(k, v, { peso, servizio } = {}) {
   const d = destinatario(k, v), [nome, ...cognome] = d.nome.split(' '), m = k.imp;
   if (!m.mittente_cap || !m.mittente_via) throw new Error('Mancano l\'indirizzo e il CAP del mittente nelle impostazioni');
   return {
-    service_id: Number(servizio || m.servizio) || undefined, source: 'Kubo', platform: 'PRO', platform_country: 'IT', shipment_custom_reference: String(v.numero ?? v.id),
+    service_id: Number(servizio || m.servizio) || undefined, source: 'Lumi', platform: 'PRO', platform_country: 'IT', shipment_custom_reference: String(v.numero ?? v.id),
     content: m.contenuto || 'Merce', contentvalue: tondo(k.valore(v, 'vendite', 'totale')),
     from: { name: m.mittente_nome || '', surname: '', company: m.mittente_nome || '', street1: m.mittente_via, zip_code: m.mittente_cap, city: m.mittente_comune || '', country: 'IT', phone: m.mittente_telefono || '', email: m.mittente_email || '' },
     to: { name: nome, surname: cognome.join(' '), street1: `${d.via} ${d.civico}`.trim(), zip_code: d.cap, city: d.comune, country: d.paese, phone: d.telefono, email: d.email },
@@ -78,12 +78,12 @@ export default {
       },
     },
     eventi: {
-      nome: 'Registra l\'indirizzo degli eventi', descrizione: 'chiede a Packlink di avvisare Kubo a ogni cambio di stato delle spedizioni',
-      input: { indirizzo: { tipo: 'testo', nome: 'Indirizzo pubblico di Kubo (https://…; vuoto: quello della Libreria)', facoltativo: true } },
+      nome: 'Registra l\'indirizzo degli eventi', descrizione: 'chiede a Packlink di avvisare Lumi a ogni cambio di stato delle spedizioni',
+      input: { indirizzo: { tipo: 'testo', nome: 'Indirizzo pubblico di Lumi (https://…; vuoto: quello della Libreria)', facoltativo: true } },
       async esegui({ indirizzo }, k) {
         // l'indirizzo scritto qui o, se vuoto, quello unico della Libreria (k.pubblico), purché https
         const base = String(indirizzo || (/^https:\/\//i.test(k.pubblico || '') ? k.pubblico : '')).trim().replace(/\/+$/, '');
-        if (!/^https:\/\/[^/]+/.test(base)) throw new Error('Serve l\'indirizzo pubblico https di Kubo: scrivilo qui o impostalo nella Libreria');
+        if (!/^https:\/\/[^/]+/.test(base)) throw new Error('Serve l\'indirizzo pubblico https di Lumi: scrivilo qui o impostalo nella Libreria');
         await chiama(k, 'post', '/shipments/callback', { url: `${base}/api/connettori/packlink/in/${k.segreti.codice}` }); return { ok: true };
       },
     },
@@ -101,13 +101,13 @@ export default {
     costoNota: 'Packlink PRO è gratuito: paghi solo le spedizioni, con le tariffe scontate di Packlink (in Italia da pochi euro a pacco). Esistono piani a pagamento con sconti in più per chi spedisce molto.',
     serve: [
       { cosa: 'Chiave API di Packlink PRO', dove: 'pro.packlink.it › Impostazioni › Integrazioni (o «Packlink PRO API key»)', link: 'https://support-pro.packlink.com/hc/en-gb/articles/213431749' },
-      { cosa: 'L\'indirizzo del mittente e le misure del pacco standard', dove: 'In Kubo, nelle impostazioni di questo connettore', link: 'https://pro.packlink.it' },
+      { cosa: 'L\'indirizzo del mittente e le misure del pacco standard', dove: 'In Lumi, nelle impostazioni di questo connettore', link: 'https://pro.packlink.it' },
     ],
     passi: [
       'Registrati gratis su pro.packlink.it e, in Impostazioni, genera la chiave API.',
-      'In Kubo incolla la chiave e compila mittente e pacco standard, poi premi «Prova la connessione» e accendi.',
+      'In Lumi incolla la chiave e compila mittente e pacco standard, poi premi «Prova la connessione» e accendi.',
       'Premi «Servizi disponibili» e metti l\'id del servizio che usi di solito.',
-      'Con l\'indirizzo pubblico di Kubo (se hai impostato l\'indirizzo pubblico di Kubo nella Libreria, puoi lasciarlo vuoto) premi «Registra l\'indirizzo degli eventi»: il tracking torna sulla vendita appena c\'è.',
+      'Con l\'indirizzo pubblico di Lumi (se hai impostato l\'indirizzo pubblico di Lumi nella Libreria, puoi lasciarlo vuoto) premi «Registra l\'indirizzo degli eventi»: il tracking torna sulla vendita appena c\'è.',
       'Da una vendita premi «Prepara la spedizione Packlink» (o chiedilo a Lumi), poi paga e stampa l\'etichetta nel pannello Packlink.',
     ],
     difficolta: 'facile', zone: ['IT', 'UE'],
@@ -117,8 +117,8 @@ export default {
   testi: {
     en: { nome: 'Packlink PRO', descrizione: 'Discounted shipping with BRT, GLS, SDA, Poste, UPS, DHL: the draft starts from the sale, tracking comes back by itself.', 'imp.chiave': 'Packlink PRO API key', 'aiuto.chiave': 'Packlink PRO › Settings › Integrations › API key', 'imp.codice': 'Events secret code', 'imp.servizio': 'Default service (id)', 'aiuto.servizio': 'Press «Available services» to see the ids', 'imp.mittente_nome': 'Sender: name or company', 'imp.mittente_via': 'Sender: street and number', 'imp.mittente_cap': 'Sender: postcode', 'imp.mittente_comune': 'Sender: city', 'imp.mittente_telefono': 'Sender: phone', 'imp.mittente_email': 'Sender: email', 'imp.peso': 'Default weight (kg)', 'imp.lunghezza': 'Length (cm)', 'imp.larghezza': 'Width (cm)', 'imp.altezza': 'Height (cm)', 'az.bozza': 'Prepare the Packlink shipment', 'az.dove': 'Where is the parcel', 'az.servizi': 'Available services', 'az.eventi': 'Register the events address',
       'cat.costoNota': 'Packlink PRO is free: you only pay for shipments at Packlink\'s discounted rates (in Italy a few euros per parcel). Paid plans with extra discounts exist for high volumes.',
-      'cat.serve': [{ cosa: 'Packlink PRO API key', dove: 'pro.packlink.it › Settings › Integrations (or «Packlink PRO API key»)' }, { cosa: 'Sender address and standard parcel size', dove: 'In Kubo, in this connector\'s settings' }],
-      'cat.passi': ['Sign up for free at pro.packlink.it and generate the API key in Settings.', 'In Kubo paste the key and fill in sender and standard parcel, then press «Test connection» and switch on.', 'Press «Available services» and enter the id of the service you usually use.', 'With Kubo\'s public address (if you set Kubo\'s public address in the Library, you can leave it empty) press «Register the events address»: tracking comes back to the sale as soon as it exists.', 'From a sale press «Prepare the Packlink shipment» (or ask Lumi), then pay and print the label in the Packlink panel.'] },
+      'cat.serve': [{ cosa: 'Packlink PRO API key', dove: 'pro.packlink.it › Settings › Integrations (or «Packlink PRO API key»)' }, { cosa: 'Sender address and standard parcel size', dove: 'In Lumi, in this connector\'s settings' }],
+      'cat.passi': ['Sign up for free at pro.packlink.it and generate the API key in Settings.', 'In Lumi paste the key and fill in sender and standard parcel, then press «Test connection» and switch on.', 'Press «Available services» and enter the id of the service you usually use.', 'With Lumi\'s public address (if you set Lumi\'s public address in the Library, you can leave it empty) press «Register the events address»: tracking comes back to the sale as soon as it exists.', 'From a sale press «Prepare the Packlink shipment» (or ask Lumi), then pay and print the label in the Packlink panel.'] },
     es: { nome: 'Packlink PRO', descrizione: 'Envíos con descuento con BRT, GLS, SDA, Poste, UPS, DHL: el borrador sale de la venta y el seguimiento vuelve solo.', 'imp.chiave': 'Clave API de Packlink PRO', 'aiuto.chiave': 'Packlink PRO › Configuración › Integraciones › Clave API', 'imp.codice': 'Código secreto de los eventos', 'imp.servizio': 'Servicio predeterminado (id)', 'aiuto.servizio': 'Pulsa «Servicios disponibles» para ver los id', 'imp.mittente_nome': 'Remitente: nombre o razón social', 'imp.mittente_via': 'Remitente: calle y número', 'imp.mittente_cap': 'Remitente: código postal', 'imp.mittente_comune': 'Remitente: ciudad', 'imp.mittente_telefono': 'Remitente: teléfono', 'imp.mittente_email': 'Remitente: email', 'imp.peso': 'Peso predeterminado (kg)', 'imp.lunghezza': 'Largo (cm)', 'imp.larghezza': 'Ancho (cm)', 'imp.altezza': 'Alto (cm)', 'az.bozza': 'Preparar el envío Packlink', 'az.dove': 'Dónde está el paquete', 'az.servizi': 'Servicios disponibles', 'az.eventi': 'Registrar la dirección de eventos' },
     fr: { nome: 'Packlink PRO', descrizione: 'Envois à prix réduit avec BRT, GLS, SDA, Poste, UPS, DHL : le brouillon part de la vente, le suivi revient tout seul.', 'imp.chiave': 'Clé API Packlink PRO', 'aiuto.chiave': 'Packlink PRO › Paramètres › Intégrations › Clé API', 'imp.codice': 'Code secret des événements', 'imp.servizio': 'Service par défaut (id)', 'aiuto.servizio': 'Appuyez sur «Services disponibles» pour voir les id', 'imp.mittente_nome': 'Expéditeur : nom ou société', 'imp.mittente_via': 'Expéditeur : rue et numéro', 'imp.mittente_cap': 'Expéditeur : code postal', 'imp.mittente_comune': 'Expéditeur : ville', 'imp.mittente_telefono': 'Expéditeur : téléphone', 'imp.mittente_email': 'Expéditeur : e-mail', 'imp.peso': 'Poids par défaut (kg)', 'imp.lunghezza': 'Longueur (cm)', 'imp.larghezza': 'Largeur (cm)', 'imp.altezza': 'Hauteur (cm)', 'az.bozza': 'Préparer l\'envoi Packlink', 'az.dove': 'Où est le colis', 'az.servizi': 'Services disponibles', 'az.eventi': 'Enregistrer l\'adresse des événements' },
     de: { nome: 'Packlink PRO', descrizione: 'Günstiger Versand mit BRT, GLS, SDA, Poste, UPS, DHL: der Entwurf startet beim Verkauf, die Sendungsnummer kommt von selbst zurück.', 'imp.chiave': 'Packlink-PRO-API-Schlüssel', 'aiuto.chiave': 'Packlink PRO › Einstellungen › Integrationen › API-Schlüssel', 'imp.codice': 'Geheimer Code der Ereignisse', 'imp.servizio': 'Standarddienst (ID)', 'aiuto.servizio': '«Verfügbare Dienste» zeigt die IDs', 'imp.mittente_nome': 'Absender: Name oder Firma', 'imp.mittente_via': 'Absender: Straße und Nummer', 'imp.mittente_cap': 'Absender: PLZ', 'imp.mittente_comune': 'Absender: Ort', 'imp.mittente_telefono': 'Absender: Telefon', 'imp.mittente_email': 'Absender: E-Mail', 'imp.peso': 'Standardgewicht (kg)', 'imp.lunghezza': 'Länge (cm)', 'imp.larghezza': 'Breite (cm)', 'imp.altezza': 'Höhe (cm)', 'az.bozza': 'Packlink-Versand vorbereiten', 'az.dove': 'Wo ist das Paket', 'az.servizi': 'Verfügbare Dienste', 'az.eventi': 'Ereignisadresse registrieren' },

@@ -1,4 +1,4 @@
-// Xero: le fatture di Kubo nella contabilità Xero del commercialista (o dello studio estero). Solo verso Xero.
+// Xero: le fatture di Lumi nella contabilità Xero del commercialista (o dello studio estero). Solo verso Xero.
 // Accesso OAuth 2 con il codice (PKCE): login.xero.com/identity/connect/authorize → identity.xero.com/connect/token,
 // con client id e secret nell'intestazione Authorization: Basic come vuole Xero (oauth.basic del kit).
 // Scope granulari (obbligatori per le app create dal 2 marzo 2026): accounting.invoices e accounting.contacts, più
@@ -45,7 +45,7 @@ async function manda(k, doc, chiave) {
   return x;
 }
 
-// una fattura attiva di Kubo → ACCREC
+// una fattura attiva di Lumi → ACCREC
 export async function esportaFattura(k, fattura) {
   const f = k.dati.leggi('fatture', fattura.id); esportabile(k, f);
   if (k.sincro.remoto('fatture', f.id)) throw new Error('Fattura già esportata in Xero');
@@ -54,7 +54,7 @@ export async function esportaFattura(k, fattura) {
     ...(Number(r.sconto) ? { DiscountRate: Number(r.sconto) } : {}), AccountCode: k.imp.conto || '200', ...(tipoIva(k.imp.iva, r.aliquota) ? { TaxType: tipoIva(k.imp.iva, r.aliquota) } : {}) }));
   if (!righe.length) throw new Error('La fattura non ha righe');
   const x = await manda(k, { Type: 'ACCREC', Contact: cl ? contatto(k, 'clienti', cl) : { Name: 'Cliente senza nome' }, Date: data, DueDate: k.valore(f, 'fatture', 'scadenza') || data,
-    InvoiceNumber: String(k.valore(f, 'fatture', 'numero') || f.id), Reference: `kubo-f-${f.id}`, LineAmountTypes: 'Exclusive', LineItems: righe, Status: 'AUTHORISED', CurrencyCode: 'EUR' }, `kubo-f-${f.id}`);
+    InvoiceNumber: String(k.valore(f, 'fatture', 'numero') || f.id), Reference: `lumi-f-${f.id}`, LineAmountTypes: 'Exclusive', LineItems: righe, Status: 'AUTHORISED', CurrencyCode: 'EUR' }, `lumi-f-${f.id}`);
   k.sincro.collega('fatture', f.id, x.InvoiceID);
   if (cl?.id && x.Contact?.ContactID) k.sincro.collega('clienti', cl.id, x.Contact.ContactID);
   return { id: x.InvoiceID, numero: x.InvoiceNumber };
@@ -63,9 +63,9 @@ export async function esportaFattura(k, fattura) {
 async function esportaRicevuta(k, r) {
   const fo = leggiRelazione(k, 'fornitori', k.valore(r, 'fatture_ricevute', 'fornitore')), data = k.valore(r, 'fatture_ricevute', 'data'), numero = k.valore(r, 'fatture_ricevute', 'numero');
   const x = await manda(k, { Type: 'ACCPAY', Contact: fo ? contatto(k, 'fornitori', fo) : { Name: 'Fornitore senza nome' }, Date: data, DueDate: k.valore(r, 'fatture_ricevute', 'scadenza') || data,
-    InvoiceNumber: String(numero || r.id), Reference: `kubo-r-${r.id}`, LineAmountTypes: 'Exclusive', Status: 'AUTHORISED', CurrencyCode: 'EUR',
+    InvoiceNumber: String(numero || r.id), Reference: `lumi-r-${r.id}`, LineAmountTypes: 'Exclusive', Status: 'AUTHORISED', CurrencyCode: 'EUR',
     LineItems: [{ Description: `Fattura ${numero || ''} ${fo ? k.valore(fo, 'fornitori', 'nome') : ''}`.trim(), Quantity: 1, UnitAmount: due(k.valore(r, 'fatture_ricevute', 'imponibile')),
-      AccountCode: k.imp.conto_acquisti || '400', ...(tipoIva(k.imp.iva_acquisti, k.valore(r, 'fatture_ricevute', 'aliquota')) ? { TaxType: tipoIva(k.imp.iva_acquisti, k.valore(r, 'fatture_ricevute', 'aliquota')) } : {}) }] }, `kubo-r-${r.id}`);
+      AccountCode: k.imp.conto_acquisti || '400', ...(tipoIva(k.imp.iva_acquisti, k.valore(r, 'fatture_ricevute', 'aliquota')) ? { TaxType: tipoIva(k.imp.iva_acquisti, k.valore(r, 'fatture_ricevute', 'aliquota')) } : {}) }] }, `lumi-r-${r.id}`);
   k.sincro.collega('fatture_ricevute', r.id, x.InvoiceID);
   if (fo?.id && x.Contact?.ContactID) k.sincro.collega('fornitori', fo.id, x.Contact.ContactID);
   return x.InvoiceID;
@@ -73,7 +73,7 @@ async function esportaRicevuta(k, r) {
 
 export default {
   id: 'xero', nome: 'Xero', versione: 1, icona: 'documento',
-  descrizione: 'Le fatture di Kubo nella contabilità Xero: emesse (e, se vuoi, ricevute) esportate con il cliente e le righe.',
+  descrizione: 'Le fatture di Lumi nella contabilità Xero: emesse (e, se vuoi, ricevute) esportate con il cliente e le righe.',
   impostazioni: [
     { id: 'client_id', nome: 'Client ID dell\'app Xero', segreto: true },
     { id: 'client_secret', nome: 'Client secret dell\'app Xero', segreto: true },
@@ -121,34 +121,34 @@ export default {
   },
   catalogo: {
     categoria: 'contabilita', sito: 'https://www.xero.com',
-    costo: 'abbonamento', costoNota: 'Serve un abbonamento Xero per l\'organizzazione (listino per Paese su xero.com/pricing; Xero non ha un\'edizione italiana). L\'API è gratuita nel livello Starter del listino sviluppatori Xero, fino a 5 organizzazioni collegate all\'app. Kubo non aggiunge costi.',
+    costo: 'abbonamento', costoNota: 'Serve un abbonamento Xero per l\'organizzazione (listino per Paese su xero.com/pricing; Xero non ha un\'edizione italiana). L\'API è gratuita nel livello Starter del listino sviluppatori Xero, fino a 5 organizzazioni collegate all\'app. Lumi non aggiunge costi.',
     serve: [
       { cosa: 'Client ID e Client secret di un\'app «Web app»', dove: 'developer.xero.com › My Apps › New app (tipo Web app) › Configuration › Generate a secret', link: 'https://developer.xero.com/app/manage' },
-      { cosa: 'L\'indirizzo di ritorno OAuth dell\'app', dove: 'La stessa app › Configuration › Redirect URIs: l\'indirizzo che mostra Kubo (…/api/connettori/xero/oauth/ritorno)', link: 'https://developer.xero.com/documentation/guides/oauth2/auth-flow' },
+      { cosa: 'L\'indirizzo di ritorno OAuth dell\'app', dove: 'La stessa app › Configuration › Redirect URIs: l\'indirizzo che mostra Lumi (…/api/connettori/xero/oauth/ritorno)', link: 'https://developer.xero.com/documentation/guides/oauth2/auth-flow' },
       { cosa: 'Codici dei conti e dei tax type', dove: 'Xero › Accounting › Chart of accounts e Advanced › Tax rates', link: 'https://central.xero.com/s/article/Add-edit-or-delete-accounts-in-the-chart-of-accounts' },
     ],
-    passi: ['Su developer.xero.com crea un\'app di tipo «Web app».', 'Nei Redirect URIs aggiungi l\'indirizzo di ritorno che mostra Kubo.', 'Genera il secret e copia Client ID e Client secret in Kubo.', 'Premi «Collega» e scegli l\'organizzazione Xero.', 'Controlla il codice conto dei ricavi (200 di solito) e, se serve, i tax type.', 'Esporta una fattura con «Esporta in Xero»; il giro orario porta in Xero quelle nuove.'],
+    passi: ['Su developer.xero.com crea un\'app di tipo «Web app».', 'Nei Redirect URIs aggiungi l\'indirizzo di ritorno che mostra Lumi.', 'Genera il secret e copia Client ID e Client secret in Lumi.', 'Premi «Collega» e scegli l\'organizzazione Xero.', 'Controlla il codice conto dei ricavi (200 di solito) e, se serve, i tax type.', 'Esporta una fattura con «Esporta in Xero»; il giro orario porta in Xero quelle nuove.'],
     difficolta: 'media', zone: ['UE', 'mondo'],
     fonti: ['https://developer.xero.com/documentation/api/accounting/invoices', 'https://developer.xero.com/documentation/guides/oauth2/auth-flow', 'https://developer.xero.com/documentation/guides/oauth2/scopes', 'https://devblog.xero.com/upcoming-changes-to-xero-accounting-api-scopes-705c5a9621a0', 'https://developer.xero.com/pricing'],
     prova: 'finto', parole: ['xero', 'contabilità', 'commercialista', 'esporta fatture', 'accounting', 'bookkeeping', 'invoices export', 'accountant'],
   },
   testi: {
-    en: { descrizione: 'Kubo invoices in your Xero books: issued (and, if you want, received) invoices exported with customer and lines.', 'imp.client_id': 'Xero app Client ID', 'imp.client_secret': 'Xero app Client secret', 'imp.conto': 'Revenue account code',
+    en: { descrizione: 'Lumi invoices in your Xero books: issued (and, if you want, received) invoices exported with customer and lines.', 'imp.client_id': 'Xero app Client ID', 'imp.client_secret': 'Xero app Client secret', 'imp.conto': 'Revenue account code',
       'imp.iva': 'Sales tax type (e.g. «22=OUTPUT2, 10=TAX002»; empty: the account default)', 'imp.giorni': 'Export invoices of the last days automatically (0 = by hand only)', 'imp.passive': 'Also export received invoices', 'imp.conto_acquisti': 'Purchases account code',
       'imp.iva_acquisti': 'Purchases tax type (as above, optional)', 'imp.organizzazione': 'Organisation tenant ID (empty: the first connected)', 'az.esporta': 'Export to Xero', 'giro.esporta': 'Export new invoices',
-      'cat.costoNota': 'The organisation needs a Xero subscription (prices by country on xero.com/pricing; there is no Italian edition). The API is free on the Starter tier of Xero developer pricing, up to 5 organisations connected to the app. Kubo adds no cost.',
-      'cat.serve': [{ cosa: 'Client ID and Client secret of a «Web app»', dove: 'developer.xero.com › My Apps › New app (Web app) › Configuration › Generate a secret' }, { cosa: 'The app OAuth redirect address', dove: 'Same app › Configuration › Redirect URIs: the address Kubo shows (…/api/connettori/xero/oauth/ritorno)' }, { cosa: 'Account codes and tax types', dove: 'Xero › Accounting › Chart of accounts and Advanced › Tax rates' }],
-      'cat.passi': ['On developer.xero.com create an app of type «Web app».', 'Add the redirect address Kubo shows to the Redirect URIs.', 'Generate the secret and copy Client ID and Client secret into Kubo.', 'Press «Connect» and pick the Xero organisation.', 'Check the revenue account code (usually 200) and, if needed, the tax types.', 'Export an invoice with «Export to Xero»; the hourly run brings new ones to Xero.'] },
-    es: { descrizione: 'Las facturas de Kubo en la contabilidad de Xero: emitidas (y, si quieres, recibidas) exportadas con cliente y líneas.', 'imp.client_id': 'Client ID de la app Xero', 'imp.client_secret': 'Client secret de la app Xero', 'imp.conto': 'Código de la cuenta de ingresos',
+      'cat.costoNota': 'The organisation needs a Xero subscription (prices by country on xero.com/pricing; there is no Italian edition). The API is free on the Starter tier of Xero developer pricing, up to 5 organisations connected to the app. Lumi adds no cost.',
+      'cat.serve': [{ cosa: 'Client ID and Client secret of a «Web app»', dove: 'developer.xero.com › My Apps › New app (Web app) › Configuration › Generate a secret' }, { cosa: 'The app OAuth redirect address', dove: 'Same app › Configuration › Redirect URIs: the address Lumi shows (…/api/connettori/xero/oauth/ritorno)' }, { cosa: 'Account codes and tax types', dove: 'Xero › Accounting › Chart of accounts and Advanced › Tax rates' }],
+      'cat.passi': ['On developer.xero.com create an app of type «Web app».', 'Add the redirect address Lumi shows to the Redirect URIs.', 'Generate the secret and copy Client ID and Client secret into Lumi.', 'Press «Connect» and pick the Xero organisation.', 'Check the revenue account code (usually 200) and, if needed, the tax types.', 'Export an invoice with «Export to Xero»; the hourly run brings new ones to Xero.'] },
+    es: { descrizione: 'Las facturas de Lumi en la contabilidad de Xero: emitidas (y, si quieres, recibidas) exportadas con cliente y líneas.', 'imp.client_id': 'Client ID de la app Xero', 'imp.client_secret': 'Client secret de la app Xero', 'imp.conto': 'Código de la cuenta de ingresos',
       'imp.iva': 'Tax type de ventas (p. ej. «22=OUTPUT2»; vacío: el de la cuenta)', 'imp.giorni': 'Exportar solas las facturas de los últimos días (0 = solo a mano)', 'imp.passive': 'Exportar también las facturas recibidas', 'imp.conto_acquisti': 'Código de la cuenta de compras',
       'imp.iva_acquisti': 'Tax type de compras (opcional)', 'imp.organizzazione': 'Tenant ID de la organización (vacío: la primera conectada)', 'az.esporta': 'Exportar a Xero', 'giro.esporta': 'Exportar facturas nuevas' },
-    fr: { descrizione: 'Les factures de Kubo dans la comptabilité Xero : émises (et, si vous voulez, reçues) exportées avec client et lignes.', 'imp.client_id': 'Client ID de l\'app Xero', 'imp.client_secret': 'Client secret de l\'app Xero', 'imp.conto': 'Code du compte de produits',
+    fr: { descrizione: 'Les factures de Lumi dans la comptabilité Xero : émises (et, si vous voulez, reçues) exportées avec client et lignes.', 'imp.client_id': 'Client ID de l\'app Xero', 'imp.client_secret': 'Client secret de l\'app Xero', 'imp.conto': 'Code du compte de produits',
       'imp.iva': 'Tax type des ventes (ex. « 22=OUTPUT2 » ; vide : celui du compte)', 'imp.giorni': 'Exporter seul les factures des derniers jours (0 = à la main)', 'imp.passive': 'Exporter aussi les factures reçues', 'imp.conto_acquisti': 'Code du compte d\'achats',
       'imp.iva_acquisti': 'Tax type des achats (facultatif)', 'imp.organizzazione': 'Tenant ID de l\'organisation (vide : la première connectée)', 'az.esporta': 'Exporter vers Xero', 'giro.esporta': 'Exporter les nouvelles factures' },
-    de: { descrizione: 'Kubo-Rechnungen in der Xero-Buchhaltung: ausgestellte (und auf Wunsch erhaltene) Rechnungen mit Kunde und Positionen exportiert.', 'imp.client_id': 'Client-ID der Xero-App', 'imp.client_secret': 'Client-Secret der Xero-App', 'imp.conto': 'Erlöskonto (Code)',
+    de: { descrizione: 'Lumi-Rechnungen in der Xero-Buchhaltung: ausgestellte (und auf Wunsch erhaltene) Rechnungen mit Kunde und Positionen exportiert.', 'imp.client_id': 'Client-ID der Xero-App', 'imp.client_secret': 'Client-Secret der Xero-App', 'imp.conto': 'Erlöskonto (Code)',
       'imp.iva': 'Steuertyp Verkauf (z. B. «22=OUTPUT2»; leer: der des Kontos)', 'imp.giorni': 'Rechnungen der letzten Tage automatisch exportieren (0 = nur von Hand)', 'imp.passive': 'Auch erhaltene Rechnungen exportieren', 'imp.conto_acquisti': 'Aufwandskonto (Code)',
       'imp.iva_acquisti': 'Steuertyp Einkauf (optional)', 'imp.organizzazione': 'Tenant-ID der Organisation (leer: die erste verbundene)', 'az.esporta': 'Nach Xero exportieren', 'giro.esporta': 'Neue Rechnungen exportieren' },
-    pt: { descrizione: 'As faturas do Kubo na contabilidade Xero: emitidas (e, se quiser, recebidas) exportadas com cliente e linhas.', 'imp.client_id': 'Client ID do app Xero', 'imp.client_secret': 'Client secret do app Xero', 'imp.conto': 'Código da conta de receitas',
+    pt: { descrizione: 'As faturas do Lumi na contabilidade Xero: emitidas (e, se quiser, recebidas) exportadas com cliente e linhas.', 'imp.client_id': 'Client ID do app Xero', 'imp.client_secret': 'Client secret do app Xero', 'imp.conto': 'Código da conta de receitas',
       'imp.iva': 'Tax type de vendas (ex.: «22=OUTPUT2»; vazio: o da conta)', 'imp.giorni': 'Exportar sozinho as faturas dos últimos dias (0 = só à mão)', 'imp.passive': 'Exportar também as faturas recebidas', 'imp.conto_acquisti': 'Código da conta de compras',
       'imp.iva_acquisti': 'Tax type de compras (opcional)', 'imp.organizzazione': 'Tenant ID da organização (vazio: a primeira conectada)', 'az.esporta': 'Exportar para o Xero', 'giro.esporta': 'Exportar faturas novas' },
   },

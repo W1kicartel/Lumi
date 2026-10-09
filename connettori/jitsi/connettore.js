@@ -9,7 +9,7 @@ const SEM = 'appuntamenti';
 const server = k => String(k.imp.server || 'https://meet.jit.si').replace(/\/+$/, '');
 // 24 lettere e cifre casuali (circa 120 bit), con un prefisso leggibile
 const ALFABETO = 'abcdefghijkmnpqrstuvwxyz23456789';
-export const stanza = (prefisso = 'kubo') => `${String(prefisso || 'kubo').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 20) || 'kubo'}-${[...randomBytes(24)].map(b => ALFABETO[b % 32]).join('')}`;
+export const stanza = (prefisso = 'lumi') => `${String(prefisso || 'lumi').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 20) || 'lumi'}-${[...randomBytes(24)].map(b => ALFABETO[b % 32]).join('')}`;
 // il link già scritto nelle note, se c'è
 const linkDi = (k, r) => String(k.valore(r, SEM, 'note') || '').match(new RegExp(`${server(k).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/[\\w-]+`))?.[0] || null;
 const quando = (k, r) => new Date(k.valore(r, SEM, 'quando')).toLocaleString('it-IT', { timeZone: k.fuso(), dateStyle: 'medium', timeStyle: 'short' });

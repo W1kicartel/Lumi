@@ -1,4 +1,4 @@
-// Notion: una sezione di Kubo copiata in un database di Notion, una pagina per riga, ogni 15 minuti solo le righe cambiate.
+// Notion: una sezione di Lumi copiata in un database di Notion, una pagina per riga, ogni 15 minuti solo le righe cambiate.
 // Le proprietà si abbinano per nome a quelle del database (title, rich_text, number, date, email, phone_number, url,
 // checkbox, select, multi_select); il titolo della pagina, se nessun campo ha il suo nome, è il titolo della riga.
 // Gli id delle pagine restano in k.sincro: la seconda volta si aggiorna la stessa pagina (PATCH), non se ne crea un'altra.
@@ -10,7 +10,7 @@ const opz = (k, json) => ({ bearer: k.segreti.token, intestazioni: { 'Notion-Ver
 const no = (r, cosa) => new Error(`Notion ha risposto ${r.stato} a ${cosa}${r.json?.message ? ': ' + r.json.message : ''}`);
 const idDb = k => encodeURIComponent(String(k.imp.database || '').trim().replace(/^.*?([0-9a-f]{32}|[0-9a-f-]{36}).*$/i, '$1'));   // anche l'indirizzo intero del database
 const rt = s => [{ type: 'text', text: { content: String(s).slice(0, 2000) } }];
-// un valore di Kubo nella forma della proprietà di Notion; null = la proprietà si svuota
+// un valore di Lumi nella forma della proprietà di Notion; null = la proprietà si svuota
 function proprieta(tipo, v) {
   const t = testo(v), vuoto = v == null || v === '' || (Array.isArray(v) && !v.length);
   switch (tipo) {
@@ -52,11 +52,11 @@ async function sincronizza(k, { tutto = false } = {}) {
 }
 export default {
   id: 'notion', nome: 'Notion', versione: 1, icona: 'documento',
-  descrizione: 'Copia una sezione di Kubo in un database di Notion, una pagina per riga.',
+  descrizione: 'Copia una sezione di Lumi in un database di Notion, una pagina per riga.',
   impostazioni: [
     { id: 'token', nome: 'Token dell\'integrazione interna (ntn_… o secret_…)', segreto: true, schema: /^(ntn_|secret_)[A-Za-z0-9]{20,}$/ },
     { id: 'database', nome: 'Id del database (o il suo indirizzo)' },
-    { id: 'sezione', nome: 'Sezione di Kubo da copiare (es. clienti)' },
+    { id: 'sezione', nome: 'Sezione di Lumi da copiare (es. clienti)' },
   ],
   permessi: { '*': { leggi: true } },
   prova: async k => { const s = await schema(k); return { ok: true, messaggio: `${s.titolo}: ${s.proprieta.length} proprietà` }; },
@@ -77,10 +77,10 @@ export default {
       { cosa: 'L\'id del database', dove: 'Apri il database a tutta pagina → Copia link: sono i 32 caratteri prima di «?v=»', link: 'https://developers.notion.com/reference/retrieve-a-database' },
     ],
     passi: [
-      'In Notion crea un database con le colonne chiamate come i campi di Kubo (es. Nome, Email, Telefono).',
+      'In Notion crea un database con le colonne chiamate come i campi di Lumi (es. Nome, Email, Telefono).',
       'Crea un\'integrazione interna su notion.so/profile/integrations e copia il secret.',
       'Nel database apri ••• → Connessioni e aggiungi l\'integrazione, altrimenti Notion risponde 404.',
-      'Incolla il secret, il link o l\'id del database e la sezione di Kubo da copiare.',
+      'Incolla il secret, il link o l\'id del database e la sezione di Lumi da copiare.',
       'Premi «Prova la connessione», poi «Copia tutto in Notion»: da lì ogni 15 minuti passano solo le righe cambiate.',
     ],
     difficolta: 'facile', zone: ['mondo'],
@@ -88,13 +88,13 @@ export default {
     prova: 'finto', parole: ['notion', 'database', 'wiki', 'pagine', 'pages', 'sincronizza', 'sync', 'appunti', 'notes'],
   },
   testi: {
-    en: { nome: 'Notion', descrizione: 'Copy a Kubo section into a Notion database, one page per row.', 'imp.token': 'Internal integration token (ntn_… or secret_…)', 'imp.database': 'Database id (or its address)', 'imp.sezione': 'Kubo section to copy (e.g. clienti)', 'az.sincronizza_ora': 'Copy everything to Notion', 'giro.sincronizza': 'Copy changed rows',
+    en: { nome: 'Notion', descrizione: 'Copy a Lumi section into a Notion database, one page per row.', 'imp.token': 'Internal integration token (ntn_… or secret_…)', 'imp.database': 'Database id (or its address)', 'imp.sezione': 'Lumi section to copy (e.g. clienti)', 'az.sincronizza_ora': 'Copy everything to Notion', 'giro.sincronizza': 'Copy changed rows',
       'cat.costoNota': 'The Free plan is enough for the integration; Plus from €10 per user per month (billed annually). The API is free, with an average limit of 3 requests per second.',
       'cat.serve': [{ cosa: 'An internal integration token (Internal Integration Secret)', dove: 'notion.so/profile/integrations → New integration → type Internal → Configuration → Secret' }, { cosa: 'The integration\'s access to the database', dove: 'In the database: ••• top right → Connections → add the integration' }, { cosa: 'The database id', dove: 'Open the database as a full page → Copy link: the 32 characters before «?v=»' }],
-      'cat.passi': ['In Notion create a database with columns named like the Kubo fields (e.g. Nome, Email, Telefono).', 'Create an internal integration at notion.so/profile/integrations and copy the secret.', 'In the database open ••• → Connections and add the integration, otherwise Notion answers 404.', 'Paste the secret, the database link or id and the Kubo section to copy.', 'Press «Test connection», then «Copy everything to Notion»: from then on only changed rows go every 15 minutes.'] },
-    es: { nome: 'Notion', descrizione: 'Copia una sección de Kubo en una base de datos de Notion, una página por fila.', 'imp.token': 'Token de la integración interna (ntn_… o secret_…)', 'imp.database': 'Id de la base de datos (o su dirección)', 'imp.sezione': 'Sección de Kubo a copiar (p. ej. clienti)', 'az.sincronizza_ora': 'Copiar todo en Notion', 'giro.sincronizza': 'Copiar las filas cambiadas' },
-    fr: { nome: 'Notion', descrizione: 'Copie une section de Kubo dans une base de données Notion, une page par ligne.', 'imp.token': 'Jeton de l\'intégration interne (ntn_… ou secret_…)', 'imp.database': 'Id de la base de données (ou son adresse)', 'imp.sezione': 'Section de Kubo à copier (ex. clienti)', 'az.sincronizza_ora': 'Tout copier dans Notion', 'giro.sincronizza': 'Copier les lignes modifiées' },
-    de: { nome: 'Notion', descrizione: 'Kopiert einen Kubo-Bereich in eine Notion-Datenbank, eine Seite pro Zeile.', 'imp.token': 'Token der internen Integration (ntn_… oder secret_…)', 'imp.database': 'Datenbank-ID (oder ihre Adresse)', 'imp.sezione': 'Zu kopierender Kubo-Bereich (z. B. clienti)', 'az.sincronizza_ora': 'Alles nach Notion kopieren', 'giro.sincronizza': 'Geänderte Zeilen kopieren' },
-    pt: { nome: 'Notion', descrizione: 'Copia uma seção do Kubo para um banco de dados do Notion, uma página por linha.', 'imp.token': 'Token da integração interna (ntn_… ou secret_…)', 'imp.database': 'Id do banco de dados (ou o endereço)', 'imp.sezione': 'Seção do Kubo a copiar (ex. clienti)', 'az.sincronizza_ora': 'Copiar tudo para o Notion', 'giro.sincronizza': 'Copiar as linhas alteradas' },
+      'cat.passi': ['In Notion create a database with columns named like the Lumi fields (e.g. Nome, Email, Telefono).', 'Create an internal integration at notion.so/profile/integrations and copy the secret.', 'In the database open ••• → Connections and add the integration, otherwise Notion answers 404.', 'Paste the secret, the database link or id and the Lumi section to copy.', 'Press «Test connection», then «Copy everything to Notion»: from then on only changed rows go every 15 minutes.'] },
+    es: { nome: 'Notion', descrizione: 'Copia una sección de Lumi en una base de datos de Notion, una página por fila.', 'imp.token': 'Token de la integración interna (ntn_… o secret_…)', 'imp.database': 'Id de la base de datos (o su dirección)', 'imp.sezione': 'Sección de Lumi a copiar (p. ej. clienti)', 'az.sincronizza_ora': 'Copiar todo en Notion', 'giro.sincronizza': 'Copiar las filas cambiadas' },
+    fr: { nome: 'Notion', descrizione: 'Copie une section de Lumi dans une base de données Notion, une page par ligne.', 'imp.token': 'Jeton de l\'intégration interne (ntn_… ou secret_…)', 'imp.database': 'Id de la base de données (ou son adresse)', 'imp.sezione': 'Section de Lumi à copier (ex. clienti)', 'az.sincronizza_ora': 'Tout copier dans Notion', 'giro.sincronizza': 'Copier les lignes modifiées' },
+    de: { nome: 'Notion', descrizione: 'Kopiert einen Lumi-Bereich in eine Notion-Datenbank, eine Seite pro Zeile.', 'imp.token': 'Token der internen Integration (ntn_… oder secret_…)', 'imp.database': 'Datenbank-ID (oder ihre Adresse)', 'imp.sezione': 'Zu kopierender Lumi-Bereich (z. B. clienti)', 'az.sincronizza_ora': 'Alles nach Notion kopieren', 'giro.sincronizza': 'Geänderte Zeilen kopieren' },
+    pt: { nome: 'Notion', descrizione: 'Copia uma seção do Lumi para um banco de dados do Notion, uma página por linha.', 'imp.token': 'Token da integração interna (ntn_… ou secret_…)', 'imp.database': 'Id do banco de dados (ou o endereço)', 'imp.sezione': 'Seção do Lumi a copiar (ex. clienti)', 'az.sincronizza_ora': 'Copiar tudo para o Notion', 'giro.sincronizza': 'Copiar as linhas alteradas' },
   },
 };

@@ -1,9 +1,9 @@
-// Microsoft Teams: gli avvisi di Kubo in un canale, con un flusso di Workflows («Invia webhook avvisi a un canale»).
+// Microsoft Teams: gli avvisi di Lumi in un canale, con un flusso di Workflows («Invia webhook avvisi a un canale»).
 // I vecchi connettori Office 365 (Incoming Webhook) sono stati ritirati: il corpo è un messaggio con una Adaptive Card.
 import { canale } from '../_comunica/canale.js';
 export default canale({
   id: 'teams', nome: 'Microsoft Teams',
-  descrizione: 'Gli avvisi di Kubo in un canale di Microsoft Teams, con un flusso di Workflows.',
+  descrizione: 'Gli avvisi di Lumi in un canale di Microsoft Teams, con un flusso di Workflows.',
   corpo: text => ({ type: 'message', attachments: [{ contentType: 'application/vnd.microsoft.card.adaptive', contentUrl: null,
     content: { $schema: 'http://adaptivecards.io/schemas/adaptive-card.json', type: 'AdaptiveCard', version: '1.4', body: [{ type: 'TextBlock', text, wrap: true }] } }] }),
   catalogo: {
@@ -16,12 +16,12 @@ export default canale({
     prova: 'finto', parole: ['teams', 'microsoft', 'office 365', 'canale', 'avvisi', 'notifiche', 'workflows', 'power automate', 'webhook'],
   },
   testi: {
-    en: { nome: 'Microsoft Teams', descrizione: 'Kubo alerts in a Microsoft Teams channel, through a Workflows flow.', 'cat.costoNota': 'Included in Microsoft 365 plans with Teams (e.g. Business Basic, about €5.60 per user per month); the Workflows flow uses standard connectors at no extra cost.',
+    en: { nome: 'Microsoft Teams', descrizione: 'Lumi alerts in a Microsoft Teams channel, through a Workflows flow.', 'cat.costoNota': 'Included in Microsoft 365 plans with Teams (e.g. Business Basic, about €5.60 per user per month); the Workflows flow uses standard connectors at no extra cost.',
       'cat.serve': [{ cosa: 'The HTTP POST address of the «Send webhook alerts to a channel» flow', dove: 'Teams → channel → ⋯ → Workflows → «Send webhook alerts to a channel» → Next → Add workflow → copy the address' }],
       'cat.passi': ['In Teams open the channel that should receive the alerts', 'From the channel ⋯ menu choose «Workflows»', 'Pick the «Send webhook alerts to a channel» template, name it and confirm team and channel', 'Copy the address Teams shows at the end and paste it here', 'Choose the alerts and Turn on: «Test» writes a message in the channel'] },
-    es: { nome: 'Microsoft Teams', descrizione: 'Los avisos de Kubo en un canal de Microsoft Teams, con un flujo de Workflows.' },
-    fr: { nome: 'Microsoft Teams', descrizione: 'Les alertes de Kubo dans un canal Microsoft Teams, avec un flux Workflows.' },
-    de: { nome: 'Microsoft Teams', descrizione: 'Kubo-Meldungen in einem Microsoft-Teams-Kanal, über einen Workflows-Flow.' },
-    pt: { nome: 'Microsoft Teams', descrizione: 'Os avisos do Kubo num canal do Microsoft Teams, com um fluxo do Workflows.' },
+    es: { nome: 'Microsoft Teams', descrizione: 'Los avisos de Lumi en un canal de Microsoft Teams, con un flujo de Workflows.' },
+    fr: { nome: 'Microsoft Teams', descrizione: 'Les alertes de Lumi dans un canal Microsoft Teams, avec un flux Workflows.' },
+    de: { nome: 'Microsoft Teams', descrizione: 'Lumi-Meldungen in einem Microsoft-Teams-Kanal, über einen Workflows-Flow.' },
+    pt: { nome: 'Microsoft Teams', descrizione: 'Os avisos do Lumi num canal do Microsoft Teams, com um fluxo do Workflows.' },
   },
 });

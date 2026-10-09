@@ -1,17 +1,17 @@
-// eBay: ordini pagati → vendite (Sell Fulfillment API), giacenza degli inventory item da Kubo a eBay (Sell Inventory API,
+// eBay: ordini pagati → vendite (Sell Fulfillment API), giacenza degli inventory item da Lumi a eBay (Sell Inventory API,
 // bulkUpdatePriceQuantity), spedizione con il tracking (createShippingFulfillment).
-// Accesso: user token OAuth; Kubo tiene il refresh token (dura 18 mesi) e chiede l'access token di 2 ore con
+// Accesso: user token OAuth; Lumi tiene il refresh token (dura 18 mesi) e chiede l'access token di 2 ore con
 // grant_type=refresh_token e Authorization: Basic base64(client_id:client_secret)
 // (https://developer.ebay.com/api-docs/static/oauth-refresh-token-request.html). Il refresh token nasce solo dal consenso
 // con il codice (la pagina User Tokens dà un token di 2 ore): eBay vuole il RuName come redirect_uri e il Basic anche qui.
 // Il consenso lo fa il connettore («Collega l'account» → ritorno su /pub/ritorno, oppure l'indirizzo incollato) e non
 // l'OAuth del kit (che pure ha basic, pkce: false e redirect: k => k.imp.runame) per due motivi: eBay vuole lo «scope»
 // anche nella richiesta di rinnovo, che il kit non manda; e l'«auth accepted URL» del RuName dev'essere https, quindi
-// chi ha Kubo solo in rete locale deve poter incollare l'indirizzo del ritorno («Completa il collegamento»), cosa che
+// chi ha Lumi solo in rete locale deve poter incollare l'indirizzo del ritorno («Completa il collegamento»), cosa che
 // la rotta di ritorno del kit non permette. In più i refresh token già salvati restano validi.
 // Attenzione: la Inventory API vede solo le inserzioni create con la Inventory API (o migrate con bulkMigrateListing);
 // quelle create da Seller Hub restano fuori dal collegamento delle giacenze. Gli ordini arrivano comunque tutti.
-// Nessun dato personale degli acquirenti entra in Kubo (solo il numero d'ordine): niente obblighi di cancellazione.
+// Nessun dato personale degli acquirenti entra in Lumi (solo il numero d'ordine): niente obblighi di cancellazione.
 import { randomBytes } from 'node:crypto';
 import { importaOrdine, venditaDa, RICHIEDE_NEGOZI } from '../_negozi/comune.js';
 import { token } from '../_negozi/token.js';
@@ -27,7 +27,7 @@ async function scambia(k, indirizzo) {
   if (/^https?:\/\//.test(codice)) { const u = new URL(codice); codice = u.searchParams.get('code'); state = u.searchParams.get('state'); }
   const c = k.stato.leggi('consenso');
   if (!codice) throw new Error('Nell\'indirizzo non c\'è il codice di eBay');
-  if (state !== null && (!c || c.state !== state || c.scade < Date.now())) throw new Error('Consenso scaduto o non chiesto da Kubo: ripeti «Collega l\'account»');
+  if (state !== null && (!c || c.state !== state || c.scade < Date.now())) throw new Error('Consenso scaduto o non chiesto da Lumi: ripeti «Collega l\'account»');
   const r = await k.http.post(`${host(k)}/identity/v1/oauth2/token`, { basic: [k.segreti.client_id, k.segreti.client_secret], form: { grant_type: 'authorization_code', code: codice, redirect_uri: k.imp.runame } });
   if (!r.ok || !r.json?.refresh_token) throw new Error(`eBay non ha dato l'accesso (${r.stato}${r.json?.error_description ? ': ' + r.json.error_description : ''})`);
   k.salvaSegreto('refresh_token', r.json.refresh_token); k.stato.scrivi('consenso', null);
@@ -45,7 +45,7 @@ async function* pagine(k, p, campo) {
 
 export default {
   id: 'ebay', nome: 'eBay', versione: 1, icona: 'scatola',
-  descrizione: 'Gli ordini eBay pagati diventano vendite, la giacenza segue il magazzino di Kubo, la spedizione si segna con il tracking.',
+  descrizione: 'Gli ordini eBay pagati diventano vendite, la giacenza segue il magazzino di Lumi, la spedizione si segna con il tracking.',
   impostazioni: [
     { id: 'client_id', nome: 'App ID (Client ID)', segreto: true },
     { id: 'client_secret', nome: 'Cert ID (Client secret)', segreto: true },
@@ -97,7 +97,7 @@ export default {
       },
     },
     codice: {
-      nome: 'Completa il collegamento', descrizione: 'incolla l\'indirizzo su cui eBay ti ha rimandato dopo il consenso (se non è quello di Kubo)',
+      nome: 'Completa il collegamento', descrizione: 'incolla l\'indirizzo su cui eBay ti ha rimandato dopo il consenso (se non è quello di Lumi)',
       input: { indirizzo: { tipo: 'testo', nome: 'Indirizzo con ?code=…' } },
       esegui: ({ indirizzo }, k) => scambia(k, indirizzo),
     },
@@ -117,10 +117,10 @@ export default {
       },
     },
   },
-  // l'«auth accepted URL» del RuName, se Kubo è raggiungibile in https: eBay rimanda qui il browser con code e state
+  // l'«auth accepted URL» del RuName, se Lumi è raggiungibile in https: eBay rimanda qui il browser con code e state
   pubbliche: {
     async ritorno({ q, k }) {
-      let testo; try { if (!q.get('state')) throw new Error('manca lo state'); await scambia(k, `https://x/?${q.toString()}`); testo = 'eBay collegato a Kubo: puoi chiudere questa pagina.'; } catch (e) { testo = `Collegamento non riuscito: ${e.message}`; }
+      let testo; try { if (!q.get('state')) throw new Error('manca lo state'); await scambia(k, `https://x/?${q.toString()}`); testo = 'eBay collegato a Lumi: puoi chiudere questa pagina.'; } catch (e) { testo = `Collegamento non riuscito: ${e.message}`; }
       return { tipo: 'text/plain; charset=utf-8', corpo: testo };
     },
   },
@@ -129,15 +129,15 @@ export default {
     costoNota: 'L\'API è gratuita (limiti giornalieri di chiamate generosi). Su eBay paghi le commissioni sul venduto (in Italia per i professionali in genere 4,5–10 % più una quota fissa per ordine) ed eventualmente il Negozio eBay.',
     serve: [
       { cosa: 'Keyset di produzione: App ID (Client ID) e Cert ID (Client secret)', dove: 'developer.ebay.com › Hi <nome> › Application Keysets › Production', link: 'https://developer.ebay.com/my/keys' },
-      { cosa: 'RuName (eBay Redirect URL name) con OAuth abilitato; come «auth accepted URL» l\'indirizzo …/api/connettori/ebay/pub/ritorno di Kubo (o una pagina qualsiasi, poi incolli l\'indirizzo)', dove: 'developer.ebay.com › User Tokens › Get a Token from eBay via Your Application › Add eBay Redirect URL', link: 'https://developer.ebay.com/api-docs/static/oauth-redirect-uri.html' },
-      { cosa: 'Esenzione dalle notifiche di cancellazione account (Kubo non salva dati degli acquirenti)', dove: 'Application Keysets › Notifications › Marketplace Account Deletion › Exempted', link: 'https://developer.ebay.com/marketplace-account-deletion' },
+      { cosa: 'RuName (eBay Redirect URL name) con OAuth abilitato; come «auth accepted URL» l\'indirizzo …/api/connettori/ebay/pub/ritorno di Lumi (o una pagina qualsiasi, poi incolli l\'indirizzo)', dove: 'developer.ebay.com › User Tokens › Get a Token from eBay via Your Application › Add eBay Redirect URL', link: 'https://developer.ebay.com/api-docs/static/oauth-redirect-uri.html' },
+      { cosa: 'Esenzione dalle notifiche di cancellazione account (Lumi non salva dati degli acquirenti)', dove: 'Application Keysets › Notifications › Marketplace Account Deletion › Exempted', link: 'https://developer.ebay.com/marketplace-account-deletion' },
     ],
     passi: [
       'Registrati gratis su developer.ebay.com e crea un keyset di produzione: copia App ID e Cert ID.',
-      'Nella pagina del keyset scegli «Exempted» per le notifiche Marketplace Account Deletion: Kubo non salva i dati degli acquirenti.',
-      'Apri User Tokens › Get a Token from eBay via Your Application › Add eBay Redirect URL: abilita OAuth e come «auth accepted URL» metti l\'indirizzo pubblico di Kubo seguito da /api/connettori/ebay/pub/ritorno. Copia il RuName.',
-      'In Kubo incolla App ID, Cert ID e RuName e accendi il connettore.',
-      'Premi «Collega l\'account eBay», apri l\'indirizzo, accedi come venditore e consenti. Se Kubo non è raggiungibile da internet, copia l\'indirizzo su cui eBay ti rimanda e incollalo in «Completa il collegamento».',
+      'Nella pagina del keyset scegli «Exempted» per le notifiche Marketplace Account Deletion: Lumi non salva i dati degli acquirenti.',
+      'Apri User Tokens › Get a Token from eBay via Your Application › Add eBay Redirect URL: abilita OAuth e come «auth accepted URL» metti l\'indirizzo pubblico di Lumi seguito da /api/connettori/ebay/pub/ritorno. Copia il RuName.',
+      'In Lumi incolla App ID, Cert ID e RuName e accendi il connettore.',
+      'Premi «Collega l\'account eBay», apri l\'indirizzo, accedi come venditore e consenti. Se Lumi non è raggiungibile da internet, copia l\'indirizzo su cui eBay ti rimanda e incollalo in «Completa il collegamento».',
       'Il collegamento dura 18 mesi: poi si ripete il consenso. Premi «Prova la connessione».',
       'Lancia «Inventario eBay ↔ articoli»: si collegano per SKU le inserzioni create con la Inventory API (quelle di Seller Hub vanno migrate o restano solo per gli ordini).',
     ],
@@ -146,13 +146,13 @@ export default {
     prova: 'finto', parole: ['ebay', 'marketplace', 'aste', 'ordini', 'giacenze', 'inventory', 'fulfillment', 'orders', 'tracking'],
   },
   testi: {
-    en: { descrizione: 'Paid eBay orders become sales, stock follows Kubo\'s inventory, shipments are marked with tracking.', 'imp.client_id': 'App ID (Client ID)', 'imp.client_secret': 'Cert ID (Client secret)', 'imp.runame': 'RuName (eBay Redirect URL name)', 'aiuto.runame': 'User Tokens › Get a Token from eBay via Your Application › Add eBay Redirect URL', 'imp.refresh_token': 'User refresh token (saved by «Connect the account»)', 'az.collega': 'Connect the eBay account', 'az.codice': 'Complete the connection', 'imp.mercato': 'Marketplace', 'imp.ambiente': 'Environment', 'az.spedito': 'Mark as shipped on eBay', 'giro.offerte': 'eBay inventory ↔ items', 'giro.ordini': 'Orders from eBay',
+    en: { descrizione: 'Paid eBay orders become sales, stock follows Lumi\'s inventory, shipments are marked with tracking.', 'imp.client_id': 'App ID (Client ID)', 'imp.client_secret': 'Cert ID (Client secret)', 'imp.runame': 'RuName (eBay Redirect URL name)', 'aiuto.runame': 'User Tokens › Get a Token from eBay via Your Application › Add eBay Redirect URL', 'imp.refresh_token': 'User refresh token (saved by «Connect the account»)', 'az.collega': 'Connect the eBay account', 'az.codice': 'Complete the connection', 'imp.mercato': 'Marketplace', 'imp.ambiente': 'Environment', 'az.spedito': 'Mark as shipped on eBay', 'giro.offerte': 'eBay inventory ↔ items', 'giro.ordini': 'Orders from eBay',
       'cat.costoNota': 'The API is free (generous daily call limits). On eBay you pay final value fees (for Italian business sellers usually 4.5–10% plus a fixed fee per order) and optionally an eBay Store.',
-      'cat.serve': [{ cosa: 'Production keyset: App ID (Client ID) and Cert ID (Client secret)', dove: 'developer.ebay.com › Application Keysets › Production' }, { cosa: 'RuName (eBay Redirect URL name) with OAuth enabled; as «auth accepted URL» Kubo\'s …/api/connettori/ebay/pub/ritorno address (or any page, then paste the address)', dove: 'developer.ebay.com › User Tokens › Get a Token from eBay via Your Application › Add eBay Redirect URL' }, { cosa: 'Exemption from account deletion notifications (Kubo stores no buyer data)', dove: 'Application Keysets › Notifications › Marketplace Account Deletion › Exempted' }],
-      'cat.passi': ['Sign up for free at developer.ebay.com and create a production keyset: copy App ID and Cert ID.', 'On the keyset page choose «Exempted» for Marketplace Account Deletion notifications: Kubo stores no buyer data.', 'Open User Tokens › Get a Token from eBay via Your Application › Add eBay Redirect URL: enable OAuth and set Kubo\'s public address followed by /api/connettori/ebay/pub/ritorno as «auth accepted URL». Copy the RuName.', 'In Kubo paste App ID, Cert ID and RuName and switch the connector on.', 'Press «Connect the eBay account», open the address, sign in as seller and consent. If Kubo is not reachable from the internet, copy the address eBay sends you to and paste it in «Complete the connection».', 'The connection lasts 18 months, then repeat the consent. Press «Test connection».', 'Run «eBay inventory ↔ items»: listings created with the Inventory API link by SKU (Seller Hub listings need migrating, otherwise they only bring orders).'] },
-    es: { descrizione: 'Los pedidos pagados de eBay pasan a ventas, el stock sigue el almacén de Kubo, el envío se marca con seguimiento.', 'imp.client_id': 'App ID (Client ID)', 'imp.client_secret': 'Cert ID (Client secret)', 'imp.runame': 'RuName (eBay Redirect URL name)', 'aiuto.runame': 'User Tokens › Add eBay Redirect URL', 'imp.refresh_token': 'Refresh token del usuario (lo guarda «Conectar la cuenta»)', 'az.collega': 'Conectar la cuenta de eBay', 'az.codice': 'Completar la conexión', 'imp.mercato': 'Marketplace', 'imp.ambiente': 'Entorno', 'az.spedito': 'Marcar como enviado en eBay', 'giro.offerte': 'Inventario de eBay ↔ artículos', 'giro.ordini': 'Pedidos de eBay' },
-    fr: { descrizione: 'Les commandes eBay payées deviennent des ventes, le stock suit celui de Kubo, l\'expédition se marque avec le suivi.', 'imp.client_id': 'App ID (Client ID)', 'imp.client_secret': 'Cert ID (Client secret)', 'imp.runame': 'RuName (eBay Redirect URL name)', 'aiuto.runame': 'User Tokens › Add eBay Redirect URL', 'imp.refresh_token': 'Refresh token de l\'utilisateur (enregistré par «Connecter le compte»)', 'az.collega': 'Connecter le compte eBay', 'az.codice': 'Terminer la connexion', 'imp.mercato': 'Marketplace', 'imp.ambiente': 'Environnement', 'az.spedito': 'Marquer comme expédié sur eBay', 'giro.offerte': 'Inventaire eBay ↔ articles', 'giro.ordini': 'Commandes eBay' },
-    de: { descrizione: 'Bezahlte eBay-Bestellungen werden Verkäufe, der Bestand folgt Kubo, der Versand wird mit Sendungsnummer markiert.', 'imp.client_id': 'App ID (Client ID)', 'imp.client_secret': 'Cert ID (Client Secret)', 'imp.runame': 'RuName (eBay Redirect URL name)', 'aiuto.runame': 'User Tokens › Add eBay Redirect URL', 'imp.refresh_token': 'Refresh Token des Nutzers (speichert «Konto verbinden»)', 'az.collega': 'eBay-Konto verbinden', 'az.codice': 'Verbindung abschließen', 'imp.mercato': 'Marktplatz', 'imp.ambiente': 'Umgebung', 'az.spedito': 'Auf eBay als versandt markieren', 'giro.offerte': 'eBay-Inventar ↔ Artikel', 'giro.ordini': 'Bestellungen von eBay' },
-    pt: { descrizione: 'Os pedidos pagos do eBay viram vendas, o estoque segue o Kubo, o envio é marcado com rastreio.', 'imp.client_id': 'App ID (Client ID)', 'imp.client_secret': 'Cert ID (Client secret)', 'imp.runame': 'RuName (eBay Redirect URL name)', 'aiuto.runame': 'User Tokens › Add eBay Redirect URL', 'imp.refresh_token': 'Refresh token do usuário (salvo por «Conectar a conta»)', 'az.collega': 'Conectar a conta do eBay', 'az.codice': 'Concluir a conexão', 'imp.mercato': 'Marketplace', 'imp.ambiente': 'Ambiente', 'az.spedito': 'Marcar como enviado no eBay', 'giro.offerte': 'Inventário do eBay ↔ artigos', 'giro.ordini': 'Pedidos do eBay' },
+      'cat.serve': [{ cosa: 'Production keyset: App ID (Client ID) and Cert ID (Client secret)', dove: 'developer.ebay.com › Application Keysets › Production' }, { cosa: 'RuName (eBay Redirect URL name) with OAuth enabled; as «auth accepted URL» Lumi\'s …/api/connettori/ebay/pub/ritorno address (or any page, then paste the address)', dove: 'developer.ebay.com › User Tokens › Get a Token from eBay via Your Application › Add eBay Redirect URL' }, { cosa: 'Exemption from account deletion notifications (Lumi stores no buyer data)', dove: 'Application Keysets › Notifications › Marketplace Account Deletion › Exempted' }],
+      'cat.passi': ['Sign up for free at developer.ebay.com and create a production keyset: copy App ID and Cert ID.', 'On the keyset page choose «Exempted» for Marketplace Account Deletion notifications: Lumi stores no buyer data.', 'Open User Tokens › Get a Token from eBay via Your Application › Add eBay Redirect URL: enable OAuth and set Lumi\'s public address followed by /api/connettori/ebay/pub/ritorno as «auth accepted URL». Copy the RuName.', 'In Lumi paste App ID, Cert ID and RuName and switch the connector on.', 'Press «Connect the eBay account», open the address, sign in as seller and consent. If Lumi is not reachable from the internet, copy the address eBay sends you to and paste it in «Complete the connection».', 'The connection lasts 18 months, then repeat the consent. Press «Test connection».', 'Run «eBay inventory ↔ items»: listings created with the Inventory API link by SKU (Seller Hub listings need migrating, otherwise they only bring orders).'] },
+    es: { descrizione: 'Los pedidos pagados de eBay pasan a ventas, el stock sigue el almacén de Lumi, el envío se marca con seguimiento.', 'imp.client_id': 'App ID (Client ID)', 'imp.client_secret': 'Cert ID (Client secret)', 'imp.runame': 'RuName (eBay Redirect URL name)', 'aiuto.runame': 'User Tokens › Add eBay Redirect URL', 'imp.refresh_token': 'Refresh token del usuario (lo guarda «Conectar la cuenta»)', 'az.collega': 'Conectar la cuenta de eBay', 'az.codice': 'Completar la conexión', 'imp.mercato': 'Marketplace', 'imp.ambiente': 'Entorno', 'az.spedito': 'Marcar como enviado en eBay', 'giro.offerte': 'Inventario de eBay ↔ artículos', 'giro.ordini': 'Pedidos de eBay' },
+    fr: { descrizione: 'Les commandes eBay payées deviennent des ventes, le stock suit celui de Lumi, l\'expédition se marque avec le suivi.', 'imp.client_id': 'App ID (Client ID)', 'imp.client_secret': 'Cert ID (Client secret)', 'imp.runame': 'RuName (eBay Redirect URL name)', 'aiuto.runame': 'User Tokens › Add eBay Redirect URL', 'imp.refresh_token': 'Refresh token de l\'utilisateur (enregistré par «Connecter le compte»)', 'az.collega': 'Connecter le compte eBay', 'az.codice': 'Terminer la connexion', 'imp.mercato': 'Marketplace', 'imp.ambiente': 'Environnement', 'az.spedito': 'Marquer comme expédié sur eBay', 'giro.offerte': 'Inventaire eBay ↔ articles', 'giro.ordini': 'Commandes eBay' },
+    de: { descrizione: 'Bezahlte eBay-Bestellungen werden Verkäufe, der Bestand folgt Lumi, der Versand wird mit Sendungsnummer markiert.', 'imp.client_id': 'App ID (Client ID)', 'imp.client_secret': 'Cert ID (Client Secret)', 'imp.runame': 'RuName (eBay Redirect URL name)', 'aiuto.runame': 'User Tokens › Add eBay Redirect URL', 'imp.refresh_token': 'Refresh Token des Nutzers (speichert «Konto verbinden»)', 'az.collega': 'eBay-Konto verbinden', 'az.codice': 'Verbindung abschließen', 'imp.mercato': 'Marktplatz', 'imp.ambiente': 'Umgebung', 'az.spedito': 'Auf eBay als versandt markieren', 'giro.offerte': 'eBay-Inventar ↔ Artikel', 'giro.ordini': 'Bestellungen von eBay' },
+    pt: { descrizione: 'Os pedidos pagos do eBay viram vendas, o estoque segue o Lumi, o envio é marcado com rastreio.', 'imp.client_id': 'App ID (Client ID)', 'imp.client_secret': 'Cert ID (Client secret)', 'imp.runame': 'RuName (eBay Redirect URL name)', 'aiuto.runame': 'User Tokens › Add eBay Redirect URL', 'imp.refresh_token': 'Refresh token do usuário (salvo por «Conectar a conta»)', 'az.collega': 'Conectar a conta do eBay', 'az.codice': 'Concluir a conexão', 'imp.mercato': 'Marketplace', 'imp.ambiente': 'Ambiente', 'az.spedito': 'Marcar como enviado no eBay', 'giro.offerte': 'Inventário do eBay ↔ artigos', 'giro.ordini': 'Pedidos do eBay' },
   },
 };

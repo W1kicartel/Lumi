@@ -1,7 +1,7 @@
 // WhatsApp tramite Twilio: l'iscrizione più semplice (il mittente WhatsApp si registra dalla console di Twilio), i modelli
 // con la Content API e l'approvazione di Meta chiesta da Twilio. Costa le tariffe di Meta più 0,005 $ a messaggio.
 // Serve: Account SID, Auth Token (firma X-Twilio-Signature dei webhook) e il mittente WhatsApp («+14155238886»), più
-// l'indirizzo pubblico di Kubo (il suo o quello della Libreria): la firma di Twilio comprende l'URL intero, e i file (PDF)
+// l'indirizzo pubblico di Lumi (il suo o quello della Libreria): la firma di Twilio comprende l'URL intero, e i file (PDF)
 // Twilio li scarica da un link. Ai messaggi in arrivo si risponde TwiML vuoto (<Response/>, text/xml).
 // Fonti: https://www.twilio.com/docs/whatsapp/api · https://www.twilio.com/docs/usage/webhooks/webhooks-security
 //        https://www.twilio.com/docs/content/content-api-resources · https://www.twilio.com/docs/content/content-api-approvals
@@ -45,7 +45,7 @@ export default {
     { id: 'sid', nome: 'Account SID', schema: /^AC[0-9a-fA-F]{32}$/ },
     { id: 'token', nome: 'Auth Token', segreto: true },
     { id: 'mittente', nome: 'Mittente WhatsApp (es. +14155238886)', schema: /^\+?[1-9]\d{7,14}$/ },
-    { id: 'indirizzo', nome: 'Indirizzo pubblico di Kubo (es. https://kubo.miobottega.it)', tipo: 'url', obbligatorio: false },
+    { id: 'indirizzo', nome: 'Indirizzo pubblico di Lumi (es. https://lumi.miobottega.it)', tipo: 'url', obbligatorio: false },
   ],
   permessi: { clienti: { leggi: true } },
   prova: async k => {
@@ -64,7 +64,7 @@ export default {
   whatsapp: {
     testo: (k, a, testo) => manda(k, { To: wa(a), Body: String(testo) }),
     modello: (k, a, m) => manda(k, { To: wa(a), ContentSid: m.idRemoto, ...(m.valori?.length ? { ContentVariables: JSON.stringify(Object.fromEntries(m.valori.map((v, i) => [String(i + 1), String(v)]))) } : {}) }),
-    // Twilio scarica il file da un indirizzo pubblico (il link temporaneo di Kubo)
+    // Twilio scarica il file da un indirizzo pubblico (il link temporaneo di Lumi)
     documento: (k, a, d) => manda(k, { To: wa(a), MediaUrl: d.link, ...(d.didascalia ? { Body: d.didascalia } : {}) }),
     linkPubblico: k => pubblico(k) || null,
     async modelli(k) {
@@ -99,15 +99,15 @@ export default {
       { cosa: 'Un account Twilio (con credito)', dove: 'twilio.com → Sign up', link: 'https://www.twilio.com/try-twilio' },
       { cosa: 'Account SID e Auth Token', dove: 'Console di Twilio → Account Info', link: 'https://console.twilio.com/' },
       { cosa: 'Un mittente WhatsApp registrato (il tuo numero, collegato al tuo portafoglio Meta)', dove: 'Console → Messaging → Senders → WhatsApp senders', link: 'https://console.twilio.com/us1/develop/sms/senders/whatsapp-senders' },
-      { cosa: 'L\'indirizzo pubblico di Kubo (https)', dove: 'chi ospita Kubo, o un tunnel', link: 'https://www.twilio.com/docs/usage/webhooks/webhooks-security' },
+      { cosa: 'L\'indirizzo pubblico di Lumi (https)', dove: 'chi ospita Lumi, o un tunnel', link: 'https://www.twilio.com/docs/usage/webhooks/webhooks-security' },
     ],
     passi: [
       'Crea l\'account su twilio.com e aggiungi del credito.',
       'Copia Account SID e Auth Token dalla prima pagina della console.',
       'In Messaging → Senders → WhatsApp senders registra il tuo numero con la procedura guidata (accedi con Facebook e collega il portafoglio Meta).',
-      'Nel mittente imposta «Webhook URL for incoming messages» e lo stato con l\'URL che Kubo ti mostra.',
-      'In Kubo incolla SID, Auth Token, il numero del mittente e l\'indirizzo pubblico di Kubo (se l\'hai impostato nella Libreria, puoi lasciarlo vuoto), poi accendi.',
-      'Sincronizza i modelli o creane uno da Kubo: Twilio chiede a Meta l\'approvazione.',
+      'Nel mittente imposta «Webhook URL for incoming messages» e lo stato con l\'URL che Lumi ti mostra.',
+      'In Lumi incolla SID, Auth Token, il numero del mittente e l\'indirizzo pubblico di Lumi (se l\'hai impostato nella Libreria, puoi lasciarlo vuoto), poi accendi.',
+      'Sincronizza i modelli o creane uno da Lumi: Twilio chiede a Meta l\'approvazione.',
     ],
     difficolta: 'facile', zone: ['mondo'], prova: 'finto',
     fonti: ['https://www.twilio.com/docs/whatsapp/api', 'https://www.twilio.com/docs/usage/webhooks/webhooks-security', 'https://www.twilio.com/docs/content/content-api-resources',
@@ -116,17 +116,17 @@ export default {
   },
   testi: {
     en: { nome: 'WhatsApp (Twilio)', descrizione: 'WhatsApp through Twilio: guided sign-up from the console, templates with the Content API. Meta prices plus $0.005 per message.',
-      'imp.sid': 'Account SID', 'imp.token': 'Auth Token', 'imp.mittente': 'WhatsApp sender (e.g. +14155238886)', 'imp.indirizzo': 'Kubo\'s public address (e.g. https://kubo.myshop.com)',
+      'imp.sid': 'Account SID', 'imp.token': 'Auth Token', 'imp.mittente': 'WhatsApp sender (e.g. +14155238886)', 'imp.indirizzo': 'Lumi\'s public address (e.g. https://lumi.myshop.com)',
       'cat.costoNota': 'No monthly fee: Meta\'s template prices (in Italy about €0.066 marketing, €0.025 utility) plus Twilio\'s $0.005 for every message sent or received.',
       'cat.serve': [{ cosa: 'A Twilio account (with credit)', dove: 'twilio.com → Sign up' }, { cosa: 'Account SID and Auth Token', dove: 'Twilio console → Account Info' },
-        { cosa: 'A registered WhatsApp sender (your number, linked to your Meta portfolio)', dove: 'Console → Messaging → Senders → WhatsApp senders' }, { cosa: 'Kubo\'s public address (https)', dove: 'your Kubo host, or a tunnel' }],
+        { cosa: 'A registered WhatsApp sender (your number, linked to your Meta portfolio)', dove: 'Console → Messaging → Senders → WhatsApp senders' }, { cosa: 'Lumi\'s public address (https)', dove: 'your Lumi host, or a tunnel' }],
       'cat.passi': ['Create the account on twilio.com and add credit.', 'Copy Account SID and Auth Token from the console home page.',
         'In Messaging → Senders → WhatsApp senders register your number with the guided flow (log in with Facebook and link your Meta portfolio).',
-        'On the sender set «Webhook URL for incoming messages» and the status callback to the URL Kubo shows you.',
-        'In Kubo paste SID, Auth Token, the sender number and Kubo\'s public address (if you set it in the Library, you can leave it empty), then turn it on.', 'Sync the templates or create one from Kubo: Twilio asks Meta for approval.'] },
-    es: { nome: 'WhatsApp (Twilio)', descrizione: 'WhatsApp con Twilio: alta guiada desde la consola, plantillas con la Content API.', 'imp.sid': 'Account SID', 'imp.token': 'Auth Token', 'imp.mittente': 'Remitente de WhatsApp (p. ej. +14155238886)', 'imp.indirizzo': 'Dirección pública de Kubo' },
-    fr: { nome: 'WhatsApp (Twilio)', descrizione: 'WhatsApp avec Twilio : inscription guidée depuis la console, modèles avec la Content API.', 'imp.sid': 'Account SID', 'imp.token': 'Auth Token', 'imp.mittente': 'Expéditeur WhatsApp (ex. +14155238886)', 'imp.indirizzo': 'Adresse publique de Kubo' },
-    de: { nome: 'WhatsApp (Twilio)', descrizione: 'WhatsApp über Twilio: geführte Anmeldung in der Konsole, Vorlagen mit der Content API.', 'imp.sid': 'Account SID', 'imp.token': 'Auth Token', 'imp.mittente': 'WhatsApp-Absender (z. B. +14155238886)', 'imp.indirizzo': 'Öffentliche Adresse von Kubo' },
-    pt: { nome: 'WhatsApp (Twilio)', descrizione: 'WhatsApp pela Twilio: cadastro guiado pelo console, modelos com a Content API.', 'imp.sid': 'Account SID', 'imp.token': 'Auth Token', 'imp.mittente': 'Remetente WhatsApp (ex. +14155238886)', 'imp.indirizzo': 'Endereço público do Kubo' },
+        'On the sender set «Webhook URL for incoming messages» and the status callback to the URL Lumi shows you.',
+        'In Lumi paste SID, Auth Token, the sender number and Lumi\'s public address (if you set it in the Library, you can leave it empty), then turn it on.', 'Sync the templates or create one from Lumi: Twilio asks Meta for approval.'] },
+    es: { nome: 'WhatsApp (Twilio)', descrizione: 'WhatsApp con Twilio: alta guiada desde la consola, plantillas con la Content API.', 'imp.sid': 'Account SID', 'imp.token': 'Auth Token', 'imp.mittente': 'Remitente de WhatsApp (p. ej. +14155238886)', 'imp.indirizzo': 'Dirección pública de Lumi' },
+    fr: { nome: 'WhatsApp (Twilio)', descrizione: 'WhatsApp avec Twilio : inscription guidée depuis la console, modèles avec la Content API.', 'imp.sid': 'Account SID', 'imp.token': 'Auth Token', 'imp.mittente': 'Expéditeur WhatsApp (ex. +14155238886)', 'imp.indirizzo': 'Adresse publique de Lumi' },
+    de: { nome: 'WhatsApp (Twilio)', descrizione: 'WhatsApp über Twilio: geführte Anmeldung in der Konsole, Vorlagen mit der Content API.', 'imp.sid': 'Account SID', 'imp.token': 'Auth Token', 'imp.mittente': 'WhatsApp-Absender (z. B. +14155238886)', 'imp.indirizzo': 'Öffentliche Adresse von Lumi' },
+    pt: { nome: 'WhatsApp (Twilio)', descrizione: 'WhatsApp pela Twilio: cadastro guiado pelo console, modelos com a Content API.', 'imp.sid': 'Account SID', 'imp.token': 'Auth Token', 'imp.mittente': 'Remetente WhatsApp (ex. +14155238886)', 'imp.indirizzo': 'Endereço público do Lumi' },
   },
 };

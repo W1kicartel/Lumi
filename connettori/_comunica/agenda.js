@@ -1,5 +1,5 @@
 // Gli aiuti comuni ai connettori dell'agenda (Outlook, CalDAV, Calendly, Cal.com): un evento o una prenotazione che
-// arriva da fuori diventa un appuntamento di Kubo (con il cliente trovato per email o creato), uno spostamento sposta,
+// arriva da fuori diventa un appuntamento di Lumi (con il cliente trovato per email o creato), uno spostamento sposta,
 // un annullamento mette lo stato «annullato». Gli id remoti si abbinano con k.sincro: lo stesso evento non entra due volte.
 export const REQ = {
   appuntamenti: { quando: { tipo: ['data_ora'] }, cliente: { tipo: 'relazione', facoltativo: true }, servizio: { tipo: 'relazione', facoltativo: true }, stato: { tipo: 'stato', facoltativo: true }, note: { tipo: ['testo_lungo', 'testo'], facoltativo: true } },
@@ -73,9 +73,9 @@ export function annulla(k, remoto) {
   if (k.valore(r, SEM, 'stato') === 'annullato') return 'uguale';
   k.dati.modifica(SEM, rid, { stato: 'annullato' }); return 'annullato';
 }
-// l'indirizzo pubblico di Kubo: quello scritto nel connettore o, se è vuoto, quello unico della Libreria (k.pubblico)
+// l'indirizzo pubblico di Lumi: quello scritto nel connettore o, se è vuoto, quello unico della Libreria (k.pubblico)
 export const indirizzoDi = k => String(k.imp.indirizzo || k.pubblico || '').trim().replace(/\/+$/, '');
-export const MANCA_INDIRIZZO = 'Manca l\'indirizzo pubblico di Kubo: impostalo nella Libreria (o nelle impostazioni del connettore)';
+export const MANCA_INDIRIZZO = 'Manca l\'indirizzo pubblico di Lumi: impostalo nella Libreria (o nelle impostazioni del connettore)';
 // l'indirizzo del webhook, da mostrare al titolare; «serve»: senza indirizzo pubblico è un errore chiaro
 export const webhookDi = (k, id, serve = false) => { const b = indirizzoDi(k); if (!b && serve) throw new Error(MANCA_INDIRIZZO); return `${b}/api/connettori/${id}/in`; };
 // i conti di un giro di sincronizzazione

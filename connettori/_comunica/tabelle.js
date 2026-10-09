@@ -11,7 +11,7 @@ export function sezione(k, scelta) {
   return { entita, def, campi: k.S.campiAttivi(def).filter(c => c.tipo !== 'righe') };
 }
 
-// un valore di Kubo come testo leggibile: relazioni e utenti con il loro titolo, liste separate da virgole
+// un valore di Lumi come testo leggibile: relazioni e utenti con il loro titolo, liste separate da virgole
 export function testo(v) {
   if (v == null) return '';
   if (Array.isArray(v)) return v.map(testo).filter(x => x !== '').join(', ');

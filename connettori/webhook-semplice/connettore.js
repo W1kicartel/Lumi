@@ -1,8 +1,8 @@
-// Webhook: Kubo parla con n8n, Make, Zapier, Pipedream, IFTTT, Home Assistant… e da lì con migliaia di app.
+// Webhook: Lumi parla con n8n, Make, Zapier, Pipedream, IFTTT, Home Assistant… e da lì con migliaia di app.
 // In uscita: ogni riga creata o modificata nelle sezioni scelte parte come JSON firmato
-//   X-Kubo-Firma: t=<secondi>,v1=<hex HMAC-SHA256(segreto, "<t>.<corpo>")>   (lo stesso schema di Stripe)
+//   X-Lumi-Firma: t=<secondi>,v1=<hex HMAC-SHA256(segreto, "<t>.<corpo>")>   (lo stesso schema di Stripe)
 // In entrata: POST /api/connettori/webhook-semplice/in/<codice> { azione: 'crea', sezione, valori, id? } crea un cliente, un
-// appuntamento, una prenotazione o un'attività; { azione: 'avvisa', testo } manda un avviso a chi usa Kubo.
+// appuntamento, una prenotazione o un'attività; { azione: 'avvisa', testo } manda un avviso a chi usa Lumi.
 import { firmaStripeDi } from '../../server/moduli/connettori-rete.js';
 import { lingua } from '../_comunica/notifiche.js';
 
@@ -11,7 +11,7 @@ const ENTRATA = ['clienti', 'appuntamenti', 'prenotazioni', 'attivita'];
 const scelte = k => new Set(String(k.imp.sezioni || '').split(/[\s,;]+/).filter(Boolean));
 async function manda(k, corpo) {
   const testo = JSON.stringify(corpo);
-  const r = await k.http.post(k.segreti.url, { testo, intestazioni: { 'Content-Type': 'application/json', 'X-Kubo-Evento': corpo.evento, 'X-Kubo-Firma': firmaStripeDi(k.segreti.firma, testo) } });
+  const r = await k.http.post(k.segreti.url, { testo, intestazioni: { 'Content-Type': 'application/json', 'X-Lumi-Evento': corpo.evento, 'X-Lumi-Firma': firmaStripeDi(k.segreti.firma, testo) } });
   if (!r.ok) throw new Error(`Il webhook ha risposto ${r.stato}`);
   return r;
 }
@@ -19,11 +19,11 @@ const azienda = k => k.db.prepare("SELECT valore FROM _meta WHERE chiave = 'azie
 
 export default {
   id: 'webhook-semplice', nome: 'Webhook semplice (n8n, Make, Zapier)', versione: 1, icona: 'collegamento',
-  descrizione: 'Manda le novità di Kubo a n8n, Make, Zapier o a un tuo programma, e riceve da loro clienti e appuntamenti.',
+  descrizione: 'Manda le novità di Lumi a n8n, Make, Zapier o a un tuo programma, e riceve da loro clienti e appuntamenti.',
   impostazioni: [
     { id: 'url', nome: 'Indirizzo del webhook che riceve (da n8n, Make, Zapier…)', segreto: true, tipo: 'url', obbligatorio: false },
     { id: 'sezioni', nome: 'Sezioni da mandare (id separati da virgole)', predefinito: 'clienti, vendite, appuntamenti, prenotazioni, fatture, preventivi' },
-    { id: 'firma', nome: 'Segreto della firma (X-Kubo-Firma)', segreto: true, generato: true },
+    { id: 'firma', nome: 'Segreto della firma (X-Lumi-Firma)', segreto: true, generato: true },
     { id: 'codice', nome: 'Codice segreto per ricevere', segreto: true, generato: true },
   ],
   permessi: Object.fromEntries([...new Set([...USCITA, ...ENTRATA])].map(s => [s, { leggi: true, ...(ENTRATA.includes(s) ? { crea: true } : {}) }])),
@@ -51,24 +51,24 @@ export default {
   },
   catalogo: {
     categoria: 'produttivita', sito: 'https://n8n.io', costo: 'gratis',
-    costoNota: 'Il webhook di Kubo è gratis. n8n è gratuito se lo installi tu (open source); Make ha un piano Free con 1.000 operazioni al mese; i webhook di Zapier richiedono un piano a pagamento (da circa 20 $ al mese).',
+    costoNota: 'Il webhook di Lumi è gratis. n8n è gratuito se lo installi tu (open source); Make ha un piano Free con 1.000 operazioni al mese; i webhook di Zapier richiedono un piano a pagamento (da circa 20 $ al mese).',
     serve: [
       { cosa: 'L\'indirizzo del webhook che riceve gli eventi', dove: 'n8n: nodo «Webhook» → Production URL; Make: modulo Webhooks → Custom webhook → Copy address; Zapier: trigger «Webhooks by Zapier» → Catch Hook', link: 'https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/' },
-      { cosa: 'Per ricevere: l\'indirizzo di Kubo con il codice segreto (serve un indirizzo pubblico)', dove: 'questa pagina → «Codice segreto per ricevere»: l\'indirizzo è …/api/connettori/webhook-semplice/in/<codice>', link: 'https://www.make.com/en/help/tools/http' },
+      { cosa: 'Per ricevere: l\'indirizzo di Lumi con il codice segreto (serve un indirizzo pubblico)', dove: 'questa pagina → «Codice segreto per ricevere»: l\'indirizzo è …/api/connettori/webhook-semplice/in/<codice>', link: 'https://www.make.com/en/help/tools/http' },
     ],
-    passi: ['In n8n, Make o Zapier crea uno scenario che parte da un webhook e copia il suo indirizzo', 'Incollalo qui e scegli le sezioni da mandare (es. clienti, vendite, appuntamenti)', 'Accendi e premi «Prova»: lo scenario riceve un evento «prova» con cui impostare i campi', 'Per controllare che arrivi da Kubo, verifica X-Kubo-Firma con il «segreto della firma» (HMAC-SHA256 di «t.corpo»)', 'Per far creare clienti o appuntamenti da fuori, manda un POST JSON { "azione": "crea", "sezione": "clienti", "valori": { "nome": "…", "email": "…" } } all\'indirizzo con il codice segreto'],
+    passi: ['In n8n, Make o Zapier crea uno scenario che parte da un webhook e copia il suo indirizzo', 'Incollalo qui e scegli le sezioni da mandare (es. clienti, vendite, appuntamenti)', 'Accendi e premi «Prova»: lo scenario riceve un evento «prova» con cui impostare i campi', 'Per controllare che arrivi da Lumi, verifica X-Lumi-Firma con il «segreto della firma» (HMAC-SHA256 di «t.corpo»)', 'Per far creare clienti o appuntamenti da fuori, manda un POST JSON { "azione": "crea", "sezione": "clienti", "valori": { "nome": "…", "email": "…" } } all\'indirizzo con il codice segreto'],
     difficolta: 'media', zone: ['mondo'],
     fonti: ['https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/', 'https://www.make.com/en/help/tools/webhooks', 'https://help.zapier.com/hc/en-us/articles/8496288690317-Trigger-Zaps-from-webhooks', 'https://docs.stripe.com/webhooks#verify-manually'],
     prova: 'finto', parole: ['webhook', 'n8n', 'make', 'integromat', 'zapier', 'pipedream', 'ifttt', 'home assistant', 'automazioni', 'api', 'integrazioni', 'automation'],
   },
   testi: {
-    en: { nome: 'Simple webhook (n8n, Make, Zapier)', descrizione: 'Sends Kubo updates to n8n, Make, Zapier or your own program, and receives customers and appointments from them.', 'imp.url': 'Receiving webhook address (from n8n, Make, Zapier…)', 'imp.sezioni': 'Sections to send (ids separated by commas)', 'imp.firma': 'Signature secret (X-Kubo-Firma)', 'imp.codice': 'Secret code for receiving',
-      'cat.costoNota': 'Kubo\'s webhook is free. n8n is free if you host it yourself (open source); Make has a Free plan with 1,000 operations a month; Zapier webhooks need a paid plan (from about $20 a month).',
-      'cat.serve': [{ cosa: 'The webhook address that receives events', dove: 'n8n: «Webhook» node → Production URL; Make: Webhooks module → Custom webhook → Copy address; Zapier: «Webhooks by Zapier» trigger → Catch Hook' }, { cosa: 'To receive: Kubo\'s address with the secret code (needs a public address)', dove: 'this page → «Secret code for receiving»: the address is …/api/connettori/webhook-semplice/in/<code>' }],
-      'cat.passi': ['In n8n, Make or Zapier create a scenario starting from a webhook and copy its address', 'Paste it here and pick the sections to send', 'Turn on and press «Test»: the scenario gets a «prova» event to map the fields', 'To check it comes from Kubo, verify X-Kubo-Firma with the signature secret (HMAC-SHA256 of «t.body»)', 'To create customers or appointments from outside, POST JSON { "azione": "crea", "sezione": "clienti", "valori": { … } } to the address with the secret code'] },
-    es: { nome: 'Webhook sencillo (n8n, Make, Zapier)', descrizione: 'Envía las novedades de Kubo a n8n, Make, Zapier o a tu programa, y recibe de ellos clientes y citas.', 'imp.url': 'Dirección del webhook que recibe (de n8n, Make, Zapier…)', 'imp.sezioni': 'Secciones que enviar (ids separados por comas)', 'imp.firma': 'Secreto de la firma (X-Kubo-Firma)', 'imp.codice': 'Código secreto para recibir' },
-    fr: { nome: 'Webhook simple (n8n, Make, Zapier)', descrizione: 'Envoie les nouveautés de Kubo à n8n, Make, Zapier ou à ton programme, et en reçoit clients et rendez-vous.', 'imp.url': 'Adresse du webhook qui reçoit (de n8n, Make, Zapier…)', 'imp.sezioni': 'Sections à envoyer (ids séparés par des virgules)', 'imp.firma': 'Secret de la signature (X-Kubo-Firma)', 'imp.codice': 'Code secret pour recevoir' },
-    de: { nome: 'Einfacher Webhook (n8n, Make, Zapier)', descrizione: 'Sendet Neuigkeiten aus Kubo an n8n, Make, Zapier oder dein Programm und empfängt von dort Kunden und Termine.', 'imp.url': 'Adresse des empfangenden Webhooks (von n8n, Make, Zapier…)', 'imp.sezioni': 'Zu sendende Bereiche (IDs durch Kommas getrennt)', 'imp.firma': 'Signatur-Geheimnis (X-Kubo-Firma)', 'imp.codice': 'Geheimcode zum Empfangen' },
-    pt: { nome: 'Webhook simples (n8n, Make, Zapier)', descrizione: 'Envia as novidades do Kubo para n8n, Make, Zapier ou o seu programa, e recebe deles clientes e agendamentos.', 'imp.url': 'Endereço do webhook que recebe (do n8n, Make, Zapier…)', 'imp.sezioni': 'Seções a enviar (ids separados por vírgulas)', 'imp.firma': 'Segredo da assinatura (X-Kubo-Firma)', 'imp.codice': 'Código secreto para receber' },
+    en: { nome: 'Simple webhook (n8n, Make, Zapier)', descrizione: 'Sends Lumi updates to n8n, Make, Zapier or your own program, and receives customers and appointments from them.', 'imp.url': 'Receiving webhook address (from n8n, Make, Zapier…)', 'imp.sezioni': 'Sections to send (ids separated by commas)', 'imp.firma': 'Signature secret (X-Lumi-Firma)', 'imp.codice': 'Secret code for receiving',
+      'cat.costoNota': 'Lumi\'s webhook is free. n8n is free if you host it yourself (open source); Make has a Free plan with 1,000 operations a month; Zapier webhooks need a paid plan (from about $20 a month).',
+      'cat.serve': [{ cosa: 'The webhook address that receives events', dove: 'n8n: «Webhook» node → Production URL; Make: Webhooks module → Custom webhook → Copy address; Zapier: «Webhooks by Zapier» trigger → Catch Hook' }, { cosa: 'To receive: Lumi\'s address with the secret code (needs a public address)', dove: 'this page → «Secret code for receiving»: the address is …/api/connettori/webhook-semplice/in/<code>' }],
+      'cat.passi': ['In n8n, Make or Zapier create a scenario starting from a webhook and copy its address', 'Paste it here and pick the sections to send', 'Turn on and press «Test»: the scenario gets a «prova» event to map the fields', 'To check it comes from Lumi, verify X-Lumi-Firma with the signature secret (HMAC-SHA256 of «t.body»)', 'To create customers or appointments from outside, POST JSON { "azione": "crea", "sezione": "clienti", "valori": { … } } to the address with the secret code'] },
+    es: { nome: 'Webhook sencillo (n8n, Make, Zapier)', descrizione: 'Envía las novedades de Lumi a n8n, Make, Zapier o a tu programa, y recibe de ellos clientes y citas.', 'imp.url': 'Dirección del webhook que recibe (de n8n, Make, Zapier…)', 'imp.sezioni': 'Secciones que enviar (ids separados por comas)', 'imp.firma': 'Secreto de la firma (X-Lumi-Firma)', 'imp.codice': 'Código secreto para recibir' },
+    fr: { nome: 'Webhook simple (n8n, Make, Zapier)', descrizione: 'Envoie les nouveautés de Lumi à n8n, Make, Zapier ou à ton programme, et en reçoit clients et rendez-vous.', 'imp.url': 'Adresse du webhook qui reçoit (de n8n, Make, Zapier…)', 'imp.sezioni': 'Sections à envoyer (ids séparés par des virgules)', 'imp.firma': 'Secret de la signature (X-Lumi-Firma)', 'imp.codice': 'Code secret pour recevoir' },
+    de: { nome: 'Einfacher Webhook (n8n, Make, Zapier)', descrizione: 'Sendet Neuigkeiten aus Lumi an n8n, Make, Zapier oder dein Programm und empfängt von dort Kunden und Termine.', 'imp.url': 'Adresse des empfangenden Webhooks (von n8n, Make, Zapier…)', 'imp.sezioni': 'Zu sendende Bereiche (IDs durch Kommas getrennt)', 'imp.firma': 'Signatur-Geheimnis (X-Lumi-Firma)', 'imp.codice': 'Geheimcode zum Empfangen' },
+    pt: { nome: 'Webhook simples (n8n, Make, Zapier)', descrizione: 'Envia as novidades do Lumi para n8n, Make, Zapier ou o seu programa, e recebe deles clientes e agendamentos.', 'imp.url': 'Endereço do webhook que recebe (do n8n, Make, Zapier…)', 'imp.sezioni': 'Seções a enviar (ids separados por vírgulas)', 'imp.firma': 'Segredo da assinatura (X-Lumi-Firma)', 'imp.codice': 'Código secreto para receber' },
   },
 };

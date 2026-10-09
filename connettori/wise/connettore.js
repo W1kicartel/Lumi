@@ -1,7 +1,7 @@
-// Wise Business: gli estratti dei saldi in euro entrano in Kubo come movimenti e si abbinano alle fatture (banca.js).
+// Wise Business: gli estratti dei saldi in euro entrano in Lumi come movimenti e si abbinano alle fatture (banca.js).
 // Accesso con il token API personale (Bearer). Gli estratti conto sono protetti dalla SCA: la prima risposta è 403 con
 // «x-2fa-approval: <one-time token>»; si firma il token con la chiave privata (RSA-SHA256, base64) e si ripete la
-// richiesta con «x-2fa-approval» e «X-Signature». La chiave pubblica si carica una volta su Wise (Kubo la crea).
+// richiesta con «x-2fa-approval» e «X-Signature». La chiave pubblica si carica una volta su Wise (Lumi la crea).
 // https://docs.wise.com/api-docs/features/strong-customer-authentication-2fa/personal-token-sca
 // https://docs.wise.com/api-docs/api-reference/balance-statement
 import { createSign, generateKeyPairSync } from 'node:crypto';
@@ -37,10 +37,10 @@ const movimento = (k, t, saldo) => ({
 
 export default {
   id: 'wise', nome: 'Wise Business', versione: 1, icona: 'cassa',
-  descrizione: 'I movimenti dei saldi in euro di Wise entrano in Kubo e si abbinano alle fatture da incassare e da pagare.',
+  descrizione: 'I movimenti dei saldi in euro di Wise entrano in Lumi e si abbinano alle fatture da incassare e da pagare.',
   impostazioni: [
     { id: 'token', nome: 'Token API personale (sola lettura)', segreto: true },
-    { id: 'chiave_privata', nome: 'Chiave privata per la SCA (la crea Kubo)', segreto: true, obbligatorio: false },
+    { id: 'chiave_privata', nome: 'Chiave privata per la SCA (la crea Lumi)', segreto: true, obbligatorio: false },
     { id: 'profilo', nome: 'ID del profilo (vuoto: quello business)', schema: /^\d{1,15}$/, obbligatorio: false },
     { id: 'ambiente', nome: 'Ambiente', tipo: 'scelta', opzioni: ['produzione', 'prova'], predefinito: 'produzione' },
   ],
@@ -78,21 +78,21 @@ export default {
     costo: 'a-consumo', costoNota: 'Apertura del conto Business una tantum (circa 50 € in Italia), nessun canone mensile; ricevere euro con le coordinate locali è gratis, i cambi e i bonifici in uscita hanno la commissione mostrata da Wise. L\'API è gratuita.',
     serve: [
       { cosa: 'Token API personale in sola lettura', dove: 'Wise › Impostazioni › Integrazioni e strumenti › Token API › Aggiungi token (permessi: sola lettura)', link: 'https://wise.com/settings/api-tokens' },
-      { cosa: 'La chiave pubblica per la SCA, creata da Kubo', dove: 'Wise › Impostazioni › Integrazioni e strumenti › Token API › Gestisci le chiavi pubbliche › Aggiungi', link: 'https://wise.com/settings/public-keys' },
+      { cosa: 'La chiave pubblica per la SCA, creata da Lumi', dove: 'Wise › Impostazioni › Integrazioni e strumenti › Token API › Gestisci le chiavi pubbliche › Aggiungi', link: 'https://wise.com/settings/public-keys' },
     ],
-    passi: ['Nel conto Wise Business crea un token API in sola lettura.', 'Incollalo in Kubo e premi «Prova la connessione».', 'Premi «Chiavi per la SCA»: Kubo crea le chiavi e mostra la pubblica.', 'Carica la chiave pubblica su Wise (Gestisci le chiavi pubbliche): serve per leggere gli estratti.', 'In Tesoreria premi «Prepara», poi accendi: ogni 6 ore i movimenti in euro entrano in «Movimenti di banca» e si abbinano alle fatture in Tesoreria › Banca.', 'Se vuoi tenere tutti i movimenti, crea una sezione «Movimenti» (data, importo, descrizione, controparte, conto, fattura).'],
+    passi: ['Nel conto Wise Business crea un token API in sola lettura.', 'Incollalo in Lumi e premi «Prova la connessione».', 'Premi «Chiavi per la SCA»: Lumi crea le chiavi e mostra la pubblica.', 'Carica la chiave pubblica su Wise (Gestisci le chiavi pubbliche): serve per leggere gli estratti.', 'In Tesoreria premi «Prepara», poi accendi: ogni 6 ore i movimenti in euro entrano in «Movimenti di banca» e si abbinano alle fatture in Tesoreria › Banca.', 'Se vuoi tenere tutti i movimenti, crea una sezione «Movimenti» (data, importo, descrizione, controparte, conto, fattura).'],
     difficolta: 'media', zone: ['IT', 'UE', 'mondo'],
     fonti: ['https://docs.wise.com/api-docs/features/strong-customer-authentication-2fa/personal-token-sca', 'https://docs.wise.com/api-docs/api-reference/balance-statement', 'https://docs.wise.com/api-docs/api-reference/balance', 'https://docs.wise.com/api-docs/api-reference/profile'],
     prova: 'finto', parole: ['wise', 'transferwise', 'conto', 'banca', 'movimenti', 'estratto conto', 'riconciliazione', 'bank statement', 'reconciliation', 'multi-currency'],
   },
   testi: {
-    en: { descrizione: 'Transactions of the Wise euro balances enter Kubo and are matched with invoices to collect and to pay.', 'imp.token': 'Personal API token (read only)', 'imp.chiave_privata': 'Private key for SCA (Kubo creates it)', 'imp.profilo': 'Profile ID (empty: the business one)', 'imp.ambiente': 'Environment', 'az.chiavi': 'Keys for SCA', 'giro.movimenti': 'Transactions',
+    en: { descrizione: 'Transactions of the Wise euro balances enter Lumi and are matched with invoices to collect and to pay.', 'imp.token': 'Personal API token (read only)', 'imp.chiave_privata': 'Private key for SCA (Lumi creates it)', 'imp.profilo': 'Profile ID (empty: the business one)', 'imp.ambiente': 'Environment', 'az.chiavi': 'Keys for SCA', 'giro.movimenti': 'Transactions',
       'cat.costoNota': 'One-off fee to open the Business account (about €50 in Italy), no monthly fee; receiving euros with local details is free, conversions and outgoing transfers carry the fee Wise shows. The API is free.',
-      'cat.serve': [{ cosa: 'Read-only personal API token', dove: 'Wise › Settings › Integrations and tools › API tokens › Add token (read only)' }, { cosa: 'The public key for SCA, created by Kubo', dove: 'Wise › Settings › Integrations and tools › API tokens › Manage public keys › Add' }],
-      'cat.passi': ['Create a read-only API token in the Wise Business account.', 'Paste it into Kubo and press «Test connection».', 'Press «Keys for SCA»: Kubo creates the keys and shows the public one.', 'Upload the public key to Wise (Manage public keys): it is needed to read statements.', 'Press «Prepare» in Treasury, then switch on: every 6 hours the euro transactions land in «Bank transactions» and are matched to invoices in Treasury › Bank.', 'To keep every transaction, create a «Movimenti» section (date, amount, description, counterparty, account, invoice).'] },
-    es: { descrizione: 'Los movimientos de los saldos en euros de Wise entran en Kubo y se concilian con las facturas por cobrar y por pagar.', 'imp.token': 'Token API personal (solo lectura)', 'imp.chiave_privata': 'Clave privada para la SCA (la crea Kubo)', 'imp.profilo': 'ID del perfil (vacío: el de empresa)', 'imp.ambiente': 'Entorno', 'az.chiavi': 'Claves para la SCA', 'giro.movimenti': 'Movimientos' },
-    fr: { descrizione: 'Les opérations des soldes en euros de Wise entrent dans Kubo et sont rapprochées des factures à encaisser et à payer.', 'imp.token': 'Jeton API personnel (lecture seule)', 'imp.chiave_privata': 'Clé privée pour la SCA (créée par Kubo)', 'imp.profilo': 'ID du profil (vide : le profil entreprise)', 'imp.ambiente': 'Environnement', 'az.chiavi': 'Clés pour la SCA', 'giro.movimenti': 'Opérations' },
-    de: { descrizione: 'Die Umsätze der Wise-Euro-Guthaben kommen in Kubo und werden mit offenen Ausgangs- und Eingangsrechnungen abgeglichen.', 'imp.token': 'Persönliches API-Token (nur lesen)', 'imp.chiave_privata': 'Privater Schlüssel für die SCA (erstellt Kubo)', 'imp.profilo': 'Profil-ID (leer: das Geschäftsprofil)', 'imp.ambiente': 'Umgebung', 'az.chiavi': 'Schlüssel für die SCA', 'giro.movimenti': 'Umsätze' },
-    pt: { descrizione: 'Os movimentos dos saldos em euros da Wise entram no Kubo e são conciliados com as faturas a receber e a pagar.', 'imp.token': 'Token de API pessoal (só leitura)', 'imp.chiave_privata': 'Chave privada para a SCA (o Kubo cria)', 'imp.profilo': 'ID do perfil (vazio: o empresarial)', 'imp.ambiente': 'Ambiente', 'az.chiavi': 'Chaves para a SCA', 'giro.movimenti': 'Movimentos' },
+      'cat.serve': [{ cosa: 'Read-only personal API token', dove: 'Wise › Settings › Integrations and tools › API tokens › Add token (read only)' }, { cosa: 'The public key for SCA, created by Lumi', dove: 'Wise › Settings › Integrations and tools › API tokens › Manage public keys › Add' }],
+      'cat.passi': ['Create a read-only API token in the Wise Business account.', 'Paste it into Lumi and press «Test connection».', 'Press «Keys for SCA»: Lumi creates the keys and shows the public one.', 'Upload the public key to Wise (Manage public keys): it is needed to read statements.', 'Press «Prepare» in Treasury, then switch on: every 6 hours the euro transactions land in «Bank transactions» and are matched to invoices in Treasury › Bank.', 'To keep every transaction, create a «Movimenti» section (date, amount, description, counterparty, account, invoice).'] },
+    es: { descrizione: 'Los movimientos de los saldos en euros de Wise entran en Lumi y se concilian con las facturas por cobrar y por pagar.', 'imp.token': 'Token API personal (solo lectura)', 'imp.chiave_privata': 'Clave privada para la SCA (la crea Lumi)', 'imp.profilo': 'ID del perfil (vacío: el de empresa)', 'imp.ambiente': 'Entorno', 'az.chiavi': 'Claves para la SCA', 'giro.movimenti': 'Movimientos' },
+    fr: { descrizione: 'Les opérations des soldes en euros de Wise entrent dans Lumi et sont rapprochées des factures à encaisser et à payer.', 'imp.token': 'Jeton API personnel (lecture seule)', 'imp.chiave_privata': 'Clé privée pour la SCA (créée par Lumi)', 'imp.profilo': 'ID du profil (vide : le profil entreprise)', 'imp.ambiente': 'Environnement', 'az.chiavi': 'Clés pour la SCA', 'giro.movimenti': 'Opérations' },
+    de: { descrizione: 'Die Umsätze der Wise-Euro-Guthaben kommen in Lumi und werden mit offenen Ausgangs- und Eingangsrechnungen abgeglichen.', 'imp.token': 'Persönliches API-Token (nur lesen)', 'imp.chiave_privata': 'Privater Schlüssel für die SCA (erstellt Lumi)', 'imp.profilo': 'Profil-ID (leer: das Geschäftsprofil)', 'imp.ambiente': 'Umgebung', 'az.chiavi': 'Schlüssel für die SCA', 'giro.movimenti': 'Umsätze' },
+    pt: { descrizione: 'Os movimentos dos saldos em euros da Wise entram no Lumi e são conciliados com as faturas a receber e a pagar.', 'imp.token': 'Token de API pessoal (só leitura)', 'imp.chiave_privata': 'Chave privada para a SCA (o Lumi cria)', 'imp.profilo': 'ID do perfil (vazio: o empresarial)', 'imp.ambiente': 'Ambiente', 'az.chiavi': 'Chaves para a SCA', 'giro.movimenti': 'Movimentos' },
   },
 };

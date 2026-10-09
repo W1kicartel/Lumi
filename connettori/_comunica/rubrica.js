@@ -1,5 +1,5 @@
 // I clienti nella rubrica del telefono (CardDAV, Google Contatti): quando un cliente chiama, il telefono mostra il nome.
-// Una via sola, da Kubo alla rubrica: le schede che Kubo crea sono sue (UID «kubo-<id>») e un cambio in Kubo le riscrive.
+// Una via sola, da Lumi alla rubrica: le schede che Lumi crea sono sue (UID «lumi-<id>») e un cambio in Lumi le riscrive.
 import { e164, telefonoDi, nomeDi, modificateDopo, nomeCognome } from './telefono.js';
 
 // i dati di contatto di un cliente, o null se non ha né telefono né email
@@ -11,12 +11,12 @@ export function contattoDi(k, c) {
 }
 // vCard 3.0 (RFC 2426): va con iCloud, Nextcloud, Fastmail, Synology
 const v = s => String(s ?? '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
-export const vcard = x => ['BEGIN:VCARD', 'VERSION:3.0', 'PRODID:-//Kubo//Rubrica//IT', `UID:kubo-${x.id}`, `FN:${v(x.nome)}`, `N:${v(x.cg)};${v(x.n)};;;`,
+export const vcard = x => ['BEGIN:VCARD', 'VERSION:3.0', 'PRODID:-//Lumi//Rubrica//IT', `UID:lumi-${x.id}`, `FN:${v(x.nome)}`, `N:${v(x.cg)};${v(x.n)};;;`,
   ...(x.tel ? [`TEL;TYPE=CELL:${x.tel}`] : []), ...(x.email ? [`EMAIL;TYPE=INTERNET:${v(x.email)}`] : []), ...(x.azienda ? [`CATEGORIES:${v(x.azienda)}`] : []), 'END:VCARD', ''].join('\r\n');
 
 // le impostazioni e il giro comuni
 export const impRubrica = [
-  { id: 'etichetta', nome: 'Etichetta dei contatti (es. «Clienti»)', predefinito: 'Clienti Kubo', obbligatorio: false },
+  { id: 'etichetta', nome: 'Etichetta dei contatti (es. «Clienti»)', predefinito: 'Clienti Lumi', obbligatorio: false },
   { id: 'prefisso', nome: 'Prefisso del paese per i numeri senza prefisso', predefinito: '39', schema: /^\d{1,4}$/ },
 ];
 export function giroRubrica(metti) {

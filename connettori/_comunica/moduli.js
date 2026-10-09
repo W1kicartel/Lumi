@@ -12,7 +12,7 @@ export const REQ = {
 export const PERMESSI = { clienti: { leggi: true, crea: true, modifica: true }, appuntamenti: { leggi: true, crea: true, modifica: true }, servizi: { leggi: true } };
 const prova = f => { try { return f(); } catch { return null; } };
 
-// i titoli delle domande che dicono «nome», «cognome», «ora»: in tutte le lingue di Kubo
+// i titoli delle domande che dicono «nome», «cognome», «ora»: in tutte le lingue di Lumi
 const COGNOME = /\b(cognome|surname|last ?name|family ?name|apellidos?|nom de famille|nachname|sobrenome|apelido)\b/i;
 const NOME = /\b(nome|name|nombre|nom|vorname|prénom|prenom|first ?name|full ?name|nome e cognome|nome completo|chiami|llamas|appelez|heißen|heissen|chama)\b/i;
 const ORA = /\b(ora|orario|time|hour|hora|horario|heure|uhrzeit|zeit)\b/i;

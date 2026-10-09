@@ -2,7 +2,7 @@
 // scelti e l'azione «scrivi nel canale» per Lumi. L'indirizzo del webhook È la chiave: si custodisce come segreto.
 import { impostazioniAvvisi, testiAvvisi, uscitaAvvisi, segnaAcceso, lingua, impRiepilogo, testiRiepilogo, giroRiepilogo } from './notifiche.js';
 
-const PROVA = { it: 'Kubo è collegato a questo canale.', en: 'Kubo is connected to this channel.', es: 'Kubo está conectado a este canal.', fr: 'Kubo est connecté à ce canal.', de: 'Kubo ist mit diesem Kanal verbunden.', pt: 'O Kubo está ligado a este canal.' };
+const PROVA = { it: 'Lumi è collegato a questo canale.', en: 'Lumi is connected to this channel.', es: 'Lumi está conectado a este canal.', fr: 'Lumi est connecté à ce canal.', de: 'Lumi ist mit diesem Kanal verbunden.', pt: 'O Lumi está ligado a este canal.' };
 const AZ = {
   en: { 'imp.url': 'Webhook address', 'az.scrivi': 'Write in the channel' }, es: { 'imp.url': 'Dirección del webhook', 'az.scrivi': 'Escribir en el canal' },
   fr: { 'imp.url': 'Adresse du webhook', 'az.scrivi': 'Écrire dans le canal' }, de: { 'imp.url': 'Webhook-Adresse', 'az.scrivi': 'In den Kanal schreiben' }, pt: { 'imp.url': 'Endereço do webhook', 'az.scrivi': 'Escrever no canal' },

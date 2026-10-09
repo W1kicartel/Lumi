@@ -1,6 +1,6 @@
 // Stripe: i pagamenti segnano pagate le vendite (o le fatture), e Lumi crea i link di pagamento.
 // Webhook firmati (Stripe-Signature, HMAC sul corpo grezzo: https://docs.stripe.com/webhooks#verify-manually).
-// Il pagamento porta «metadata[vendita]» o «metadata[fattura]» con l'id della riga di Kubo; l'importo deve tornare.
+// Il pagamento porta «metadata[vendita]» o «metadata[fattura]» con l'id della riga di Lumi; l'importo deve tornare.
 // checkout.session.completed arriva anche con un bonifico SEPA non ancora incassato (payment_status «unpaid»): pagata solo con
 // «paid»; quei pagamenti arrivano dopo con checkout.session.async_payment_succeeded (https://docs.stripe.com/checkout/fulfillment)
 const eventoPagato = ev => ev.type === 'payment_intent.succeeded' || ev.type === 'checkout.session.async_payment_succeeded'
@@ -23,7 +23,7 @@ export default {
     async gestisci(ev, k) {
       if (!eventoPagato(ev)) return 'ignorato';
       const o = ev.data?.object || {}, md = o.metadata || {}, sem = md.fattura ? 'fatture' : 'vendite', id = md.fattura || md.vendita;
-      if (!id) return 'ignorato: senza riga di Kubo';
+      if (!id) return 'ignorato: senza riga di Lumi';
       if (o.currency && o.currency !== 'eur') return k.avvisa(`pagamento ${o.id} in ${o.currency}: controllalo a mano`);
       let r; try { r = k.dati.leggi(sem, id); } catch { return k.avvisa(`pagamento ${o.id} per una riga che non c'è (${id})`); }
       if (k.valore(r, sem, 'stato') === 'pagata') return 'ignorato: già pagata';   // il PaymentIntent e la Checkout Session dello stesso pagamento

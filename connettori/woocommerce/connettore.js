@@ -1,7 +1,7 @@
-// WooCommerce: articoli e giacenze nei due sensi, ordini del sito → vendite di Kubo.
+// WooCommerce: articoli e giacenze nei due sensi, ordini del sito → vendite di Lumi.
 // API REST wc/v3 con le chiavi consumer (Basic su HTTPS), pagine con X-WP-TotalPages; webhook firmati con
 // X-WC-Webhook-Signature = base64(HMAC-SHA256 del corpo) (https://woocommerce.github.io/woocommerce-rest-api-docs/#webhooks).
-// Il sito comanda nome e prezzo, Kubo comanda la giacenza (la cassa scala il magazzino): la giacenza va al sito in coda,
+// Il sito comanda nome e prezzo, Lumi comanda la giacenza (la cassa scala il magazzino): la giacenza va al sito in coda,
 // e solo l'ultima conta. Quello che arriva dal sito non torna indietro (anti-eco del nucleo).
 const api = (k, p) => `${(k.base || k.imp.url || '').replace(/\/$/, '')}/wp-json/wc/v3${p}`;
 const chiavi = k => ({ basic: [k.segreti.ck, k.segreti.cs] });
@@ -19,8 +19,8 @@ export default {
   permessi: { articoli: { leggi: true, crea: true, modifica: true }, vendite: { leggi: true, crea: true } },
   prova: async k => { const r = await k.http.get(api(k, '/system_status'), chiavi(k)); return { ok: r.ok, messaggio: r.ok ? null : r.json?.message || `HTTP ${r.stato}` }; },
   mappe: { articoli: { id: 'id', chiave: ['codice', 'sku'], campi: [
-    { kubo: 'nome', remoto: 'name' }, { kubo: 'prezzo', remoto: 'regular_price', da: Number },
-    { kubo: 'giacenza', remoto: 'stock_quantity', comanda: 'kubo' },
+    { locale: 'nome', remoto: 'name' }, { locale: 'prezzo', remoto: 'regular_price', da: Number },
+    { locale: 'giacenza', remoto: 'stock_quantity', comanda: 'locale' },
   ] } },
   pianificati: { prodotti: { nome: 'Prodotti dal sito', ogni: '15m', async giro(k) {
     const tot = { creati: 0, aggiornati: 0, uguali: 0 };

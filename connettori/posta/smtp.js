@@ -15,7 +15,7 @@ const pulito = s => String(s ?? '').replace(/[\r\n]+/g, ' ').trim();
 const riga76 = s => s.replace(/.{1,76}/g, '$&\r\n');
 export function messaggio({ da, a, oggetto, testo, allegati = [] }) {
   const conf = randomBytes(12).toString('hex'), parti = [`From: ${pulito(da)}`, `To: ${[].concat(a).map(pulito).join(', ')}`, `Subject: ${intesta(oggetto)}`, `Date: ${new Date().toUTCString()}`,
-    `Message-ID: <${randomBytes(12).toString('hex')}@kubo>`, 'MIME-Version: 1.0', `Content-Type: multipart/mixed; boundary="${conf}"`, '',
+    `Message-ID: <${randomBytes(12).toString('hex')}@lumi>`, 'MIME-Version: 1.0', `Content-Type: multipart/mixed; boundary="${conf}"`, '',
     `--${conf}`, 'Content-Type: text/plain; charset=utf-8', 'Content-Transfer-Encoding: base64', '', riga76(b64(testo))];
   for (const x of allegati) parti.push(`--${conf}`, `Content-Type: ${x.tipo || 'application/octet-stream'}; name="${x.nome}"`, 'Content-Transfer-Encoding: base64',
     `Content-Disposition: attachment; filename="${x.nome}"`, '', riga76(Buffer.from(x.contenuto).toString('base64')));
@@ -34,12 +34,12 @@ export async function invia({ host, porta = 587, sicurezza = 'starttls', utente,
   const cmd = async (c, atteso) => { if (c != null) s.write(c + '\r\n'); const r = await risposta(); if (!atteso.includes(r.codice)) throw new Error(`SMTP ${r.codice}: ${r.testo.trim().slice(0, 200)}`); return r; };
   leggi();
   try {
-    await cmd(null, [220]); let e = await cmd('EHLO kubo', [250]);
+    await cmd(null, [220]); let e = await cmd('EHLO lumi', [250]);
     if (sicurezza === 'starttls') {
       if (!/STARTTLS/i.test(e.testo)) throw new Error('Il server non offre STARTTLS');
       await cmd('STARTTLS', [220]); s.removeAllListeners('data');
       s = tls({ socket: s, servername: host }); leggi(); await new Promise((ok, ko) => { s.once('secureConnect', ok); s.once('error', ko); });
-      e = await cmd('EHLO kubo', [250]);
+      e = await cmd('EHLO lumi', [250]);
     }
     if (utente) await cmd(`AUTH PLAIN ${b64(`\0${utente}\0${password}`)}`, [235]);
     if (posta) {

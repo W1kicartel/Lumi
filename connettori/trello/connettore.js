@@ -1,5 +1,5 @@
 // Trello: Lumi crea una scheda nella lista scelta, e a scelta ogni riga nuova di attività, interventi (l'officina)
-// o commesse diventa una scheda, con il link alla riga di Kubo se c'è l'indirizzo pubblico.
+// o commesse diventa una scheda, con il link alla riga di Lumi se c'è l'indirizzo pubblico.
 // Chiave API + token: Trello li accetta nella query (key=…&token=…) o nell'intestazione «Authorization: OAuth
 // oauth_consumer_key=…, oauth_token=…». Qui l'intestazione: i segreti non finiscono negli indirizzi né nei registri.
 import { permessiCompiti, impostazioniCompiti, testiCompiti, unisciTesti, uscitaCompiti, dataDi } from '../_comunica/compiti.js';
@@ -48,7 +48,7 @@ export default {
       { cosa: 'L\'id della lista', dove: 'Apri una scheda della lista, aggiungi «.json» all\'indirizzo e cerca «idList»', link: 'https://developer.atlassian.com/cloud/trello/guides/rest-api/api-introduction/' },
     ],
     passi: [
-      'Vai su trello.com/power-ups/admin e crea una Power-Up per il tuo Workspace (il nome è libero, es. Kubo).',
+      'Vai su trello.com/power-ups/admin e crea una Power-Up per il tuo Workspace (il nome è libero, es. Lumi).',
       'Nella scheda «API key» genera la chiave, poi premi «Token» e consenti l\'accesso: copia chiave e token.',
       'Trova l\'id della lista: apri una sua scheda, aggiungi «.json» all\'indirizzo e copia il valore di «idList».',
       'Incolla chiave, token e id della lista e premi «Prova la connessione»: vedi il nome della lista.',
@@ -62,7 +62,7 @@ export default {
     en: { nome: 'Trello', descrizione: 'Lumi creates Trello cards; new activities, jobs or orders become cards.', 'imp.chiave': 'API key', 'imp.token': 'Token', 'imp.lista': 'Id of the list where cards are created', 'az.crea_compito': 'Create a card',
       'cat.costoNota': 'Free plan (up to 10 collaborators per Workspace), API included. Standard $5 per user per month billed annually; Premium $10.',
       'cat.serve': [{ cosa: 'A Power-Up (needed to get the API key) and its API key', dove: 'trello.com/power-ups/admin → New → fill in and create → API key → Generate a new API key' }, { cosa: 'Your account token', dove: 'On the API key page, «Token» link next to the key → Allow' }, { cosa: 'The list id', dove: 'Open a card of the list, add «.json» to the address and look for «idList»' }],
-      'cat.passi': ['Go to trello.com/power-ups/admin and create a Power-Up for your Workspace (any name, e.g. Kubo).', 'In the «API key» tab generate the key, then press «Token» and allow access: copy key and token.', 'Find the list id: open one of its cards, add «.json» to the address and copy the «idList» value.', 'Paste key, token and list id and press «Test connection»: you see the list name.', 'Turn on the sections to turn into cards (e.g. workshop jobs).'] },
+      'cat.passi': ['Go to trello.com/power-ups/admin and create a Power-Up for your Workspace (any name, e.g. Lumi).', 'In the «API key» tab generate the key, then press «Token» and allow access: copy key and token.', 'Find the list id: open one of its cards, add «.json» to the address and copy the «idList» value.', 'Paste key, token and list id and press «Test connection»: you see the list name.', 'Turn on the sections to turn into cards (e.g. workshop jobs).'] },
     es: { nome: 'Trello', descrizione: 'Lumi crea tarjetas en Trello; las actividades, intervenciones o encargos nuevos se convierten en tarjetas.', 'imp.chiave': 'Clave API', 'imp.token': 'Token', 'imp.lista': 'Id de la lista donde nacen las tarjetas', 'az.crea_compito': 'Crear una tarjeta' },
     fr: { nome: 'Trello', descrizione: 'Lumi crée des cartes Trello ; les nouvelles activités, interventions ou commandes deviennent des cartes.', 'imp.chiave': 'Clé API', 'imp.token': 'Jeton', 'imp.lista': 'Id de la liste où naissent les cartes', 'az.crea_compito': 'Créer une carte' },
     de: { nome: 'Trello', descrizione: 'Lumi legt Trello-Karten an; neue Aufgaben, Einsätze oder Aufträge werden zu Karten.', 'imp.chiave': 'API-Schlüssel', 'imp.token': 'Token', 'imp.lista': 'ID der Liste für neue Karten', 'az.crea_compito': 'Karte anlegen' },

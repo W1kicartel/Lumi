@@ -2,8 +2,8 @@
 // sicura di Axerve. REST con «Authorization: apikey <chiave>»: POST /api/v1/payment/create { shopLogin, amount '60.00',
 // currency, shopTransactionID unico per tentativo, responseURLs } → payload { paymentToken, paymentID, userRedirect.href };
 // il cliente paga su pagam.aspx?a=<shopLogin>&b=<paymentToken>. L'esito non si crede mai dai parametri: arriva (GET o POST)
-// sull'URL di notifica o con il ritorno del cliente, e Kubo lo rilegge con POST /api/v1/payment/detail { shopLogin,
-// shopTransactionID } → transactionResult «OK» = pagato, «KO» = rifiutato. Si guarda solo un tentativo creato da Kubo
+// sull'URL di notifica o con il ritorno del cliente, e Lumi lo rilegge con POST /api/v1/payment/detail { shopLogin,
+// shopTransactionID } → transactionResult «OK» = pagato, «KO» = rifiutato. Si guarda solo un tentativo creato da Lumi
 // (stato «aperti»); senza indirizzo pubblico c'è il giro «controlla» ogni 10 minuti (app sul PC).
 // Fonti: https://api.axerve.com/ (oggi https://api.paymentorchestra.fabrick.com/): base URL, apikey, payment/create, payment/detail, responseURLs
 import { randomBytes } from 'node:crypto';
@@ -30,7 +30,7 @@ async function controlla(k, x) {
   if (esito === 'KO') { togli(k, x.st); return 'ignorato: KO'; }
   return `ignorato: ${esito.toLowerCase() || 'in attesa'}`;
 }
-// il tentativo dietro una notifica: il codice «t» messo da Kubo negli URL, o il paymentToken / paymentID / shopTransactionID
+// il tentativo dietro una notifica: il codice «t» messo da Lumi negli URL, o il paymentToken / paymentID / shopTransactionID
 const trova = (k, p) => {
   const v = n => String(p[n] ?? '');
   return aperti(k).find(x => (v('t') && x.st === v('t')) || (v('shopTransactionID') && x.st === v('shopTransactionID')) || (v('b') && x.token === v('b')) || (v('paymentToken') && x.token === v('paymentToken')) || (v('paymentID') && x.pid === v('paymentID')));
@@ -45,17 +45,17 @@ async function notifica(k, p, da) {
 
 export default {
   id: 'axerve', nome: 'Axerve', versione: 1, icona: 'cassa',
-  descrizione: 'Link di pagamento sulla pagina sicura Axerve (ex Banca Sella GestPay): Kubo rilegge l\'esito dall\'API e segna pagate vendite e fatture.',
+  descrizione: 'Link di pagamento sulla pagina sicura Axerve (ex Banca Sella GestPay): Lumi rilegge l\'esito dall\'API e segna pagate vendite e fatture.',
   impostazioni: [
     { id: 'shop', nome: 'Shop login (es. GESPAY12345)', schema: /^[\w-]{3,40}$/ },
     { id: 'chiave', nome: 'API key Axerve', segreto: true },
     { id: 'ambiente', nome: 'Ambiente', tipo: 'scelta', opzioni: ['prova', 'produzione'], predefinito: 'prova' },
-    { id: 'indirizzo', nome: 'Indirizzo pubblico di Kubo (per l\'esito immediato, facoltativo)', schema: /^https:\/\/[^\s]+$/, obbligatorio: false },
+    { id: 'indirizzo', nome: 'Indirizzo pubblico di Lumi (per l\'esito immediato, facoltativo)', schema: /^https:\/\/[^\s]+$/, obbligatorio: false },
   ],
   richiede: RICHIEDE_INCASSI,
   permessi: PERMESSI_INCASSI,
   // il dettaglio di una transazione inesistente: 401/403 se la chiave è sbagliata, un errore «non trovata» se va bene
-  prova: async k => { const r = await api(k, 'detail', { shopLogin: k.imp.shop, shopTransactionID: 'KUBOPROVA' }); return { ok: r.stato !== 401 && r.stato !== 403 && r.stato < 500, messaggio: r.stato === 401 || r.stato === 403 ? 'API key rifiutata' : null }; },
+  prova: async k => { const r = await api(k, 'detail', { shopLogin: k.imp.shop, shopTransactionID: 'LUMIPROVA' }); return { ok: r.stato !== 401 && r.stato !== 403 && r.stato < 500, messaggio: r.stato === 401 || r.stato === 403 ? 'API key rifiutata' : null }; },
   azioni: azioniLink('Axerve', async (k, { importo, rif }) => {
     if (!k.imp.shop || !k.segreti.chiave) throw new Error('Mancano shop login e API key');
     const st = `K${Date.now().toString(36)}${randomBytes(4).toString('hex')}`.toUpperCase();
@@ -94,24 +94,24 @@ export default {
   },
   catalogo: {
     categoria: 'pagamenti', sito: 'https://www.axerve.com/',
-    costo: 'contratto', costoNota: 'Le commissioni dipendono dal contratto con Axerve o con Banca Sella (di solito una percentuale per transazione, a volte con un canone mensile; le offerte e-commerce sono sul sito Axerve). Kubo non aggiunge costi.',
+    costo: 'contratto', costoNota: 'Le commissioni dipendono dal contratto con Axerve o con Banca Sella (di solito una percentuale per transazione, a volte con un canone mensile; le offerte e-commerce sono sul sito Axerve). Lumi non aggiunge costi.',
     serve: [
       { cosa: 'Shop login e API key (in prova: quelli dell\'ambiente di test sandbox)', dove: 'Back office Axerve › Configurazione › Ambiente › Sicurezza › API key', link: 'https://www.axerve.com/' },
-      { cosa: 'Un indirizzo pubblico https di Kubo (facoltativo)', dove: 'Il tuo dominio o un tunnel verso il computer di Kubo', link: 'https://api.axerve.com/' },
+      { cosa: 'Un indirizzo pubblico https di Lumi (facoltativo)', dove: 'Il tuo dominio o un tunnel verso il computer di Lumi', link: 'https://api.axerve.com/' },
     ],
-    passi: ['Chiedi ad Axerve (o a Banca Sella) l\'attivazione del pagamento online, oppure apri un account di test sandbox.', 'Nel back office genera l\'API key e copia lo shop login (prima quelli di test).', 'In Kubo incolla shop login e API key e scegli l\'ambiente.', 'Se Kubo ha un indirizzo pubblico https, scrivilo (se hai impostato l\'indirizzo pubblico di Kubo nella Libreria, puoi lasciarlo vuoto): Kubo lo manda ad Axerve per ogni link e vede l\'esito subito; altrimenti controlla ogni 10 minuti.', 'Premi «Prova la connessione» e accendi.', 'Dalla vendita o dalla fattura crea il link Axerve e mandalo al cliente.'],
+    passi: ['Chiedi ad Axerve (o a Banca Sella) l\'attivazione del pagamento online, oppure apri un account di test sandbox.', 'Nel back office genera l\'API key e copia lo shop login (prima quelli di test).', 'In Lumi incolla shop login e API key e scegli l\'ambiente.', 'Se Lumi ha un indirizzo pubblico https, scrivilo (se hai impostato l\'indirizzo pubblico di Lumi nella Libreria, puoi lasciarlo vuoto): Lumi lo manda ad Axerve per ogni link e vede l\'esito subito; altrimenti controlla ogni 10 minuti.', 'Premi «Prova la connessione» e accendi.', 'Dalla vendita o dalla fattura crea il link Axerve e mandalo al cliente.'],
     difficolta: 'media', zone: ['IT'],
     fonti: ['https://api.axerve.com/', 'https://api.paymentorchestra.fabrick.com/', 'https://docs.axerve.com/'],
     prova: 'finto', parole: ['axerve', 'gestpay', 'banca sella', 'sella', 'fabrick', 'pos virtuale', 'carta di credito', 'pay by link', 'link di pagamento', 'virtual pos'],
   },
   testi: {
-    en: { descrizione: 'Payment links on the secure Axerve page (formerly Banca Sella GestPay): Kubo reads the outcome back from the API and marks sales and invoices paid.', 'imp.shop': 'Shop login (e.g. GESPAY12345)', 'imp.chiave': 'Axerve API key', 'imp.ambiente': 'Environment', 'imp.indirizzo': 'Public Kubo address (for the instant outcome, optional)', ...testiLink('Axerve link', 'sale', 'invoice'), 'giro.controlla': 'Check Axerve payments',
-      'cat.costoNota': 'Fees depend on your contract with Axerve or Banca Sella (usually a percentage per transaction, sometimes with a monthly fee; the e-commerce offers are on the Axerve website). Kubo adds no costs.',
-      'cat.serve': [{ cosa: 'Shop login and API key (for tests: the sandbox ones)', dove: 'Axerve back office › Configuration › Environment › Security › API key' }, { cosa: 'A public https address for Kubo (optional)', dove: 'Your domain or a tunnel to the Kubo computer' }],
-      'cat.passi': ['Ask Axerve (or Banca Sella) to enable online payments, or open a sandbox test account.', 'In the back office generate the API key and copy the shop login (test ones first).', 'Paste shop login and API key into Kubo and choose the environment.', 'If Kubo has a public https address, enter it (if you set Kubo\'s public address in the Library, you can leave it empty): Kubo sends it to Axerve with each link and sees the outcome at once; otherwise it checks every 10 minutes.', 'Press «Test connection» and switch on.', 'From a sale or an invoice create the Axerve link and send it to the customer.'] },
-    es: { descrizione: 'Enlaces de pago en la página segura de Axerve (antes Banca Sella GestPay): Kubo relee el resultado en la API y marca pagadas ventas y facturas.', 'imp.shop': 'Shop login (p. ej. GESPAY12345)', 'imp.chiave': 'Clave API de Axerve', 'imp.ambiente': 'Entorno', 'imp.indirizzo': 'Dirección pública de Kubo (para el resultado inmediato, opcional)', ...testiLink('Enlace Axerve', 'venta', 'factura'), 'giro.controlla': 'Comprobar pagos Axerve' },
-    fr: { descrizione: 'Liens de paiement sur la page sécurisée Axerve (ex Banca Sella GestPay) : Kubo relit le résultat via l\'API et marque ventes et factures payées.', 'imp.shop': 'Shop login (ex. GESPAY12345)', 'imp.chiave': 'Clé API Axerve', 'imp.ambiente': 'Environnement', 'imp.indirizzo': 'Adresse publique de Kubo (pour le résultat immédiat, facultatif)', ...testiLink('Lien Axerve', 'vente', 'facture'), 'giro.controlla': 'Vérifier les paiements Axerve' },
-    de: { descrizione: 'Zahlungslinks auf der sicheren Axerve-Seite (früher Banca Sella GestPay): Kubo liest das Ergebnis über die API nach und markiert Verkäufe und Rechnungen als bezahlt.', 'imp.shop': 'Shop-Login (z. B. GESPAY12345)', 'imp.chiave': 'Axerve-API-Schlüssel', 'imp.ambiente': 'Umgebung', 'imp.indirizzo': 'Öffentliche Kubo-Adresse (für das sofortige Ergebnis, optional)', ...testiLink('Axerve-Link', 'Verkauf', 'Rechnung'), 'giro.controlla': 'Axerve-Zahlungen prüfen' },
-    pt: { descrizione: 'Links de pagamento na página segura Axerve (antiga Banca Sella GestPay): o Kubo relê o resultado na API e marca vendas e faturas como pagas.', 'imp.shop': 'Shop login (ex.: GESPAY12345)', 'imp.chiave': 'Chave API da Axerve', 'imp.ambiente': 'Ambiente', 'imp.indirizzo': 'Endereço público do Kubo (para o resultado imediato, opcional)', ...testiLink('Link Axerve', 'venda', 'fatura'), 'giro.controlla': 'Verificar pagamentos Axerve' },
+    en: { descrizione: 'Payment links on the secure Axerve page (formerly Banca Sella GestPay): Lumi reads the outcome back from the API and marks sales and invoices paid.', 'imp.shop': 'Shop login (e.g. GESPAY12345)', 'imp.chiave': 'Axerve API key', 'imp.ambiente': 'Environment', 'imp.indirizzo': 'Public Lumi address (for the instant outcome, optional)', ...testiLink('Axerve link', 'sale', 'invoice'), 'giro.controlla': 'Check Axerve payments',
+      'cat.costoNota': 'Fees depend on your contract with Axerve or Banca Sella (usually a percentage per transaction, sometimes with a monthly fee; the e-commerce offers are on the Axerve website). Lumi adds no costs.',
+      'cat.serve': [{ cosa: 'Shop login and API key (for tests: the sandbox ones)', dove: 'Axerve back office › Configuration › Environment › Security › API key' }, { cosa: 'A public https address for Lumi (optional)', dove: 'Your domain or a tunnel to the Lumi computer' }],
+      'cat.passi': ['Ask Axerve (or Banca Sella) to enable online payments, or open a sandbox test account.', 'In the back office generate the API key and copy the shop login (test ones first).', 'Paste shop login and API key into Lumi and choose the environment.', 'If Lumi has a public https address, enter it (if you set Lumi\'s public address in the Library, you can leave it empty): Lumi sends it to Axerve with each link and sees the outcome at once; otherwise it checks every 10 minutes.', 'Press «Test connection» and switch on.', 'From a sale or an invoice create the Axerve link and send it to the customer.'] },
+    es: { descrizione: 'Enlaces de pago en la página segura de Axerve (antes Banca Sella GestPay): Lumi relee el resultado en la API y marca pagadas ventas y facturas.', 'imp.shop': 'Shop login (p. ej. GESPAY12345)', 'imp.chiave': 'Clave API de Axerve', 'imp.ambiente': 'Entorno', 'imp.indirizzo': 'Dirección pública de Lumi (para el resultado inmediato, opcional)', ...testiLink('Enlace Axerve', 'venta', 'factura'), 'giro.controlla': 'Comprobar pagos Axerve' },
+    fr: { descrizione: 'Liens de paiement sur la page sécurisée Axerve (ex Banca Sella GestPay) : Lumi relit le résultat via l\'API et marque ventes et factures payées.', 'imp.shop': 'Shop login (ex. GESPAY12345)', 'imp.chiave': 'Clé API Axerve', 'imp.ambiente': 'Environnement', 'imp.indirizzo': 'Adresse publique de Lumi (pour le résultat immédiat, facultatif)', ...testiLink('Lien Axerve', 'vente', 'facture'), 'giro.controlla': 'Vérifier les paiements Axerve' },
+    de: { descrizione: 'Zahlungslinks auf der sicheren Axerve-Seite (früher Banca Sella GestPay): Lumi liest das Ergebnis über die API nach und markiert Verkäufe und Rechnungen als bezahlt.', 'imp.shop': 'Shop-Login (z. B. GESPAY12345)', 'imp.chiave': 'Axerve-API-Schlüssel', 'imp.ambiente': 'Umgebung', 'imp.indirizzo': 'Öffentliche Lumi-Adresse (für das sofortige Ergebnis, optional)', ...testiLink('Axerve-Link', 'Verkauf', 'Rechnung'), 'giro.controlla': 'Axerve-Zahlungen prüfen' },
+    pt: { descrizione: 'Links de pagamento na página segura Axerve (antiga Banca Sella GestPay): o Lumi relê o resultado na API e marca vendas e faturas como pagas.', 'imp.shop': 'Shop login (ex.: GESPAY12345)', 'imp.chiave': 'Chave API da Axerve', 'imp.ambiente': 'Ambiente', 'imp.indirizzo': 'Endereço público do Lumi (para o resultado imediato, opcional)', ...testiLink('Link Axerve', 'venda', 'fatura'), 'giro.controlla': 'Verificar pagamentos Axerve' },
   },
 };

@@ -7,7 +7,7 @@ import { randomUUID } from 'node:crypto';
 import { importaOrdine, RICHIEDE_NEGOZI, PERMESSI_NEGOZI } from '../_negozi/comune.js';
 
 const api = (k, p) => `${(k.base || 'https://api.squarespace.com').replace(/\/$/, '')}/1.0${p}`;
-const tok = (k, extra = {}) => ({ bearer: k.segreti.chiave, intestazioni: { 'User-Agent': 'Kubo-connettori/1', ...extra } });
+const tok = (k, extra = {}) => ({ bearer: k.segreti.chiave, intestazioni: { 'User-Agent': 'Lumi-connettori/1', ...extra } });
 const errore = r => new Error(`Squarespace ha risposto ${r.stato}${r.json?.message ? ': ' + r.json.message : ''}`);
 async function* pagine(k, p, campo) {
   for (let url = p, n = 0; url && n < 500; n++) {
@@ -25,7 +25,7 @@ export default {
   permessi: PERMESSI_NEGOZI,
   prova: async k => { const r = await k.http.get(api(k, '/commerce/inventory'), tok(k)); return { ok: r.ok, messaggio: r.ok ? null : r.stato === 401 ? 'Chiave non valida' : r.stato === 403 ? 'La chiave non ha i permessi di Commerce, o il piano non li include' : `HTTP ${r.stato}` }; },
   mappe: { articoli: { id: 'id', chiave: ['codice', 'sku'], campi: [
-    { kubo: 'nome', remoto: 'nome' }, { kubo: 'prezzo', remoto: 'prezzo' }, { kubo: 'giacenza', remoto: 'quantita', comanda: 'kubo' },
+    { locale: 'nome', remoto: 'nome' }, { locale: 'prezzo', remoto: 'prezzo' }, { locale: 'giacenza', remoto: 'quantita', comanda: 'locale' },
   ] } },
   pianificati: {
     prodotti: { nome: 'Prodotti dal negozio', ogni: '15m', async giro(k) {
@@ -66,10 +66,10 @@ export default {
     ],
     passi: [
       'Nel pannello del sito apri Impostazioni › Sviluppatore › Chiavi API e premi «Genera chiave».',
-      'Dai un nome (Kubo) e spunta Orders, Products e Inventory in lettura e scrittura.',
-      'Copia la chiave (si vede una volta sola) e incollala in Kubo.',
+      'Dai un nome (Lumi) e spunta Orders, Products e Inventory in lettura e scrittura.',
+      'Copia la chiave (si vede una volta sola) e incollala in Lumi.',
       'Premi «Prova la connessione», accendi e lancia «Prodotti dal negozio»: ogni variante con SKU diventa un articolo.',
-      'Gli ordini arrivano ogni 15 minuti; la giacenza cambiata in Kubo va al sito.',
+      'Gli ordini arrivano ogni 15 minuti; la giacenza cambiata in Lumi va al sito.',
     ],
     difficolta: 'facile', zone: ['mondo'],
     fonti: ['https://developers.squarespace.com/commerce-apis/overview', 'https://developers.squarespace.com/commerce-apis/retrieve-all-orders', 'https://developers.squarespace.com/commerce-apis/adjust-stock-quantities', 'https://developers.squarespace.com/commerce-apis/retrieve-all-products'],
@@ -79,7 +79,7 @@ export default {
     en: { nome: 'Squarespace Commerce', descrizione: 'The Squarespace store: shared variants and stock, orders become sales.', 'imp.chiave': 'API key (Commerce)', 'aiuto.chiave': 'Settings › Developer › API keys', 'giro.prodotti': 'Products from the store', 'giro.ordini': 'Orders from the store',
       'cat.costoNota': 'The Commerce APIs (orders, products, inventory) are reserved to plans with advanced commerce (Commerce Advanced, «Advanced» since 2024): about €65–99 a month billed annually.',
       'cat.serve': [{ cosa: 'API key with Orders, Products and Inventory (read and write)', dove: 'Site panel › Settings › Developer › API keys › Generate key' }],
-      'cat.passi': ['In the site panel open Settings › Developer › API keys and press «Generate key».', 'Name it (Kubo) and tick Orders, Products and Inventory, read and write.', 'Copy the key (shown only once) and paste it into Kubo.', 'Press «Test connection», switch on and run «Products from the store»: every variant with a SKU becomes an item.', 'Orders arrive every 15 minutes; stock changed in Kubo goes to the site.'] },
+      'cat.passi': ['In the site panel open Settings › Developer › API keys and press «Generate key».', 'Name it (Lumi) and tick Orders, Products and Inventory, read and write.', 'Copy the key (shown only once) and paste it into Lumi.', 'Press «Test connection», switch on and run «Products from the store»: every variant with a SKU becomes an item.', 'Orders arrive every 15 minutes; stock changed in Lumi goes to the site.'] },
     es: { nome: 'Squarespace Commerce', descrizione: 'La tienda Squarespace: variantes y existencias en común, los pedidos pasan a ventas.', 'imp.chiave': 'Clave API (Commerce)', 'aiuto.chiave': 'Configuración › Desarrollador › Claves API', 'giro.prodotti': 'Productos de la tienda', 'giro.ordini': 'Pedidos de la tienda' },
     fr: { nome: 'Squarespace Commerce', descrizione: 'La boutique Squarespace : variantes et stock partagés, les commandes deviennent des ventes.', 'imp.chiave': 'Clé API (Commerce)', 'aiuto.chiave': 'Paramètres › Développeur › Clés API', 'giro.prodotti': 'Produits de la boutique', 'giro.ordini': 'Commandes de la boutique' },
     de: { nome: 'Squarespace Commerce', descrizione: 'Der Squarespace-Shop: gemeinsame Varianten und Bestand, Bestellungen werden Verkäufe.', 'imp.chiave': 'API-Schlüssel (Commerce)', 'aiuto.chiave': 'Einstellungen › Entwickler › API-Schlüssel', 'giro.prodotti': 'Produkte aus dem Shop', 'giro.ordini': 'Bestellungen aus dem Shop' },

@@ -1,4 +1,4 @@
-// Qonto: i movimenti del conto Qonto entrano in Kubo e si abbinano alle fatture (Business API v2, https://docs.qonto.com).
+// Qonto: i movimenti del conto Qonto entrano in Lumi e si abbinano alle fatture (Business API v2, https://docs.qonto.com).
 // Accesso con la chiave API dell'organizzazione: «Authorization: <login>:<chiave segreta>», senza Base64 e senza «Bearer»
 // (https://docs.qonto.com/get-started/business-api/authentication/api-key). GET /v2/organization dà i conti (bank_accounts),
 // GET /v2/transactions?bank_account_id=…&settled_at_from=…&status[]=completed&page=N le operazioni contabilizzate, a pagine (meta.next_page).
@@ -20,7 +20,7 @@ const movimento = (k, t, conto) => ({
 
 export default {
   id: 'qonto', nome: 'Qonto', versione: 1, icona: 'cassa', base: 'https://thirdparty.qonto.com',
-  descrizione: 'I movimenti del conto Qonto entrano in Kubo e si abbinano alle fatture da incassare e da pagare.',
+  descrizione: 'I movimenti del conto Qonto entrano in Lumi e si abbinano alle fatture da incassare e da pagare.',
   impostazioni: [
     { id: 'login', nome: 'Login dell\'organizzazione (es. bottega-1234)', schema: /^[\w.-]{2,80}$/ },
     { id: 'chiave', nome: 'Chiave segreta API', segreto: true },
@@ -64,7 +64,7 @@ export default {
       'Accedi a app.qonto.com con un utente titolare o amministratore.',
       'Apri Impostazioni › Integrazioni e partner › Chiave API e premi «Genera».',
       'Copia il login (es. bottega-1234) e la chiave segreta.',
-      'In Kubo incolla login e chiave e accendi il connettore: i movimenti arrivano ogni due ore, o subito con «Sincronizza ora».',
+      'In Lumi incolla login e chiave e accendi il connettore: i movimenti arrivano ogni due ore, o subito con «Sincronizza ora».',
       'Prima di accendere, in Tesoreria premi «Prepara»: i movimenti entrano in «Movimenti di banca» e si abbinano alle fatture in Tesoreria › Banca (anche da Lumi).',
     ],
     difficolta: 'facile',
@@ -74,7 +74,7 @@ export default {
     parole: ['qonto', 'banca', 'conto aziendale', 'movimenti', 'riconciliazione', 'bonifici', 'bank', 'business account', 'transactions', 'reconciliation'],
   },
   testi: {
-    en: { descrizione: 'Your Qonto account transactions flow into Kubo and get matched to invoices to collect and to pay.',
+    en: { descrizione: 'Your Qonto account transactions flow into Lumi and get matched to invoices to collect and to pay.',
       'imp.login': 'Organization login (e.g. bottega-1234)', 'imp.chiave': 'API secret key', 'az.conti': 'Qonto accounts', 'giro.movimenti': 'Transactions',
       'cat.costoNota': 'The API comes with the Qonto account at no extra cost; the account has a monthly fee depending on the plan (current prices at qonto.com/it/pricing).',
       'cat.serve': [{ cosa: 'The organization login and the API secret key', dove: 'Qonto app › Settings › Integrations & partnerships › API key' }],
@@ -82,16 +82,16 @@ export default {
         'Sign in to app.qonto.com as an owner or admin.',
         'Open Settings › Integrations & partnerships › API key and press «Generate».',
         'Copy the login (e.g. bottega-1234) and the secret key.',
-        'In Kubo paste login and key and switch the connector on: transactions arrive every two hours, or right away with «Sync now».',
+        'In Lumi paste login and key and switch the connector on: transactions arrive every two hours, or right away with «Sync now».',
         'Before switching it on, press «Prepare» in Treasury: transactions land in «Bank transactions» and are matched to invoices in Treasury › Bank (Lumi can do it too).',
       ] },
-    es: { descrizione: 'Los movimientos de tu cuenta Qonto entran en Kubo y se concilian con las facturas por cobrar y por pagar.',
+    es: { descrizione: 'Los movimientos de tu cuenta Qonto entran en Lumi y se concilian con las facturas por cobrar y por pagar.',
       'imp.login': 'Login de la organización (p. ej. bottega-1234)', 'imp.chiave': 'Clave secreta de la API', 'az.conti': 'Cuentas Qonto', 'giro.movimenti': 'Movimientos' },
-    fr: { descrizione: 'Les opérations de ton compte Qonto arrivent dans Kubo et sont rapprochées des factures à encaisser et à payer.',
+    fr: { descrizione: 'Les opérations de ton compte Qonto arrivent dans Lumi et sont rapprochées des factures à encaisser et à payer.',
       'imp.login': 'Identifiant de l\'organisation (ex. bottega-1234)', 'imp.chiave': 'Clé secrète API', 'az.conti': 'Comptes Qonto', 'giro.movimenti': 'Opérations' },
-    de: { descrizione: 'Die Umsätze deines Qonto-Kontos kommen in Kubo an und werden offenen Ein- und Ausgangsrechnungen zugeordnet.',
+    de: { descrizione: 'Die Umsätze deines Qonto-Kontos kommen in Lumi an und werden offenen Ein- und Ausgangsrechnungen zugeordnet.',
       'imp.login': 'Login der Organisation (z. B. bottega-1234)', 'imp.chiave': 'Geheimer API-Schlüssel', 'az.conti': 'Qonto-Konten', 'giro.movimenti': 'Umsätze' },
-    pt: { descrizione: 'Os movimentos da sua conta Qonto entram no Kubo e são conciliados com as faturas a receber e a pagar.',
+    pt: { descrizione: 'Os movimentos da sua conta Qonto entram no Lumi e são conciliados com as faturas a receber e a pagar.',
       'imp.login': 'Login da organização (ex.: bottega-1234)', 'imp.chiave': 'Chave secreta da API', 'az.conti': 'Contas Qonto', 'giro.movimenti': 'Movimentos' },
   },
 };

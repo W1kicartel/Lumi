@@ -37,7 +37,7 @@ export default {
     passi: [
       'Registrati su developer.fedex.com e crea un progetto («Create API Project») con la Track API.',
       'Copia API key e Secret key (prima quelle di prova, poi quelle di produzione).',
-      'In Kubo incollale, scegli l\'ambiente, premi «Prova la connessione» e accendi.',
+      'In Lumi incollale, scegli l\'ambiente, premi «Prova la connessione» e accendi.',
       'Da una vendita usa «Collega un tracking FedEx», oppure chiedilo a Lumi: lo stato torna sulla vendita ogni due ore.',
     ],
     difficolta: 'facile', zone: ['IT', 'UE', 'mondo'],
@@ -48,7 +48,7 @@ export default {
     en: { descrizione: 'Tracking of FedEx shipments (former TNT too) on sales: the status comes back by itself and Lumi knows where the parcel is.', 'imp.client_id': 'FedEx project API key (Client ID)', 'imp.client_secret': 'FedEx project secret key', 'imp.ambiente': 'Environment', 'az.collega': 'Link a FedEx tracking', 'az.dove': 'Where is the parcel', 'giro.stati': 'Shipment status',
       'cat.costoNota': 'FedEx APIs are free with a FedEx Developer account; shipments are paid with your FedEx account.',
       'cat.serve': [{ cosa: 'API key and Secret key of a project with the «Track API»', dove: 'developer.fedex.com › My Projects › Create API Project › Track API' }],
-      'cat.passi': ['Sign up at developer.fedex.com and create a project («Create API Project») with the Track API.', 'Copy the API key and Secret key (test ones first, then production).', 'In Kubo paste them, pick the environment, press «Test connection» and switch on.', 'From a sale use «Link a FedEx tracking», or ask Lumi: the status comes back to the sale every two hours.'] },
+      'cat.passi': ['Sign up at developer.fedex.com and create a project («Create API Project») with the Track API.', 'Copy the API key and Secret key (test ones first, then production).', 'In Lumi paste them, pick the environment, press «Test connection» and switch on.', 'From a sale use «Link a FedEx tracking», or ask Lumi: the status comes back to the sale every two hours.'] },
     es: { descrizione: 'El seguimiento de los envíos FedEx (también ex TNT) en las ventas: el estado vuelve solo y Lumi sabe dónde está el paquete.', 'imp.client_id': 'API key (Client ID) del proyecto FedEx', 'imp.client_secret': 'Secret key del proyecto FedEx', 'imp.ambiente': 'Entorno', 'az.collega': 'Vincular un seguimiento FedEx', 'az.dove': 'Dónde está el paquete', 'giro.stati': 'Estado de los envíos' },
     fr: { descrizione: 'Le suivi des envois FedEx (ex-TNT aussi) sur les ventes : le statut revient tout seul et Lumi sait où est le colis.', 'imp.client_id': 'Clé API (Client ID) du projet FedEx', 'imp.client_secret': 'Clé secrète du projet FedEx', 'imp.ambiente': 'Environnement', 'az.collega': 'Lier un suivi FedEx', 'az.dove': 'Où est le colis', 'giro.stati': 'Statut des envois' },
     de: { descrizione: 'Sendungsverfolgung von FedEx-Sendungen (auch ehemals TNT) am Verkauf: der Status kommt von selbst und Lumi weiß, wo das Paket ist.', 'imp.client_id': 'API-Schlüssel (Client-ID) des FedEx-Projekts', 'imp.client_secret': 'Geheimer Schlüssel des FedEx-Projekts', 'imp.ambiente': 'Umgebung', 'az.collega': 'FedEx-Sendungsnummer verknüpfen', 'az.dove': 'Wo ist das Paket', 'giro.stati': 'Status der Sendungen' },

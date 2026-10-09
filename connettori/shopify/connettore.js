@@ -28,7 +28,7 @@ export default {
   permessi: { articoli: { leggi: true, crea: true, modifica: true }, vendite: { leggi: true, crea: true } },
   prova: async k => { const d = await gql(k, '{ shop { name } }'); return { ok: !!d?.shop, messaggio: d?.shop?.name || null }; },
   mappe: { articoli: { id: 'id', chiave: ['codice', 'sku'], campi: [
-    { kubo: 'nome', remoto: 'product.title' }, { kubo: 'prezzo', remoto: 'price', da: Number }, { kubo: 'giacenza', remoto: 'inventoryQuantity', comanda: 'kubo' },
+    { locale: 'nome', remoto: 'product.title' }, { locale: 'prezzo', remoto: 'price', da: Number }, { locale: 'giacenza', remoto: 'inventoryQuantity', comanda: 'locale' },
   ] } },
   pianificati: { prodotti: { nome: 'Prodotti dal negozio', ogni: '15m', async giro(k) {
     const tot = { creati: 0, aggiornati: 0, uguali: 0 };

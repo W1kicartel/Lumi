@@ -1,5 +1,5 @@
 // Attrezzi comuni dei connettori dei negozi e delle spedizioni (la cartella comincia con «_»: il nucleo non la carica
-// come connettore). Ordini dei canali → vendite di Kubo (righe abbinate per codice, cliente trovato o creato per email),
+// come connettore). Ordini dei canali → vendite di Lumi (righe abbinate per codice, cliente trovato o creato per email),
 // la vendita chiesta da una persona o da Lumi (per id o per numero), il destinatario di una spedizione dal cliente della
 // vendita, lo stato della spedizione scritto sulla vendita (nei campi «tracking» e «spedizione» se ci sono, se no nelle note).
 import { scomponiIndirizzo } from '../../server/moduli/sicurezza-migrazioni.js';
@@ -42,7 +42,7 @@ export function importaOrdine(k, o) {
   return 'vendita creata';
 }
 
-// la vendita chiesta: un id, una riga, oppure il numero che si legge in Kubo («1043», «2026/0012»)
+// la vendita chiesta: un id, una riga, oppure il numero che si legge in Lumi («1043», «2026/0012»)
 export function venditaDa(k, x) {
   if (x && typeof x === 'object' && x.id) return x;
   const s = String(x ?? '').trim(); if (!s) throw new Error('Quale vendita?');

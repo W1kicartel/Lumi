@@ -2,8 +2,8 @@
 // - accesso: OAuth2 «password» su /Authorization/OAuth/Token (client id e secret in Basic, utente e password della console);
 //   il token dura un'ora e resta solo in memoria: scaduto, se ne chiede un altro;
 // - in uscita: ogni cliente nuovo o cambiato va nella lista (POST Console/List/{id}/Recipient con Name, Email, MobileNumber,
-//   MobilePrefix e i campi 1 = nome, 2 = cognome); se in Kubo il consenso viene tolto, si disiscrive (DELETE …/Unsubscribe/{id});
-// - ogni 30 minuti un giro ripassa i clienti cambiati e legge i disiscritti della lista: in Kubo il consenso diventa «no».
+//   MobilePrefix e i campi 1 = nome, 2 = cognome); se in Lumi il consenso viene tolto, si disiscrive (DELETE …/Unsubscribe/{id});
+// - ogni 30 minuti un giro ripassa i clienti cambiati e legge i disiscritti della lista: in Lumi il consenso diventa «no».
 // Se la sezione clienti ha il campo del consenso, passano solo i clienti che l'hanno dato (GDPR).
 import { spezza, cambiate } from '../_comunica/tabelle.js';
 import { e164 } from '../_comunica/telefono.js';
@@ -45,7 +45,7 @@ async function iscrivi(k, c) {
   const id = r.json?.idRecipient ?? r.json; if (id != null && /^\d+$/.test(String(id))) k.sincro.collega('clienti', c.id, String(id));
   return 'iscritto';
 }
-// i disiscritti della lista (MailUp non dice quando): chi in Kubo ha ancora il consenso lo perde
+// i disiscritti della lista (MailUp non dice quando): chi in Lumi ha ancora il consenso lo perde
 async function disiscritti(k) {
   if (!conConsenso(k)) return 0; let n = 0;
   for (let p = 0; p < 20; p++) {
@@ -68,7 +68,7 @@ async function sincronizza(k, { tutto = false } = {}) {
 }
 export default {
   id: 'mailup', nome: 'MailUp', versione: 1, icona: 'utenti',
-  descrizione: 'I clienti con il consenso iscritti a una lista di MailUp; chi si disiscrive torna in Kubo senza consenso.',
+  descrizione: 'I clienti con il consenso iscritti a una lista di MailUp; chi si disiscrive torna in Lumi senza consenso.',
   impostazioni: [
     { id: 'utente', nome: 'Utente della console MailUp (es. m12345)', schema: /^[A-Za-z0-9._@-]{3,80}$/ },
     { id: 'password', nome: 'Password della console MailUp', segreto: true },
@@ -105,20 +105,20 @@ export default {
       'In Impostazioni → Liste guarda l\'ID della lista dove vuoi i clienti (di solito 1).',
       'Incolla utente, password, Client ID, Client secret e id della lista; premi «Prova la connessione».',
       'Premi «Sincronizza ora con MailUp»: passano i clienti con email e consenso (i cellulari italiani anche per gli SMS).',
-      'Da lì ogni cliente nuovo o cambiato va subito nella lista, e ogni 30 minuti chi si disiscrive perde il consenso in Kubo.',
+      'Da lì ogni cliente nuovo o cambiato va subito nella lista, e ogni 30 minuti chi si disiscrive perde il consenso in Lumi.',
     ],
     difficolta: 'media', zone: ['IT', 'UE'],
     fonti: ['https://help.mailup.com/display/mailupapi/Authenticating+with+OAuth+v2', 'https://help.mailup.com/display/mailupapi/Recipients', 'https://help.mailup.com/display/mailupapi/Lists+and+Groups', 'https://www.mailup.it/prezzi/'],
     prova: 'finto', parole: ['mailup', 'newsletter', 'email marketing', 'sms marketing', 'liste', 'lists', 'iscritti', 'subscribers', 'consenso', 'gdpr'],
   },
   testi: {
-    en: { nome: 'MailUp', descrizione: 'Customers with consent subscribed to a MailUp list; unsubscribes come back to Kubo without consent.', 'imp.utente': 'MailUp console username (e.g. m12345)', 'imp.password': 'MailUp console password', 'imp.client_id': 'API keys client ID', 'imp.client_secret': 'API keys client secret', 'imp.lista': 'List id (the number in Settings → Lists)', 'az.sincronizza_ora': 'Sync now with MailUp', 'giro.sincronizza': 'Changed customers and unsubscribes',
+    en: { nome: 'MailUp', descrizione: 'Customers with consent subscribed to a MailUp list; unsubscribes come back to Lumi without consent.', 'imp.utente': 'MailUp console username (e.g. m12345)', 'imp.password': 'MailUp console password', 'imp.client_id': 'API keys client ID', 'imp.client_secret': 'API keys client secret', 'imp.lista': 'List id (the number in Settings → Lists)', 'az.sincronizza_ora': 'Sync now with MailUp', 'giro.sincronizza': 'Changed customers and unsubscribes',
       'cat.costoNota': '30-day free trial; unlimited-sending plans priced by contacts: Basic from about €75 per month (up to 2,500 contacts, VAT excluded); the API is included in every plan. SMS are bought separately.',
       'cat.serve': [{ cosa: 'Console username and password (e.g. m12345)', dove: 'The ones you use to log into MailUp' }, { cosa: 'Client ID and Client secret', dove: 'MailUp → Settings → Advanced settings → Developer\'s corner → API keys: «Create»' }, { cosa: 'The list id', dove: 'Settings → Lists: the number (ID) next to the list name' }],
-      'cat.passi': ['In MailUp open Settings → Advanced settings → Developer\'s corner and create the API keys: copy Client ID and Client secret.', 'In Settings → Lists check the ID of the list for your customers (usually 1).', 'Paste username, password, Client ID, Client secret and list id; press «Test connection».', 'Press «Sync now with MailUp»: customers with email and consent go over (Italian mobiles also for SMS).', 'From then on every new or changed customer goes to the list at once, and every 30 minutes those who unsubscribe lose consent in Kubo.'] },
-    es: { nome: 'MailUp', descrizione: 'Los clientes con consentimiento suscritos a una lista de MailUp; las bajas vuelven a Kubo sin consentimiento.', 'imp.utente': 'Usuario de la consola MailUp (p. ej. m12345)', 'imp.password': 'Contraseña de la consola MailUp', 'imp.client_id': 'Client ID de las claves API', 'imp.client_secret': 'Client secret de las claves API', 'imp.lista': 'Id de la lista (el número en Ajustes → Listas)', 'az.sincronizza_ora': 'Sincronizar ahora con MailUp', 'giro.sincronizza': 'Clientes cambiados y bajas' },
-    fr: { nome: 'MailUp', descrizione: 'Les clients avec consentement inscrits à une liste MailUp ; les désinscriptions reviennent dans Kubo sans consentement.', 'imp.utente': 'Utilisateur de la console MailUp (ex. m12345)', 'imp.password': 'Mot de passe de la console MailUp', 'imp.client_id': 'Client ID des clés API', 'imp.client_secret': 'Client secret des clés API', 'imp.lista': 'Id de la liste (le numéro dans Paramètres → Listes)', 'az.sincronizza_ora': 'Synchroniser maintenant avec MailUp', 'giro.sincronizza': 'Clients modifiés et désinscriptions' },
-    de: { nome: 'MailUp', descrizione: 'Kunden mit Einwilligung in einer MailUp-Liste; Abmeldungen kommen ohne Einwilligung zurück in Kubo.', 'imp.utente': 'Benutzer der MailUp-Konsole (z. B. m12345)', 'imp.password': 'Passwort der MailUp-Konsole', 'imp.client_id': 'Client-ID der API-Schlüssel', 'imp.client_secret': 'Client-Secret der API-Schlüssel', 'imp.lista': 'Listen-ID (die Nummer unter Einstellungen → Listen)', 'az.sincronizza_ora': 'Jetzt mit MailUp abgleichen', 'giro.sincronizza': 'Geänderte Kunden und Abmeldungen' },
-    pt: { nome: 'MailUp', descrizione: 'Os clientes com consentimento inscritos numa lista do MailUp; os cancelamentos voltam ao Kubo sem consentimento.', 'imp.utente': 'Utilizador da consola MailUp (ex. m12345)', 'imp.password': 'Palavra-passe da consola MailUp', 'imp.client_id': 'Client ID das chaves API', 'imp.client_secret': 'Client secret das chaves API', 'imp.lista': 'Id da lista (o número em Definições → Listas)', 'az.sincronizza_ora': 'Sincronizar agora com o MailUp', 'giro.sincronizza': 'Clientes alterados e cancelamentos' },
+      'cat.passi': ['In MailUp open Settings → Advanced settings → Developer\'s corner and create the API keys: copy Client ID and Client secret.', 'In Settings → Lists check the ID of the list for your customers (usually 1).', 'Paste username, password, Client ID, Client secret and list id; press «Test connection».', 'Press «Sync now with MailUp»: customers with email and consent go over (Italian mobiles also for SMS).', 'From then on every new or changed customer goes to the list at once, and every 30 minutes those who unsubscribe lose consent in Lumi.'] },
+    es: { nome: 'MailUp', descrizione: 'Los clientes con consentimiento suscritos a una lista de MailUp; las bajas vuelven a Lumi sin consentimiento.', 'imp.utente': 'Usuario de la consola MailUp (p. ej. m12345)', 'imp.password': 'Contraseña de la consola MailUp', 'imp.client_id': 'Client ID de las claves API', 'imp.client_secret': 'Client secret de las claves API', 'imp.lista': 'Id de la lista (el número en Ajustes → Listas)', 'az.sincronizza_ora': 'Sincronizar ahora con MailUp', 'giro.sincronizza': 'Clientes cambiados y bajas' },
+    fr: { nome: 'MailUp', descrizione: 'Les clients avec consentement inscrits à une liste MailUp ; les désinscriptions reviennent dans Lumi sans consentement.', 'imp.utente': 'Utilisateur de la console MailUp (ex. m12345)', 'imp.password': 'Mot de passe de la console MailUp', 'imp.client_id': 'Client ID des clés API', 'imp.client_secret': 'Client secret des clés API', 'imp.lista': 'Id de la liste (le numéro dans Paramètres → Listes)', 'az.sincronizza_ora': 'Synchroniser maintenant avec MailUp', 'giro.sincronizza': 'Clients modifiés et désinscriptions' },
+    de: { nome: 'MailUp', descrizione: 'Kunden mit Einwilligung in einer MailUp-Liste; Abmeldungen kommen ohne Einwilligung zurück in Lumi.', 'imp.utente': 'Benutzer der MailUp-Konsole (z. B. m12345)', 'imp.password': 'Passwort der MailUp-Konsole', 'imp.client_id': 'Client-ID der API-Schlüssel', 'imp.client_secret': 'Client-Secret der API-Schlüssel', 'imp.lista': 'Listen-ID (die Nummer unter Einstellungen → Listen)', 'az.sincronizza_ora': 'Jetzt mit MailUp abgleichen', 'giro.sincronizza': 'Geänderte Kunden und Abmeldungen' },
+    pt: { nome: 'MailUp', descrizione: 'Os clientes com consentimento inscritos numa lista do MailUp; os cancelamentos voltam ao Lumi sem consentimento.', 'imp.utente': 'Utilizador da consola MailUp (ex. m12345)', 'imp.password': 'Palavra-passe da consola MailUp', 'imp.client_id': 'Client ID das chaves API', 'imp.client_secret': 'Client secret das chaves API', 'imp.lista': 'Id da lista (o número em Definições → Listas)', 'az.sincronizza_ora': 'Sincronizar agora com o MailUp', 'giro.sincronizza': 'Clientes alterados e cancelamentos' },
   },
 };

@@ -1,4 +1,4 @@
-// I documenti di Kubo come file, per gli archivi cloud (Drive, Dropbox, OneDrive, S3, WebDAV):
+// I documenti di Lumi come file, per gli archivi cloud (Drive, Dropbox, OneDrive, S3, WebDAV):
 // - documentoDi: la stampa HTML di una riga (fattura, preventivo, vendita) e, per le fatture emesse, l'XML FatturaPA;
 // - backupDi: una copia coerente del database (VACUUM INTO, come desktop-backup.js) in una cartella temporanea, poi cancellata;
 // - archivio: i pezzi comuni di un connettore di archivio (azioni, uscita, giro del backup alle 02:30, testi).
@@ -26,20 +26,20 @@ export function documentoDi(k, sezione, riga, { xml = true } = {}) {
   return out;
 }
 
-// → { nome: 'kubo-2026-10-09-02-30-00.db', contenuto: Buffer }. La copia si prende anche mentre si lavora
+// → { nome: 'lumi-2026-10-09-02-30-00.db', contenuto: Buffer }. La copia si prende anche mentre si lavora
 export function backupDi(k, ora = new Date()) {
   const t = ora.toLocaleString('sv-SE', { timeZone: k.fuso?.() || 'Europe/Rome' }).replace(/[^\d]/g, '-').slice(0, 19);
-  const dir = mkdtempSync(join(tmpdir(), 'kubo-backup-')), nome = `kubo-${t}.db`, f = join(dir, nome);
+  const dir = mkdtempSync(join(tmpdir(), 'lumi-backup-')), nome = `lumi-${t}.db`, f = join(dir, nome);
   try { k.db.exec(`VACUUM INTO '${f.replaceAll("'", "''")}'`); return { nome, contenuto: readFileSync(f) }; }
   finally { rmSync(dir, { recursive: true, force: true }); }
 }
 
-// la cartella di un documento: <radice>/<Sezione>/<anno>, es. Kubo/Fatture/2026
+// la cartella di un documento: <radice>/<Sezione>/<anno>, es. Lumi/Fatture/2026
 export function cartellaDi(k, sezione, riga) {
   const anno = /^(\d{4})/.exec(String(k.valore(riga, sezione, 'data') || ''))?.[1] || new Date().toLocaleDateString('sv-SE', { timeZone: k.fuso() }).slice(0, 4);
   return `${radice(k)}/${nomeFile(k.S.leggi(k.db, k.entita(sezione))?.nome || sezione)}/${anno}`;
 }
-const radice = k => String(k.imp.cartella || 'Kubo').split('/').map(nomeFile).filter(Boolean).join('/') || 'Kubo';
+const radice = k => String(k.imp.cartella || 'Lumi').split('/').map(nomeFile).filter(Boolean).join('/') || 'Lumi';
 const mb = n => `${Math.round(n / 1048576)} MB`;
 
 // i pezzi comuni di un connettore di archivio. servizio = { nome, carica, elenca, cancella, massimo (byte), pronto(k) }
@@ -60,7 +60,7 @@ export function archivio(servizio) {
   };
   return {
     impostazioni: [
-      { id: 'cartella', nome: 'Cartella principale', predefinito: 'Kubo' },
+      { id: 'cartella', nome: 'Cartella principale', predefinito: 'Lumi' },
       { id: 'automatico', nome: 'Salva da solo le fatture emesse', tipo: 'si_no', predefinito: false },
       { id: 'backup', nome: 'Backup del database ogni notte alle 02:30', tipo: 'si_no', predefinito: true },
       { id: 'tieni', nome: 'Backup da tenere', tipo: 'numero', predefinito: 14 },
@@ -85,8 +85,8 @@ export function archivio(servizio) {
       if (!pronto(k)) return { saltato: `${servizio.nome} non collegato` };
       const b = backupDi(k), cartella = `${radice(k)}/Backup`; troppo(b.contenuto.length, 'Il database');
       await carica(k, cartella, b.nome, b.contenuto, 'application/vnd.sqlite3');
-      // gli ultimi N: i nomi kubo-AAAA-MM-GG-hh-mm-ss.db si ordinano da soli
-      const tieni = Math.max(1, Number(k.imp.tieni) || 14), vecchi = (await elenca(k, cartella)).filter(x => /^kubo-[\d-]+\.db$/.test(x.nome)).sort((a, b) => b.nome.localeCompare(a.nome)).slice(tieni);
+      // gli ultimi N: i nomi lumi-AAAA-MM-GG-hh-mm-ss.db si ordinano da soli
+      const tieni = Math.max(1, Number(k.imp.tieni) || 14), vecchi = (await elenca(k, cartella)).filter(x => /^lumi-[\d-]+\.db$/.test(x.nome)).sort((a, b) => b.nome.localeCompare(a.nome)).slice(tieni);
       for (const v of vecchi) await cancella(k, v);
       return { caricato: b.nome, byte: b.contenuto.length, tolti: vecchi.length };
     } } },

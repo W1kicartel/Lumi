@@ -1,6 +1,6 @@
-// CardDAV: i clienti di Kubo nella rubrica di iCloud (iPhone, Mac), Nextcloud, Fastmail, Synology… (RFC 6352).
+// CardDAV: i clienti di Lumi nella rubrica di iCloud (iPhone, Mac), Nextcloud, Fastmail, Synology… (RFC 6352).
 // La rubrica si trova da sola (current-user-principal → addressbook-home-set → la prima rubrica) o si incolla l'indirizzo.
-// Ogni cliente è una scheda «kubo-<id>.vcf» con il nome, il cellulare in formato internazionale e l'email.
+// Ogni cliente è una scheda «lumi-<id>.vcf» con il nome, il cellulare in formato internazionale e l'email.
 import { impRubrica, giroRubrica, uscitaRubrica, testiRubrica, vcard } from '../_comunica/rubrica.js';
 
 const NS = 'xmlns:d="DAV:" xmlns:card="urn:ietf:params:xml:ns:carddav"';
@@ -29,7 +29,7 @@ async function rubrica(k) {
   const u = r.url.replace(/\/?$/, '/'); k.stato.scrivi('rubrica', u); return u;
 }
 async function metti(k, x) {
-  const r = await k.http.put(`${await rubrica(k)}kubo-${encodeURIComponent(x.id)}.vcf`, { ...auth(k), testo: vcard(x), intestazioni: { 'Content-Type': 'text/vcard; charset=utf-8' } });
+  const r = await k.http.put(`${await rubrica(k)}lumi-${encodeURIComponent(x.id)}.vcf`, { ...auth(k), testo: vcard(x), intestazioni: { 'Content-Type': 'text/vcard; charset=utf-8' } });
   if (!r.ok) throw new Error(`CardDAV: la scheda di ${x.nome} non è stata salvata (HTTP ${r.stato})`);
 }
 

@@ -1,4 +1,4 @@
-// Yousign (API v3): un preventivo di Kubo va in firma elettronica e torna «accettato» quando il cliente firma.
+// Yousign (API v3): un preventivo di Lumi va in firma elettronica e torna «accettato» quando il cliente firma.
 // Flusso (https://developers.yousign.com/reference): POST /signature_requests → POST /signature_requests/{id}/documents
 // (multipart: file + nature=signable_document) → POST /signature_requests/{id}/signers (con il campo firma sul documento)
 // → POST /signature_requests/{id}/activate: Yousign manda la mail al cliente.
@@ -12,8 +12,8 @@ import { pdfTesto } from '../../server/moduli/fisco-file.js';
 import { meta } from '../_soldi/comuni.js';
 
 const base = k => k.base || (k.imp.ambiente === 'produzione' ? 'https://api.yousign.app/v3' : 'https://api-sandbox.yousign.app/v3');
-const rifP = id => `kubo-p-${id}`;
-const daRifP = s => /kubo-p-([\w-]{1,60})/.exec(String(s ?? ''))?.[1] || null;
+const rifP = id => `lumi-p-${id}`;
+const daRifP = s => /lumi-p-([\w-]{1,60})/.exec(String(s ?? ''))?.[1] || null;
 
 // l'HTML della stampa diventa righe di testo
 const ENT = { amp: '&', lt: '<', gt: '>', quot: '"', apos: '\'', nbsp: ' ', euro: '€', egrave: 'è', eacute: 'é', agrave: 'à', ograve: 'ò', ugrave: 'ù', igrave: 'ì' };
@@ -39,7 +39,7 @@ export function pdfFirma(righe, titolo) {
 
 // multipart/form-data a mano: k.http manda un Buffer così com'è
 function multipart(campi) {
-  const b = `----kubo${randomBytes(12).toString('hex')}`, out = [];
+  const b = `----lumi${randomBytes(12).toString('hex')}`, out = [];
   for (const c of campi) out.push(Buffer.from(`--${b}\r\nContent-Disposition: form-data; name="${c.nome}"${c.file ? `; filename="${c.file}"\r\nContent-Type: ${c.tipo}` : ''}\r\n\r\n`),
     Buffer.isBuffer(c.dati) ? c.dati : Buffer.from(String(c.dati)), Buffer.from('\r\n'));
   out.push(Buffer.from(`--${b}--\r\n`));
@@ -63,7 +63,7 @@ export default {
   catalogo: { categoria: 'firma', sito: 'https://yousign.com/it-it', costo: 'abbonamento', costoNota: 'L\'API è nei piani con accesso API (Pro/Scale, da circa 75 € al mese per 50 richieste di firma; prezzi su richiesta oltre). La sandbox è gratuita: controlla il listino aggiornato sul sito di Yousign',
     serve: [{ cosa: 'Chiave API (sandbox o produzione)', dove: 'App Yousign → Developers → API keys', link: 'https://app.yousign.com' },
       { cosa: 'Segreto del webhook', dove: 'App Yousign → Developers → Webhooks → il webhook creato → Secret key', link: 'https://developers.yousign.com/docs/use-webhooks-in-your-app' }],
-    passi: ['Crea un account Yousign con accesso API e apri la sezione Developers', 'Crea una chiave API, prima per la sandbox', 'Incolla la chiave qui e lascia l\'ambiente su «prova»', 'Accendi il connettore e copia l\'indirizzo del webhook che Kubo mostra', 'In Yousign crea un webhook verso quell\'indirizzo con gli eventi signature_request.done, declined ed expired', 'Copia il segreto del webhook e incollalo qui', 'Prova «Manda in firma» su un preventivo; quando va, passa a «produzione» con la chiave di produzione'],
+    passi: ['Crea un account Yousign con accesso API e apri la sezione Developers', 'Crea una chiave API, prima per la sandbox', 'Incolla la chiave qui e lascia l\'ambiente su «prova»', 'Accendi il connettore e copia l\'indirizzo del webhook che Lumi mostra', 'In Yousign crea un webhook verso quell\'indirizzo con gli eventi signature_request.done, declined ed expired', 'Copia il segreto del webhook e incollalo qui', 'Prova «Manda in firma» su un preventivo; quando va, passa a «produzione» con la chiave di produzione'],
     difficolta: 'media', zone: ['IT', 'UE', 'mondo'], fonti: ['https://developers.yousign.com/reference', 'https://developers.yousign.com/docs/security', 'https://developers.yousign.com/docs/use-webhooks-in-your-app'], prova: 'finto',
     parole: ['firma elettronica', 'firma digitale', 'preventivo', 'contratto', 'accettazione', 'e-signature', 'esign', 'signature', 'yousign'] },
   impostazioni: [
@@ -125,7 +125,7 @@ export default {
       const nuovo = nome === 'signature_request.done' ? 'accettato' : 'rifiutato';
       if (s === nuovo) return `ignorato: già ${nuovo}`;
       if (!k.campo('preventivi', 'stato')) return `preventivo ${n} ${nuovo === 'accettato' ? 'firmato' : 'rifiutato'}`;
-      if (s !== 'inviato' && s !== 'bozza') return k.avvisa(`preventivo ${n} ${nuovo === 'accettato' ? 'firmato' : 'rifiutato'} su Yousign, ma in Kubo è «${s}»: controllalo a mano`);
+      if (s !== 'inviato' && s !== 'bozza') return k.avvisa(`preventivo ${n} ${nuovo === 'accettato' ? 'firmato' : 'rifiutato'} su Yousign, ma in Lumi è «${s}»: controllalo a mano`);
       if (s === 'bozza') await k.dati.modifica('preventivi', pid, { stato: 'inviato' });   // le transizioni passano da «inviato»
       await k.dati.modifica('preventivi', pid, { stato: nuovo });
       if (nuovo === 'rifiutato') k.avvisa(`il cliente ha rifiutato di firmare il preventivo ${n}${sr.decline_information?.reason ? `: ${String(sr.decline_information.reason).slice(0, 200)}` : ''}`);
@@ -136,7 +136,7 @@ export default {
     en: { descrizione: 'Send quotes for e-signature: when the customer signs, the quote becomes «accepted».', 'imp.chiave': 'Yousign API key', 'imp.webhook': 'Webhook secret', 'imp.ambiente': 'Environment', 'az.firma': 'Send for signature',
       'cat.costoNota': 'The API is in the plans with API access (Pro/Scale, from about €75 a month for 50 signature requests; custom pricing above). The sandbox is free: check the current price list on the Yousign website',
       'cat.serve': [{ cosa: 'API key (sandbox or production)', dove: 'Yousign app → Developers → API keys' }, { cosa: 'Webhook secret', dove: 'Yousign app → Developers → Webhooks → your webhook → Secret key' }],
-      'cat.passi': ['Create a Yousign account with API access and open the Developers section', 'Create an API key, first for the sandbox', 'Paste the key here and leave the environment on «prova» (test)', 'Switch the connector on and copy the webhook address Kubo shows', 'In Yousign create a webhook to that address with the events signature_request.done, declined and expired', 'Copy the webhook secret and paste it here', 'Try «Send for signature» on a quote; when it works, move to «produzione» with the production key'] },
+      'cat.passi': ['Create a Yousign account with API access and open the Developers section', 'Create an API key, first for the sandbox', 'Paste the key here and leave the environment on «prova» (test)', 'Switch the connector on and copy the webhook address Lumi shows', 'In Yousign create a webhook to that address with the events signature_request.done, declined and expired', 'Copy the webhook secret and paste it here', 'Try «Send for signature» on a quote; when it works, move to «produzione» with the production key'] },
     es: { descrizione: 'Envía los presupuestos a firma electrónica: cuando el cliente firma, el presupuesto pasa a «aceptado».', 'imp.chiave': 'Clave API de Yousign', 'imp.webhook': 'Secreto del webhook', 'imp.ambiente': 'Entorno', 'az.firma': 'Enviar a firmar' },
     fr: { descrizione: 'Envoyez les devis en signature électronique : quand le client signe, le devis passe à «accepté».', 'imp.chiave': 'Clé API Yousign', 'imp.webhook': 'Secret du webhook', 'imp.ambiente': 'Environnement', 'az.firma': 'Envoyer en signature' },
     de: { descrizione: 'Sende Angebote zur elektronischen Signatur: Wenn der Kunde unterschreibt, wird das Angebot «angenommen».', 'imp.chiave': 'Yousign-API-Schlüssel', 'imp.webhook': 'Webhook-Geheimnis', 'imp.ambiente': 'Umgebung', 'az.firma': 'Zur Unterschrift senden' },

@@ -22,7 +22,7 @@ function spedizione(k, v, { peso, opzione } = {}) {
     ship_with: { type: 'shipping_option_code', properties: { shipping_option_code: o } },
     parcels: [{ weight: { value: String(tondo(peso || k.imp.peso || 1)), unit: 'kg' } }],
     order_number: String(v.numero ?? v.id), total_order_price: { value: String(tondo(k.valore(v, 'vendite', 'totale'))), currency: 'EUR' },
-    external_reference_id: `kubo-${v.id}-${(k.stato.leggi('etichette') || {})[v.id] || 0}`,
+    external_reference_id: `lumi-${v.id}-${(k.stato.leggi('etichette') || {})[v.id] || 0}`,
   };
 }
 
@@ -48,7 +48,7 @@ export default {
           avvisi: gia ? [`Questa vendita ha già il pacco ${gia}: se confermi ne crei un altro`] : [] }; },
       async esegui(x, k) {
         const v = venditaDa(k, x.vendita), corpo = spedizione(k, v, x);
-        if (k.sincro.remoto('vendite', v.id)) { const n = k.stato.leggi('etichette') || {}; n[v.id] = (n[v.id] || 0) + 1; k.stato.scrivi('etichette', n); corpo.external_reference_id = `kubo-${v.id}-${n[v.id]}`; }
+        if (k.sincro.remoto('vendite', v.id)) { const n = k.stato.leggi('etichette') || {}; n[v.id] = (n[v.id] || 0) + 1; k.stato.scrivi('etichette', n); corpo.external_reference_id = `lumi-${v.id}-${n[v.id]}`; }
         const r = await k.http.post(api(k, '/shipments/announce', 'v3'), { ...chiavi(k), json: corpo });
         const d = r.stato === 409 ? r.json?.data : r.ok ? r.json?.data : null; if (!d) throw errore(r);
         const p = d.parcels?.[0]; if (!p?.id) throw new Error(`Sendcloud non ha creato il pacco${d.errors?.length ? ': ' + d.errors.map(e => e.detail || e.message || e.code).join('; ') : ''}`);
@@ -78,7 +78,7 @@ export default {
     idempotenza: ev => (ev?.parcel?.id ? `${ev.parcel.id}:${ev.parcel.status?.id}:${ev.timestamp}` : null),
     async gestisci(ev, k) {
       if (ev?.action !== 'parcel_status_changed' || !ev.parcel?.id) return 'ignorato';
-      const p = ev.parcel, v = k.sincro.locale('vendite', p.id); if (!v) return 'ignorato: pacco creato fuori da Kubo';
+      const p = ev.parcel, v = k.sincro.locale('vendite', p.id); if (!v) return 'ignorato: pacco creato fuori da Lumi';
       segnaSpedizione(k, v, { corriere: p.carrier?.code?.toUpperCase(), tracking: p.tracking_number, stato: p.status?.message, url: p.tracking_url });
       return `spedizione: ${p.status?.message}`;
     },
@@ -88,12 +88,12 @@ export default {
     costoNota: 'Free 0 € (20 etichette al mese), Lite 28 € (400), Growth 87 € (1.000), Premium 175 € (10.000), Pro 639 € (30.000) al mese, -20 % con il pagamento annuale; oltre la soglia 0,15 € a etichetta. Le etichette si pagano alle tariffe Sendcloud o con il tuo contratto.',
     serve: [
       { cosa: 'Chiave pubblica e chiave segreta di un\'integrazione «Sendcloud API»', dove: 'Pannello Sendcloud › Impostazioni › Integrazioni › Sendcloud API › Connetti', link: 'https://support.sendcloud.com/hc/en-us/articles/360024967252' },
-      { cosa: 'L\'indirizzo dei webhook di Kubo (la «Webhook URL» dell\'integrazione)', dove: 'Stessa integrazione › Webhook feedback enabled', link: 'https://sendcloud.dev/api/v3/webhooks' },
+      { cosa: 'L\'indirizzo dei webhook di Lumi (la «Webhook URL» dell\'integrazione)', dove: 'Stessa integrazione › Webhook feedback enabled', link: 'https://sendcloud.dev/api/v3/webhooks' },
     ],
     passi: [
       'In Sendcloud apri Impostazioni › Integrazioni, cerca «Sendcloud API» e premi Connetti.',
-      'Dai un nome (Kubo), spunta «Webhook feedback enabled» e incolla come Webhook URL l\'indirizzo che Kubo mostra in questa pagina.',
-      'Salva e copia la chiave pubblica e la chiave segreta in Kubo.',
+      'Dai un nome (Lumi), spunta «Webhook feedback enabled» e incolla come Webhook URL l\'indirizzo che Lumi mostra in questa pagina.',
+      'Salva e copia la chiave pubblica e la chiave segreta in Lumi.',
       'Metti l\'id dell\'indirizzo del mittente (Impostazioni › Indirizzi) e, con «Opzioni di spedizione», il codice dell\'opzione che usi di solito.',
       'Controlla che i clienti abbiano via, CAP e comune: l\'indirizzo del pacco arriva da lì.',
       'Accendi: da una vendita premi «Crea l\'etichetta Sendcloud», oppure chiedi a Lumi «crea l\'etichetta per la vendita 1043».',
@@ -105,8 +105,8 @@ export default {
   testi: {
     en: { 'aiuto.mittente': 'Settings › Addresses › Sender address: the number in the page address', 'aiuto.opzione': 'Press «Shipping options» to see the codes', descrizione: 'Labels and tracking for BRT, Poste, GLS, SDA, DHL, UPS: the shipment starts from the sale and its status comes back by itself.', 'imp.chiave_pubblica': 'Public key', 'imp.chiave_segreta': 'Secret key', 'aiuto.chiave_segreta': 'Also signs the webhooks', 'imp.mittente': 'Sender address (id)', 'imp.opzione': 'Default shipping option (code)', 'imp.peso': 'Default parcel weight (kg)', 'az.etichetta': 'Create the Sendcloud label', 'az.dove': 'Where is the parcel', 'az.opzioni': 'Shipping options',
       'cat.costoNota': 'Free €0 (20 labels a month), Lite €28 (400), Growth €87 (1,000), Premium €175 (10,000), Pro €639 (30,000) a month, 20% off yearly; above the limit €0.15 per label. Labels are paid at Sendcloud rates or with your own contract.',
-      'cat.serve': [{ cosa: 'Public and secret key of a «Sendcloud API» integration', dove: 'Sendcloud panel › Settings › Integrations › Sendcloud API › Connect' }, { cosa: 'Kubo\'s webhook address (the integration\'s «Webhook URL»)', dove: 'Same integration › Webhook feedback enabled' }],
-      'cat.passi': ['In Sendcloud open Settings › Integrations, find «Sendcloud API» and press Connect.', 'Name it (Kubo), tick «Webhook feedback enabled» and paste as Webhook URL the address Kubo shows on this page.', 'Save and copy the public and secret keys into Kubo.', 'Enter the sender address id (Settings › Addresses) and, with «Shipping options», the code of the option you usually use.', 'Check that customers have street, postcode and city: the parcel address comes from there.', 'Switch on: from a sale press «Create the Sendcloud label», or ask Lumi «create the label for sale 1043».'] },
+      'cat.serve': [{ cosa: 'Public and secret key of a «Sendcloud API» integration', dove: 'Sendcloud panel › Settings › Integrations › Sendcloud API › Connect' }, { cosa: 'Lumi\'s webhook address (the integration\'s «Webhook URL»)', dove: 'Same integration › Webhook feedback enabled' }],
+      'cat.passi': ['In Sendcloud open Settings › Integrations, find «Sendcloud API» and press Connect.', 'Name it (Lumi), tick «Webhook feedback enabled» and paste as Webhook URL the address Lumi shows on this page.', 'Save and copy the public and secret keys into Lumi.', 'Enter the sender address id (Settings › Addresses) and, with «Shipping options», the code of the option you usually use.', 'Check that customers have street, postcode and city: the parcel address comes from there.', 'Switch on: from a sale press «Create the Sendcloud label», or ask Lumi «create the label for sale 1043».'] },
     es: { 'aiuto.mittente': 'Ajustes › Direcciones › Dirección del remitente: el número en la dirección de la página', 'aiuto.opzione': 'Pulsa «Opciones de envío» para ver los códigos', descrizione: 'Etiquetas y seguimiento para BRT, Poste, GLS, SDA, DHL, UPS: el envío sale de la venta y el estado vuelve solo.', 'imp.chiave_pubblica': 'Clave pública', 'imp.chiave_segreta': 'Clave secreta', 'aiuto.chiave_segreta': 'También firma los webhooks', 'imp.mittente': 'Dirección del remitente (id)', 'imp.opzione': 'Opción de envío predeterminada (código)', 'imp.peso': 'Peso predeterminado del paquete (kg)', 'az.etichetta': 'Crear la etiqueta Sendcloud', 'az.dove': 'Dónde está el paquete', 'az.opzioni': 'Opciones de envío' },
     fr: { 'aiuto.mittente': 'Paramètres › Adresses › Adresse de l\'expéditeur : le numéro dans l\'adresse de la page', 'aiuto.opzione': 'Appuyez sur «Options d\'envoi» pour voir les codes', descrizione: 'Étiquettes et suivi pour BRT, Poste, GLS, SDA, DHL, UPS : l\'envoi part de la vente et le statut revient tout seul.', 'imp.chiave_pubblica': 'Clé publique', 'imp.chiave_segreta': 'Clé secrète', 'aiuto.chiave_segreta': 'Signe aussi les webhooks', 'imp.mittente': 'Adresse de l\'expéditeur (id)', 'imp.opzione': 'Option d\'envoi par défaut (code)', 'imp.peso': 'Poids par défaut du colis (kg)', 'az.etichetta': 'Créer l\'étiquette Sendcloud', 'az.dove': 'Où est le colis', 'az.opzioni': 'Options d\'envoi' },
     de: { 'aiuto.mittente': 'Einstellungen › Adressen › Absenderadresse: die Nummer in der Seitenadresse', 'aiuto.opzione': '«Versandoptionen» zeigt die Codes', descrizione: 'Etiketten und Sendungsverfolgung für BRT, Poste, GLS, SDA, DHL, UPS: der Versand startet beim Verkauf, der Status kommt von selbst zurück.', 'imp.chiave_pubblica': 'Öffentlicher Schlüssel', 'imp.chiave_segreta': 'Geheimer Schlüssel', 'aiuto.chiave_segreta': 'Signiert auch die Webhooks', 'imp.mittente': 'Absenderadresse (ID)', 'imp.opzione': 'Standard-Versandoption (Code)', 'imp.peso': 'Standardgewicht des Pakets (kg)', 'az.etichetta': 'Sendcloud-Etikett erstellen', 'az.dove': 'Wo ist das Paket', 'az.opzioni': 'Versandoptionen' },

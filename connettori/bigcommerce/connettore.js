@@ -1,7 +1,7 @@
 // BigCommerce: varianti (ognuna con il suo SKU) e giacenze nei due sensi, ordini pagati → vendite con il cliente.
 // REST (https://developer.bigcommerce.com/docs/start/about): X-Auth-Token dell'account API del negozio; catalogo v3 a
 // pagine (meta.pagination.total_pages), ordini v2, giacenze con l'Inventory API (adjustments/absolute, per sede).
-// I webhook di BigCommerce non sono firmati (niente HMAC: https://docs.bigcommerce.com/docs/integrations/webhooks): si registrano dall'API con l'indirizzo che porta il codice segreto di Kubo
+// I webhook di BigCommerce non sono firmati (niente HMAC: https://docs.bigcommerce.com/docs/integrations/webhooks): si registrano dall'API con l'indirizzo che porta il codice segreto di Lumi
 // (/in/<codice>), e l'ordine si rilegge sempre dall'API prima di crearne la vendita. Un giro ogni 15 minuti fa da rete.
 import { importaOrdine, RICHIEDE_NEGOZI, PERMESSI_NEGOZI } from '../_negozi/comune.js';
 
@@ -33,7 +33,7 @@ export default {
   permessi: PERMESSI_NEGOZI,
   prova: async k => { const j = await chiama(k, 'get', 'v2', '/store'); return { ok: !!j?.id, messaggio: j?.name || null }; },
   mappe: { articoli: { id: 'id', chiave: ['codice', 'sku'], campi: [
-    { kubo: 'nome', remoto: 'nome' }, { kubo: 'prezzo', remoto: 'prezzo' }, { kubo: 'giacenza', remoto: 'inventory_level', comanda: 'kubo' },
+    { locale: 'nome', remoto: 'nome' }, { locale: 'prezzo', remoto: 'prezzo' }, { locale: 'giacenza', remoto: 'inventory_level', comanda: 'locale' },
   ] } },
   pianificati: {
     prodotti: { nome: 'Prodotti dal negozio', ogni: '15m', async giro(k) {
@@ -60,16 +60,16 @@ export default {
   uscita: { articoli: { campi: ['giacenza'], unisci: 'ultimo', async invia(riga, k) {
     const rid = k.sincro.remoto('articoli', riga.id); if (!rid) return;
     const variante = Number(String(rid).split(':')[1]);
-    await chiama(k, 'put', 'v3', '/inventory/adjustments/absolute', { reason: 'Kubo', items: [{ location_id: Number(k.imp.sede || 1), variant_id: variante, quantity: Math.max(0, Math.round(Number(k.valore(riga, 'articoli', 'giacenza') || 0))) }] });
+    await chiama(k, 'put', 'v3', '/inventory/adjustments/absolute', { reason: 'Lumi', items: [{ location_id: Number(k.imp.sede || 1), variant_id: variante, quantity: Math.max(0, Math.round(Number(k.valore(riga, 'articoli', 'giacenza') || 0))) }] });
   } } },
   azioni: {
     webhook: {
-      nome: 'Registra i webhook degli ordini', descrizione: 'chiede a BigCommerce di avvisare Kubo a ogni ordine creato o cambiato',
-      input: { indirizzo: { tipo: 'testo', nome: 'Indirizzo pubblico di Kubo (https://…; vuoto: quello della Libreria)', facoltativo: true } },
+      nome: 'Registra i webhook degli ordini', descrizione: 'chiede a BigCommerce di avvisare Lumi a ogni ordine creato o cambiato',
+      input: { indirizzo: { tipo: 'testo', nome: 'Indirizzo pubblico di Lumi (https://…; vuoto: quello della Libreria)', facoltativo: true } },
       async esegui({ indirizzo }, k) {
         // l'indirizzo scritto qui o, se vuoto, quello unico della Libreria (k.pubblico), purché https
         const base = String(indirizzo || (/^https:\/\//i.test(k.pubblico || '') ? k.pubblico : '')).trim().replace(/\/+$/, '');
-        if (!/^https:\/\/[^/]+/.test(base)) throw new Error('Serve l\'indirizzo pubblico https di Kubo: scrivilo qui o impostalo nella Libreria');
+        if (!/^https:\/\/[^/]+/.test(base)) throw new Error('Serve l\'indirizzo pubblico https di Lumi: scrivilo qui o impostalo nella Libreria');
         const dest = `${base}/api/connettori/bigcommerce/in/${k.segreti.codice}`, fatti = [];
         for (const scope of ['store/order/created', 'store/order/statusUpdated']) fatti.push((await chiama(k, 'post', 'v3', '/hooks', { scope, destination: dest, is_active: true }))?.data?.id);
         return { ok: true, webhook: fatti };
@@ -94,8 +94,8 @@ export default {
       'Nel pannello di BigCommerce apri Settings › Store-level API accounts › Create API account (tipo V2/V3).',
       'Dai i permessi Products modify, Orders modify, Information & Settings read-only e Store inventory modify.',
       'Salva: copia l\'Access token; lo store hash è la parte dopo /stores/ nell\'API path.',
-      'In Kubo incolla store hash e token, premi «Prova la connessione» e accendi.',
-      'Premi «Registra i webhook degli ordini» con l\'indirizzo pubblico di Kubo (se hai impostato l\'indirizzo pubblico di Kubo nella Libreria, puoi lasciarlo vuoto): gli ordini arrivano subito (senza, arrivano ogni 15 minuti).',
+      'In Lumi incolla store hash e token, premi «Prova la connessione» e accendi.',
+      'Premi «Registra i webhook degli ordini» con l\'indirizzo pubblico di Lumi (se hai impostato l\'indirizzo pubblico di Lumi nella Libreria, puoi lasciarlo vuoto): gli ordini arrivano subito (senza, arrivano ogni 15 minuti).',
       'Lancia «Prodotti dal negozio»: ogni variante con SKU diventa un articolo.',
     ],
     difficolta: 'facile', zone: ['mondo'],
@@ -106,7 +106,7 @@ export default {
     en: { descrizione: 'The BigCommerce store: shared variants and stock, paid orders become sales.', 'imp.negozio': 'Store hash (the one in api.bigcommerce.com/stores/…)', 'imp.token': 'API account access token', 'imp.sede': 'Inventory location (location id)', 'imp.codice': 'Webhook secret code', 'az.webhook': 'Register the order webhooks', 'giro.prodotti': 'Products from the store', 'giro.ordini': 'Orders from the store',
       'cat.costoNota': 'Plans from $29 a month (Standard, billed annually) to $299 (Pro); the API is included in every plan.',
       'cat.serve': [{ cosa: 'Store API account (V2/V3) with Products, Orders and Information & Settings: Access token and store hash', dove: 'Control panel › Settings › Store-level API accounts › Create API account' }],
-      'cat.passi': ['In the BigCommerce control panel open Settings › Store-level API accounts › Create API account (V2/V3).', 'Grant Products modify, Orders modify, Information & Settings read-only and Store inventory modify.', 'Save: copy the Access token; the store hash is the part after /stores/ in the API path.', 'In Kubo paste store hash and token, press «Test connection» and switch on.', 'Press «Register the order webhooks» with Kubo\'s public address (if you set Kubo\'s public address in the Library, you can leave it empty): orders arrive at once (without it, every 15 minutes).', 'Run «Products from the store»: every variant with a SKU becomes an item.'] },
+      'cat.passi': ['In the BigCommerce control panel open Settings › Store-level API accounts › Create API account (V2/V3).', 'Grant Products modify, Orders modify, Information & Settings read-only and Store inventory modify.', 'Save: copy the Access token; the store hash is the part after /stores/ in the API path.', 'In Lumi paste store hash and token, press «Test connection» and switch on.', 'Press «Register the order webhooks» with Lumi\'s public address (if you set Lumi\'s public address in the Library, you can leave it empty): orders arrive at once (without it, every 15 minutes).', 'Run «Products from the store»: every variant with a SKU becomes an item.'] },
     es: { descrizione: 'La tienda BigCommerce: variantes y existencias en común, los pedidos pagados pasan a ventas.', 'imp.negozio': 'Store hash', 'imp.token': 'Access token de la cuenta API', 'imp.sede': 'Ubicación del almacén (location id)', 'imp.codice': 'Código secreto de los webhooks', 'az.webhook': 'Registrar los webhooks de pedidos', 'giro.prodotti': 'Productos de la tienda', 'giro.ordini': 'Pedidos de la tienda' },
     fr: { descrizione: 'La boutique BigCommerce : variantes et stock partagés, les commandes payées deviennent des ventes.', 'imp.negozio': 'Store hash', 'imp.token': 'Access token du compte API', 'imp.sede': 'Emplacement du stock (location id)', 'imp.codice': 'Code secret des webhooks', 'az.webhook': 'Enregistrer les webhooks des commandes', 'giro.prodotti': 'Produits de la boutique', 'giro.ordini': 'Commandes de la boutique' },
     de: { descrizione: 'Der BigCommerce-Shop: gemeinsame Varianten und Bestand, bezahlte Bestellungen werden Verkäufe.', 'imp.negozio': 'Store-Hash', 'imp.token': 'Access Token des API-Kontos', 'imp.sede': 'Lagerort (Location-ID)', 'imp.codice': 'Geheimer Webhook-Code', 'az.webhook': 'Bestell-Webhooks registrieren', 'giro.prodotti': 'Produkte aus dem Shop', 'giro.ordini': 'Bestellungen aus dem Shop' },

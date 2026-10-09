@@ -1,4 +1,4 @@
-// Dropbox: fatture e documenti in /Kubo/Fatture/2026/…, backup del database ogni notte in /Kubo/Backup (gli ultimi N).
+// Dropbox: fatture e documenti in /Lumi/Fatture/2026/…, backup del database ogni notte in /Lumi/Backup (gli ultimi N).
 // OAuth con il codice + PKCE e token_access_type=offline (refresh token che non scade). Caricamento con /2/files/upload
 // (fino a 150 MB, le cartelle si creano da sole); oltre servirebbe una sessione di upload: si rifiuta con un messaggio chiaro.
 // API: https://www.dropbox.com/developers/documentation/http/documentation
@@ -52,10 +52,10 @@ export default {
     costoNota: 'Dropbox Basic gratis con 2 GB; Plus 2 TB a circa 11,99 €/mese (9,99 €/mese con pagamento annuale). L\'API non costa.',
     serve: [{ cosa: 'App key e App secret di un\'app Dropbox (accesso «App folder» o «Full Dropbox»)', dove: 'Dropbox App Console → Create app → Scoped access → scheda Settings', link: 'https://www.dropbox.com/developers/apps' }],
     passi: [
-      'Nella App Console crea un\'app «Scoped access», tipo «App folder» (Kubo vede solo la sua cartella Apps/<nome app>).',
+      'Nella App Console crea un\'app «Scoped access», tipo «App folder» (Lumi vede solo la sua cartella Apps/<nome app>).',
       'Scheda Permissions: spunta files.metadata.read, files.content.read, files.content.write e premi Submit.',
-      'Scheda Settings: in Redirect URIs aggiungi http://localhost:<porta di Kubo>/api/connettori/dropbox/oauth/ritorno.',
-      'In Kubo incolla App key e App secret, accendi il connettore e premi «Collega».',
+      'Scheda Settings: in Redirect URIs aggiungi http://localhost:<porta di Lumi>/api/connettori/dropbox/oauth/ritorno.',
+      'In Lumi incolla App key e App secret, accendi il connettore e premi «Collega».',
       'Scegli se salvare da solo le fatture emesse e quanti backup tenere. Un file oltre 150 MB viene rifiutato.',
     ],
     difficolta: 'facile', zone: ['mondo'],
@@ -66,7 +66,7 @@ export default {
     en: { nome: 'Dropbox', descrizione: 'Invoices and documents on Dropbox, folders by year, and a nightly database backup.', 'imp.client_id': 'Dropbox: App key', 'imp.client_secret': 'Dropbox: App secret',
       'cat.costoNota': 'Dropbox Basic free with 2 GB; Plus 2 TB for about €11.99/month (€9.99/month billed yearly). The API is free.',
       'cat.serve': [{ cosa: 'App key and App secret of a Dropbox app («App folder» or «Full Dropbox» access)', dove: 'Dropbox App Console → Create app → Scoped access → Settings tab' }],
-      'cat.passi': ['In the App Console create a «Scoped access» app, «App folder» type (Kubo only sees its own Apps/<app name> folder).', 'Permissions tab: tick files.metadata.read, files.content.read, files.content.write and press Submit.', 'Settings tab: add the redirect URI http://localhost:<Kubo port>/api/connettori/dropbox/oauth/ritorno.', 'In Kubo paste App key and App secret, turn the connector on and press «Connect».', 'Choose whether to save issued invoices automatically and how many backups to keep. Files over 150 MB are refused.'] },
+      'cat.passi': ['In the App Console create a «Scoped access» app, «App folder» type (Lumi only sees its own Apps/<app name> folder).', 'Permissions tab: tick files.metadata.read, files.content.read, files.content.write and press Submit.', 'Settings tab: add the redirect URI http://localhost:<Lumi port>/api/connettori/dropbox/oauth/ritorno.', 'In Lumi paste App key and App secret, turn the connector on and press «Connect».', 'Choose whether to save issued invoices automatically and how many backups to keep. Files over 150 MB are refused.'] },
     es: { nome: 'Dropbox', descrizione: 'Facturas y documentos en Dropbox, carpetas por año, y copia nocturna de la base de datos.', 'imp.client_id': 'Dropbox: App key', 'imp.client_secret': 'Dropbox: App secret' },
     fr: { nome: 'Dropbox', descrizione: 'Factures et documents sur Dropbox, dossiers par année, et sauvegarde nocturne de la base.', 'imp.client_id': 'Dropbox : App key', 'imp.client_secret': 'Dropbox : App secret' },
     de: { nome: 'Dropbox', descrizione: 'Rechnungen und Dokumente in Dropbox, Ordner nach Jahr, und nächtliche Datenbanksicherung.', 'imp.client_id': 'Dropbox: App key', 'imp.client_secret': 'Dropbox: App secret' },

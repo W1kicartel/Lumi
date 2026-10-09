@@ -1,5 +1,5 @@
-// pCloud (svizzero, dati in UE a Lussemburgo o negli USA): fatture e documenti in /Kubo/Fatture/2026/…, backup del
-// database ogni notte in /Kubo/Backup (gli ultimi N). OAuth con il codice; i token di pCloud non scadono e vanno in
+// pCloud (svizzero, dati in UE a Lussemburgo o negli USA): fatture e documenti in /Lumi/Fatture/2026/…, backup del
+// database ogni notte in /Lumi/Backup (gli ultimi N). OAuth con il codice; i token di pCloud non scadono e vanno in
 // «Authorization: Bearer». Ogni account vive in una regione e risponde solo dal suo host: eapi.pcloud.com (UE) o
 // api.pcloud.com (USA). pCloud lo dice nel ritorno dell'autorizzazione (hostname): il nucleo lo conserva (oauth.conserva,
 // k.oauth.extra()) prima dello scambio del codice, che va già fatto su quell'host. Si usa solo se è uno dei due host di
@@ -18,7 +18,7 @@ const bene = r => r.ok && r.json?.result === 0;
 const chiama = async (k, metodo, param) => k.http.get(`${api(k)}/${metodo}?${new URLSearchParams(param)}`, { bearer: await k.oauth.token() });
 const percorso = (...p) => '/' + p.join('/').split('/').filter(Boolean).join('/');
 
-// l'id della cartella /Kubo/Fatture/2026: createfolderifnotexists un livello alla volta (il padre deve esistere)
+// l'id della cartella /Lumi/Fatture/2026: createfolderifnotexists un livello alla volta (il padre deve esistere)
 async function cartellaId(k, cartella) {
   const pezzi = percorso(cartella).split('/').filter(Boolean); let id = 0;
   for (let i = 1; i <= pezzi.length; i++) {
@@ -29,7 +29,7 @@ async function cartellaId(k, cartella) {
   return id;
 }
 async function carica(k, cartella, nome, contenuto, tipo) {
-  const folderid = await cartellaId(k, cartella), confine = `kubo${randomBytes(12).toString('hex')}`;
+  const folderid = await cartellaId(k, cartella), confine = `lumi${randomBytes(12).toString('hex')}`;
   // multipart/form-data; uploadfile sovrascrive un file con lo stesso nome (renameifexists non c'è)
   const corpo = Buffer.concat([Buffer.from(`--${confine}\r\nContent-Disposition: form-data; name="file"; filename="${nome.replace(/"/g, '')}"\r\nContent-Type: ${tipo}\r\n\r\n`), contenuto, Buffer.from(`\r\n--${confine}--\r\n`)]);
   const r = await k.http.post(`${api(k)}/uploadfile?${new URLSearchParams({ folderid: String(folderid), filename: nome, nopartial: '1' })}`,
@@ -72,8 +72,8 @@ export default {
     passi: [
       'Accedi a pCloud, apri la pagina «My applications» degli sviluppatori e crea una nuova app.',
       'Nelle impostazioni dell\'app spunta i permessi di lettura e scrittura dei file.',
-      'Alla voce Redirect URIs aggiungi http://localhost:<porta di Kubo>/api/connettori/pcloud/oauth/ritorno.',
-      'Incolla Client ID e Client secret, accendi il connettore e premi «Collega»: la regione dei dati (Europa o Stati Uniti) Kubo la riconosce da sé.',
+      'Alla voce Redirect URIs aggiungi http://localhost:<porta di Lumi>/api/connettori/pcloud/oauth/ritorno.',
+      'Incolla Client ID e Client secret, accendi il connettore e premi «Collega»: la regione dei dati (Europa o Stati Uniti) Lumi la riconosce da sé.',
       'Premi «Prova la connessione»: se non va, collega di nuovo l\'account.',
       'Scegli se salvare da solo le fatture emesse e quanti backup notturni tenere (predefinito 14).',
     ],
@@ -85,7 +85,7 @@ export default {
     en: { nome: 'pCloud', descrizione: 'Invoices and documents on pCloud (EU data region too), folders by year, and a nightly database backup.', 'imp.client_id': 'pCloud: Client ID', 'imp.client_secret': 'pCloud: Client secret',
       'cat.costoNota': 'Free plan up to 10 GB; Premium 500 GB about €4.99/month or €49.99/year, Premium Plus 2 TB about €9.99/month; lifetime plans (one-off payment) too. EU storage (Luxembourg) costs the same. The API is free.',
       'cat.serve': [{ cosa: 'Client ID and Client secret of a pCloud app', dove: 'pCloud → My applications (developer page) → New app → Settings' }],
-      'cat.passi': ['Sign in to pCloud, open the developer «My applications» page and create a new app.', 'In the app settings tick the file read and write permissions.', 'Under Redirect URIs add http://localhost:<Kubo port>/api/connettori/pcloud/oauth/ritorno.', 'Paste Client ID and Client secret, turn the connector on and press «Connect»: Kubo detects the data region (Europe or United States) by itself.', 'Press «Test connection»: if it fails, connect the account again.', 'Choose whether to save issued invoices automatically and how many nightly backups to keep (default 14).'] },
+      'cat.passi': ['Sign in to pCloud, open the developer «My applications» page and create a new app.', 'In the app settings tick the file read and write permissions.', 'Under Redirect URIs add http://localhost:<Lumi port>/api/connettori/pcloud/oauth/ritorno.', 'Paste Client ID and Client secret, turn the connector on and press «Connect»: Lumi detects the data region (Europe or United States) by itself.', 'Press «Test connection»: if it fails, connect the account again.', 'Choose whether to save issued invoices automatically and how many nightly backups to keep (default 14).'] },
     es: { nome: 'pCloud', descrizione: 'Facturas y documentos en pCloud (también con datos en la UE), carpetas por año, y copia nocturna de la base de datos.', 'imp.client_id': 'pCloud: Client ID', 'imp.client_secret': 'pCloud: Client secret' },
     fr: { nome: 'pCloud', descrizione: 'Factures et documents sur pCloud (données dans l\'UE possible), dossiers par année, et sauvegarde nocturne de la base.', 'imp.client_id': 'pCloud : Client ID', 'imp.client_secret': 'pCloud : Client secret' },
     de: { nome: 'pCloud', descrizione: 'Rechnungen und Dokumente in pCloud (auch mit Daten in der EU), Ordner nach Jahr, und nächtliche Datenbanksicherung.', 'imp.client_id': 'pCloud: Client-ID', 'imp.client_secret': 'pCloud: Client-Secret' },

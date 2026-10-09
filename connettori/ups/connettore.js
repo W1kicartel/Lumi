@@ -10,7 +10,7 @@ import { RICHIEDE_SPEDIZIONI } from '../_negozi/comune.js';
 
 const host = k => (k.base || (k.imp.ambiente === 'prova' ? 'https://wwwcie.ups.com' : 'https://onlinetools.ups.com')).replace(/\/$/, '');
 const accesso = async k => ({ bearer: await token(k, { url: `${host(k)}/security/v1/oauth/token`, basic: [k.segreti.client_id, k.segreti.client_secret], form: { grant_type: 'client_credentials' } }),
-  intestazioni: { transId: randomUUID().replace(/-/g, '').slice(0, 32), transactionSrc: 'Kubo' } });
+  intestazioni: { transId: randomUUID().replace(/-/g, '').slice(0, 32), transactionSrc: 'Lumi' } });
 // stati UPS: D consegnato, I in viaggio, X eccezione, P ritirato, M etichetta creata
 const t = tracciamento({ corriere: 'UPS', pagina: n => `https://www.ups.com/track?loc=it_IT&tracknum=${encodeURIComponent(n)}`, async leggi(k, n) {
   const r = await k.http.get(`${host(k)}/api/track/v1/details/${encodeURIComponent(n)}?locale=it_IT&returnSignature=false`, await accesso(k));
@@ -41,7 +41,7 @@ export default {
     passi: [
       'Accedi a developer.ups.com con il tuo account UPS e crea un\'app («Add Apps»), scegliendo il prodotto Tracking.',
       'Copia Client ID e Client secret dell\'app.',
-      'In Kubo incollali, premi «Prova la connessione» e accendi.',
+      'In Lumi incollali, premi «Prova la connessione» e accendi.',
       'Da una vendita usa «Collega un tracking UPS» con il numero 1Z…, oppure chiedilo a Lumi: lo stato torna sulla vendita ogni due ore.',
     ],
     difficolta: 'facile', zone: ['IT', 'UE', 'mondo'],
@@ -52,7 +52,7 @@ export default {
     en: { descrizione: 'Tracking of UPS shipments on sales: the status comes back by itself and Lumi knows where the parcel is.', 'imp.client_id': 'UPS app client ID', 'imp.client_secret': 'UPS app client secret', 'imp.ambiente': 'Environment', 'az.collega': 'Link a UPS tracking', 'az.dove': 'Where is the parcel', 'giro.stati': 'Shipment status',
       'cat.costoNota': 'UPS APIs are free with a UPS account (tracking works without a contract too); shipments are paid at your UPS account rates.',
       'cat.serve': [{ cosa: 'Client ID and Client secret of an app with the «Tracking» product', dove: 'developer.ups.com › Apps › Add Apps (linked to your UPS account)' }],
-      'cat.passi': ['Sign in to developer.ups.com with your UPS account and create an app («Add Apps») with the Tracking product.', 'Copy the app Client ID and Client secret.', 'In Kubo paste them, press «Test connection» and switch on.', 'From a sale use «Link a UPS tracking» with the 1Z… number, or ask Lumi: the status comes back to the sale every two hours.'] },
+      'cat.passi': ['Sign in to developer.ups.com with your UPS account and create an app («Add Apps») with the Tracking product.', 'Copy the app Client ID and Client secret.', 'In Lumi paste them, press «Test connection» and switch on.', 'From a sale use «Link a UPS tracking» with the 1Z… number, or ask Lumi: the status comes back to the sale every two hours.'] },
     es: { descrizione: 'El seguimiento de los envíos UPS en las ventas: el estado vuelve solo y Lumi sabe dónde está el paquete.', 'imp.client_id': 'Client ID de la app UPS', 'imp.client_secret': 'Client secret de la app UPS', 'imp.ambiente': 'Entorno', 'az.collega': 'Vincular un seguimiento UPS', 'az.dove': 'Dónde está el paquete', 'giro.stati': 'Estado de los envíos' },
     fr: { descrizione: 'Le suivi des envois UPS sur les ventes : le statut revient tout seul et Lumi sait où est le colis.', 'imp.client_id': 'Client ID de l\'app UPS', 'imp.client_secret': 'Client secret de l\'app UPS', 'imp.ambiente': 'Environnement', 'az.collega': 'Lier un suivi UPS', 'az.dove': 'Où est le colis', 'giro.stati': 'Statut des envois' },
     de: { descrizione: 'Sendungsverfolgung von UPS-Sendungen am Verkauf: der Status kommt von selbst und Lumi weiß, wo das Paket ist.', 'imp.client_id': 'Client-ID der UPS-App', 'imp.client_secret': 'Client-Secret der UPS-App', 'imp.ambiente': 'Umgebung', 'az.collega': 'UPS-Sendungsnummer verknüpfen', 'az.dove': 'Wo ist das Paket', 'giro.stati': 'Status der Sendungen' },

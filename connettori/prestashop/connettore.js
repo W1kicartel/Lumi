@@ -3,7 +3,7 @@
 // le risposte in JSON con output_format=JSON, la scrittura solo in XML (PUT con l'oggetto intero). Pagine con
 // limit=<inizio>,<quanti>; filtri a intervallo filter[campo]=[a,b] (con date=1 sulle date). PrestaShop non manda webhook:
 // gli ordini si leggono ogni 10 minuti dalla data di modifica, e lo stato decide se sono pagati (2, 3, 4, 5, 11 di serie).
-// Il prezzo del prodotto è senza IVA: Kubo lo porta ivato con l'aliquota delle impostazioni.
+// Il prezzo del prodotto è senza IVA: Lumi lo porta ivato con l'aliquota delle impostazioni.
 import { documento, elemento } from '../_negozi/xml.js';
 import { importaOrdine, tondo, RICHIEDE_NEGOZI, PERMESSI_NEGOZI } from '../_negozi/comune.js';
 
@@ -41,7 +41,7 @@ export default {
   permessi: PERMESSI_NEGOZI,
   prova: async k => { const r = await k.http.get(api(k, ''), chiave(k)); return { ok: r.ok, messaggio: r.ok ? null : r.stato === 401 ? 'Chiave non valida o Webservice spento' : `HTTP ${r.stato}` }; },
   mappe: { articoli: { id: 'id', chiave: ['codice', 'codice'], campi: [
-    { kubo: 'nome', remoto: 'nome' }, { kubo: 'prezzo', remoto: 'prezzo' }, { kubo: 'giacenza', remoto: 'giacenza', comanda: 'kubo' },
+    { locale: 'nome', remoto: 'nome' }, { locale: 'prezzo', remoto: 'prezzo' }, { locale: 'giacenza', remoto: 'giacenza', comanda: 'locale' },
   ] } },
   pianificati: {
     prodotti: { nome: 'Prodotti dal negozio', ogni: '15m', async giro(k) {
@@ -104,7 +104,7 @@ export default {
     passi: [
       'Nel back office apri Parametri avanzati › Webservice e attiva «Abilita il Webservice di PrestaShop».',
       'Clicca «Aggiungi nuova chiave», genera la chiave e spunta GET e PUT per stock_availables, GET per products, combinations, orders, customers e addresses.',
-      'In Kubo incolla l\'indirizzo del negozio e la chiave, poi premi «Prova la connessione».',
+      'In Lumi incolla l\'indirizzo del negozio e la chiave, poi premi «Prova la connessione».',
       'Controlla l\'aliquota IVA e gli stati degli ordini pagati (di serie 2, 3, 4, 5, 11).',
       'Accendi il connettore e premi «Sincronizza ora» su «Prodotti dal negozio»: gli articoli si abbinano per riferimento (codice).',
       'Se la prova risponde 401 su un hosting in CGI, attiva l\'inoltro dell\'intestazione Authorization nel file .htaccess.',
@@ -117,7 +117,7 @@ export default {
     en: { descrizione: 'The PrestaShop store: shared catalogue and stock, paid orders become sales.', 'imp.url': 'Store address (https://…)', 'imp.chiave': 'Webservice key', 'aiuto.chiave': 'Advanced Parameters › Webservice › Add new key', 'imp.lingua': 'Language of the names (id)', 'imp.iva': 'VAT to add to prices (%)', 'imp.stati': 'Paid order states (ids)', 'giro.prodotti': 'Products from the store', 'giro.ordini': 'Orders from the store',
       'cat.costoNota': 'PrestaShop is open source and free; you only pay for hosting and any modules. The Webservice is included.',
       'cat.serve': [{ cosa: 'Webservice key (32 characters) with permissions on products, combinations, stock_availables, orders, customers, addresses', dove: 'Back office › Advanced Parameters › Webservice › Add new key' }],
-      'cat.passi': ['In the back office open Advanced Parameters › Webservice and enable the PrestaShop Webservice.', 'Click «Add new key», generate it and tick GET and PUT for stock_availables, GET for products, combinations, orders, customers and addresses.', 'In Kubo paste the store address and the key, then press «Test connection».', 'Check the VAT rate and the paid order states (2, 3, 4, 5, 11 by default).', 'Switch the connector on and press «Sync now» on «Products from the store»: items match by reference (code).', 'If the test answers 401 on CGI hosting, forward the Authorization header in .htaccess.'] },
+      'cat.passi': ['In the back office open Advanced Parameters › Webservice and enable the PrestaShop Webservice.', 'Click «Add new key», generate it and tick GET and PUT for stock_availables, GET for products, combinations, orders, customers and addresses.', 'In Lumi paste the store address and the key, then press «Test connection».', 'Check the VAT rate and the paid order states (2, 3, 4, 5, 11 by default).', 'Switch the connector on and press «Sync now» on «Products from the store»: items match by reference (code).', 'If the test answers 401 on CGI hosting, forward the Authorization header in .htaccess.'] },
     es: { descrizione: 'La tienda PrestaShop: catálogo y existencias en común, los pedidos pagados pasan a ventas.', 'imp.url': 'Dirección de la tienda (https://…)', 'imp.chiave': 'Clave del Webservice', 'aiuto.chiave': 'Parámetros avanzados › Webservice › Añadir nueva clave', 'imp.lingua': 'Idioma de los nombres (id)', 'imp.iva': 'IVA que añadir a los precios (%)', 'imp.stati': 'Estados de pedido pagado (ids)', 'giro.prodotti': 'Productos de la tienda', 'giro.ordini': 'Pedidos de la tienda' },
     fr: { descrizione: 'La boutique PrestaShop : catalogue et stock partagés, les commandes payées deviennent des ventes.', 'imp.url': 'Adresse de la boutique (https://…)', 'imp.chiave': 'Clé du Webservice', 'aiuto.chiave': 'Paramètres avancés › Webservice › Ajouter une clé', 'imp.lingua': 'Langue des noms (id)', 'imp.iva': 'TVA à ajouter aux prix (%)', 'imp.stati': 'États de commande payée (ids)', 'giro.prodotti': 'Produits de la boutique', 'giro.ordini': 'Commandes de la boutique' },
     de: { descrizione: 'Der PrestaShop-Shop: gemeinsamer Katalog und Bestand, bezahlte Bestellungen werden Verkäufe.', 'imp.url': 'Adresse des Shops (https://…)', 'imp.chiave': 'Webservice-Schlüssel', 'aiuto.chiave': 'Erweiterte Einstellungen › Webservice › Neuen Schlüssel hinzufügen', 'imp.lingua': 'Sprache der Namen (ID)', 'imp.iva': 'MwSt. auf die Preise (%)', 'imp.stati': 'Status bezahlter Bestellungen (IDs)', 'giro.prodotti': 'Produkte aus dem Shop', 'giro.ordini': 'Bestellungen aus dem Shop' },

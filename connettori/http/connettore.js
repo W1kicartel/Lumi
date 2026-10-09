@@ -8,7 +8,7 @@ export default {
   id: 'http', nome: 'HTTP / API REST', versione: 1, icona: 'ingranaggio', copie: true,   // «copie»: un secondo servizio con indirizzo, accesso e ricette suoi
   descrizione: 'Collega qualsiasi servizio con un\'API REST, senza scrivere codice: ricette in uscita, bottoni e webhook in entrata.',
   catalogo: {
-    categoria: 'automazione', sito: 'https://www.rfc-editor.org/rfc/rfc9110', costo: 'gratis', costoNota: 'Gratis in Kubo: paghi solo il servizio che colleghi, se è a pagamento',
+    categoria: 'automazione', sito: 'https://www.rfc-editor.org/rfc/rfc9110', costo: 'gratis', costoNota: 'Gratis in Lumi: paghi solo il servizio che colleghi, se è a pagamento',
     serve: [
       { cosa: 'L\'indirizzo base dell\'API (es. https://api.servizio.it/v1)', dove: 'La documentazione per sviluppatori del servizio' },
       { cosa: 'La chiave, il token o le credenziali OAuth2', dove: 'Le impostazioni del tuo account sul servizio, di solito «API» o «Sviluppatori»' },
@@ -27,7 +27,7 @@ export default {
   },
   ...manifestoRicette({ accesso: true }),
   testi: testiRicette({
-    en: { descrizione: 'Connect any service with a REST API, no code: outgoing recipes, buttons and incoming webhooks.', 'cat.costoNota': 'Free in Kubo: you only pay for the service you connect, if it is paid',
+    en: { descrizione: 'Connect any service with a REST API, no code: outgoing recipes, buttons and incoming webhooks.', 'cat.costoNota': 'Free in Lumi: you only pay for the service you connect, if it is paid',
       'cat.serve': [{ cosa: 'The API base address (e.g. https://api.service.com/v1)', dove: 'The service\'s developer documentation' }, { cosa: 'The key, token or OAuth2 credentials', dove: 'Your account settings on the service, usually «API» or «Developers»' }],
       'cat.passi': ['Find the base address and the authentication type in the service\'s documentation', 'Type the base address here, pick the authentication and paste the key', 'Add a recipe: outgoing (when a row changes), action (a button on the record) or incoming', 'In the path and body use placeholders like {email} or {cliente.titolo}', 'For incoming recipes copy the address shown under the recipe and paste it into the service', 'Save, test the connection and switch it on: the log shows every request sent or received'] },
     es: { descrizione: 'Conecta cualquier servicio con una API REST, sin código: recetas salientes, botones y webhooks entrantes.' },

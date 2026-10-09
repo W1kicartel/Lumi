@@ -1,7 +1,7 @@
-// Pipedrive (il CRM delle vendite di tante PMI): clienti di Kubo e persone di Pipedrive allineati, trattative dai preventivi.
-// - Kubo → Pipedrive: ogni cliente nuovo o cambiato con email o telefono diventa una persona (abbinata per id o per email:
+// Pipedrive (il CRM delle vendite di tante PMI): clienti di Lumi e persone di Pipedrive allineati, trattative dai preventivi.
+// - Lumi → Pipedrive: ogni cliente nuovo o cambiato con email o telefono diventa una persona (abbinata per id o per email:
 //   mai doppioni); chi ha la partita IVA è anche un'organizzazione con lo stesso nome, collegata alla persona;
-// - Pipedrive → Kubo: ogni 15 minuti le persone nuove o cambiate (updated_since) creano o aggiornano i clienti;
+// - Pipedrive → Lumi: ogni 15 minuti le persone nuove o cambiate (updated_since) creano o aggiornano i clienti;
 // - azione «crea_trattativa»: un preventivo diventa un deal (titolo, valore in euro, persona e organizzazione).
 // API v2 (persone, organizzazioni, deal), token nell'intestazione x-api-token, https://<azienda>.pipedrive.com.
 import { lotti } from '../_comunica/tabelle.js';
@@ -23,7 +23,7 @@ async function organizzazione(k, c) {
   if (!mappa[c.id]) { mappa[c.id] = r.json.data.id; k.stato.scrivi('organizzazioni', mappa); }
   return mappa[c.id];
 }
-// Kubo → Pipedrive: la persona del cliente (creata o aggiornata) → id, o null se non ha né email né telefono
+// Lumi → Pipedrive: la persona del cliente (creata o aggiornata) → id, o null se non ha né email né telefono
 async function persona(k, c) {
   const email = String(k.valore(c, 'clienti', 'email') || '').trim().toLowerCase(), tel = k.campo('clienti', 'telefono') ? String(k.valore(c, 'clienti', 'telefono') || '').trim() : '';
   if (!email && !tel) return null;
@@ -40,7 +40,7 @@ async function persona(k, c) {
   k.sincro.collega('clienti', c.id, r.json.data.id);
   return r.json.data.id;
 }
-// Pipedrive → Kubo: le persone cambiate dopo il cursore (update_time), a pagine da 500, al massimo 10.000 per giro
+// Pipedrive → Lumi: le persone cambiate dopo il cursore (update_time), a pagine da 500, al massimo 10.000 per giro
 async function ricevi(k) {
   const dopo = k.stato.leggi('aggiornate') || null, conti = { creati: 0, aggiornati: 0, uguali: 0 }; let cursor = null;
   for (let i = 0; i < 20; i++) {
@@ -62,7 +62,7 @@ function trattativa(k, p) {
 }
 export default {
   id: 'pipedrive', nome: 'Pipedrive', versione: 1, icona: 'utenti',
-  descrizione: 'Clienti di Kubo e persone di Pipedrive allineati; le aziende con P.IVA come organizzazioni; i preventivi diventano trattative.',
+  descrizione: 'Clienti di Lumi e persone di Pipedrive allineati; le aziende con P.IVA come organizzazioni; i preventivi diventano trattative.',
   impostazioni: [
     { id: 'token', nome: 'Token API personale', segreto: true, schema: /^[0-9a-f]{40}$/ },
     { id: 'dominio', nome: 'Il dominio dell\'azienda (es. bottega per bottega.pipedrive.com)', schema: /^(https?:\/\/)?[a-z0-9][a-z0-9-]{0,62}(\.pipedrive\.com\/?)?$/i },
@@ -72,7 +72,7 @@ export default {
     preventivi: { numero: { facoltativo: true }, oggetto: { facoltativo: true }, cliente: { tipo: ['relazione'], facoltativo: true }, totale: { facoltativo: true } },
   },
   permessi: { clienti: { leggi: true, crea: true, modifica: true }, preventivi: { leggi: true } },
-  mappe: { persone: { entita: 'clienti', id: 'id', chiave: ['email', 'email'], campi: [{ kubo: 'nome', remoto: 'nome' }, { kubo: 'email', remoto: 'email' }, { kubo: 'telefono', remoto: 'telefono' }] } },
+  mappe: { persone: { entita: 'clienti', id: 'id', chiave: ['email', 'email'], campi: [{ locale: 'nome', remoto: 'nome' }, { locale: 'email', remoto: 'email' }, { locale: 'telefono', remoto: 'telefono' }] } },
   prova: async k => { const r = await k.http.get(`${pbase(k)}/api/v1/users/me`, opz(k)); return { ok: r.ok, messaggio: r.ok ? `Collegato come ${r.json?.data?.name} (${r.json?.data?.company_name || dominio(k)})` : `HTTP ${r.stato}` }; },
   uscita: { clienti: { campi: ['nome', 'email', 'telefono', 'piva'], quando: (r, k) => !!(k.valore(r, 'clienti', 'email') || (k.campo('clienti', 'telefono') && k.valore(r, 'clienti', 'telefono'))), invia: async (riga, k) => { await persona(k, riga); } } },
   pianificati: { persone: { nome: 'Persone nuove o cambiate in Pipedrive', ogni: '15m', giro: k => ricevi(k) } },
@@ -108,7 +108,7 @@ export default {
       'Incolla qui il token e il dominio dell\'azienda (la parte prima di .pipedrive.com).',
       'Premi «Prova la connessione»: vedi il tuo nome.',
       'Da qui ogni cliente nuovo o cambiato con email o telefono passa a Pipedrive; chi ha la P.IVA anche come organizzazione.',
-      'Ogni 15 minuti le persone nuove o cambiate in Pipedrive tornano in Kubo come clienti.',
+      'Ogni 15 minuti le persone nuove o cambiate in Pipedrive tornano in Lumi come clienti.',
       'Su un preventivo premi «Crea la trattativa in Pipedrive», o chiedilo a Lumi.',
     ],
     difficolta: 'facile', zone: ['mondo'],
@@ -116,13 +116,13 @@ export default {
     prova: 'finto', parole: ['pipedrive', 'crm', 'trattative', 'vendite', 'contatti', 'deal', 'pipeline', 'sales', 'lead'],
   },
   testi: {
-    en: { nome: 'Pipedrive', descrizione: 'Kubo customers and Pipedrive people in sync; companies with a VAT number as organisations; quotes become deals.', 'imp.token': 'Personal API token', 'imp.dominio': 'Company domain (e.g. bottega for bottega.pipedrive.com)', 'az.crea_trattativa': 'Create the deal in Pipedrive', 'giro.persone': 'New or changed people in Pipedrive',
+    en: { nome: 'Pipedrive', descrizione: 'Lumi customers and Pipedrive people in sync; companies with a VAT number as organisations; quotes become deals.', 'imp.token': 'Personal API token', 'imp.dominio': 'Company domain (e.g. bottega for bottega.pipedrive.com)', 'az.crea_trattativa': 'Create the deal in Pipedrive', 'giro.persone': 'New or changed people in Pipedrive',
       'cat.costoNota': 'No free plan (14-day trial). Lite from about €14 per user per month billed annually, Growth about €24, Premium about €49, Ultimate about €69. The API is in every plan.',
       'cat.serve': [{ cosa: 'The personal API token', dove: 'Pipedrive → profile icon → Personal preferences → API → Copy the token' }, { cosa: 'The company domain', dove: 'It is the first part of the address you use: <company>.pipedrive.com' }],
-      'cat.passi': ['In Pipedrive open the profile icon → Personal preferences → API and copy the token.', 'Paste the token and the company domain (the part before .pipedrive.com).', 'Press «Test connection»: you see your name.', 'From then on every new or changed customer with email or phone goes to Pipedrive; those with a VAT number also as an organisation.', 'Every 15 minutes new or changed people in Pipedrive come back to Kubo as customers.', 'On a quote press «Create the deal in Pipedrive», or ask Lumi.'] },
-    es: { nome: 'Pipedrive', descrizione: 'Clientes de Kubo y personas de Pipedrive alineados; las empresas con NIF como organizaciones; los presupuestos se convierten en tratos.', 'imp.token': 'Token API personal', 'imp.dominio': 'Dominio de la empresa (p. ej. bottega para bottega.pipedrive.com)', 'az.crea_trattativa': 'Crear el trato en Pipedrive', 'giro.persone': 'Personas nuevas o cambiadas en Pipedrive' },
-    fr: { nome: 'Pipedrive', descrizione: 'Clients Kubo et personnes Pipedrive alignés ; les sociétés avec n° de TVA comme organisations ; les devis deviennent des affaires.', 'imp.token': 'Jeton API personnel', 'imp.dominio': 'Domaine de l\'entreprise (ex. bottega pour bottega.pipedrive.com)', 'az.crea_trattativa': 'Créer l\'affaire dans Pipedrive', 'giro.persone': 'Personnes nouvelles ou modifiées dans Pipedrive' },
-    de: { nome: 'Pipedrive', descrizione: 'Kubo-Kunden und Pipedrive-Personen abgeglichen; Firmen mit USt-IdNr. als Organisationen; Angebote werden Deals.', 'imp.token': 'Persönliches API-Token', 'imp.dominio': 'Firmendomain (z. B. bottega für bottega.pipedrive.com)', 'az.crea_trattativa': 'Deal in Pipedrive anlegen', 'giro.persone': 'Neue oder geänderte Personen in Pipedrive' },
-    pt: { nome: 'Pipedrive', descrizione: 'Clientes do Kubo e pessoas do Pipedrive alinhados; empresas com NIF como organizações; os orçamentos viram negócios.', 'imp.token': 'Token de API pessoal', 'imp.dominio': 'Domínio da empresa (ex. bottega para bottega.pipedrive.com)', 'az.crea_trattativa': 'Criar o negócio no Pipedrive', 'giro.persone': 'Pessoas novas ou alteradas no Pipedrive' },
+      'cat.passi': ['In Pipedrive open the profile icon → Personal preferences → API and copy the token.', 'Paste the token and the company domain (the part before .pipedrive.com).', 'Press «Test connection»: you see your name.', 'From then on every new or changed customer with email or phone goes to Pipedrive; those with a VAT number also as an organisation.', 'Every 15 minutes new or changed people in Pipedrive come back to Lumi as customers.', 'On a quote press «Create the deal in Pipedrive», or ask Lumi.'] },
+    es: { nome: 'Pipedrive', descrizione: 'Clientes de Lumi y personas de Pipedrive alineados; las empresas con NIF como organizaciones; los presupuestos se convierten en tratos.', 'imp.token': 'Token API personal', 'imp.dominio': 'Dominio de la empresa (p. ej. bottega para bottega.pipedrive.com)', 'az.crea_trattativa': 'Crear el trato en Pipedrive', 'giro.persone': 'Personas nuevas o cambiadas en Pipedrive' },
+    fr: { nome: 'Pipedrive', descrizione: 'Clients Lumi et personnes Pipedrive alignés ; les sociétés avec n° de TVA comme organisations ; les devis deviennent des affaires.', 'imp.token': 'Jeton API personnel', 'imp.dominio': 'Domaine de l\'entreprise (ex. bottega pour bottega.pipedrive.com)', 'az.crea_trattativa': 'Créer l\'affaire dans Pipedrive', 'giro.persone': 'Personnes nouvelles ou modifiées dans Pipedrive' },
+    de: { nome: 'Pipedrive', descrizione: 'Lumi-Kunden und Pipedrive-Personen abgeglichen; Firmen mit USt-IdNr. als Organisationen; Angebote werden Deals.', 'imp.token': 'Persönliches API-Token', 'imp.dominio': 'Firmendomain (z. B. bottega für bottega.pipedrive.com)', 'az.crea_trattativa': 'Deal in Pipedrive anlegen', 'giro.persone': 'Neue oder geänderte Personen in Pipedrive' },
+    pt: { nome: 'Pipedrive', descrizione: 'Clientes do Lumi e pessoas do Pipedrive alinhados; empresas com NIF como organizações; os orçamentos viram negócios.', 'imp.token': 'Token de API pessoal', 'imp.dominio': 'Domínio da empresa (ex. bottega para bottega.pipedrive.com)', 'az.crea_trattativa': 'Criar o negócio no Pipedrive', 'giro.persone': 'Pessoas novas ou alteradas no Pipedrive' },
   },
 };

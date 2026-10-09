@@ -1,5 +1,5 @@
 // Archivio S3: AWS S3 e i compatibili (Backblaze B2, Wasabi, Cloudflare R2, MinIO, Aruba Cloud Object Storage…).
-// Fatture e documenti in <bucket>/Kubo/Fatture/2026/…, backup del database ogni notte in Kubo/Backup (gli ultimi N).
+// Fatture e documenti in <bucket>/Lumi/Fatture/2026/…, backup del database ogni notte in Lumi/Backup (gli ultimi N).
 // Chiave di accesso + segreto, firma AWS Signature V4 vera (../_comunica/sigv4.js), indirizzi path-style
 // (https://<endpoint>/<bucket>/<chiave>), che vanno bene per tutti. Un PUT singolo arriva a 5 GB.
 // API: https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html, ListObjectsV2, DeleteObject.
@@ -56,7 +56,7 @@ export default {
   },
   catalogo: {
     categoria: 'archivio', sito: 'https://aws.amazon.com/s3/', costo: 'a-consumo',
-    costoNota: 'Si paga lo spazio: AWS S3 Standard circa 0,023 $/GB al mese (Milano eu-south-1 poco di più); Backblaze B2 6 $/TB al mese con 10 GB gratis; Wasabi 6,99 $/TB al mese (minimo 1 TB); Cloudflare R2 0,015 $/GB al mese con 10 GB gratis e uscita gratuita. Per i backup di Kubo bastano pochi centesimi al mese.',
+    costoNota: 'Si paga lo spazio: AWS S3 Standard circa 0,023 $/GB al mese (Milano eu-south-1 poco di più); Backblaze B2 6 $/TB al mese con 10 GB gratis; Wasabi 6,99 $/TB al mese (minimo 1 TB); Cloudflare R2 0,015 $/GB al mese con 10 GB gratis e uscita gratuita. Per i backup di Lumi bastano pochi centesimi al mese.',
     serve: [
       { cosa: 'Un bucket privato e la sua regione', dove: 'AWS: Console S3 → Crea bucket · B2: Buckets → Create a Bucket · R2: R2 Object Storage → Create bucket', link: 'https://s3.console.aws.amazon.com/s3/' },
       { cosa: 'Chiave di accesso e chiave segreta limitate a quel bucket', dove: 'AWS: IAM → Utenti → Credenziali di sicurezza → Crea chiave di accesso · B2: Application Keys → Add a New Application Key · R2: Manage R2 API Tokens', link: 'https://console.aws.amazon.com/iam/' },
@@ -64,7 +64,7 @@ export default {
     passi: [
       'Crea un bucket privato (meglio in una regione UE: eu-south-1 Milano su AWS, eu-central-003 su B2).',
       'Crea una chiave di accesso con i soli permessi di lettura, scrittura e cancellazione su quel bucket.',
-      'In Kubo scrivi bucket e regione; per B2, Wasabi o R2 anche l\'endpoint (es. https://s3.eu-central-003.backblazeb2.com, https://s3.eu-central-1.wasabisys.com, https://<account>.r2.cloudflarestorage.com con regione «auto»).',
+      'In Lumi scrivi bucket e regione; per B2, Wasabi o R2 anche l\'endpoint (es. https://s3.eu-central-003.backblazeb2.com, https://s3.eu-central-1.wasabisys.com, https://<account>.r2.cloudflarestorage.com con regione «auto»).',
       'Incolla chiave di accesso e chiave segreta, accendi il connettore e premi «Prova».',
       'Scegli se salvare da solo le fatture emesse e quanti backup tenere (predefinito 14).',
     ],
@@ -74,9 +74,9 @@ export default {
   },
   testi: testiArchivio('S3', {
     en: { nome: 'S3 storage', descrizione: 'Invoices, documents and nightly backup on AWS S3, Backblaze B2, Wasabi, Cloudflare R2 or any S3.', 'imp.endpoint': 'Endpoint (empty = AWS; e.g. https://s3.eu-central-003.backblazeb2.com)', 'imp.regione': 'Region (e.g. eu-south-1, eu-central-003, auto for R2)', 'imp.bucket': 'Bucket', 'imp.chiave': 'Access key ID', 'imp.segreto': 'Secret access key',
-      'cat.costoNota': 'You pay for space: AWS S3 Standard about $0.023/GB per month; Backblaze B2 $6/TB per month with 10 GB free; Wasabi $6.99/TB per month (1 TB minimum); Cloudflare R2 $0.015/GB per month with 10 GB free and free egress. Kubo backups cost a few cents a month.',
+      'cat.costoNota': 'You pay for space: AWS S3 Standard about $0.023/GB per month; Backblaze B2 $6/TB per month with 10 GB free; Wasabi $6.99/TB per month (1 TB minimum); Cloudflare R2 $0.015/GB per month with 10 GB free and free egress. Lumi backups cost a few cents a month.',
       'cat.serve': [{ cosa: 'A private bucket and its region', dove: 'AWS: S3 console → Create bucket · B2: Buckets → Create a Bucket · R2: R2 Object Storage → Create bucket' }, { cosa: 'Access key and secret key limited to that bucket', dove: 'AWS: IAM → Users → Security credentials → Create access key · B2: Application Keys → Add a New Application Key · R2: Manage R2 API Tokens' }],
-      'cat.passi': ['Create a private bucket (better in an EU region).', 'Create an access key with only read, write and delete permissions on that bucket.', 'In Kubo enter bucket and region; for B2, Wasabi or R2 also the endpoint (R2 uses region «auto»).', 'Paste access key and secret key, turn the connector on and press «Test».', 'Choose whether to save issued invoices automatically and how many backups to keep (default 14).'] },
+      'cat.passi': ['Create a private bucket (better in an EU region).', 'Create an access key with only read, write and delete permissions on that bucket.', 'In Lumi enter bucket and region; for B2, Wasabi or R2 also the endpoint (R2 uses region «auto»).', 'Paste access key and secret key, turn the connector on and press «Test».', 'Choose whether to save issued invoices automatically and how many backups to keep (default 14).'] },
     es: { nome: 'Almacenamiento S3', descrizione: 'Facturas, documentos y copia nocturna en AWS S3, Backblaze B2, Wasabi, Cloudflare R2 u otro S3.', 'imp.endpoint': 'Endpoint (vacío = AWS)', 'imp.regione': 'Región (p. ej. eu-south-1, auto para R2)', 'imp.bucket': 'Bucket', 'imp.chiave': 'Clave de acceso (Access key ID)', 'imp.segreto': 'Clave secreta (Secret access key)' },
     fr: { nome: 'Stockage S3', descrizione: 'Factures, documents et sauvegarde nocturne sur AWS S3, Backblaze B2, Wasabi, Cloudflare R2 ou un autre S3.', 'imp.endpoint': 'Endpoint (vide = AWS)', 'imp.regione': 'Région (ex. eu-south-1, auto pour R2)', 'imp.bucket': 'Bucket', 'imp.chiave': 'Clé d\'accès (Access key ID)', 'imp.segreto': 'Clé secrète (Secret access key)' },
     de: { nome: 'S3-Speicher', descrizione: 'Rechnungen, Dokumente und nächtliche Sicherung auf AWS S3, Backblaze B2, Wasabi, Cloudflare R2 oder einem anderen S3.', 'imp.endpoint': 'Endpoint (leer = AWS)', 'imp.regione': 'Region (z. B. eu-south-1, auto für R2)', 'imp.bucket': 'Bucket', 'imp.chiave': 'Zugriffsschlüssel (Access key ID)', 'imp.segreto': 'Geheimer Schlüssel (Secret access key)' },

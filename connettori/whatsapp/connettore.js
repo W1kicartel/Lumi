@@ -1,7 +1,7 @@
 // WhatsApp con la Cloud API di Meta, diretta: nessun intermediario, le tariffe di Meta senza ricarichi.
 // Serve: l'ID del numero, l'ID dell'account WhatsApp Business (WABA), il token permanente di un utente di sistema con
 // whatsapp_business_messaging e whatsapp_business_management, la chiave segreta dell'app (firma X-Hub-Signature-256 dei
-// webhook) e il token di verifica, che Kubo genera e il titolare incolla su Meta. La verifica GET (hub.challenge) è
+// webhook) e il token di verifica, che Lumi genera e il titolare incolla su Meta. La verifica GET (hub.challenge) è
 // entrata.verificaGet qui sotto, sullo stesso indirizzo /api/connettori/whatsapp/in. Guida: docs/WHATSAPP.md.
 import { bus } from '../../server/moduli/whatsapp-bus.js';
 import * as C from './cloud.js';
@@ -33,7 +33,7 @@ export default {
     firma: { tipo: 'hmac', intestazione: 'x-hub-signature-256', segreto: 'segreto_app', formato: 'hex' },
     idempotenza: C.idempotenza,
     gestisci: (ev, k) => C.consegna(bus, k, C.eventi(ev)),
-    // GET /api/connettori/whatsapp/in: la verifica di Meta (hub.challenge) con il token generato da Kubo
+    // GET /api/connettori/whatsapp/in: la verifica di Meta (hub.challenge) con il token generato da Lumi
     verificaGet: (q, k) => sfidaMeta(q, k.segreti.verifica),
   },
   lavori: { 'whatsapp:invia': (corpo, k) => bus.get(k.db)?.lavora(corpo, k.id) },
@@ -64,8 +64,8 @@ export default {
       'In WhatsApp → Configurazione API aggiungi il tuo numero e verificalo con il codice SMS: copia l\'ID del numero e l\'ID dell\'account WhatsApp Business.',
       'In Impostazioni del business → Utenti di sistema crea un utente di sistema amministratore, assegnagli l\'app e l\'account WhatsApp, genera un token senza scadenza con whatsapp_business_messaging e whatsapp_business_management.',
       'Copia la chiave segreta dell\'app da Impostazioni dell\'app → Di base.',
-      'In Kubo incolla i quattro valori e accendi il connettore: Kubo genera il token di verifica.',
-      'In WhatsApp → Configurazione incolla l\'URL del webhook e il token di verifica che Kubo ti mostra, poi iscriviti ai campi messages e message_template_status_update.',
+      'In Lumi incolla i quattro valori e accendi il connettore: Lumi genera il token di verifica.',
+      'In WhatsApp → Configurazione incolla l\'URL del webhook e il token di verifica che Lumi ti mostra, poi iscriviti ai campi messages e message_template_status_update.',
       'Aggiungi un metodo di pagamento in WhatsApp Manager e prova la connessione.',
     ],
     difficolta: 'difficile', zone: ['mondo'], prova: 'finto',
@@ -85,8 +85,8 @@ export default {
       'cat.passi': ['Create (or open) the portfolio on business.facebook.com and start business verification.', 'On developers.facebook.com create a Business app and add the WhatsApp product.',
         'In WhatsApp → API setup add your number and verify it with the SMS code: copy the phone number ID and the WhatsApp Business Account ID.',
         'In Business settings → System users create an admin system user, assign it the app and the WhatsApp account, and generate a never-expiring token with whatsapp_business_messaging and whatsapp_business_management.',
-        'Copy the app secret from App settings → Basic.', 'In Kubo paste the four values and turn the connector on: Kubo generates the verify token.',
-        'In WhatsApp → Configuration paste the webhook URL and the verify token Kubo shows you, then subscribe to the messages and message_template_status_update fields.',
+        'Copy the app secret from App settings → Basic.', 'In Lumi paste the four values and turn the connector on: Lumi generates the verify token.',
+        'In WhatsApp → Configuration paste the webhook URL and the verify token Lumi shows you, then subscribe to the messages and message_template_status_update fields.',
         'Add a payment method in WhatsApp Manager and test the connection.'] },
     es: { nome: 'WhatsApp (Meta Cloud API)', descrizione: 'Escribe a los clientes por WhatsApp con la API oficial de Meta: respuestas, recordatorios, facturas.', 'imp.numero_id': 'ID del número de teléfono', 'imp.waba_id': 'ID de la cuenta de WhatsApp Business (WABA)', 'imp.token': 'Token de acceso permanente (usuario del sistema)', 'imp.segreto_app': 'Clave secreta de la app', 'imp.verifica': 'Token de verificación del webhook', 'imp.versione': 'Versión de la Graph API' },
     fr: { nome: 'WhatsApp (Meta Cloud API)', descrizione: 'Écrivez aux clients sur WhatsApp avec l\'API officielle de Meta : réponses, rappels, factures.', 'imp.numero_id': 'ID du numéro de téléphone', 'imp.waba_id': 'ID du compte WhatsApp Business (WABA)', 'imp.token': 'Jeton d\'accès permanent (utilisateur système)', 'imp.segreto_app': 'Clé secrète de l\'app', 'imp.verifica': 'Jeton de vérification du webhook', 'imp.versione': 'Version de la Graph API' },

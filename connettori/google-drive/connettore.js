@@ -1,5 +1,5 @@
-// Google Drive: fatture, preventivi e vendite come file (stampa HTML + XML FatturaPA) in Kubo/Fatture/2026/…, e il backup
-// del database ogni notte in Kubo/Backup (gli ultimi N). OAuth con il codice + PKCE e scope drive.file: Kubo vede solo i
+// Google Drive: fatture, preventivi e vendite come file (stampa HTML + XML FatturaPA) in Lumi/Fatture/2026/…, e il backup
+// del database ogni notte in Lumi/Backup (gli ultimi N). OAuth con il codice + PKCE e scope drive.file: Lumi vede solo i
 // file e le cartelle che ha creato lui, non il resto del Drive. Caricamento multipart fino a 5 MB, resumable oltre.
 // API: https://developers.google.com/workspace/drive/api/guides/manage-uploads
 import { randomBytes } from 'node:crypto';
@@ -13,7 +13,7 @@ async function cerca(k, bearer, filtro) {
   const r = await k.http.get(`${api(k)}/drive/v3/files?${new URLSearchParams({ q: `${filtro} and trashed = false`, fields: 'files(id,name)', spaces: 'drive', pageSize: '1000' })}`, { bearer });
   if (!r.ok) throw no(r, 'la ricerca'); return r.json?.files || [];
 }
-// l'id di una cartella «Kubo/Fatture/2026», creando quelle che mancano (o null se crea = false e non c'è)
+// l'id di una cartella «Lumi/Fatture/2026», creando quelle che mancano (o null se crea = false e non c'è)
 async function cartellaId(k, bearer, percorso, crea = true) {
   let padre = 'root';
   for (const nome of percorso.split('/').filter(Boolean)) {
@@ -34,7 +34,7 @@ async function carica(k, cartella, nome, contenuto, tipo) {
   const meta = esiste ? { name: nome } : { name: nome, parents: [padre] };
   let r;
   if (contenuto.length <= 5 * 1048576) {
-    const confine = `kubo${randomBytes(12).toString('hex')}`;
+    const confine = `lumi${randomBytes(12).toString('hex')}`;
     const corpo = Buffer.concat([Buffer.from(`--${confine}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n--${confine}\r\nContent-Type: ${tipo}\r\n\r\n`), contenuto, Buffer.from(`\r\n--${confine}--\r\n`)]);
     r = await k.http.richiesta(metodo, `${url}?uploadType=multipart&fields=id`, { bearer, testo: corpo, intestazioni: { 'Content-Type': `multipart/related; boundary=${confine}` }, ms: MS });
   } else {
@@ -78,8 +78,8 @@ export default {
     passi: [
       'Crea un progetto su Google Cloud Console e abilita la Google Drive API.',
       'Schermata di consenso OAuth: tipo «Esterno», aggiungi te stesso come utente di test (o pubblica l\'app) e lo scope …/auth/drive.file.',
-      'Crea un ID client OAuth di tipo «Applicazione web» con URI di reindirizzamento http://localhost:<porta di Kubo>/api/connettori/google-drive/oauth/ritorno.',
-      'In Kubo incolla client ID e client secret, accendi il connettore e premi «Collega».',
+      'Crea un ID client OAuth di tipo «Applicazione web» con URI di reindirizzamento http://localhost:<porta di Lumi>/api/connettori/google-drive/oauth/ritorno.',
+      'In Lumi incolla client ID e client secret, accendi il connettore e premi «Collega».',
       'Scegli se salvare da solo le fatture emesse e quanti backup notturni tenere (predefinito 14).',
       'Dalla scheda di una fattura usa «Salva su Google Drive», o chiedi a Lumi «salva la fattura 12 su Drive».',
     ],
@@ -91,7 +91,7 @@ export default {
     en: { nome: 'Google Drive', descrizione: 'Invoices and documents on Google Drive, folders by year, and a nightly database backup.', 'imp.client_id': 'Google: OAuth client ID', 'imp.client_secret': 'Google: client secret',
       'cat.costoNota': '15 GB free with a Google account (shared with Gmail and Photos); Google One from 100 GB at €1.99/month or €19.99/year. The Drive API is free.',
       'cat.serve': [{ cosa: 'OAuth client ID and client secret («Web application»)', dove: 'Google Cloud Console → APIs & Services → Credentials → Create credentials → OAuth client ID' }, { cosa: 'Google Drive API enabled in the project', dove: 'Google Cloud Console → APIs & Services → Library → Google Drive API → Enable' }],
-      'cat.passi': ['Create a project in Google Cloud Console and enable the Google Drive API.', 'OAuth consent screen: «External», add yourself as a test user (or publish the app) and the …/auth/drive.file scope.', 'Create a «Web application» OAuth client with redirect URI http://localhost:<Kubo port>/api/connettori/google-drive/oauth/ritorno.', 'In Kubo paste client ID and secret, turn the connector on and press «Connect».', 'Choose whether to save issued invoices automatically and how many nightly backups to keep (default 14).', 'From an invoice use «Save to Google Drive», or ask Lumi «save invoice 12 to Drive».'] },
+      'cat.passi': ['Create a project in Google Cloud Console and enable the Google Drive API.', 'OAuth consent screen: «External», add yourself as a test user (or publish the app) and the …/auth/drive.file scope.', 'Create a «Web application» OAuth client with redirect URI http://localhost:<Lumi port>/api/connettori/google-drive/oauth/ritorno.', 'In Lumi paste client ID and secret, turn the connector on and press «Connect».', 'Choose whether to save issued invoices automatically and how many nightly backups to keep (default 14).', 'From an invoice use «Save to Google Drive», or ask Lumi «save invoice 12 to Drive».'] },
     es: { nome: 'Google Drive', descrizione: 'Facturas y documentos en Google Drive, carpetas por año, y copia nocturna de la base de datos.', 'imp.client_id': 'Google: client ID de OAuth', 'imp.client_secret': 'Google: client secret' },
     fr: { nome: 'Google Drive', descrizione: 'Factures et documents sur Google Drive, dossiers par année, et sauvegarde nocturne de la base.', 'imp.client_id': 'Google : client ID OAuth', 'imp.client_secret': 'Google : client secret' },
     de: { nome: 'Google Drive', descrizione: 'Rechnungen und Dokumente in Google Drive, Ordner nach Jahr, und nächtliche Datenbanksicherung.', 'imp.client_id': 'Google: OAuth-Client-ID', 'imp.client_secret': 'Google: Client-Secret' },

@@ -36,7 +36,7 @@ async function evento(e, k) {
     if (!PAGATO.includes(e.action)) return `ignorato: ${e.action}`;
     const p = await leggi(k, 'payments', l.payment);   // si crede solo all'API
     if (!p || !PAGATO.includes(p.status)) return `ignorato: ${p?.status || 'sconosciuto'}`;
-    return incassa(k, p.metadata?.kubo, { importo: Number(p.amount) / 100, valuta: p.currency, quando: Date.parse(p.charge_date) || Date.now(), metodo: 'bonifico', fonte: 'GoCardless' });
+    return incassa(k, p.metadata?.lumi, { importo: Number(p.amount) / 100, valuta: p.currency, quando: Date.parse(p.charge_date) || Date.now(), metodo: 'bonifico', fonte: 'GoCardless' });
   }
   if (e.resource_type === 'billing_requests' && e.action === 'fulfilled' && sicuro(l.billing_request)) {
     const b = await leggi(k, 'billing_requests', l.billing_request);
@@ -108,7 +108,7 @@ export default {
         if (!mandato) throw new Error('Il cliente non ha un mandato SEPA: chiedilo prima');
         const r = await k.http.post(`${base(k)}/payments`, { ...opz(k, { 'Idempotency-Key': randomUUID() }), json: { payments: {
           amount: Math.round(importo * 100), currency: 'EUR', description: nomeRiga(k, 'fatture', fattura).slice(0, 100),
-          metadata: { kubo: riferimento('fatture', fattura.id) }, links: { mandate: mandato } } } });
+          metadata: { lumi: riferimento('fatture', fattura.id) }, links: { mandate: mandato } } } });
         if (!r.ok) throw errore(r);
         return { id: r.json.payments.id, addebito: r.json.payments.charge_date, stato: r.json.payments.status };
       },
@@ -125,9 +125,9 @@ export default {
     ],
     passi: [
       'Crea l\'account su gocardless.com (o prima la sandbox su manage-sandbox.gocardless.com) e verifica l\'attività.',
-      'In Developers crea un access token con lettura e scrittura e incollalo in Kubo.',
-      'In Developers crea un webhook endpoint con l\'indirizzo che Kubo mostra (…/api/connettori/gocardless/in).',
-      'Copia il segreto dell\'endpoint e incollalo in Kubo, poi accendi il connettore.',
+      'In Developers crea un access token con lettura e scrittura e incollalo in Lumi.',
+      'In Developers crea un webhook endpoint con l\'indirizzo che Lumi mostra (…/api/connettori/gocardless/in).',
+      'Copia il segreto dell\'endpoint e incollalo in Lumi, poi accendi il connettore.',
       'Dalla scheda di un cliente usa «Chiedi il mandato SEPA» e mandagli il link da firmare.',
       'Quando il mandato è attivo, dalla fattura usa «Addebita la fattura»: si segna pagata quando GoCardless conferma l\'incasso.',
     ],
@@ -142,7 +142,7 @@ export default {
       'az.mandato': 'Request the SEPA mandate', 'az.addebita': 'Collect the invoice (SEPA)',
       'cat.costoNota': 'No monthly fee on the Standard plan: about 1% + €0.20 per collection, capped at €4 for domestic euro collections; international collections cost more. Current prices on gocardless.com/it/prezzi.',
       'cat.serve': [{ cosa: 'Access token (sandbox_… to try, live_… to get paid), with read-write access', dove: 'GoCardless Dashboard → Developers → Create → Access token' }, { cosa: 'Webhook endpoint secret', dove: 'GoCardless Dashboard → Developers → Create → Webhook endpoint' }],
-      'cat.passi': ['Create an account on gocardless.com (or the sandbox first, on manage-sandbox.gocardless.com) and verify the business.', 'In Developers create a read-write access token and paste it into Kubo.', 'In Developers create a webhook endpoint with the address Kubo shows (…/api/connettori/gocardless/in).', 'Copy the endpoint secret, paste it into Kubo, then switch the connector on.', 'From a customer\'s card use «Request the SEPA mandate» and send them the link to sign.', 'Once the mandate is active, use «Collect the invoice» on the invoice: it is marked paid when GoCardless confirms the collection.'] },
+      'cat.passi': ['Create an account on gocardless.com (or the sandbox first, on manage-sandbox.gocardless.com) and verify the business.', 'In Developers create a read-write access token and paste it into Lumi.', 'In Developers create a webhook endpoint with the address Lumi shows (…/api/connettori/gocardless/in).', 'Copy the endpoint secret, paste it into Lumi, then switch the connector on.', 'From a customer\'s card use «Request the SEPA mandate» and send them the link to sign.', 'Once the mandate is active, use «Collect the invoice» on the invoice: it is marked paid when GoCardless confirms the collection.'] },
     es: { descrizione: 'Adeudo directo SEPA: el cliente firma el mandato una vez y las facturas se cobran solas.', 'imp.token': 'Access token (sandbox_… o live_…)', 'imp.webhook': 'Secreto del endpoint del webhook', 'imp.ritorno': 'Página tras firmar el mandato (p. ej. tu web)', 'az.mandato': 'Pedir el mandato SEPA', 'az.addebita': 'Cobrar la factura (SEPA)' },
     fr: { descrizione: 'Prélèvement SEPA : le client signe le mandat une fois et les factures s\'encaissent toutes seules.', 'imp.token': 'Access token (sandbox_… ou live_…)', 'imp.webhook': 'Secret du point de terminaison webhook', 'imp.ritorno': 'Page après la signature du mandat (ex. votre site)', 'az.mandato': 'Demander le mandat SEPA', 'az.addebita': 'Prélever la facture (SEPA)' },
     de: { descrizione: 'SEPA-Lastschrift: Der Kunde unterschreibt das Mandat einmal, und Rechnungen werden von selbst eingezogen.', 'imp.token': 'Access Token (sandbox_… oder live_…)', 'imp.webhook': 'Geheimnis des Webhook-Endpunkts', 'imp.ritorno': 'Seite nach der Mandatsunterschrift (z. B. deine Website)', 'az.mandato': 'SEPA-Mandat anfordern', 'az.addebita': 'Rechnung einziehen (SEPA)' },

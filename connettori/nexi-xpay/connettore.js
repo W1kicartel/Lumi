@@ -1,8 +1,8 @@
 // Nexi XPay (il POS virtuale delle banche italiane), «Pagamento semplice»: il link porta il cliente alla pagina di
 // pagamento Nexi con alias, importo in centesimi, codTrans e il MAC = SHA1("codTrans=…divisa=…importo=…" + chiave segreta).
-// L'esito torna a Kubo due volte: in POST server-to-server su «urlpost» e in GET sul ritorno del cliente («url»), con
+// L'esito torna a Lumi due volte: in POST server-to-server su «urlpost» e in GET sul ritorno del cliente («url»), con
 // MAC = SHA1("codTrans=…esito=…importo=…divisa=…data=…orario=…codAut=…" + chiave). Si crede solo a un MAC giusto.
-// codTrans è unico per tentativo: Kubo ricorda quale vendita o fattura c'è dietro (stato «aperti»).
+// codTrans è unico per tentativo: Lumi ricorda quale vendita o fattura c'è dietro (stato «aperti»).
 import { createHash, randomBytes } from 'node:crypto';
 import { azioniLink, testiLink, incassa, RICHIEDE_INCASSI, PERMESSI_INCASSI, pubblicoDi } from '../_soldi/comuni.js';
 import { stessoSegreto } from '../../server/moduli/connettori-rete.js';
@@ -32,13 +32,13 @@ export default {
     { id: 'alias', nome: 'Alias del terminale (es. ALIAS_WEB_00012345)', schema: /^[\w-]{3,40}$/ },
     { id: 'chiave', nome: 'Chiave segreta per il calcolo del MAC', segreto: true },
     { id: 'ambiente', nome: 'Ambiente', tipo: 'scelta', opzioni: ['prova', 'produzione'], predefinito: 'prova' },
-    { id: 'indirizzo', nome: 'Indirizzo pubblico di Kubo (https, per ricevere l\'esito)', schema: /^https:\/\/[^\s]+$/, obbligatorio: false },
+    { id: 'indirizzo', nome: 'Indirizzo pubblico di Lumi (https, per ricevere l\'esito)', schema: /^https:\/\/[^\s]+$/, obbligatorio: false },
   ],
   richiede: RICHIEDE_INCASSI,
   permessi: PERMESSI_INCASSI,
   azioni: azioniLink('Nexi', async (k, { cent, rif, descrizione }) => {
     if (!k.imp.alias || !k.segreti.chiave) throw new Error('Mancano alias e chiave MAC');
-    if (!pubblico(k)) throw new Error('Serve l\'indirizzo pubblico https di Kubo (nella pagina del connettore o nella Libreria): Nexi manda lì l\'esito');
+    if (!pubblico(k)) throw new Error('Serve l\'indirizzo pubblico https di Lumi (nella pagina del connettore o nella Libreria): Nexi manda lì l\'esito');
     const codTrans = `K${Date.now().toString(36)}${randomBytes(3).toString('hex')}`.toUpperCase();
     const ritorno = `${pubblico(k)}/api/connettori/nexi-xpay/pub/esito`;
     const p = { alias: k.imp.alias, importo: String(cent), divisa: 'EUR', codTrans, url: ritorno, url_back: ritorno, urlpost: `${pubblico(k)}/api/connettori/nexi-xpay/in`, descrizione: descrizione.slice(0, 2000) };
@@ -63,24 +63,24 @@ export default {
   },
   catalogo: {
     categoria: 'pagamenti', sito: 'https://www.nexi.it/it/negozi-online',
-    costo: 'contratto', costoNota: 'Le commissioni dipendono dal contratto con Nexi o con la tua banca (XPay è incluso nei pacchetti e-commerce Nexi; le offerte standard partono da un canone mensile più una percentuale per transazione). Kubo non aggiunge costi.',
+    costo: 'contratto', costoNota: 'Le commissioni dipendono dal contratto con Nexi o con la tua banca (XPay è incluso nei pacchetti e-commerce Nexi; le offerte standard partono da un canone mensile più una percentuale per transazione). Lumi non aggiunge costi.',
     serve: [
       { cosa: 'Alias del terminale e chiave segreta per il calcolo del MAC (Pagamento semplice)', dove: 'Back office Nexi XPay › Admin › Chiavi e alias (in prova: le credenziali dell\'ambiente di test che manda Nexi)', link: 'https://ecommerce.nexi.it/area-riservata' },
-      { cosa: 'Un indirizzo pubblico https di Kubo', dove: 'Il tuo dominio o un tunnel verso il computer di Kubo', link: 'https://ecommerce.nexi.it/specifiche-tecniche/' },
+      { cosa: 'Un indirizzo pubblico https di Lumi', dove: 'Il tuo dominio o un tunnel verso il computer di Lumi', link: 'https://ecommerce.nexi.it/specifiche-tecniche/' },
     ],
-    passi: ['Chiedi a Nexi (o alla tua banca) l\'attivazione di XPay per il commercio elettronico.', 'Nel back office XPay copia alias e chiave MAC (prima quelli di test).', 'In Kubo incolla alias e chiave, scegli l\'ambiente e scrivi l\'indirizzo pubblico https di Kubo (se hai impostato l\'indirizzo pubblico di Kubo nella Libreria, puoi lasciarlo vuoto).', 'Accendi il connettore.', 'Dalla vendita o dalla fattura crea il link: il cliente paga sulla pagina Nexi e Kubo riceve l\'esito.'],
+    passi: ['Chiedi a Nexi (o alla tua banca) l\'attivazione di XPay per il commercio elettronico.', 'Nel back office XPay copia alias e chiave MAC (prima quelli di test).', 'In Lumi incolla alias e chiave, scegli l\'ambiente e scrivi l\'indirizzo pubblico https di Lumi (se hai impostato l\'indirizzo pubblico di Lumi nella Libreria, puoi lasciarlo vuoto).', 'Accendi il connettore.', 'Dalla vendita o dalla fattura crea il link: il cliente paga sulla pagina Nexi e Lumi riceve l\'esito.'],
     difficolta: 'media', zone: ['IT'],
     fonti: ['https://ecommerce.nexi.it/specifiche-tecniche/codicebase/pagamentosemplice.html', 'https://ecommerce.nexi.it/sites/default/files/specifichetecniche.NEXI.20.4.pdf'],
     prova: 'finto', parole: ['nexi', 'xpay', 'cartasi', 'pos virtuale', 'banca', 'carta di credito', 'pay by link', 'link di pagamento', 'virtual pos', 'mac'],
   },
   testi: {
-    en: { descrizione: 'Payment links on the secure Nexi XPay page (the bank\'s virtual POS): the outcome with its MAC marks sales and invoices paid.', 'imp.alias': 'Terminal alias (e.g. ALIAS_WEB_00012345)', 'imp.chiave': 'Secret key for the MAC', 'imp.ambiente': 'Environment', 'imp.indirizzo': 'Public Kubo address (https, to receive the outcome)', ...testiLink('Payment link', 'sale', 'invoice'),
-      'cat.costoNota': 'Fees depend on your contract with Nexi or your bank (XPay comes with the Nexi e-commerce packages; standard offers start with a monthly fee plus a percentage per transaction). Kubo adds no costs.',
-      'cat.serve': [{ cosa: 'Terminal alias and secret MAC key (Simple payment)', dove: 'Nexi XPay back office › Admin › Keys and aliases (for tests: the test credentials Nexi sends)' }, { cosa: 'A public https address for Kubo', dove: 'Your domain or a tunnel to the Kubo computer' }],
-      'cat.passi': ['Ask Nexi (or your bank) to enable XPay for e-commerce.', 'Copy alias and MAC key from the XPay back office (test ones first).', 'Paste alias and key into Kubo, pick the environment and enter Kubo\'s public https address (if you set Kubo\'s public address in the Library, you can leave it empty).', 'Switch the connector on.', 'Create the link from the sale or invoice: the customer pays on the Nexi page and Kubo receives the outcome.'] },
-    es: { descrizione: 'Enlaces de pago en la página segura de Nexi XPay (el TPV virtual del banco): el resultado con su MAC marca pagadas ventas y facturas.', 'imp.alias': 'Alias del terminal (p. ej. ALIAS_WEB_00012345)', 'imp.chiave': 'Clave secreta para el MAC', 'imp.ambiente': 'Entorno', 'imp.indirizzo': 'Dirección pública de Kubo (https, para recibir el resultado)', ...testiLink('Enlace de pago', 'venta', 'factura') },
-    fr: { descrizione: 'Liens de paiement sur la page sécurisée Nexi XPay (le TPE virtuel de la banque) : le résultat avec son MAC marque ventes et factures payées.', 'imp.alias': 'Alias du terminal (ex. ALIAS_WEB_00012345)', 'imp.chiave': 'Clé secrète pour le MAC', 'imp.ambiente': 'Environnement', 'imp.indirizzo': 'Adresse publique de Kubo (https, pour recevoir le résultat)', ...testiLink('Lien de paiement', 'vente', 'facture') },
-    de: { descrizione: 'Zahlungslinks auf der sicheren Nexi-XPay-Seite (das virtuelle Terminal der Bank): das Ergebnis mit MAC markiert Verkäufe und Rechnungen als bezahlt.', 'imp.alias': 'Terminal-Alias (z. B. ALIAS_WEB_00012345)', 'imp.chiave': 'Geheimer Schlüssel für den MAC', 'imp.ambiente': 'Umgebung', 'imp.indirizzo': 'Öffentliche Kubo-Adresse (https, für das Ergebnis)', ...testiLink('Zahlungslink', 'Verkauf', 'Rechnung') },
-    pt: { descrizione: 'Links de pagamento na página segura Nexi XPay (o POS virtual do banco): o resultado com o MAC marca vendas e faturas como pagas.', 'imp.alias': 'Alias do terminal (ex.: ALIAS_WEB_00012345)', 'imp.chiave': 'Chave secreta para o MAC', 'imp.ambiente': 'Ambiente', 'imp.indirizzo': 'Endereço público do Kubo (https, para receber o resultado)', ...testiLink('Link de pagamento', 'venda', 'fatura') },
+    en: { descrizione: 'Payment links on the secure Nexi XPay page (the bank\'s virtual POS): the outcome with its MAC marks sales and invoices paid.', 'imp.alias': 'Terminal alias (e.g. ALIAS_WEB_00012345)', 'imp.chiave': 'Secret key for the MAC', 'imp.ambiente': 'Environment', 'imp.indirizzo': 'Public Lumi address (https, to receive the outcome)', ...testiLink('Payment link', 'sale', 'invoice'),
+      'cat.costoNota': 'Fees depend on your contract with Nexi or your bank (XPay comes with the Nexi e-commerce packages; standard offers start with a monthly fee plus a percentage per transaction). Lumi adds no costs.',
+      'cat.serve': [{ cosa: 'Terminal alias and secret MAC key (Simple payment)', dove: 'Nexi XPay back office › Admin › Keys and aliases (for tests: the test credentials Nexi sends)' }, { cosa: 'A public https address for Lumi', dove: 'Your domain or a tunnel to the Lumi computer' }],
+      'cat.passi': ['Ask Nexi (or your bank) to enable XPay for e-commerce.', 'Copy alias and MAC key from the XPay back office (test ones first).', 'Paste alias and key into Lumi, pick the environment and enter Lumi\'s public https address (if you set Lumi\'s public address in the Library, you can leave it empty).', 'Switch the connector on.', 'Create the link from the sale or invoice: the customer pays on the Nexi page and Lumi receives the outcome.'] },
+    es: { descrizione: 'Enlaces de pago en la página segura de Nexi XPay (el TPV virtual del banco): el resultado con su MAC marca pagadas ventas y facturas.', 'imp.alias': 'Alias del terminal (p. ej. ALIAS_WEB_00012345)', 'imp.chiave': 'Clave secreta para el MAC', 'imp.ambiente': 'Entorno', 'imp.indirizzo': 'Dirección pública de Lumi (https, para recibir el resultado)', ...testiLink('Enlace de pago', 'venta', 'factura') },
+    fr: { descrizione: 'Liens de paiement sur la page sécurisée Nexi XPay (le TPE virtuel de la banque) : le résultat avec son MAC marque ventes et factures payées.', 'imp.alias': 'Alias du terminal (ex. ALIAS_WEB_00012345)', 'imp.chiave': 'Clé secrète pour le MAC', 'imp.ambiente': 'Environnement', 'imp.indirizzo': 'Adresse publique de Lumi (https, pour recevoir le résultat)', ...testiLink('Lien de paiement', 'vente', 'facture') },
+    de: { descrizione: 'Zahlungslinks auf der sicheren Nexi-XPay-Seite (das virtuelle Terminal der Bank): das Ergebnis mit MAC markiert Verkäufe und Rechnungen als bezahlt.', 'imp.alias': 'Terminal-Alias (z. B. ALIAS_WEB_00012345)', 'imp.chiave': 'Geheimer Schlüssel für den MAC', 'imp.ambiente': 'Umgebung', 'imp.indirizzo': 'Öffentliche Lumi-Adresse (https, für das Ergebnis)', ...testiLink('Zahlungslink', 'Verkauf', 'Rechnung') },
+    pt: { descrizione: 'Links de pagamento na página segura Nexi XPay (o POS virtual do banco): o resultado com o MAC marca vendas e faturas como pagas.', 'imp.alias': 'Alias do terminal (ex.: ALIAS_WEB_00012345)', 'imp.chiave': 'Chave secreta para o MAC', 'imp.ambiente': 'Ambiente', 'imp.indirizzo': 'Endereço público do Lumi (https, para receber o resultado)', ...testiLink('Link de pagamento', 'venda', 'fatura') },
   },
 };

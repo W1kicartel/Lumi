@@ -1,6 +1,6 @@
 // Square: link di pagamento online e Square Terminal in negozio, per chi vende in Spagna, Francia e Irlanda (Square non c'è in Italia).
 // API: https://developer.squareup.com/reference/square (Bearer, «Square-Version»). Il link crea un ordine con «reference_id» = il
-// riferimento di Kubo; il Terminal riceve un checkout con lo stesso «reference_id».
+// riferimento di Lumi; il Terminal riceve un checkout con lo stesso «reference_id».
 // Webhook: «x-square-hmacsha256-signature» = base64(HMAC-SHA256(signature key, indirizzo di notifica + corpo grezzo))
 // (https://developer.squareup.com/docs/webhooks/step3validate): l'indirizzo deve essere identico a quello scritto in Square.
 // Il corpo non basta: pagamento, ordine e checkout si rileggono dall'API.
@@ -11,7 +11,7 @@ const VERSIONE = '2026-09-16';
 const base = k => k.base || (k.imp.ambiente === 'produzione' ? 'https://connect.squareup.com' : 'https://connect.squareupsandbox.com');
 const opz = k => ({ bearer: k.segreti.token, intestazioni: { 'Square-Version': VERSIONE } });
 const errore = r => new Error(r.json?.errors?.[0]?.detail || `Square ha risposto ${r.stato}`);
-// l'indirizzo di notifica da scrivere in Square: l'indirizzo pubblico di Kubo (il suo o, se vuoto, quello https della Libreria)
+// l'indirizzo di notifica da scrivere in Square: l'indirizzo pubblico di Lumi (il suo o, se vuoto, quello https della Libreria)
 // + /api/connettori/square/in
 const notifica = k => pubblicoDi(k) ? `${pubblicoDi(k)}/api/connettori/square/in` : null;
 const sicuro = id => /^[\w-]{1,192}$/.test(String(id || ''));
@@ -38,7 +38,7 @@ async function pagamento(k, id) {
   if (p.status !== 'COMPLETED') return `ignorato: ${p.status}`;
   let rif = daRiferimento(p.reference_id) ? p.reference_id : null;
   if (!rif && sicuro(p.order_id)) rif = (await leggi(k, `/v2/orders/${encodeURIComponent(p.order_id)}`, 'order'))?.reference_id;
-  if (!daRiferimento(rif)) return 'ignorato: senza riga di Kubo';
+  if (!daRiferimento(rif)) return 'ignorato: senza riga di Lumi';
   return incassa(k, rif, { importo: Number(p.amount_money?.amount) / 100, valuta: p.amount_money?.currency, quando: Date.parse(p.updated_at || p.created_at) || Date.now(), metodo: metodo(p.source_type), fonte: 'Square' });
 }
 async function checkout(k, id) {
@@ -56,7 +56,7 @@ export default {
     { id: 'firma', nome: 'Signature key del webhook', segreto: true },
     { id: 'luogo', nome: 'Location ID (il negozio in Square)', schema: /^[\w-]{1,64}$/ },
     { id: 'ambiente', nome: 'Ambiente', tipo: 'scelta', opzioni: ['prova', 'produzione'], predefinito: 'prova' },
-    { id: 'indirizzo', nome: 'Indirizzo pubblico di Kubo (per il webhook)', tipo: 'url', obbligatorio: false },
+    { id: 'indirizzo', nome: 'Indirizzo pubblico di Lumi (per il webhook)', tipo: 'url', obbligatorio: false },
     { id: 'ritorno', nome: 'Pagina dopo il pagamento (es. il tuo sito)', tipo: 'url', obbligatorio: false },
     { id: 'terminale', nome: 'Device ID dello Square Terminal', obbligatorio: false, schema: /^[\w:-]{1,64}$/ },
   ],
@@ -113,11 +113,11 @@ export default {
     ],
     passi: [
       'Crea l\'account Square nel tuo Paese (Spagna, Francia o Irlanda) e un\'applicazione nella Developer Console.',
-      'Copia l\'access token e il Location ID e incollali in Kubo; scegli l\'ambiente (prova o produzione).',
-      'Scrivi in Kubo l\'indirizzo pubblico di Kubo (se hai impostato l\'indirizzo pubblico di Kubo nella Libreria, puoi lasciarlo vuoto).',
+      'Copia l\'access token e il Location ID e incollali in Lumi; scegli l\'ambiente (prova o produzione).',
+      'Scrivi in Lumi l\'indirizzo pubblico di Lumi (se hai impostato l\'indirizzo pubblico di Lumi nella Libreria, puoi lasciarlo vuoto).',
       'In Webhooks → Subscriptions aggiungi l\'indirizzo …/api/connettori/square/in, identico, con gli eventi payment.created, payment.updated e terminal.checkout.updated.',
-      'Copia la signature key della sottoscrizione in Kubo e accendi il connettore.',
-      'Per il negozio, abbina lo Square Terminal e scrivi in Kubo il suo Device ID.',
+      'Copia la signature key della sottoscrizione in Lumi e accendi il connettore.',
+      'Per il negozio, abbina lo Square Terminal e scrivi in Lumi il suo Device ID.',
       'Prova con un link di pagamento da una vendita in Sandbox.',
     ],
     difficolta: 'media',
@@ -127,18 +127,18 @@ export default {
     parole: ['square', 'pos', 'terminale', 'lettore di carte', 'link di pagamento', 'spagna', 'francia', 'irlanda', 'payment link', 'card reader', 'point of sale'],
   },
   testi: {
-    en: { descrizione: 'Payment links and Square Terminal (Spain, France, Ireland): sales and invoices get marked paid on their own.', 'imp.token': 'Access token', 'imp.firma': 'Webhook signature key', 'imp.luogo': 'Location ID (the shop in Square)', 'imp.ambiente': 'Environment', 'imp.indirizzo': 'Public address of Kubo (for the webhook)', 'imp.ritorno': 'Page after payment (e.g. your website)', 'imp.terminale': 'Square Terminal device ID',
+    en: { descrizione: 'Payment links and Square Terminal (Spain, France, Ireland): sales and invoices get marked paid on their own.', 'imp.token': 'Access token', 'imp.firma': 'Webhook signature key', 'imp.luogo': 'Location ID (the shop in Square)', 'imp.ambiente': 'Environment', 'imp.indirizzo': 'Public address of Lumi (for the webhook)', 'imp.ritorno': 'Page after payment (e.g. your website)', 'imp.terminale': 'Square Terminal device ID',
       ...testiLink('Payment link', 'sale', 'invoice'), 'az.terminale': 'Charge on the Square Terminal',
       'cat.costoNota': 'No monthly fee: you pay per transaction. Indicative prices with European cards: in store about 1.25% in Spain, 1.65% in France and 1.75% in Ireland; online about 1.4% + €0.25. The reader or Square Terminal is bought separately. Square is not available in Italy. Current prices on the Square site of your country.',
       'cat.serve': [{ cosa: 'Application access token (Sandbox to try, Production to get paid)', dove: 'Square Developer Console → Applications → your app → Credentials' }, { cosa: 'Location ID of the shop', dove: 'Square Developer Console → your app → Locations' }, { cosa: 'Webhook signature key', dove: 'Square Developer Console → your app → Webhooks → Subscriptions' }],
-      'cat.passi': ['Create the Square account in your country (Spain, France or Ireland) and an application in the Developer Console.', 'Copy the access token and the Location ID into Kubo; pick the environment (test or production).', 'Enter Kubo\'s public address in Kubo (if you set Kubo\'s public address in the Library, you can leave it empty).', 'In Webhooks → Subscriptions add the address …/api/connettori/square/in, exactly, with the events payment.created, payment.updated and terminal.checkout.updated.', 'Copy the subscription\'s signature key into Kubo and switch the connector on.', 'For the shop, pair the Square Terminal and enter its Device ID in Kubo.', 'Try a payment link from a sale in Sandbox.'] },
-    es: { descrizione: 'Enlaces de pago y Square Terminal (España, Francia, Irlanda): las ventas y facturas se marcan pagadas solas.', 'imp.token': 'Access token', 'imp.firma': 'Clave de firma del webhook', 'imp.luogo': 'Location ID (la tienda en Square)', 'imp.ambiente': 'Entorno', 'imp.indirizzo': 'Dirección pública de Kubo (para el webhook)', 'imp.ritorno': 'Página tras el pago (p. ej. tu web)', 'imp.terminale': 'Device ID del Square Terminal',
+      'cat.passi': ['Create the Square account in your country (Spain, France or Ireland) and an application in the Developer Console.', 'Copy the access token and the Location ID into Lumi; pick the environment (test or production).', 'Enter Lumi\'s public address in Lumi (if you set Lumi\'s public address in the Library, you can leave it empty).', 'In Webhooks → Subscriptions add the address …/api/connettori/square/in, exactly, with the events payment.created, payment.updated and terminal.checkout.updated.', 'Copy the subscription\'s signature key into Lumi and switch the connector on.', 'For the shop, pair the Square Terminal and enter its Device ID in Lumi.', 'Try a payment link from a sale in Sandbox.'] },
+    es: { descrizione: 'Enlaces de pago y Square Terminal (España, Francia, Irlanda): las ventas y facturas se marcan pagadas solas.', 'imp.token': 'Access token', 'imp.firma': 'Clave de firma del webhook', 'imp.luogo': 'Location ID (la tienda en Square)', 'imp.ambiente': 'Entorno', 'imp.indirizzo': 'Dirección pública de Lumi (para el webhook)', 'imp.ritorno': 'Página tras el pago (p. ej. tu web)', 'imp.terminale': 'Device ID del Square Terminal',
       ...testiLink('Enlace de pago', 'venta', 'factura'), 'az.terminale': 'Cobrar en el Square Terminal' },
-    fr: { descrizione: 'Liens de paiement et Square Terminal (Espagne, France, Irlande) : les ventes et factures se marquent payées toutes seules.', 'imp.token': 'Access token', 'imp.firma': 'Clé de signature du webhook', 'imp.luogo': 'Location ID (la boutique dans Square)', 'imp.ambiente': 'Environnement', 'imp.indirizzo': 'Adresse publique de Kubo (pour le webhook)', 'imp.ritorno': 'Page après le paiement (ex. votre site)', 'imp.terminale': 'Device ID du Square Terminal',
+    fr: { descrizione: 'Liens de paiement et Square Terminal (Espagne, France, Irlande) : les ventes et factures se marquent payées toutes seules.', 'imp.token': 'Access token', 'imp.firma': 'Clé de signature du webhook', 'imp.luogo': 'Location ID (la boutique dans Square)', 'imp.ambiente': 'Environnement', 'imp.indirizzo': 'Adresse publique de Lumi (pour le webhook)', 'imp.ritorno': 'Page après le paiement (ex. votre site)', 'imp.terminale': 'Device ID du Square Terminal',
       ...testiLink('Lien de paiement', 'vente', 'facture'), 'az.terminale': 'Encaisser sur le Square Terminal' },
-    de: { descrizione: 'Zahlungslinks und Square Terminal (Spanien, Frankreich, Irland): Verkäufe und Rechnungen werden von selbst als bezahlt markiert.', 'imp.token': 'Access Token', 'imp.firma': 'Signaturschlüssel des Webhooks', 'imp.luogo': 'Location ID (das Geschäft in Square)', 'imp.ambiente': 'Umgebung', 'imp.indirizzo': 'Öffentliche Adresse von Kubo (für den Webhook)', 'imp.ritorno': 'Seite nach der Zahlung (z. B. deine Website)', 'imp.terminale': 'Device ID des Square Terminal',
+    de: { descrizione: 'Zahlungslinks und Square Terminal (Spanien, Frankreich, Irland): Verkäufe und Rechnungen werden von selbst als bezahlt markiert.', 'imp.token': 'Access Token', 'imp.firma': 'Signaturschlüssel des Webhooks', 'imp.luogo': 'Location ID (das Geschäft in Square)', 'imp.ambiente': 'Umgebung', 'imp.indirizzo': 'Öffentliche Adresse von Lumi (für den Webhook)', 'imp.ritorno': 'Seite nach der Zahlung (z. B. deine Website)', 'imp.terminale': 'Device ID des Square Terminal',
       ...testiLink('Zahlungslink', 'Verkauf', 'Rechnung'), 'az.terminale': 'Am Square Terminal kassieren' },
-    pt: { descrizione: 'Links de pagamento e Square Terminal (Espanha, França, Irlanda): vendas e faturas são marcadas como pagas sozinhas.', 'imp.token': 'Access token', 'imp.firma': 'Chave de assinatura do webhook', 'imp.luogo': 'Location ID (a loja no Square)', 'imp.ambiente': 'Ambiente', 'imp.indirizzo': 'Endereço público do Kubo (para o webhook)', 'imp.ritorno': 'Página após o pagamento (ex.: seu site)', 'imp.terminale': 'Device ID do Square Terminal',
+    pt: { descrizione: 'Links de pagamento e Square Terminal (Espanha, França, Irlanda): vendas e faturas são marcadas como pagas sozinhas.', 'imp.token': 'Access token', 'imp.firma': 'Chave de assinatura do webhook', 'imp.luogo': 'Location ID (a loja no Square)', 'imp.ambiente': 'Ambiente', 'imp.indirizzo': 'Endereço público do Lumi (para o webhook)', 'imp.ritorno': 'Página após o pagamento (ex.: seu site)', 'imp.terminale': 'Device ID do Square Terminal',
       ...testiLink('Link de pagamento', 'venda', 'fatura'), 'az.terminale': 'Cobrar no Square Terminal' },
   },
 };

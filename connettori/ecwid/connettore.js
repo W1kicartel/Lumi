@@ -37,7 +37,7 @@ export default {
   permessi: PERMESSI_NEGOZI,
   prova: async k => { const j = await chiama(k, 'get', '/profile'); return { ok: !!j?.generalInfo, messaggio: j?.generalInfo?.storeUrl || null }; },
   mappe: { articoli: { id: 'id', chiave: ['codice', 'sku'], campi: [
-    { kubo: 'nome', remoto: 'name' }, { kubo: 'prezzo', remoto: 'price', da: Number }, { kubo: 'giacenza', remoto: 'quantity', comanda: 'kubo' },
+    { locale: 'nome', remoto: 'name' }, { locale: 'prezzo', remoto: 'price', da: Number }, { locale: 'giacenza', remoto: 'quantity', comanda: 'locale' },
   ] } },
   pianificati: {
     prodotti: { nome: 'Prodotti dal negozio', ogni: '15m', async giro(k) {
@@ -75,14 +75,14 @@ export default {
     costoNota: 'Piano Free fino a 5 prodotti; l\'API REST è disponibile dai piani a pagamento (Venture da circa 19 € al mese, Business, Unlimited).',
     serve: [
       { cosa: 'Store ID e Secret token di un\'app personalizzata con gli accessi read_catalog, update_catalog, read_orders, read_store_profile', dove: 'Pannello Ecwid › App › Le mie app › app personalizzata › Dettagli', link: 'https://docs.ecwid.com/develop-apps/app-types/custom-app' },
-      { cosa: 'Client secret dell\'app per i webhook, con l\'indirizzo di Kubo come Webhook URL', dove: 'Stessa app › Webhooks (eventi order.created, order.updated)', link: 'https://docs.ecwid.com/develop-apps/webhooks' },
+      { cosa: 'Client secret dell\'app per i webhook, con l\'indirizzo di Lumi come Webhook URL', dove: 'Stessa app › Webhooks (eventi order.created, order.updated)', link: 'https://docs.ecwid.com/develop-apps/webhooks' },
     ],
     passi: [
       'Nel pannello Ecwid apri App › Le mie app e crea un\'app personalizzata (gratuita, solo per il tuo negozio).',
       'Chiedi gli accessi read_catalog, update_catalog, read_orders e read_store_profile, poi installala.',
       'Copia lo Store ID, il Secret token e il Client secret.',
-      'Nella sezione Webhooks dell\'app metti l\'indirizzo che Kubo mostra in questa pagina con gli eventi order.created e order.updated.',
-      'In Kubo incolla i tre valori, premi «Prova la connessione», accendi e lancia «Prodotti dal negozio».',
+      'Nella sezione Webhooks dell\'app metti l\'indirizzo che Lumi mostra in questa pagina con gli eventi order.created e order.updated.',
+      'In Lumi incolla i tre valori, premi «Prova la connessione», accendi e lancia «Prodotti dal negozio».',
     ],
     difficolta: 'facile', zone: ['mondo'],
     fonti: ['https://docs.ecwid.com/api-reference/rest-api', 'https://docs.ecwid.com/develop-apps/webhooks', 'https://docs.ecwid.com/api-reference/rest-api/orders/search-orders', 'https://docs.ecwid.com/api-reference/rest-api/products/update-product'],
@@ -91,8 +91,8 @@ export default {
   testi: {
     en: { descrizione: 'The Ecwid store: shared catalogue and stock, paid orders become sales.', 'imp.negozio': 'Store ID', 'imp.token': 'Secret token (secret_…)', 'imp.client_secret': 'App client secret (signs the webhooks)', 'giro.prodotti': 'Products from the store', 'giro.ordini': 'Orders from the store',
       'cat.costoNota': 'Free plan up to 5 products; the REST API is available on paid plans (Venture from about €19 a month, Business, Unlimited).',
-      'cat.serve': [{ cosa: 'Store ID and Secret token of a custom app with read_catalog, update_catalog, read_orders, read_store_profile', dove: 'Ecwid admin › Apps › My Apps › custom app › Details' }, { cosa: 'App client secret for the webhooks, with Kubo\'s address as Webhook URL', dove: 'Same app › Webhooks (order.created, order.updated)' }],
-      'cat.passi': ['In the Ecwid admin open Apps › My Apps and create a custom app (free, only for your store).', 'Request read_catalog, update_catalog, read_orders and read_store_profile, then install it.', 'Copy the Store ID, the Secret token and the Client secret.', 'In the app Webhooks section enter the address Kubo shows on this page with the order.created and order.updated events.', 'In Kubo paste the three values, press «Test connection», switch on and run «Products from the store».'] },
+      'cat.serve': [{ cosa: 'Store ID and Secret token of a custom app with read_catalog, update_catalog, read_orders, read_store_profile', dove: 'Ecwid admin › Apps › My Apps › custom app › Details' }, { cosa: 'App client secret for the webhooks, with Lumi\'s address as Webhook URL', dove: 'Same app › Webhooks (order.created, order.updated)' }],
+      'cat.passi': ['In the Ecwid admin open Apps › My Apps and create a custom app (free, only for your store).', 'Request read_catalog, update_catalog, read_orders and read_store_profile, then install it.', 'Copy the Store ID, the Secret token and the Client secret.', 'In the app Webhooks section enter the address Lumi shows on this page with the order.created and order.updated events.', 'In Lumi paste the three values, press «Test connection», switch on and run «Products from the store».'] },
     es: { descrizione: 'La tienda Ecwid: catálogo y existencias en común, los pedidos pagados pasan a ventas.', 'imp.negozio': 'Store ID', 'imp.token': 'Secret token (secret_…)', 'imp.client_secret': 'Client secret de la app (firma los webhooks)', 'giro.prodotti': 'Productos de la tienda', 'giro.ordini': 'Pedidos de la tienda' },
     fr: { descrizione: 'La boutique Ecwid : catalogue et stock partagés, les commandes payées deviennent des ventes.', 'imp.negozio': 'Store ID', 'imp.token': 'Secret token (secret_…)', 'imp.client_secret': 'Client secret de l\'app (signe les webhooks)', 'giro.prodotti': 'Produits de la boutique', 'giro.ordini': 'Commandes de la boutique' },
     de: { descrizione: 'Der Ecwid-Shop: gemeinsamer Katalog und Bestand, bezahlte Bestellungen werden Verkäufe.', 'imp.negozio': 'Store-ID', 'imp.token': 'Secret Token (secret_…)', 'imp.client_secret': 'Client Secret der App (signiert die Webhooks)', 'giro.prodotti': 'Produkte aus dem Shop', 'giro.ordini': 'Bestellungen aus dem Shop' },

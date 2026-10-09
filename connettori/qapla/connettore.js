@@ -3,7 +3,7 @@
 // API 1.2 (https://api.qapla.dev/1.2/en/): https://api.qapla.it/1.2/<metodo>/, apiKey del canale nel corpo (POST) o nella
 // query (GET). pushShipment (fino a 100 spedizioni: trackingNumber, courier, shipDate obbligatori), getShipment per
 // trackingNumber con lo stato normalizzato (qaplaStatus) e la pagina di tracking (url). Limite: 150 gettoni al minuto per
-// canale. Il webhook di Qapla' non documenta una firma: l'indirizzo porta il codice segreto di Kubo e lo stato si rilegge
+// canale. Il webhook di Qapla' non documenta una firma: l'indirizzo porta il codice segreto di Lumi e lo stato si rilegge
 // sempre con getShipment. Un giro ogni ora rilegge le spedizioni non ancora consegnate (al massimo 100 per giro).
 import { venditaDa, venditaDiChi, destinatario, segnaSpedizione, tondo, RICHIEDE_SPEDIZIONI } from '../_negozi/comune.js';
 
@@ -80,13 +80,13 @@ export default {
     categoria: 'spedizioni', sito: 'https://www.qapla.it', costo: 'abbonamento',
     costoNota: 'Abbonamento mensile in base alle spedizioni tracciate, con prova gratuita; i prezzi aggiornati sono nella pagina dei piani di qapla.it (le API sono incluse).',
     serve: [
-      { cosa: 'API key del canale (un canale per negozio o per Kubo)', dove: 'Pannello Qapla\' › Impostazioni › Canali › il canale › API key', link: 'https://api.qapla.dev/1.2/en/' },
-      { cosa: 'Facoltativo: l\'indirizzo del webhook di Kubo (con il codice segreto) nelle notifiche del canale', dove: 'Pannello Qapla\' › Impostazioni › Notifiche › Webhook', link: 'https://webhook.qapla.dev' },
+      { cosa: 'API key del canale (un canale per negozio o per Lumi)', dove: 'Pannello Qapla\' › Impostazioni › Canali › il canale › API key', link: 'https://api.qapla.dev/1.2/en/' },
+      { cosa: 'Facoltativo: l\'indirizzo del webhook di Lumi (con il codice segreto) nelle notifiche del canale', dove: 'Pannello Qapla\' › Impostazioni › Notifiche › Webhook', link: 'https://webhook.qapla.dev' },
     ],
     passi: [
-      'Nel pannello di Qapla\' crea (o scegli) un canale per Kubo e copia la sua API key.',
-      'In Kubo incolla l\'API key, premi «Prova la connessione» e accendi.',
-      'Facoltativo: copia l\'indirizzo del webhook che Kubo mostra (finisce con il codice segreto) nelle notifiche webhook del canale, per avere gli stati subito.',
+      'Nel pannello di Qapla\' crea (o scegli) un canale per Lumi e copia la sua API key.',
+      'In Lumi incolla l\'API key, premi «Prova la connessione» e accendi.',
+      'Facoltativo: copia l\'indirizzo del webhook che Lumi mostra (finisce con il codice segreto) nelle notifiche webhook del canale, per avere gli stati subito.',
       'Quando spedisci, dalla vendita premi «Traccia con Qapla\'» con tracking e corriere (BRT, GLS-ITA, SDA, PTI per Poste, DHL, UPS…), oppure chiedilo a Lumi.',
       'Lo stato torna sulla vendita (ogni ora, o subito con il webhook) e Lumi risponde a «dov\'è il pacco di Rossi?».',
     ],
@@ -97,8 +97,8 @@ export default {
   testi: {
     en: { nome: 'Qapla\'', descrizione: 'Tracking for every carrier in one place: Qapla\' notifies the customer and the shipment status comes back to the sale.', 'imp.chiave': 'Channel API key', 'aiuto.chiave': 'Qapla\' › Settings › Channels › your channel › API key', 'imp.codice': 'Webhook secret code', 'az.traccia': 'Track with Qapla\'', 'az.dove': 'Where is the parcel', 'giro.stati': 'Shipment status',
       'cat.costoNota': 'Monthly subscription based on tracked shipments, with a free trial; current prices are on qapla.it\'s plans page (APIs included).',
-      'cat.serve': [{ cosa: 'Channel API key (one channel per shop or for Kubo)', dove: 'Qapla\' panel › Settings › Channels › the channel › API key' }, { cosa: 'Optional: Kubo\'s webhook address (with the secret code) in the channel notifications', dove: 'Qapla\' panel › Settings › Notifications › Webhook' }],
-      'cat.passi': ['In the Qapla\' panel create (or pick) a channel for Kubo and copy its API key.', 'In Kubo paste the API key, press «Test connection» and switch on.', 'Optional: copy the webhook address Kubo shows (it ends with the secret code) into the channel webhook notifications, to get statuses at once.', 'When you ship, press «Track with Qapla\'» on the sale with tracking and carrier (BRT, GLS-ITA, SDA, PTI for Poste, DHL, UPS…), or ask Lumi.', 'The status comes back to the sale (hourly, or at once with the webhook) and Lumi answers «where is Rossi\'s parcel?».'] },
+      'cat.serve': [{ cosa: 'Channel API key (one channel per shop or for Lumi)', dove: 'Qapla\' panel › Settings › Channels › the channel › API key' }, { cosa: 'Optional: Lumi\'s webhook address (with the secret code) in the channel notifications', dove: 'Qapla\' panel › Settings › Notifications › Webhook' }],
+      'cat.passi': ['In the Qapla\' panel create (or pick) a channel for Lumi and copy its API key.', 'In Lumi paste the API key, press «Test connection» and switch on.', 'Optional: copy the webhook address Lumi shows (it ends with the secret code) into the channel webhook notifications, to get statuses at once.', 'When you ship, press «Track with Qapla\'» on the sale with tracking and carrier (BRT, GLS-ITA, SDA, PTI for Poste, DHL, UPS…), or ask Lumi.', 'The status comes back to the sale (hourly, or at once with the webhook) and Lumi answers «where is Rossi\'s parcel?».'] },
     es: { nome: 'Qapla\'', descrizione: 'El seguimiento de todos los transportistas en un sitio: Qapla\' avisa al cliente y el estado vuelve a la venta.', 'imp.chiave': 'API key del canal', 'aiuto.chiave': 'Qapla\' › Ajustes › Canales › tu canal › API key', 'imp.codice': 'Código secreto del webhook', 'az.traccia': 'Seguir con Qapla\'', 'az.dove': 'Dónde está el paquete', 'giro.stati': 'Estado de los envíos' },
     fr: { nome: 'Qapla\'', descrizione: 'Le suivi de tous les transporteurs au même endroit : Qapla\' prévient le client et le statut revient sur la vente.', 'imp.chiave': 'Clé API du canal', 'aiuto.chiave': 'Qapla\' › Paramètres › Canaux › votre canal › API key', 'imp.codice': 'Code secret du webhook', 'az.traccia': 'Suivre avec Qapla\'', 'az.dove': 'Où est le colis', 'giro.stati': 'Statut des envois' },
     de: { nome: 'Qapla\'', descrizione: 'Sendungsverfolgung aller Kuriere an einem Ort: Qapla\' benachrichtigt den Kunden, der Status kommt zum Verkauf zurück.', 'imp.chiave': 'API-Schlüssel des Kanals', 'aiuto.chiave': 'Qapla\' › Einstellungen › Kanäle › dein Kanal › API key', 'imp.codice': 'Geheimer Webhook-Code', 'az.traccia': 'Mit Qapla\' verfolgen', 'az.dove': 'Wo ist das Paket', 'giro.stati': 'Status der Sendungen' },

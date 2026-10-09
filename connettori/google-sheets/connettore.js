@@ -1,6 +1,6 @@
-// Fogli Google: una sezione di Kubo (clienti, vendite, articoli…) copiata in una scheda di un foglio di calcolo.
+// Fogli Google: una sezione di Lumi (clienti, vendite, articoli…) copiata in una scheda di un foglio di calcolo.
 // Prima riga = i nomi dei campi, poi una riga per record. Ogni ora (se lo vuoi) e su richiesta («esporta ora», anche da Lumi).
-// La scheda si svuota e si riscrive intera: è una copia da consultare e condividere, le modifiche nel foglio non tornano in Kubo.
+// La scheda si svuota e si riscrive intera: è una copia da consultare e condividere, le modifiche nel foglio non tornano in Lumi.
 // Sheets API v4: values.clear e values.update con valueInputOption=RAW; OAuth con codice + PKCE (come Calendario).
 import { sezione, righe, cella } from '../_comunica/tabelle.js';
 const gbase = k => k.base || 'https://sheets.googleapis.com';
@@ -24,7 +24,7 @@ async function esporta(k) {
 }
 export default {
   id: 'google-sheets', nome: 'Fogli Google', versione: 1, icona: 'griglia',
-  descrizione: 'Copia una sezione di Kubo in un foglio Google, ogni ora o quando vuoi.',
+  descrizione: 'Copia una sezione di Lumi in un foglio Google, ogni ora o quando vuoi.',
   impostazioni: [
     { id: 'sezione', nome: 'Sezione da esportare (es. clienti)', obbligatorio: true },
     { id: 'foglio', nome: 'Id del foglio di calcolo (nell\'indirizzo, tra /d/ e /edit)', schema: /^[A-Za-z0-9_-]{20,100}$/ },
@@ -32,7 +32,7 @@ export default {
     { id: 'ogni_ora', nome: 'Aggiorna da solo ogni ora', tipo: 'si_no', predefinito: true },
     { id: 'client_id', nome: 'Google: client ID OAuth', segreto: true }, { id: 'client_secret', nome: 'Google: client secret', segreto: true },
   ],
-  permessi: { '*': { leggi: true } },   // la sezione si sceglie nelle impostazioni: il connettore legge, non scrive mai in Kubo
+  permessi: { '*': { leggi: true } },   // la sezione si sceglie nelle impostazioni: il connettore legge, non scrive mai in Lumi
   oauth: { tipo: 'codice', autorizza: 'https://accounts.google.com/o/oauth2/v2/auth', token: k => (k.base ? `${k.base}/token` : 'https://oauth2.googleapis.com/token'),
     scope: 'https://www.googleapis.com/auth/spreadsheets', extra: { access_type: 'offline', prompt: 'consent' } },
   prova: async k => {
@@ -58,7 +58,7 @@ export default {
     passi: [
       'Crea un progetto su Google Cloud Console e abilita la Google Sheets API.',
       'Configura la schermata di consenso OAuth (tipo «Esterno», aggiungi te stesso tra gli utenti di prova).',
-      'Crea un ID client OAuth «Applicazione web» con l\'indirizzo di ritorno che Kubo mostra in questa pagina.',
+      'Crea un ID client OAuth «Applicazione web» con l\'indirizzo di ritorno che Lumi mostra in questa pagina.',
       'Incolla client ID e client secret, poi premi «Collega» e accedi con l\'account Google proprietario del foglio.',
       'Scegli la sezione (es. clienti), incolla l\'id del foglio e, se vuoi, il nome della scheda.',
       'Premi «Esporta ora»: la scheda si riempie; da lì in poi si aggiorna ogni ora.',
@@ -68,13 +68,13 @@ export default {
     prova: 'finto', parole: ['fogli google', 'google sheets', 'foglio di calcolo', 'spreadsheet', 'excel', 'esporta', 'export', 'tabella'],
   },
   testi: {
-    en: { nome: 'Google Sheets', descrizione: 'Copy a Kubo section into a Google Sheet, every hour or on demand.', 'imp.sezione': 'Section to export (e.g. clienti)', 'imp.foglio': 'Spreadsheet id (in the address, between /d/ and /edit)', 'imp.scheda': 'Tab name (empty = the section name)', 'imp.ogni_ora': 'Update automatically every hour', 'imp.client_id': 'Google: OAuth client ID', 'imp.client_secret': 'Google: client secret', 'az.esporta_ora': 'Export to the sheet now', 'giro.esporta': 'Export to the sheet',
+    en: { nome: 'Google Sheets', descrizione: 'Copy a Lumi section into a Google Sheet, every hour or on demand.', 'imp.sezione': 'Section to export (e.g. clienti)', 'imp.foglio': 'Spreadsheet id (in the address, between /d/ and /edit)', 'imp.scheda': 'Tab name (empty = the section name)', 'imp.ogni_ora': 'Update automatically every hour', 'imp.client_id': 'Google: OAuth client ID', 'imp.client_secret': 'Google: client secret', 'az.esporta_ora': 'Export to the sheet now', 'giro.esporta': 'Export to the sheet',
       'cat.costoNota': 'Free with a personal Google account; Google Workspace from about €7 per user per month (Business Starter). The Sheets API is free, limited to 300 requests per minute per project.',
       'cat.serve': [{ cosa: 'OAuth client ID and client secret («Web application»)', dove: 'Google Cloud Console → APIs & Services → Credentials → Create credentials → OAuth client ID' }, { cosa: 'Google Sheets API enabled in the project', dove: 'Google Cloud Console → APIs & Services → Library → Google Sheets API → Enable' }, { cosa: 'The spreadsheet id', dove: 'Open the sheet: it is the part of the address between /d/ and /edit' }],
       'cat.passi': ['Create a project in Google Cloud Console and enable the Google Sheets API.', 'Set up the OAuth consent screen («External», add yourself as a test user).', 'Create a «Web application» OAuth client ID with the redirect address shown on this page.', 'Paste client ID and secret, press «Connect» and sign in with the Google account that owns the sheet.', 'Choose the section (e.g. clienti), paste the spreadsheet id and, if you like, the tab name.', 'Press «Export now»: the tab fills up; from then on it updates every hour.'] },
-    es: { nome: 'Hojas de cálculo de Google', descrizione: 'Copia una sección de Kubo en una hoja de Google, cada hora o cuando quieras.', 'imp.sezione': 'Sección a exportar (p. ej. clienti)', 'imp.foglio': 'Id de la hoja de cálculo (en la dirección, entre /d/ y /edit)', 'imp.scheda': 'Nombre de la pestaña (vacío = el nombre de la sección)', 'imp.ogni_ora': 'Actualizar solo cada hora', 'imp.client_id': 'Google: client ID de OAuth', 'imp.client_secret': 'Google: client secret', 'az.esporta_ora': 'Exportar ahora a la hoja', 'giro.esporta': 'Exportar a la hoja' },
-    fr: { nome: 'Google Sheets', descrizione: 'Copie une section de Kubo dans une feuille Google, chaque heure ou à la demande.', 'imp.sezione': 'Section à exporter (ex. clienti)', 'imp.foglio': 'Id de la feuille de calcul (dans l\'adresse, entre /d/ et /edit)', 'imp.scheda': 'Nom de l\'onglet (vide = le nom de la section)', 'imp.ogni_ora': 'Mettre à jour seul chaque heure', 'imp.client_id': 'Google : client ID OAuth', 'imp.client_secret': 'Google : client secret', 'az.esporta_ora': 'Exporter maintenant vers la feuille', 'giro.esporta': 'Exporter vers la feuille' },
-    de: { nome: 'Google Tabellen', descrizione: 'Kopiert einen Kubo-Bereich in eine Google-Tabelle, stündlich oder auf Wunsch.', 'imp.sezione': 'Zu exportierender Bereich (z. B. clienti)', 'imp.foglio': 'ID der Tabelle (in der Adresse zwischen /d/ und /edit)', 'imp.scheda': 'Name des Tabellenblatts (leer = Name des Bereichs)', 'imp.ogni_ora': 'Stündlich automatisch aktualisieren', 'imp.client_id': 'Google: OAuth-Client-ID', 'imp.client_secret': 'Google: Client-Secret', 'az.esporta_ora': 'Jetzt in die Tabelle exportieren', 'giro.esporta': 'In die Tabelle exportieren' },
-    pt: { nome: 'Planilhas Google', descrizione: 'Copia uma seção do Kubo para uma planilha Google, a cada hora ou quando quiser.', 'imp.sezione': 'Seção a exportar (ex. clienti)', 'imp.foglio': 'Id da planilha (no endereço, entre /d/ e /edit)', 'imp.scheda': 'Nome da aba (vazio = o nome da seção)', 'imp.ogni_ora': 'Atualizar sozinho a cada hora', 'imp.client_id': 'Google: client ID OAuth', 'imp.client_secret': 'Google: client secret', 'az.esporta_ora': 'Exportar agora para a planilha', 'giro.esporta': 'Exportar para a planilha' },
+    es: { nome: 'Hojas de cálculo de Google', descrizione: 'Copia una sección de Lumi en una hoja de Google, cada hora o cuando quieras.', 'imp.sezione': 'Sección a exportar (p. ej. clienti)', 'imp.foglio': 'Id de la hoja de cálculo (en la dirección, entre /d/ y /edit)', 'imp.scheda': 'Nombre de la pestaña (vacío = el nombre de la sección)', 'imp.ogni_ora': 'Actualizar solo cada hora', 'imp.client_id': 'Google: client ID de OAuth', 'imp.client_secret': 'Google: client secret', 'az.esporta_ora': 'Exportar ahora a la hoja', 'giro.esporta': 'Exportar a la hoja' },
+    fr: { nome: 'Google Sheets', descrizione: 'Copie une section de Lumi dans une feuille Google, chaque heure ou à la demande.', 'imp.sezione': 'Section à exporter (ex. clienti)', 'imp.foglio': 'Id de la feuille de calcul (dans l\'adresse, entre /d/ et /edit)', 'imp.scheda': 'Nom de l\'onglet (vide = le nom de la section)', 'imp.ogni_ora': 'Mettre à jour seul chaque heure', 'imp.client_id': 'Google : client ID OAuth', 'imp.client_secret': 'Google : client secret', 'az.esporta_ora': 'Exporter maintenant vers la feuille', 'giro.esporta': 'Exporter vers la feuille' },
+    de: { nome: 'Google Tabellen', descrizione: 'Kopiert einen Lumi-Bereich in eine Google-Tabelle, stündlich oder auf Wunsch.', 'imp.sezione': 'Zu exportierender Bereich (z. B. clienti)', 'imp.foglio': 'ID der Tabelle (in der Adresse zwischen /d/ und /edit)', 'imp.scheda': 'Name des Tabellenblatts (leer = Name des Bereichs)', 'imp.ogni_ora': 'Stündlich automatisch aktualisieren', 'imp.client_id': 'Google: OAuth-Client-ID', 'imp.client_secret': 'Google: Client-Secret', 'az.esporta_ora': 'Jetzt in die Tabelle exportieren', 'giro.esporta': 'In die Tabelle exportieren' },
+    pt: { nome: 'Planilhas Google', descrizione: 'Copia uma seção do Lumi para uma planilha Google, a cada hora ou quando quiser.', 'imp.sezione': 'Seção a exportar (ex. clienti)', 'imp.foglio': 'Id da planilha (no endereço, entre /d/ e /edit)', 'imp.scheda': 'Nome da aba (vazio = o nome da seção)', 'imp.ogni_ora': 'Atualizar sozinho a cada hora', 'imp.client_id': 'Google: client ID OAuth', 'imp.client_secret': 'Google: client secret', 'az.esporta_ora': 'Exportar agora para a planilha', 'giro.esporta': 'Exportar para a planilha' },
   },
 };

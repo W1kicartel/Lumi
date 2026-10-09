@@ -1,6 +1,6 @@
-// Revolut Business: i movimenti dei conti Revolut Business entrano in Kubo e si abbinano alle fatture (Business API,
+// Revolut Business: i movimenti dei conti Revolut Business entrano in Lumi e si abbinano alle fatture (Business API,
 // https://developer.revolut.com/docs/business/business-api; specifica: github.com/revolut-engineering/revolut-openapi).
-// Accesso: un certificato caricato in Revolut (Impostazioni › API › Business API) dà il client_id; Kubo firma con la chiave
+// Accesso: un certificato caricato in Revolut (Impostazioni › API › Business API) dà il client_id; Lumi firma con la chiave
 // privata un JWT RS256 { iss: dominio dell'indirizzo di ritorno, sub: client_id, aud: 'https://revolut.com' } e lo usa come
 // client_assertion su POST /auth/token (grant_type authorization_code, poi refresh_token). Il token d'accesso dura 40 minuti
 // e resta in memoria; il codice di rinnovo è un segreto cifrato. GET /transactions dà al massimo 1000 movimenti per volta,
@@ -20,7 +20,7 @@ export function jwt(k, dominio, adesso = Date.now()) {
 const stesso = (a, b) => { const x = Buffer.from(String(a ?? '')), y = Buffer.from(String(b ?? '')); return x.length === y.length && x.length > 0 && timingSafeEqual(x, y); };
 const errore = (r, cosa) => new Error(`${cosa}: Revolut ha risposto ${r.stato}${r.json?.message || r.json?.error_description ? ` (${String(r.json.message || r.json.error_description).slice(0, 200)})` : ''}`);
 const pagina = (titolo, testo) => ({ tipo: 'text/html; charset=utf-8', corpo: `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${titolo}</title>`
-  + `<body style="font-family:system-ui;max-width:32rem;margin:4rem auto;padding:0 1rem"><h1>${titolo}</h1><p>${testo}</p><p><a href="/#/connettori/revolut-business">Torna a Kubo</a></p>` });
+  + `<body style="font-family:system-ui;max-width:32rem;margin:4rem auto;padding:0 1rem"><h1>${titolo}</h1><p>${testo}</p><p><a href="/#/connettori/revolut-business">Torna a Lumi</a></p>` });
 
 // il codice d'accesso, in memoria finché vale (meno un minuto); con il codice di rinnovo se è scaduto
 const accessi = new Map();
@@ -46,7 +46,7 @@ const movimenti = (k, t) => (t.state !== 'completed' ? [] : (t.legs || []).map((
 
 export default {
   id: 'revolut-business', nome: 'Revolut Business', versione: 1, icona: 'cassa',
-  descrizione: 'I movimenti dei conti Revolut Business entrano in Kubo e si abbinano alle fatture da incassare e da pagare.',
+  descrizione: 'I movimenti dei conti Revolut Business entrano in Lumi e si abbinano alle fatture da incassare e da pagare.',
   impostazioni: [
     { id: 'client_id', nome: 'Client ID del certificato API' },
     { id: 'chiave_privata', nome: 'Chiave privata del certificato (privatecert.pem)', segreto: true, schema: /-----BEGIN [A-Z ]*PRIVATE KEY-----/ },
@@ -60,10 +60,10 @@ export default {
     // senza «su»: solo il titolare
     collega: {
       nome: 'Collega il conto', descrizione: 'Apre il consenso su Revolut Business',
-      input: { indirizzo: { tipo: 'testo', nome: 'L\'indirizzo di Kubo nel browser (vuoto: l\'indirizzo pubblico della Libreria)', facoltativo: true } },
+      input: { indirizzo: { tipo: 'testo', nome: 'L\'indirizzo di Lumi nel browser (vuoto: l\'indirizzo pubblico della Libreria)', facoltativo: true } },
       async esegui({ indirizzo }, k) {
-        const b = String(indirizzo || k.pubblico || '').replace(/\/+$/, '');   // vuoto: l'indirizzo pubblico di Kubo (k.pubblico)
-        if (!/^https?:\/\/[^/\s]+$/.test(b)) throw new Error('Indirizzo di Kubo non valido');
+        const b = String(indirizzo || k.pubblico || '').replace(/\/+$/, '');   // vuoto: l'indirizzo pubblico di Lumi (k.pubblico)
+        if (!/^https?:\/\/[^/\s]+$/.test(b)) throw new Error('Indirizzo di Lumi non valido');
         if (!k.imp.client_id) throw new Error('Manca il Client ID');
         const state = randomBytes(24).toString('base64url'), ritorno = `${b}/api/connettori/revolut-business/pub/ritorno`, u = new URL(consenso(k));
         for (const [a, v] of Object.entries({ client_id: k.imp.client_id, redirect_uri: ritorno, response_type: 'code', scope: 'READ', state })) u.searchParams.set(a, v);
@@ -83,13 +83,13 @@ export default {
   pubbliche: {
     async ritorno({ q, k }) {
       const a = k.stato.leggi('attesa'), st = q.get('state');
-      if (!a || a.scade < Date.now() || (st != null && !stesso(st, a.state))) return pagina('Collegamento scaduto', 'Riprova da Kubo con «Collega il conto».');
+      if (!a || a.scade < Date.now() || (st != null && !stesso(st, a.state))) return pagina('Collegamento scaduto', 'Riprova da Lumi con «Collega il conto».');
       k.stato.scrivi('attesa', null);
-      if (!q.get('code')) return pagina('Consenso non dato', 'Revolut non ha autorizzato Kubo. Riprova.');
+      if (!q.get('code')) return pagina('Consenso non dato', 'Revolut non ha autorizzato Lumi. Riprova.');
       try { await chiediToken(k, { grant_type: 'authorization_code', code: q.get('code') }); }
       catch (e) { k.annota('entrata', 'errore', 'collegamento', String(e.message).slice(0, 300)); return pagina('Collegamento non riuscito', 'Revolut non ha confermato. Controlla Client ID e chiave privata, poi riprova.'); }
       k.annota('entrata', 'ok', 'collegato', null);
-      return pagina('Conto collegato', 'I movimenti di Revolut Business arrivano in Kubo da soli.');
+      return pagina('Conto collegato', 'I movimenti di Revolut Business arrivano in Lumi da soli.');
     },
   },
   pianificati: {
@@ -122,10 +122,10 @@ export default {
     passi: [
       'Sul computer crea la chiave e il certificato: openssl genrsa -out privatecert.pem 2048 e poi openssl req -new -x509 -key privatecert.pem -out publiccert.cer -days 1825.',
       'In Revolut Business (dal web) apri Impostazioni › API › Business API e aggiungi un certificato: incolla publiccert.cer.',
-      'Come «OAuth redirect URI» scrivi quello che Kubo mostra: <indirizzo di Kubo>/api/connettori/revolut-business/pub/ritorno.',
+      'Come «OAuth redirect URI» scrivi quello che Lumi mostra: <indirizzo di Lumi>/api/connettori/revolut-business/pub/ritorno.',
       'Copia il Client ID che Revolut ti dà.',
-      'In Kubo incolla Client ID e chiave privata (privatecert.pem) e accendi il connettore.',
-      'Premi «Collega il conto» e autorizza Kubo su Revolut: da lì Kubo rinnova l\'accesso da solo.',
+      'In Lumi incolla Client ID e chiave privata (privatecert.pem) e accendi il connettore.',
+      'Premi «Collega il conto» e autorizza Lumi su Revolut: da lì Lumi rinnova l\'accesso da solo.',
       'Prima di accendere, in Tesoreria premi «Prepara»: i movimenti entrano in «Movimenti di banca» e si abbinano alle fatture in Tesoreria › Banca (anche da Lumi).',
     ],
     difficolta: 'difficile',
@@ -135,7 +135,7 @@ export default {
     parole: ['revolut', 'revolut business', 'banca', 'conto aziendale', 'movimenti', 'riconciliazione', 'bonifici', 'bank', 'business account', 'transactions', 'reconciliation'],
   },
   testi: {
-    en: { descrizione: 'Your Revolut Business transactions flow into Kubo and get matched to invoices to collect and to pay.',
+    en: { descrizione: 'Your Revolut Business transactions flow into Lumi and get matched to invoices to collect and to pay.',
       'imp.client_id': 'API certificate Client ID', 'imp.chiave_privata': 'Certificate private key (privatecert.pem)', 'imp.ambiente': 'Environment', 'imp.rinnovo': 'Refresh token (filled in by «Connect the account»)',
       'az.collega': 'Connect the account', 'az.conti': 'Revolut accounts', 'giro.movimenti': 'Transactions',
       'cat.costoNota': 'The Business API costs nothing extra: it comes with the Revolut Business plans, which have a monthly fee depending on the plan (there is also a basic plan with no fee). Current prices at revolut.com/it-IT/business/business-account-plans.',
@@ -143,22 +143,22 @@ export default {
       'cat.passi': [
         'On your computer create the key and the certificate: openssl genrsa -out privatecert.pem 2048, then openssl req -new -x509 -key privatecert.pem -out publiccert.cer -days 1825.',
         'In Revolut Business (on the web) open Settings › APIs › Business API and add a certificate: paste publiccert.cer.',
-        'As «OAuth redirect URI» type the one Kubo shows: <Kubo address>/api/connettori/revolut-business/pub/ritorno.',
+        'As «OAuth redirect URI» type the one Lumi shows: <Lumi address>/api/connettori/revolut-business/pub/ritorno.',
         'Copy the Client ID Revolut gives you.',
-        'In Kubo paste the Client ID and the private key (privatecert.pem) and switch the connector on.',
-        'Press «Connect the account» and authorise Kubo on Revolut: from then on Kubo renews access by itself.',
+        'In Lumi paste the Client ID and the private key (privatecert.pem) and switch the connector on.',
+        'Press «Connect the account» and authorise Lumi on Revolut: from then on Lumi renews access by itself.',
         'Before switching it on, press «Prepare» in Treasury: transactions land in «Bank transactions» and are matched to invoices in Treasury › Bank (Lumi can do it too).',
       ] },
-    es: { descrizione: 'Los movimientos de Revolut Business entran en Kubo y se concilian con las facturas por cobrar y por pagar.',
+    es: { descrizione: 'Los movimientos de Revolut Business entran en Lumi y se concilian con las facturas por cobrar y por pagar.',
       'imp.client_id': 'Client ID del certificado API', 'imp.chiave_privata': 'Clave privada del certificado (privatecert.pem)', 'imp.ambiente': 'Entorno', 'imp.rinnovo': 'Token de renovación (se rellena con «Conectar la cuenta»)',
       'az.collega': 'Conectar la cuenta', 'az.conti': 'Cuentas Revolut', 'giro.movimenti': 'Movimientos' },
-    fr: { descrizione: 'Les opérations Revolut Business arrivent dans Kubo et sont rapprochées des factures à encaisser et à payer.',
+    fr: { descrizione: 'Les opérations Revolut Business arrivent dans Lumi et sont rapprochées des factures à encaisser et à payer.',
       'imp.client_id': 'Client ID du certificat API', 'imp.chiave_privata': 'Clé privée du certificat (privatecert.pem)', 'imp.ambiente': 'Environnement', 'imp.rinnovo': 'Jeton de renouvellement (rempli par «Connecter le compte»)',
       'az.collega': 'Connecter le compte', 'az.conti': 'Comptes Revolut', 'giro.movimenti': 'Opérations' },
-    de: { descrizione: 'Die Umsätze von Revolut Business kommen in Kubo an und werden offenen Ein- und Ausgangsrechnungen zugeordnet.',
+    de: { descrizione: 'Die Umsätze von Revolut Business kommen in Lumi an und werden offenen Ein- und Ausgangsrechnungen zugeordnet.',
       'imp.client_id': 'Client-ID des API-Zertifikats', 'imp.chiave_privata': 'Privater Schlüssel des Zertifikats (privatecert.pem)', 'imp.ambiente': 'Umgebung', 'imp.rinnovo': 'Refresh-Token (wird mit «Konto verbinden» ausgefüllt)',
       'az.collega': 'Konto verbinden', 'az.conti': 'Revolut-Konten', 'giro.movimenti': 'Umsätze' },
-    pt: { descrizione: 'Os movimentos do Revolut Business entram no Kubo e são conciliados com as faturas a receber e a pagar.',
+    pt: { descrizione: 'Os movimentos do Revolut Business entram no Lumi e são conciliados com as faturas a receber e a pagar.',
       'imp.client_id': 'Client ID do certificado da API', 'imp.chiave_privata': 'Chave privada do certificado (privatecert.pem)', 'imp.ambiente': 'Ambiente', 'imp.rinnovo': 'Token de renovação (preenchido por «Conectar a conta»)',
       'az.collega': 'Conectar a conta', 'az.conti': 'Contas Revolut', 'giro.movimenti': 'Movimentos' },
   },

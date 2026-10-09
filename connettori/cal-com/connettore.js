@@ -1,7 +1,7 @@
 // Cal.com (anche installato in proprio): le prenotazioni diventano appuntamenti. BOOKING_CREATED crea l'appuntamento e
 // il cliente (per email), BOOKING_RESCHEDULED sposta quello di «rescheduleUid» (la prenotazione di prima), BOOKING_CANCELLED
 // lo annulla. La firma è «X-Cal-Signature-256»: HMAC-SHA256 esadecimale del corpo grezzo con il segreto del webhook,
-// che qui genera Kubo e il titolare incolla nel modulo del webhook su Cal.com. Serve un indirizzo pubblico.
+// che qui genera Lumi e il titolare incolla nel modulo del webhook su Cal.com. Serve un indirizzo pubblico.
 import { REQ, PERMESSI, ricevi, annulla, webhookDi } from '../_comunica/agenda.js';
 const note = p => [p.title && `Cal.com: ${p.title}`, p.additionalNotes, p.location && `Dove: ${p.location}`].filter(Boolean).join('\n');
 
@@ -10,7 +10,7 @@ export default {
   descrizione: 'Le prenotazioni di Cal.com diventano appuntamenti, con il cliente.',
   impostazioni: [
     { id: 'segreto', nome: 'Segreto del webhook (da incollare su Cal.com)', segreto: true, generato: true },
-    { id: 'indirizzo', nome: 'Indirizzo pubblico di Kubo (es. https://kubo.studiorossi.it)', tipo: 'url', obbligatorio: false },
+    { id: 'indirizzo', nome: 'Indirizzo pubblico di Lumi (es. https://lumi.studiorossi.it)', tipo: 'url', obbligatorio: false },
     { id: 'clienti', nome: 'Crea il cliente se non c\'è', tipo: 'si_no', predefinito: true },
   ],
   richiede: REQ, permessi: PERMESSI,
@@ -35,22 +35,22 @@ export default {
     categoria: 'prenotazioni', sito: 'https://cal.com', costo: 'gratis',
     costoNota: 'Il piano Free per una persona ha i webhook; Teams costa 15 $ a utente al mese. Installato in proprio (open source, AGPL) è gratis.',
     serve: [
-      { cosa: 'Un webhook con il segreto generato da Kubo', dove: 'Cal.com → Impostazioni → Sviluppatore → Webhook → Nuovo', link: 'https://app.cal.com/settings/developer/webhooks' },
-      { cosa: 'Un indirizzo pubblico di Kubo (dominio o tunnel) raggiungibile da Internet', dove: 'Il tuo dominio con HTTPS, oppure un tunnel (Cloudflare Tunnel)', link: 'https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/' },
+      { cosa: 'Un webhook con il segreto generato da Lumi', dove: 'Cal.com → Impostazioni → Sviluppatore → Webhook → Nuovo', link: 'https://app.cal.com/settings/developer/webhooks' },
+      { cosa: 'Un indirizzo pubblico di Lumi (dominio o tunnel) raggiungibile da Internet', dove: 'Il tuo dominio con HTTPS, oppure un tunnel (Cloudflare Tunnel)', link: 'https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/' },
     ],
-    passi: ['Accendi il connettore: Kubo crea il segreto del webhook.', 'Scrivi l\'indirizzo pubblico di Kubo (con https); se l\'hai impostato nella Libreria, puoi lasciarlo vuoto.', 'Su Cal.com apri Impostazioni → Sviluppatore → Webhook → Nuovo.', 'Come «Subscriber URL» incolla l\'indirizzo che dà l\'azione «Indirizzo da dare a Cal.com».', 'Incolla il segreto e scegli Booking Created, Booking Rescheduled e Booking Cancelled.', 'Fai una prenotazione di prova: compare tra gli appuntamenti, con il cliente.'],
+    passi: ['Accendi il connettore: Lumi crea il segreto del webhook.', 'Scrivi l\'indirizzo pubblico di Lumi (con https); se l\'hai impostato nella Libreria, puoi lasciarlo vuoto.', 'Su Cal.com apri Impostazioni → Sviluppatore → Webhook → Nuovo.', 'Come «Subscriber URL» incolla l\'indirizzo che dà l\'azione «Indirizzo da dare a Cal.com».', 'Incolla il segreto e scegli Booking Created, Booking Rescheduled e Booking Cancelled.', 'Fai una prenotazione di prova: compare tra gli appuntamenti, con il cliente.'],
     difficolta: 'media', zone: ['mondo'],
     fonti: ['https://cal.com/docs/developing/guides/automation/webhooks', 'https://cal.com/pricing'],
     prova: 'finto', parole: ['cal.com', 'cal com', 'prenotazioni', 'prenotazione online', 'booking', 'appuntamenti', 'scheduling', 'open source'],
   },
   testi: {
-    en: { nome: 'Cal.com', descrizione: 'Cal.com bookings become appointments, with the customer.', 'imp.segreto': 'Webhook secret (to paste into Cal.com)', 'imp.indirizzo': 'Public address of Kubo (e.g. https://kubo.mystudio.com)', 'imp.clienti': 'Create the customer if missing', 'az.indirizzo_webhook': 'Address to give Cal.com',
+    en: { nome: 'Cal.com', descrizione: 'Cal.com bookings become appointments, with the customer.', 'imp.segreto': 'Webhook secret (to paste into Cal.com)', 'imp.indirizzo': 'Public address of Lumi (e.g. https://lumi.mystudio.com)', 'imp.clienti': 'Create the customer if missing', 'az.indirizzo_webhook': 'Address to give Cal.com',
       'cat.costoNota': 'The Free plan for one person includes webhooks; Teams costs $15 per user per month. Self-hosted (open source, AGPL) it is free.',
-      'cat.passi': ['Turn the connector on: Kubo creates the webhook secret.', 'Enter Kubo\'s public address (with https); if you set it in the Library, you can leave it empty.', 'In Cal.com open Settings → Developer → Webhooks → New.', 'As «Subscriber URL» paste the address given by the «Address to give Cal.com» action.', 'Paste the secret and pick Booking Created, Booking Rescheduled and Booking Cancelled.', 'Make a test booking: it shows up among the appointments, with the customer.'],
-      'cat.serve': [{ cosa: 'A webhook with the secret generated by Kubo', dove: 'Cal.com → Settings → Developer → Webhooks → New' }, { cosa: 'A public address for Kubo reachable from the Internet', dove: 'Your domain with HTTPS, or a tunnel (Cloudflare Tunnel)' }] },
-    es: { nome: 'Cal.com', descrizione: 'Las reservas de Cal.com se convierten en citas, con el cliente.', 'imp.segreto': 'Secreto del webhook (para pegar en Cal.com)', 'imp.indirizzo': 'Dirección pública de Kubo (p. ej. https://kubo.miestudio.es)', 'imp.clienti': 'Crear el cliente si no existe', 'az.indirizzo_webhook': 'Dirección para Cal.com' },
-    fr: { nome: 'Cal.com', descrizione: 'Les réservations Cal.com deviennent des rendez-vous, avec le client.', 'imp.segreto': 'Secret du webhook (à coller dans Cal.com)', 'imp.indirizzo': 'Adresse publique de Kubo (ex. https://kubo.moncabinet.fr)', 'imp.clienti': 'Créer le client s\'il n\'existe pas', 'az.indirizzo_webhook': 'Adresse à donner à Cal.com' },
-    de: { nome: 'Cal.com', descrizione: 'Cal.com-Buchungen werden zu Terminen, mit dem Kunden.', 'imp.segreto': 'Webhook-Geheimnis (in Cal.com einfügen)', 'imp.indirizzo': 'Öffentliche Adresse von Kubo (z. B. https://kubo.meinestudio.de)', 'imp.clienti': 'Kunden anlegen, falls er fehlt', 'az.indirizzo_webhook': 'Adresse für Cal.com' },
-    pt: { nome: 'Cal.com', descrizione: 'As reservas do Cal.com viram agendamentos, com o cliente.', 'imp.segreto': 'Segredo do webhook (para colar no Cal.com)', 'imp.indirizzo': 'Endereço público do Kubo (ex. https://kubo.meuestudio.com)', 'imp.clienti': 'Criar o cliente se não existir', 'az.indirizzo_webhook': 'Endereço para o Cal.com' },
+      'cat.passi': ['Turn the connector on: Lumi creates the webhook secret.', 'Enter Lumi\'s public address (with https); if you set it in the Library, you can leave it empty.', 'In Cal.com open Settings → Developer → Webhooks → New.', 'As «Subscriber URL» paste the address given by the «Address to give Cal.com» action.', 'Paste the secret and pick Booking Created, Booking Rescheduled and Booking Cancelled.', 'Make a test booking: it shows up among the appointments, with the customer.'],
+      'cat.serve': [{ cosa: 'A webhook with the secret generated by Lumi', dove: 'Cal.com → Settings → Developer → Webhooks → New' }, { cosa: 'A public address for Lumi reachable from the Internet', dove: 'Your domain with HTTPS, or a tunnel (Cloudflare Tunnel)' }] },
+    es: { nome: 'Cal.com', descrizione: 'Las reservas de Cal.com se convierten en citas, con el cliente.', 'imp.segreto': 'Secreto del webhook (para pegar en Cal.com)', 'imp.indirizzo': 'Dirección pública de Lumi (p. ej. https://lumi.miestudio.es)', 'imp.clienti': 'Crear el cliente si no existe', 'az.indirizzo_webhook': 'Dirección para Cal.com' },
+    fr: { nome: 'Cal.com', descrizione: 'Les réservations Cal.com deviennent des rendez-vous, avec le client.', 'imp.segreto': 'Secret du webhook (à coller dans Cal.com)', 'imp.indirizzo': 'Adresse publique de Lumi (ex. https://lumi.moncabinet.fr)', 'imp.clienti': 'Créer le client s\'il n\'existe pas', 'az.indirizzo_webhook': 'Adresse à donner à Cal.com' },
+    de: { nome: 'Cal.com', descrizione: 'Cal.com-Buchungen werden zu Terminen, mit dem Kunden.', 'imp.segreto': 'Webhook-Geheimnis (in Cal.com einfügen)', 'imp.indirizzo': 'Öffentliche Adresse von Lumi (z. B. https://lumi.meinestudio.de)', 'imp.clienti': 'Kunden anlegen, falls er fehlt', 'az.indirizzo_webhook': 'Adresse für Cal.com' },
+    pt: { nome: 'Cal.com', descrizione: 'As reservas do Cal.com viram agendamentos, com o cliente.', 'imp.segreto': 'Segredo do webhook (para colar no Cal.com)', 'imp.indirizzo': 'Endereço público do Lumi (ex. https://lumi.meuestudio.com)', 'imp.clienti': 'Criar o cliente se não existir', 'az.indirizzo_webhook': 'Endereço para o Cal.com' },
   },
 };

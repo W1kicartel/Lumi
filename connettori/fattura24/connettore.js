@@ -1,4 +1,4 @@
-// Fattura24: per chi fattura già con Fattura24. La fattura emessa in Kubo si crea in Fattura24 come fattura elettronica
+// Fattura24: per chi fattura già con Fattura24. La fattura emessa in Lumi si crea in Fattura24 come fattura elettronica
 // (cliente, righe con aliquote e nature, pagamento): da lì si manda allo SDI con «Invia a Sdi».
 // API v0.3: un solo indirizzo, POST form-encoded con «apiKey» e «xml» (UTF-8, senza BOM), risposte XML
 // (<returnCode>, <description>, <docId>, <docNumber>). Metodi usati: TestKey (returnCode 1 = chiave giusta),
@@ -22,7 +22,7 @@ async function chiama(k, metodo, xml) {
 // un elemento XML; null o '' si salta (gli elementi facoltativi)
 const el = (nome, v) => (v == null || v === '' ? '' : `<${nome}>${esc(v)}</${nome}>`);
 
-// il documento FE di Fattura24 da una fattura di Kubo
+// il documento FE di Fattura24 da una fattura di Lumi
 export function documento(k, f) {
   if (Number(f.ritenuta) || (f.cassa_tipo && Number(f.cassa))) throw new Error('Fattura24 non accetta dall\'API fatture con ritenuta d\'acconto o cassa previdenziale: creala in Fattura24');
   const tipo = f.tipo || 'TD01'; if (!['TD01', 'TD04'].includes(tipo)) throw new Error(`Il tipo ${tipo} non si crea con l'API di Fattura24 (solo fatture e note di credito)`);
@@ -55,7 +55,7 @@ const emessa = (k, f) => { const s = k.valore(f, 'fatture', 'stato'); if (s === 
 
 export default {
   id: 'fattura24', nome: 'Fattura24', versione: 1, icona: 'documento',
-  descrizione: 'Le fatture di Kubo create in Fattura24 come fatture elettroniche, pronte da inviare allo SDI.',
+  descrizione: 'Le fatture di Lumi create in Fattura24 come fatture elettroniche, pronte da inviare allo SDI.',
   impostazioni: [{ id: 'chiave', nome: 'API key di Fattura24', segreto: true }],
   richiede: { fatture: { stato: { tipo: 'stato' }, numero: {}, data: { tipo: 'data' }, cliente: { tipo: 'relazione' } }, clienti: { nome: {} } },
   permessi: { fatture: { leggi: true }, clienti: { leggi: true } },
@@ -80,21 +80,21 @@ export default {
   },
   catalogo: {
     categoria: 'fatturazione', sito: 'https://www.fattura24.com/',
-    costo: 'abbonamento', costoNota: 'Serve un abbonamento a Fattura24 (dal sito: a partire da 4 € al mese + IVA); quali piani includono la fattura elettronica e l\'API si vede su fattura24.com/prezzi. Kubo non aggiunge costi.',
+    costo: 'abbonamento', costoNota: 'Serve un abbonamento a Fattura24 (dal sito: a partire da 4 € al mese + IVA); quali piani includono la fattura elettronica e l\'API si vede su fattura24.com/prezzi. Lumi non aggiunge costi.',
     serve: [{ cosa: 'La API key del tuo account', dove: 'Fattura24 › Configurazione › App e servizi esterni › API (gruppo «E-commerce e API»): copia la chiave', link: 'https://www.fattura24.com/api/introduzione/' }],
-    passi: ['In Fattura24 apri Configurazione › App e servizi esterni › API e copia la API key.', 'Compila in Kubo i dati dei clienti: partita IVA o codice fiscale, PEC o codice destinatario.', 'Incolla la chiave nella pagina del connettore e premi «Prova la connessione».', 'Accendi: da ogni fattura emessa c\'è «Crea in Fattura24».', 'In Fattura24 apri la fattura creata e premi «Invia a Sdi»: l\'API non la invia da sola.', 'Le fatture con ritenuta d\'acconto o cassa previdenziale vanno create in Fattura24 a mano (limite dell\'API).'],
+    passi: ['In Fattura24 apri Configurazione › App e servizi esterni › API e copia la API key.', 'Compila in Lumi i dati dei clienti: partita IVA o codice fiscale, PEC o codice destinatario.', 'Incolla la chiave nella pagina del connettore e premi «Prova la connessione».', 'Accendi: da ogni fattura emessa c\'è «Crea in Fattura24».', 'In Fattura24 apri la fattura creata e premi «Invia a Sdi»: l\'API non la invia da sola.', 'Le fatture con ritenuta d\'acconto o cassa previdenziale vanno create in Fattura24 a mano (limite dell\'API).'],
     difficolta: 'facile', zone: ['IT'],
     fonti: ['https://www.fattura24.com/api/introduzione/', 'https://www.fattura24.com/api/verifica/', 'https://www.fattura24.com/api/crea-fattura-elettronica/', 'https://www.fattura24.com/api/crea-documento/'],
     prova: 'finto', parole: ['fattura24', 'fatturazione elettronica', 'fattura elettronica', 'sdi', 'fatturapa', 'invoicing', 'e-invoice', 'invoices'],
   },
   testi: {
-    en: { descrizione: 'Kubo invoices created in Fattura24 as e-invoices, ready to send to SDI.', 'imp.chiave': 'Fattura24 API key', 'az.crea': 'Create in Fattura24',
-      'cat.costoNota': 'You need a Fattura24 subscription (per the website: from €4 a month + VAT); which plans include e-invoicing and the API is shown on fattura24.com/prezzi. Kubo adds no costs.',
+    en: { descrizione: 'Lumi invoices created in Fattura24 as e-invoices, ready to send to SDI.', 'imp.chiave': 'Fattura24 API key', 'az.crea': 'Create in Fattura24',
+      'cat.costoNota': 'You need a Fattura24 subscription (per the website: from €4 a month + VAT); which plans include e-invoicing and the API is shown on fattura24.com/prezzi. Lumi adds no costs.',
       'cat.serve': [{ cosa: 'Your account API key', dove: 'Fattura24 › Configuration › External apps and services › API («E-commerce and API» group): copy the key' }],
-      'cat.passi': ['In Fattura24 open Configuration › External apps and services › API and copy the API key.', 'Fill in customer data in Kubo: VAT number or tax code, PEC or recipient code.', 'Paste the key on the connector page and press «Test connection».', 'Switch on: every issued invoice gets «Create in Fattura24».', 'In Fattura24 open the created invoice and press «Invia a Sdi»: the API does not send it by itself.', 'Invoices with withholding tax or pension fund contribution must be created in Fattura24 by hand (API limit).'] },
-    es: { descrizione: 'Las facturas de Kubo creadas en Fattura24 como facturas electrónicas, listas para enviar al SDI.', 'imp.chiave': 'API key de Fattura24', 'az.crea': 'Crear en Fattura24' },
-    fr: { descrizione: 'Les factures de Kubo créées dans Fattura24 comme factures électroniques, prêtes à envoyer au SDI.', 'imp.chiave': 'Clé API Fattura24', 'az.crea': 'Créer dans Fattura24' },
-    de: { descrizione: 'Kubo-Rechnungen als E-Rechnungen in Fattura24 angelegt, bereit zum Senden an SDI.', 'imp.chiave': 'Fattura24-API-Schlüssel', 'az.crea': 'In Fattura24 anlegen' },
-    pt: { descrizione: 'As faturas do Kubo criadas no Fattura24 como faturas eletrônicas, prontas para enviar ao SDI.', 'imp.chiave': 'API key do Fattura24', 'az.crea': 'Criar no Fattura24' },
+      'cat.passi': ['In Fattura24 open Configuration › External apps and services › API and copy the API key.', 'Fill in customer data in Lumi: VAT number or tax code, PEC or recipient code.', 'Paste the key on the connector page and press «Test connection».', 'Switch on: every issued invoice gets «Create in Fattura24».', 'In Fattura24 open the created invoice and press «Invia a Sdi»: the API does not send it by itself.', 'Invoices with withholding tax or pension fund contribution must be created in Fattura24 by hand (API limit).'] },
+    es: { descrizione: 'Las facturas de Lumi creadas en Fattura24 como facturas electrónicas, listas para enviar al SDI.', 'imp.chiave': 'API key de Fattura24', 'az.crea': 'Crear en Fattura24' },
+    fr: { descrizione: 'Les factures de Lumi créées dans Fattura24 comme factures électroniques, prêtes à envoyer au SDI.', 'imp.chiave': 'Clé API Fattura24', 'az.crea': 'Créer dans Fattura24' },
+    de: { descrizione: 'Lumi-Rechnungen als E-Rechnungen in Fattura24 angelegt, bereit zum Senden an SDI.', 'imp.chiave': 'Fattura24-API-Schlüssel', 'az.crea': 'In Fattura24 anlegen' },
+    pt: { descrizione: 'As faturas do Lumi criadas no Fattura24 como faturas eletrônicas, prontas para enviar ao SDI.', 'imp.chiave': 'API key do Fattura24', 'az.crea': 'Criar no Fattura24' },
   },
 };

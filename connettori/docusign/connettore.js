@@ -1,9 +1,9 @@
-// DocuSign eSignature (REST v2.1): un preventivo di Kubo va in firma; quando il cliente firma diventa «accettato».
-// Accesso «JWT Grant» (server-to-server, niente indirizzo di ritorno): Kubo firma in RS256 un'asserzione
+// DocuSign eSignature (REST v2.1): un preventivo di Lumi va in firma; quando il cliente firma diventa «accettato».
+// Accesso «JWT Grant» (server-to-server, niente indirizzo di ritorno): Lumi firma in RS256 un'asserzione
 // { iss: integration key, sub: user ID, aud: account(-d).docusign.com, scope: 'signature impersonation' } con la chiave
 // privata dell'app e la scambia con POST /oauth/token. Una volta sola serve il consenso dell'utente (azione «consenso»).
 // L'indirizzo dell'API (base_uri) e il conto vengono da GET /oauth/userinfo. La busta porta il PDF del preventivo (lo stesso
-// di Yousign) con la firma ancorata alla scritta «Firma per accettazione» e il campo nascosto «kubo» = kubo-p-<id>.
+// di Yousign) con la firma ancorata alla scritta «Firma per accettazione» e il campo nascosto «lumi» = lumi-p-<id>.
 // Connect (webhook) firma il corpo: X-DocuSign-Signature-1 = base64(HMAC-SHA256(chiave HMAC, corpo grezzo)).
 import { createSign } from 'node:crypto';
 import { stampa } from '../../server/moduli/documenti.js';
@@ -13,7 +13,7 @@ import { testoDi, pdfFirma } from '../yousign/connettore.js';
 const prod = k => k.imp.ambiente === 'produzione';
 const host = k => k.base || (prod(k) ? 'https://account.docusign.com' : 'https://account-d.docusign.com');
 const b64u = x => Buffer.from(typeof x === 'string' ? x : JSON.stringify(x)).toString('base64url');
-const rifP = id => `kubo-p-${id}`, daRifP = s => /kubo-p-([\w-]{1,60})/.exec(String(s ?? ''))?.[1] || null;
+const rifP = id => `lumi-p-${id}`, daRifP = s => /lumi-p-([\w-]{1,60})/.exec(String(s ?? ''))?.[1] || null;
 
 // il token: in memoria finché vale (un'ora)
 const accessi = new Map();
@@ -87,7 +87,7 @@ export default {
           documents: [{ documentId: '1', name: titolo.slice(0, 100), fileExtension: 'pdf', documentBase64: Buffer.from(pdf).toString('base64') }],
           recipients: { signers: [{ recipientId: '1', routingOrder: '1', email: f.email, name: f.nome || f.email,
             tabs: { signHereTabs: [{ anchorString: 'Firma per accettazione', anchorUnits: 'pixels', anchorXOffset: '0', anchorYOffset: '25' }] } }] },
-          customFields: { textCustomFields: [{ name: 'kubo', value: rifP(id), show: 'false', required: 'false' }] } } });
+          customFields: { textCustomFields: [{ name: 'lumi', value: rifP(id), show: 'false', required: 'false' }] } } });
         if (!r.ok || !r.json?.envelopeId) throw new Error(`DocuSign ha risposto ${r.stato}: ${String(r.json?.message || r.json?.errorCode || r.testo).slice(0, 200)}`);
         k.sincro.collega('preventivi', id, r.json.envelopeId);
         if (s === 'bozza' && k.campo('preventivi', 'stato')) k.dati.modifica('preventivi', id, { stato: 'inviato' });
@@ -102,7 +102,7 @@ export default {
     async gestisci(ev, k) {
       const d = ev?.data || {}, busta = d.envelopeId; if (!busta || !/^envelope-(completed|declined|voided)$/.test(ev.event || '')) return 'ignorato';
       const campi = d.envelopeSummary?.customFields?.textCustomFields || [];
-      const pid = k.sincro.locale('preventivi', busta) || daRifP(campi.find(x => x.name === 'kubo')?.value);
+      const pid = k.sincro.locale('preventivi', busta) || daRifP(campi.find(x => x.name === 'lumi')?.value);
       if (!pid) return k.avvisa(`busta ${busta} per un preventivo sconosciuto`);
       let p; try { p = k.dati.leggi('preventivi', pid); } catch { return k.avvisa(`busta ${busta} per un preventivo che non c'è più`); }
       const s = k.valore(p, 'preventivi', 'stato'), n = numeroDi(k, p);
@@ -123,7 +123,7 @@ export default {
       { cosa: 'User ID (API Username) e, se ne hai più d\'uno, l\'Account ID', dove: 'La stessa pagina Apps and Keys, riquadro «My Account Information»', link: 'https://admindemo.docusign.com/apps-and-keys' },
       { cosa: 'Chiave HMAC di Connect (facoltativa, per sapere subito quando firmano)', dove: 'Admin › Integrations › Connect › Add Configuration (JSON, eventi Envelope Completed/Declined/Voided) › Include HMAC Signature', link: 'https://admindemo.docusign.com/connect' },
     ],
-    passi: ['Crea un account sviluppatore DocuSign (gratuito) e un\'app in Apps and Keys.', 'Genera la coppia di chiavi RSA e copia la chiave privata, l\'integration key e lo User ID in Kubo.', 'Premi «Dai il consenso», apri l\'indirizzo e accetta (una volta sola).', 'Premi «Prova la connessione»: Kubo trova il conto e il suo indirizzo.', 'Per gli avvisi immediati crea una configurazione Connect verso l\'indirizzo che mostra Kubo, con la firma HMAC, e incolla la chiave.', 'Dal preventivo usa «Manda in firma (DocuSign)»; per i documenti veri passa all\'ambiente di produzione dopo il «Go-Live».'],
+    passi: ['Crea un account sviluppatore DocuSign (gratuito) e un\'app in Apps and Keys.', 'Genera la coppia di chiavi RSA e copia la chiave privata, l\'integration key e lo User ID in Lumi.', 'Premi «Dai il consenso», apri l\'indirizzo e accetta (una volta sola).', 'Premi «Prova la connessione»: Lumi trova il conto e il suo indirizzo.', 'Per gli avvisi immediati crea una configurazione Connect verso l\'indirizzo che mostra Lumi, con la firma HMAC, e incolla la chiave.', 'Dal preventivo usa «Manda in firma (DocuSign)»; per i documenti veri passa all\'ambiente di produzione dopo il «Go-Live».'],
     difficolta: 'difficile', zone: ['IT', 'UE', 'mondo'],
     fonti: ['https://developers.docusign.com/platform/auth/jwt/jwt-get-token/', 'https://developers.docusign.com/docs/esign-rest-api/reference/envelopes/envelopes/create/', 'https://developers.docusign.com/platform/webhooks/connect/hmac/', 'https://developers.docusign.com/platform/auth/reference/user-info/'],
     prova: 'finto', parole: ['docusign', 'firma elettronica', 'firma', 'preventivo', 'contratto', 'busta', 'e-signature', 'esign', 'envelope'],
@@ -132,7 +132,7 @@ export default {
     en: { descrizione: 'Send quotes for signature with DocuSign: when the customer signs, the quote becomes «accepted».', 'imp.integrazione': 'Integration key (app ID)', 'imp.utente': 'User ID (API Username) of the sender', 'imp.chiave_privata': 'App RSA private key (PEM)', 'imp.hmac': 'Connect HMAC key (for the webhook)', 'imp.ambiente': 'Environment', 'imp.conto': 'Account ID (empty: the default one)', 'az.consenso': 'Give consent', 'az.firma': 'Send for signature (DocuSign)',
       'cat.costoNota': 'Sending envelopes through the API needs a DocuSign plan with API access (API plans from about $50 a month billed yearly; eSignature Standard and Business Pro start at about €25–40 per user a month). The developer account for tests is free.',
       'cat.serve': [{ cosa: 'Integration key and an app RSA key pair', dove: 'DocuSign Admin › Integrations › Apps and Keys › Add App and Integration Key › Generate RSA; add the Redirect URI https://www.docusign.com' }, { cosa: 'User ID (API Username) and, if you have several, the Account ID', dove: 'Same Apps and Keys page, «My Account Information» box' }, { cosa: 'Connect HMAC key (optional, to know at once when they sign)', dove: 'Admin › Integrations › Connect › Add Configuration (JSON, Envelope Completed/Declined/Voided events) › Include HMAC Signature' }],
-      'cat.passi': ['Create a free DocuSign developer account and an app in Apps and Keys.', 'Generate the RSA key pair and copy the private key, integration key and User ID into Kubo.', 'Press «Give consent», open the address and accept (only once).', 'Press «Test connection»: Kubo finds the account and its address.', 'For instant notices create a Connect configuration to the address Kubo shows, with HMAC signature, and paste the key.', 'From a quote use «Send for signature (DocuSign)»; for real documents switch to production after the «Go-Live».'] },
+      'cat.passi': ['Create a free DocuSign developer account and an app in Apps and Keys.', 'Generate the RSA key pair and copy the private key, integration key and User ID into Lumi.', 'Press «Give consent», open the address and accept (only once).', 'Press «Test connection»: Lumi finds the account and its address.', 'For instant notices create a Connect configuration to the address Lumi shows, with HMAC signature, and paste the key.', 'From a quote use «Send for signature (DocuSign)»; for real documents switch to production after the «Go-Live».'] },
     es: { descrizione: 'Envía presupuestos a firmar con DocuSign: cuando el cliente firma, el presupuesto pasa a «aceptado».', 'imp.integrazione': 'Integration key (ID de la app)', 'imp.utente': 'User ID (API Username) del remitente', 'imp.chiave_privata': 'Clave privada RSA de la app (PEM)', 'imp.hmac': 'Clave HMAC de Connect (para el webhook)', 'imp.ambiente': 'Entorno', 'imp.conto': 'Account ID (vacío: el predeterminado)', 'az.consenso': 'Dar el consentimiento', 'az.firma': 'Enviar a firmar (DocuSign)' },
     fr: { descrizione: 'Envoyez les devis en signature avec DocuSign : quand le client signe, le devis devient «accepté».', 'imp.integrazione': 'Integration key (ID de l\'app)', 'imp.utente': 'User ID (API Username) de l\'expéditeur', 'imp.chiave_privata': 'Clé privée RSA de l\'app (PEM)', 'imp.hmac': 'Clé HMAC de Connect (pour le webhook)', 'imp.ambiente': 'Environnement', 'imp.conto': 'Account ID (vide : celui par défaut)', 'az.consenso': 'Donner le consentement', 'az.firma': 'Envoyer en signature (DocuSign)' },
     de: { descrizione: 'Sende Angebote mit DocuSign zur Unterschrift: unterschreibt der Kunde, wird das Angebot «angenommen».', 'imp.integrazione': 'Integration Key (App-ID)', 'imp.utente': 'User ID (API Username) des Absenders', 'imp.chiave_privata': 'Privater RSA-Schlüssel der App (PEM)', 'imp.hmac': 'Connect-HMAC-Schlüssel (für den Webhook)', 'imp.ambiente': 'Umgebung', 'imp.conto': 'Account ID (leer: das Standardkonto)', 'az.consenso': 'Zustimmung geben', 'az.firma': 'Zur Unterschrift senden (DocuSign)' },

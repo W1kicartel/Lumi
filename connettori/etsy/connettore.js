@@ -1,4 +1,4 @@
-// Etsy: le ricevute pagate → vendite (con il cliente e l'indirizzo per spedire), la giacenza delle inserzioni da Kubo a
+// Etsy: le ricevute pagate → vendite (con il cliente e l'indirizzo per spedire), la giacenza delle inserzioni da Lumi a
 // Etsy, il tracking sulla ricevuta. Open API v3 (https://developer.etsy.com/documentation/): OAuth 2 con PKCE (lo fa il
 // nucleo: Collega l'account), access token di un'ora e refresh token di 90 giorni; ogni chiamata porta anche x-api-key.
 // Le inserzioni si collegano agli articoli per SKU (una variante = un prodotto dell'inventario). Gli ordini arrivano con i
@@ -38,7 +38,7 @@ const importa = (k, r) => (!r.is_paid || /cancel/i.test(r.status || '') ? 'ignor
 
 export default {
   id: 'etsy', nome: 'Etsy', versione: 1, icona: 'scatola',
-  descrizione: 'Gli ordini Etsy diventano vendite con il cliente, la giacenza delle inserzioni segue Kubo, il tracking va sulla ricevuta.',
+  descrizione: 'Gli ordini Etsy diventano vendite con il cliente, la giacenza delle inserzioni segue Lumi, il tracking va sulla ricevuta.',
   impostazioni: [
     { id: 'keystring', nome: 'Keystring dell\'app (API key)', segreto: true },
     { id: 'shared_secret', nome: 'Shared secret dell\'app', segreto: true },
@@ -112,16 +112,16 @@ export default {
     costoNota: 'L\'API è gratuita. Su Etsy paghi 0,20 $ per inserzione (dura 4 mesi), il 6,5 % di commissione sulla transazione e la commissione di pagamento (in Italia 4 % + 0,30 €).',
     serve: [
       { cosa: 'Un\'app Etsy: Keystring e Shared secret', dove: 'etsy.com/developers › Your Apps › Create a New App', link: 'https://www.etsy.com/developers/your-apps' },
-      { cosa: 'L\'indirizzo di ritorno di Kubo tra i Callback URLs dell\'app (…/api/connettori/etsy/oauth/ritorno)', dove: 'Your Apps › la tua app › Edit › Callback URLs', link: 'https://developer.etsy.com/documentation/essentials/authentication/' },
-      { cosa: 'Facoltativo: il signing secret (whsec_…) di un endpoint webhook con l\'evento order.paid e l\'indirizzo dei webhook di Kubo', dove: 'Manage your apps › la tua app › Go to Webhook portal › Add Endpoint', link: 'https://developer.etsy.com/documentation/essentials/webhooks/' },
+      { cosa: 'L\'indirizzo di ritorno di Lumi tra i Callback URLs dell\'app (…/api/connettori/etsy/oauth/ritorno)', dove: 'Your Apps › la tua app › Edit › Callback URLs', link: 'https://developer.etsy.com/documentation/essentials/authentication/' },
+      { cosa: 'Facoltativo: il signing secret (whsec_…) di un endpoint webhook con l\'evento order.paid e l\'indirizzo dei webhook di Lumi', dove: 'Manage your apps › la tua app › Go to Webhook portal › Add Endpoint', link: 'https://developer.etsy.com/documentation/essentials/webhooks/' },
     ],
     passi: [
       'Su etsy.com/developers crea una nuova app (uso personale per il tuo negozio): copia Keystring e Shared secret.',
-      'Nella stessa app aggiungi come Callback URL l\'indirizzo di ritorno che Kubo mostra in questa pagina (finisce con /api/connettori/etsy/oauth/ritorno).',
-      'In Kubo incolla Keystring e Shared secret e accendi il connettore.',
-      'Premi «Collega l\'account», accedi a Etsy e consenti: Kubo riceve il token e lo rinnova da solo.',
+      'Nella stessa app aggiungi come Callback URL l\'indirizzo di ritorno che Lumi mostra in questa pagina (finisce con /api/connettori/etsy/oauth/ritorno).',
+      'In Lumi incolla Keystring e Shared secret e accendi il connettore.',
+      'Premi «Collega l\'account», accedi a Etsy e consenti: Lumi riceve il token e lo rinnova da solo.',
       'Lancia «Inserzioni Etsy ↔ articoli»: le varianti si collegano agli articoli con lo stesso SKU.',
-      'Per avere gli ordini subito: nel Webhook portal dell\'app aggiungi l\'indirizzo dei webhook di Kubo con l\'evento order.paid e incolla il signing secret (senza, arrivano ogni 15 minuti).',
+      'Per avere gli ordini subito: nel Webhook portal dell\'app aggiungi l\'indirizzo dei webhook di Lumi con l\'evento order.paid e incolla il signing secret (senza, arrivano ogni 15 minuti).',
       'Il tracking si manda dalla vendita o chiedendolo a Lumi (Etsy deve aver approvato lo scope transactions_w per la tua app).',
     ],
     difficolta: 'media', zone: ['mondo'],
@@ -129,13 +129,13 @@ export default {
     prova: 'finto', parole: ['etsy', 'marketplace', 'artigianato', 'handmade', 'vintage', 'ordini', 'ricevute', 'giacenze', 'receipts', 'inventory'],
   },
   testi: {
-    en: { descrizione: 'Etsy orders become sales with the customer, listing stock follows Kubo, tracking goes on the receipt.', 'imp.keystring': 'App keystring (API key)', 'imp.shared_secret': 'App shared secret', 'imp.webhook': 'Webhook signing secret (whsec_…)', 'az.spedito': 'Tracking on Etsy', 'giro.offerte': 'Etsy listings ↔ items', 'giro.ordini': 'Orders from Etsy',
+    en: { descrizione: 'Etsy orders become sales with the customer, listing stock follows Lumi, tracking goes on the receipt.', 'imp.keystring': 'App keystring (API key)', 'imp.shared_secret': 'App shared secret', 'imp.webhook': 'Webhook signing secret (whsec_…)', 'az.spedito': 'Tracking on Etsy', 'giro.offerte': 'Etsy listings ↔ items', 'giro.ordini': 'Orders from Etsy',
       'cat.costoNota': 'The API is free. On Etsy you pay $0.20 per listing (lasts 4 months), a 6.5% transaction fee and the payment processing fee (in Italy 4% + €0.30).',
-      'cat.serve': [{ cosa: 'An Etsy app: Keystring and Shared secret', dove: 'etsy.com/developers › Your Apps › Create a New App' }, { cosa: 'Kubo\'s return address among the app Callback URLs (…/api/connettori/etsy/oauth/ritorno)', dove: 'Your Apps › your app › Edit › Callback URLs' }, { cosa: 'Optional: the signing secret (whsec_…) of a webhook endpoint with the order.paid event and Kubo\'s webhook address', dove: 'Manage your apps › your app › Go to Webhook portal › Add Endpoint' }],
-      'cat.passi': ['On etsy.com/developers create a new app (personal use for your shop): copy Keystring and Shared secret.', 'In the same app add as Callback URL the return address Kubo shows on this page (it ends with /api/connettori/etsy/oauth/ritorno).', 'In Kubo paste Keystring and Shared secret and switch the connector on.', 'Press «Connect account», sign in to Etsy and allow: Kubo gets the token and renews it by itself.', 'Run «Etsy listings ↔ items»: variations link to items with the same SKU.', 'For instant orders: in the app Webhook portal add Kubo\'s webhook address with the order.paid event and paste the signing secret (without it, orders arrive every 15 minutes).', 'Send tracking from the sale or ask Lumi (Etsy must have approved the transactions_w scope for your app).'] },
-    es: { descrizione: 'Los pedidos de Etsy pasan a ventas con el cliente, el stock de los anuncios sigue a Kubo, el seguimiento va al recibo.', 'imp.keystring': 'Keystring de la app (API key)', 'imp.shared_secret': 'Shared secret de la app', 'imp.webhook': 'Signing secret de los webhooks (whsec_…)', 'az.spedito': 'Seguimiento en Etsy', 'giro.offerte': 'Anuncios de Etsy ↔ artículos', 'giro.ordini': 'Pedidos de Etsy' },
-    fr: { descrizione: 'Les commandes Etsy deviennent des ventes avec le client, le stock des annonces suit Kubo, le suivi va sur le reçu.', 'imp.keystring': 'Keystring de l\'app (clé API)', 'imp.shared_secret': 'Shared secret de l\'app', 'imp.webhook': 'Signing secret des webhooks (whsec_…)', 'az.spedito': 'Suivi sur Etsy', 'giro.offerte': 'Annonces Etsy ↔ articles', 'giro.ordini': 'Commandes Etsy' },
-    de: { descrizione: 'Etsy-Bestellungen werden Verkäufe mit Kunde, der Bestand der Angebote folgt Kubo, die Sendungsnummer geht auf die Quittung.', 'imp.keystring': 'Keystring der App (API-Schlüssel)', 'imp.shared_secret': 'Shared Secret der App', 'imp.webhook': 'Signing Secret der Webhooks (whsec_…)', 'az.spedito': 'Sendungsnummer an Etsy', 'giro.offerte': 'Etsy-Angebote ↔ Artikel', 'giro.ordini': 'Bestellungen von Etsy' },
-    pt: { descrizione: 'Os pedidos da Etsy viram vendas com o cliente, o estoque dos anúncios segue o Kubo, o rastreio vai para o recibo.', 'imp.keystring': 'Keystring do app (API key)', 'imp.shared_secret': 'Shared secret do app', 'imp.webhook': 'Signing secret dos webhooks (whsec_…)', 'az.spedito': 'Rastreio na Etsy', 'giro.offerte': 'Anúncios da Etsy ↔ artigos', 'giro.ordini': 'Pedidos da Etsy' },
+      'cat.serve': [{ cosa: 'An Etsy app: Keystring and Shared secret', dove: 'etsy.com/developers › Your Apps › Create a New App' }, { cosa: 'Lumi\'s return address among the app Callback URLs (…/api/connettori/etsy/oauth/ritorno)', dove: 'Your Apps › your app › Edit › Callback URLs' }, { cosa: 'Optional: the signing secret (whsec_…) of a webhook endpoint with the order.paid event and Lumi\'s webhook address', dove: 'Manage your apps › your app › Go to Webhook portal › Add Endpoint' }],
+      'cat.passi': ['On etsy.com/developers create a new app (personal use for your shop): copy Keystring and Shared secret.', 'In the same app add as Callback URL the return address Lumi shows on this page (it ends with /api/connettori/etsy/oauth/ritorno).', 'In Lumi paste Keystring and Shared secret and switch the connector on.', 'Press «Connect account», sign in to Etsy and allow: Lumi gets the token and renews it by itself.', 'Run «Etsy listings ↔ items»: variations link to items with the same SKU.', 'For instant orders: in the app Webhook portal add Lumi\'s webhook address with the order.paid event and paste the signing secret (without it, orders arrive every 15 minutes).', 'Send tracking from the sale or ask Lumi (Etsy must have approved the transactions_w scope for your app).'] },
+    es: { descrizione: 'Los pedidos de Etsy pasan a ventas con el cliente, el stock de los anuncios sigue a Lumi, el seguimiento va al recibo.', 'imp.keystring': 'Keystring de la app (API key)', 'imp.shared_secret': 'Shared secret de la app', 'imp.webhook': 'Signing secret de los webhooks (whsec_…)', 'az.spedito': 'Seguimiento en Etsy', 'giro.offerte': 'Anuncios de Etsy ↔ artículos', 'giro.ordini': 'Pedidos de Etsy' },
+    fr: { descrizione: 'Les commandes Etsy deviennent des ventes avec le client, le stock des annonces suit Lumi, le suivi va sur le reçu.', 'imp.keystring': 'Keystring de l\'app (clé API)', 'imp.shared_secret': 'Shared secret de l\'app', 'imp.webhook': 'Signing secret des webhooks (whsec_…)', 'az.spedito': 'Suivi sur Etsy', 'giro.offerte': 'Annonces Etsy ↔ articles', 'giro.ordini': 'Commandes Etsy' },
+    de: { descrizione: 'Etsy-Bestellungen werden Verkäufe mit Kunde, der Bestand der Angebote folgt Lumi, die Sendungsnummer geht auf die Quittung.', 'imp.keystring': 'Keystring der App (API-Schlüssel)', 'imp.shared_secret': 'Shared Secret der App', 'imp.webhook': 'Signing Secret der Webhooks (whsec_…)', 'az.spedito': 'Sendungsnummer an Etsy', 'giro.offerte': 'Etsy-Angebote ↔ Artikel', 'giro.ordini': 'Bestellungen von Etsy' },
+    pt: { descrizione: 'Os pedidos da Etsy viram vendas com o cliente, o estoque dos anúncios segue o Lumi, o rastreio vai para o recibo.', 'imp.keystring': 'Keystring do app (API key)', 'imp.shared_secret': 'Shared secret do app', 'imp.webhook': 'Signing secret dos webhooks (whsec_…)', 'az.spedito': 'Rastreio na Etsy', 'giro.offerte': 'Anúncios da Etsy ↔ artigos', 'giro.ordini': 'Pedidos da Etsy' },
   },
 };

@@ -1,4 +1,4 @@
-// CalDAV minimo (RFC 4791) e iCalendar essenziale (RFC 5545): quanto basta per tenere allineata l'agenda di Kubo con
+// CalDAV minimo (RFC 4791) e iCalendar essenziale (RFC 5545): quanto basta per tenere allineata l'agenda di Lumi con
 // iCloud, Nextcloud, Fastmail, Synology… Niente librerie: l'XML delle risposte si legge con poche espressioni regolari
 // tolleranti ai prefissi (d:, D:, cal:, nessuno), l'ICS con lo «spiegamento» delle righe e i fusi di Intl.
 //   const c = caldav(k.http, { server, utente, password });
@@ -38,7 +38,7 @@ export function daLocale(v, tz) {
   const s2 = scarto(g - s1, tz);
   return new Date(g - (s2 ?? s1)).toISOString();
 }
-// DTSTART/DTEND: «…Z» è UTC, «TZID=…» è nel fuso, senza niente è l'ora «fluttuante» (nel fuso di Kubo), VALUE=DATE è tutto il giorno
+// DTSTART/DTEND: «…Z» è UTC, «TZID=…» è nel fuso, senza niente è l'ora «fluttuante» (nel fuso di Lumi), VALUE=DATE è tutto il giorno
 export function dataIcs(v, param = {}, fuso = 'Europe/Rome') {
   if (!v) return { iso: null, tutto: false };
   const tutto = param.VALUE === 'DATE' || /^\d{8}$/.test(v);
@@ -77,12 +77,12 @@ export function leggiIcs(testo, fuso = 'Europe/Rome') {
 }
 // un VCALENDAR con un VEVENT, piegato e con CRLF
 export function vevento({ uid, inizio, fine, titolo, descrizione, stamp = Date.now() }) {
-  const r = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Kubo//Agenda//IT', 'CALSCALE:GREGORIAN', 'BEGIN:VEVENT', `UID:${uid}`, `DTSTAMP:${utc(stamp)}`,
+  const r = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Lumi//Agenda//IT', 'CALSCALE:GREGORIAN', 'BEGIN:VEVENT', `UID:${uid}`, `DTSTAMP:${utc(stamp)}`,
     `DTSTART:${utc(inizio)}`, `DTEND:${utc(fine)}`, `SUMMARY:${esc(titolo)}`, ...(descrizione ? [`DESCRIPTION:${esc(descrizione)}`] : []), 'END:VEVENT', 'END:VCALENDAR'];
   return r.map(piega).join('\r\n') + '\r\n';
 }
 
-// sposta un evento che non è di Kubo cambiando solo DTSTART e DTEND del primo VEVENT: il resto (invitati, promemoria…) resta
+// sposta un evento che non è di Lumi cambiando solo DTSTART e DTEND del primo VEVENT: il resto (invitati, promemoria…) resta
 export function sposta(ics, inizio, fine) {
   const out = []; let stato = 0, fineScritta = false;   // 0 prima, 1 dentro il primo VEVENT, 2 dopo
   for (const l of spiega(ics)) {

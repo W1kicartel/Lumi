@@ -18,7 +18,7 @@ export const corpoDocumento = (to, { id, link, nome, didascalia }) => ({ ...base
 
 // il caricamento di un file (POST /<numero>/media): multipart con messaging_product, type e file
 export function multipart(campi, file) {
-  const confine = `----kubo${randomBytes(12).toString('hex')}`, parti = [];
+  const confine = `----lumi${randomBytes(12).toString('hex')}`, parti = [];
   for (const [k, v] of Object.entries(campi)) parti.push(Buffer.from(`--${confine}\r\nContent-Disposition: form-data; name="${k}"\r\n\r\n${v}\r\n`));
   parti.push(Buffer.from(`--${confine}\r\nContent-Disposition: form-data; name="file"; filename="${String(file.nome).replace(/["\r\n]/g, '')}"\r\nContent-Type: ${file.tipo}\r\n\r\n`),
     Buffer.from(file.dati), Buffer.from(`\r\n--${confine}--\r\n`));
@@ -28,7 +28,7 @@ export function multipart(campi, file) {
 export const errore = r => r.json?.error?.error_user_msg || r.json?.error?.message || r.json?.meta?.developer_message || `HTTP ${r.stato}`;
 export const idRisposta = r => { if (!r.ok) throw new Error(errore(r)); return { id: r.json?.messages?.[0]?.id || null }; };
 
-// gli stati dei modelli di Meta → quelli di Kubo
+// gli stati dei modelli di Meta → quelli di Lumi
 export const statoModello = s => ({ APPROVED: 'approvato', PENDING: 'in_attesa', IN_APPEAL: 'in_attesa', REJECTED: 'rifiutato', PAUSED: 'in_pausa',
   DISABLED: 'disattivato', PENDING_DELETION: 'disattivato', LIMIT_EXCEEDED: 'rifiutato' }[String(s || '').toUpperCase()] || 'in_attesa');
 export const modelloDa = t => ({ nome: t.name, lingua: t.language, stato: statoModello(t.status), categoria: String(t.category || 'utility').toLowerCase(),
@@ -38,7 +38,7 @@ export const corpoNuovoModello = ({ nome, lingua = 'it', categoria = 'utility', 
   components: [...(intestazione === 'DOCUMENT' && esempioFile ? [{ type: 'HEADER', format: 'DOCUMENT', example: { header_handle: [esempioFile] } }] : []),
     { type: 'BODY', text: corpo, ...(esempi.length ? { example: { body_text: [esempi.map(String)] } } : {}) }] });
 
-// il webhook → eventi di Kubo: { tipo: 'messaggio' | 'stato' | 'modello', … }
+// il webhook → eventi di Lumi: { tipo: 'messaggio' | 'stato' | 'modello', … }
 const STATI = { sent: 'inviato', delivered: 'consegnato', read: 'letto', failed: 'fallito' };
 const quando = ts => (ts ? new Date(Number(ts) * 1000).toISOString() : new Date().toISOString());
 export function eventi(ev) {

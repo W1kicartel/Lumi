@@ -1,18 +1,18 @@
 // Attrezzi comuni ai connettori dei soldi (pagamenti, banche, fatturazione, firma). La cartella comincia con «_»:
 // il nucleo non la carica come connettore (l'id deve cominciare con una lettera), ma i connettori la importano.
-//   riferimento / daRiferimento   il codice di Kubo che viaggia con il pagamento: «kubo-v-<id>» (vendita) o «kubo-f-<id>» (fattura)
+//   riferimento / daRiferimento   il codice di Lumi che viaggia con il pagamento: «lumi-v-<id>» (vendita) o «lumi-f-<id>» (fattura)
 //   daIncassare                   quanto deve pagare il cliente (per una fattura con ritenuta: il netto)
 //   incassa                       segna pagata la vendita o la fattura, con i controlli di importo, valuta e «già pagata»
 //   azioniLink                    le due azioni «link di pagamento» (vendita, fattura) di un servizio, con anteprima e Lumi
 //   RICHIEDE_INCASSI, PERMESSI_INCASSI   vendite (modello negozio) e fatture (modello fatture), tutte e due facoltative
-//   pubblicoDi                    l'indirizzo pubblico https di Kubo: quello del connettore o, se vuoto, quello della Libreria
+//   pubblicoDi                    l'indirizzo pubblico https di Lumi: quello del connettore o, se vuoto, quello della Libreria
 //   tokenClient                   un token OAuth «client credentials» con Basic, tenuto in memoria finché vale
 //   meta, xmlPassiva              per i connettori SDI: l'azienda e l'import di una fattura passiva (fatture.js)
 import { importa } from '../../server/moduli/fatture.js';
 
-export const riferimento = (sem, id) => `kubo-${sem === 'fatture' ? 'f' : 'v'}-${id}`;
+export const riferimento = (sem, id) => `lumi-${sem === 'fatture' ? 'f' : 'v'}-${id}`;
 export function daRiferimento(s) {
-  const m = /kubo-([vf])-([\w-]{1,60})/.exec(String(s ?? ''));
+  const m = /lumi-([vf])-([\w-]{1,60})/.exec(String(s ?? ''));
   return m ? { sem: m[1] === 'f' ? 'fatture' : 'vendite', id: m[2] } : null;
 }
 
@@ -28,7 +28,7 @@ export function daIncassare(k, sem, r) {
   return Math.round(Number(netto ?? k.valore(r, sem, 'totale') ?? 0) * 100) / 100;
 }
 export const nomeRiga = (k, sem, r) => `${sem === 'fatture' ? 'Fattura' : 'Vendita'} ${k.valore(r, sem, 'numero') || r.numero || r.id}`;
-// l'indirizzo pubblico di Kubo per i ritorni e i webhook: l'impostazione del connettore («indirizzo»), se no quello unico
+// l'indirizzo pubblico di Lumi per i ritorni e i webhook: l'impostazione del connettore («indirizzo»), se no quello unico
 // della Libreria (k.pubblico) purché sia https (i servizi di pagamento lo vogliono); senza barra finale, o ''
 export const pubblicoDi = (k, campo = 'indirizzo') => (String(k.imp?.[campo] || '').trim() || (/^https:\/\//i.test(k.pubblico || '') ? k.pubblico : '')).replace(/\/+$/, '');
 export const giorno = (k, quando = Date.now()) => new Date(quando).toLocaleDateString('sv-SE', { timeZone: k.fuso() });
@@ -36,7 +36,7 @@ export const giorno = (k, quando = Date.now()) => new Date(quando).toLocaleDateS
 // segna pagata: «rif» è il riferimento (stringa) o { sem, id }. Torna l'esito da mettere nel registro
 export async function incassa(k, rif, { importo, valuta = 'EUR', quando = Date.now(), metodo = 'carta', fonte = k.man?.nome || k.id } = {}) {
   const x = typeof rif === 'string' ? daRiferimento(rif) : rif;
-  if (!x?.id) return 'ignorato: senza riga di Kubo';
+  if (!x?.id) return 'ignorato: senza riga di Lumi';
   if (valuta && String(valuta).toUpperCase() !== 'EUR') return k.avvisa(`pagamento in ${valuta} per ${x.id}: controllalo a mano`);
   let r; try { r = k.dati.leggi(x.sem, x.id); } catch { return k.avvisa(`pagamento per una riga che non c'è (${x.id})`); }
   if (k.valore(r, x.sem, 'stato') === 'pagata') return 'ignorato: già pagata';

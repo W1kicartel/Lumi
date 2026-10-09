@@ -22,7 +22,7 @@ async function progettoDi(k, nome) {
   return p;
 }
 async function crea(k, { contenuto, note, scadenza, progetto }) {
-  // una data esatta (dalle righe di Kubo) va in due_date; le parole («venerdì», «ogni lunedì») in due_string
+  // una data esatta (dalle righe di Lumi) va in due_date; le parole («venerdì», «ogni lunedì») in due_string
   const s = String(scadenza || '').trim(), due = !s ? {} : /^\d{4}-\d{2}-\d{2}$/.test(s) ? { due_date: s } : { due_string: s, due_lang: k.imp.lingua || 'it' };
   const json = { content: String(contenuto).slice(0, 500), ...(note ? { description: note } : {}), ...due, ...(progetto ? { project_id: progetto } : {}) };
   const r = await k.http.post(`${tbase(k)}/api/v1/tasks`, { bearer: k.segreti.token, json });

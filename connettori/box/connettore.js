@@ -1,4 +1,4 @@
-// Box: fatture e documenti in Kubo/Fatture/2026/…, backup del database ogni notte in Kubo/Backup (gli ultimi N).
+// Box: fatture e documenti in Lumi/Fatture/2026/…, backup del database ogni notte in Lumi/Backup (gli ultimi N).
 // OAuth con il codice (token di 60 minuti, refresh token monouso di 60 giorni: il nucleo salva quello nuovo a ogni rinnovo).
 // Box lavora per id: le cartelle si cercano creandole (POST /2.0/folders, il 409 «item_name_in_use» porta l'id di quella che
 // c'è già). Caricamento multipart su upload.box.com (attributes JSON prima del file); se il nome c'è già, il 409 porta l'id
@@ -16,7 +16,7 @@ const no = (r, cosa) => new Error(`Box: ${cosa} non riuscito (HTTP ${r.stato}${r
 const conflitto = r => { const c = r.json?.context_info?.conflicts; return (Array.isArray(c) ? c[0] : c)?.id || null; };
 // un corpo multipart/form-data con i campi nell'ordine dato: [{ nome, valore }] o [{ nome, file, tipo, contenuto }]
 function multipart(parti) {
-  const confine = `kubo${randomBytes(12).toString('hex')}`, pezzi = [];
+  const confine = `lumi${randomBytes(12).toString('hex')}`, pezzi = [];
   for (const p of parti) {
     pezzi.push(Buffer.from(`--${confine}\r\nContent-Disposition: form-data; name="${p.nome}"${p.file ? `; filename="${p.file.replace(/"/g, '')}"` : ''}\r\n${p.file ? `Content-Type: ${p.tipo || 'application/octet-stream'}\r\n` : ''}\r\n`));
     pezzi.push(Buffer.isBuffer(p.contenuto) ? p.contenuto : Buffer.from(String(p.valore ?? ''), 'utf8'), Buffer.from('\r\n'));
@@ -24,7 +24,7 @@ function multipart(parti) {
   pezzi.push(Buffer.from(`--${confine}--\r\n`));
   return { corpo: Buffer.concat(pezzi), tipo: `multipart/form-data; boundary=${confine}` };
 }
-// l'id della cartella «Kubo/Fatture/2026» a partire dalla radice (id 0), creando quelle che mancano
+// l'id della cartella «Lumi/Fatture/2026» a partire dalla radice (id 0), creando quelle che mancano
 async function cartellaId(k, bearer, percorso) {
   let padre = '0';
   for (const nome of percorso.split('/').filter(Boolean)) {
@@ -79,10 +79,10 @@ export default {
     passi: [
       'Nella Developer Console di Box crea una «Custom App» con «User Authentication (OAuth 2.0)».',
       'Scheda Configuration: in Application Scopes spunta «Write all files and folders stored in Box» e salva.',
-      'Sempre in Configuration, alla voce Redirect URIs aggiungi http://localhost:<porta di Kubo>/api/connettori/box/oauth/ritorno.',
-      'Copia Client ID e Client Secret, incollali in Kubo, accendi il connettore e premi «Collega».',
+      'Sempre in Configuration, alla voce Redirect URIs aggiungi http://localhost:<porta di Lumi>/api/connettori/box/oauth/ritorno.',
+      'Copia Client ID e Client Secret, incollali in Lumi, accendi il connettore e premi «Collega».',
       'Scegli se salvare da solo le fatture emesse e quanti backup tenere. Un file oltre 50 MB viene rifiutato.',
-      'Se Kubo resta spento più di 60 giorni il collegamento scade: basta premere di nuovo «Collega».',
+      'Se Lumi resta spento più di 60 giorni il collegamento scade: basta premere di nuovo «Collega».',
     ],
     difficolta: 'media', zone: ['mondo'],
     fonti: ['https://developer.box.com/reference/post-files-content/', 'https://developer.box.com/reference/post-files-id-content/', 'https://developer.box.com/reference/post-folders/', 'https://developer.box.com/guides/authentication/oauth2/', 'https://www.box.com/pricing'],
@@ -92,7 +92,7 @@ export default {
     en: { nome: 'Box', descrizione: 'Invoices and documents on Box, folders by year, and a nightly database backup.', 'imp.client_id': 'Box: Client ID', 'imp.client_secret': 'Box: Client Secret',
       'cat.costoNota': 'Free Individual plan with 10 GB (files up to 250 MB); Personal Pro 100 GB for about €10/month; Business Starter and Business from a few euros up to about €15 per user per month (billed annually). The API is free.',
       'cat.serve': [{ cosa: 'Client ID and Client Secret of a «Custom App» with «User Authentication (OAuth 2.0)»', dove: 'Box Developer Console → My Platform Apps → Create Platform App → Custom App → Configuration tab' }],
-      'cat.passi': ['In the Box Developer Console create a «Custom App» with «User Authentication (OAuth 2.0)».', 'Configuration tab: under Application Scopes tick «Write all files and folders stored in Box» and save.', 'Still in Configuration, add the redirect URI http://localhost:<Kubo port>/api/connettori/box/oauth/ritorno.', 'Copy Client ID and Client Secret, paste them in Kubo, turn the connector on and press «Connect».', 'Choose whether to save issued invoices automatically and how many backups to keep. Files over 50 MB are refused.', 'If Kubo stays off for more than 60 days the link expires: just press «Connect» again.'] },
+      'cat.passi': ['In the Box Developer Console create a «Custom App» with «User Authentication (OAuth 2.0)».', 'Configuration tab: under Application Scopes tick «Write all files and folders stored in Box» and save.', 'Still in Configuration, add the redirect URI http://localhost:<Lumi port>/api/connettori/box/oauth/ritorno.', 'Copy Client ID and Client Secret, paste them in Lumi, turn the connector on and press «Connect».', 'Choose whether to save issued invoices automatically and how many backups to keep. Files over 50 MB are refused.', 'If Lumi stays off for more than 60 days the link expires: just press «Connect» again.'] },
     es: { nome: 'Box', descrizione: 'Facturas y documentos en Box, carpetas por año, y copia nocturna de la base de datos.', 'imp.client_id': 'Box: Client ID', 'imp.client_secret': 'Box: Client Secret' },
     fr: { nome: 'Box', descrizione: 'Factures et documents sur Box, dossiers par année, et sauvegarde nocturne de la base.', 'imp.client_id': 'Box : Client ID', 'imp.client_secret': 'Box : Client Secret' },
     de: { nome: 'Box', descrizione: 'Rechnungen und Dokumente in Box, Ordner nach Jahr, und nächtliche Datenbanksicherung.', 'imp.client_id': 'Box: Client-ID', 'imp.client_secret': 'Box: Client-Secret' },
