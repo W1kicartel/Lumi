@@ -21,7 +21,8 @@ test('libreria: catalogo con ricerca, filtri e conti per categoria; solo il tito
     assert.equal(stripe.catalogo.categoria, 'pagamenti'); assert.equal(stripe.catalogo.prova, 'finto'); assert.ok(!('passi' in stripe.catalogo));   // le carte sono leggere
     assert.ok(tutto.categorie.automazione >= 6);
     // ricerca senza accenti e su parole chiave, nome e descrizione; anche in inglese
-    assert.deepEqual((await K.chiama('GET', '/api/connettori/catalogo?q=fatturazione%20elettronica')).json.voci.map(v => v.id), ['openapi-sdi']);
+    const fe = (await K.chiama('GET', '/api/connettori/catalogo?q=fatturazione%20elettronica')).json.voci;   // altri connettori di fatturazione possono arrivare: basta che ci sia e che la ricerca non prenda tutto
+    assert.ok(fe.some(v => v.id === 'openapi-sdi') && fe.length < tutto.voci.length && !fe.some(v => v.id === 'zapier'));
     assert.ok((await K.chiama('GET', '/api/connettori/catalogo?q=zap')).json.voci.some(v => v.id === 'zapier'));
     assert.ok((await K.chiama('GET', '/api/connettori/catalogo?q=online%20shop')).json.voci.some(v => v.id === 'woocommerce'));
     // filtri: i conti per categoria seguono la ricerca e gli altri filtri, non la categoria scelta
