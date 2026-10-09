@@ -1,10 +1,14 @@
 // I connettori nell'interfaccia (il server è in server/moduli/connettori.js). Tutto è generato dal manifesto:
-//   #/connettori        il catalogo: installati e disponibili, con lo stato (solo il titolare)
-//   #/connettori/<id>   accendi/spegni, impostazioni e segreti («salvato · cambia · togli»), prova la connessione,
-//                       indirizzo del webhook, collegamento dell'account (OAuth), abbinamenti dei campi, giri, coda, registro
+//   #/connettori        la Libreria delle integrazioni: ricerca, categorie con i conti, filtri rapidi (gratis, facili, Italia),
+//                       carte con il monogramma e lo stato. Una sola richiesta (GET /api/connettori/catalogo): i filtri girano
+//                       qui (web/libreria.js), mostrando e nascondendo carte già fatte, anche con centinaia di connettori
+//   #/connettori/<id>   cosa fa, cosa ti serve e dove trovarlo, passo per passo, costo, difficoltà, fonti, cosa potrà toccare;
+//                       poi accendi/spegni, impostazioni e segreti («salvato · cambia · togli»), le ricette (connettore HTTP e
+//                       ponti), prova la connessione, indirizzo del webhook, OAuth, abbinamenti dei campi, giri, coda, registro
 // Nelle schede: i bottoni delle azioni dei connettori accesi (es. «Link di pagamento»): chi scrive mostra prima l'anteprima.
 // Solo testo e h(): i dati (nomi, messaggi dei servizi, registro) non vanno mai in innerHTML.
 import { t, dataOra } from '/lingua.js';
+import { filtra, conta, iniziali, tinta, statoVoce, CATEGORIE } from '/libreria.js';
 
 let cssCaricato = false, azioni = [];
 function caricaCss() { if (cssCaricato) return; cssCaricato = true; document.head.append(Object.assign(document.createElement('link'), { rel: 'stylesheet', href: '/moduli/connettori.css' })); }
@@ -14,24 +18,59 @@ const copia = async (k, testo) => { try { await navigator.clipboard.writeText(te
 const COLORI = { ok: 'verde', errore: 'rosso', avviso: 'giallo', ignorato: 'grigio' };
 const esitoDi = e => (COLORI[e] ? t('connettori.esito-' + e) : e);   // l'esito nel registro, nella lingua di chi guarda
 
-function statoDi(c) {
-  if (c.rotto) return { nome: t('connettori.stato-rotto'), colore: 'rosso' };
-  if (c.cambiato) return { nome: t('connettori.stato-cambiato'), colore: 'giallo' };
-  if (c.attivo && c.mancano?.length) return { nome: t('connettori.stato-incompleto'), colore: 'giallo' };
-  return c.attivo ? { nome: t('connettori.stato-acceso'), colore: 'verde' } : { nome: t('connettori.stato-spento'), colore: 'grigio' };
-}
+const STATI = { rotto: ['rotto', 'rosso'], cambiato: ['cambiato', 'giallo'], 'da-approvare': ['da-approvare', 'giallo'], 'da-configurare': ['incompleto', 'giallo'], acceso: ['acceso', 'verde'], spento: ['spento', 'grigio'] };
+function statoDi(c) { const [n, colore] = STATI[statoVoce(c)]; return { nome: t('connettori.stato-' + n), colore }; }
+const nomeCat = c => (c ? t('connettori.cat-' + (CATEGORIE.includes(c) ? c : 'altro')) : t('connettori.cat-altro'));
+// il monogramma: le iniziali su una tessera colorata (niente loghi dei marchi), la tinta sempre uguale per lo stesso id
+const monogramma = (k, c, grande = false) => k.h(grande ? 'span.conn-mono.grande' : 'span.conn-mono', { stile: { '--t': tinta(c.id) }, 'aria-hidden': 'true', testo: iniziali(c.nome || c.id) });
 const chipDi = (k, s) => k.h('span.chip', { stile: { '--c': `var(--${s.colore})` }, testo: s.nome });
 
-// ---------- catalogo ----------
-async function catalogo(contenuto, k) {
-  const { h, icona } = k, l = await k.get('/connettori');
-  const scheda = c => h('a.conn-carta', { href: `#/connettori/${encodeURIComponent(c.id)}` },
-    h('div.conn-carta-testa', icona(c.icona || 'cartella'), h('b', c.nome || c.id), chipDi(k, statoDi(c))),
-    h('p', c.rotto ? t('connettori.rotto') : c.descrizione || ''),
-    h('span.nota', c.origine === 'ufficiale' ? t('connettori.ufficiale') : t('connettori.locale')));
-  contenuto.replaceChildren(h('div.testa', h('h1', t('connettori.titolo'))), h('div.corpo.conn',
-    h('p.nota', t('connettori.spiega')),
-    h('div.conn-griglia', l.map(scheda)), h('p.nota', t('connettori.terzi'))));
+// ---------- la libreria ----------
+// i filtri restano tornando dalla pagina di un connettore
+const filtri = { q: '', categoria: '', costo: '', difficolta: '', zona: '' };
+async function libreria(contenuto, k) {
+  const { h } = k, dati = await k.get('/connettori/catalogo'), voci = dati.voci;
+  const carte = new Map(voci.map(v => [v.id, carta(k, v)]));
+  const griglia = h('div.conn-griglia', [...carte.values()]);
+  const accese = voci.filter(v => v.attivo || v.acceso);
+  const tue = accese.length ? h('section.conn-tue', h('h2', t('connettori.le-tue')), h('div.conn-griglia.conn-griglia-tue', accese.map(v => carta(k, v)))) : null;
+  const vuoto = h('div.vuoto.conn-vuoto', h('p', t('connettori.nessuna')), h('a.btn', { href: '#/connettori/http' }, t('connettori.prova-http')));
+  const cerca = h('input.campo.conn-cerca', { type: 'search', placeholder: t('connettori.cerca'), value: filtri.q, autocomplete: 'off', 'aria-label': t('connettori.cerca'),
+    on: { input: ev => { filtri.q = ev.target.value; aggiorna(); } } });
+  // i filtri rapidi: un clic accende, un altro spegne
+  const rapidi = [['costo', 'gratis', 'gratis'], ['difficolta', 'facile', 'facili'], ['zona', 'IT', 'italia']].map(([campo, val, chiave]) =>
+    h('button.conn-filtro', { type: 'button', 'aria-pressed': String(filtri[campo] === val), on: { click: ev => { filtri[campo] = filtri[campo] === val ? '' : val; ev.currentTarget.setAttribute('aria-pressed', String(filtri[campo] === val)); aggiorna(); } } }, t('connettori.f-' + chiave)));
+  const categorie = h('div.conn-categorie', { role: 'toolbar', 'aria-label': t('connettori.categorie') });
+  const conteggio = h('span.nota');
+  function aggiorna() {
+    const senza = filtra(voci, { ...filtri, categoria: '' }), mostrate = new Set(filtra(senza, { categoria: filtri.categoria }).map(v => v.id)), n = conta(senza);
+    for (const [id, el] of carte) el.hidden = !mostrate.has(id);
+    vuoto.hidden = mostrate.size > 0;
+    if (tue) tue.hidden = !!(filtri.q || filtri.categoria || filtri.costo || filtri.difficolta || filtri.zona);
+    conteggio.textContent = t('connettori.trovate', { n: mostrate.size });
+    // le categorie con almeno una voce (e quella scelta, anche a zero), nell'ordine del catalogo
+    const cat = [['', n.tutte, t('connettori.tutte')], ...[...CATEGORIE, 'altro'].filter(c => n[c] || c === filtri.categoria).map(c => [c, n[c] || 0, nomeCat(c)])];
+    categorie.replaceChildren(...cat.map(([c, x, nome]) => h('button.conn-cat', { type: 'button', 'aria-pressed': String(filtri.categoria === c),
+      on: { click: () => { filtri.categoria = c; aggiorna(); } } }, nome, h('span.conn-cat-n', String(x)))));
+  }
+  contenuto.replaceChildren(h('div.testa', h('h1', t('connettori.libreria'))), h('div.corpo.conn.conn-libreria',
+    h('p.conn-sotto', t('connettori.libreria-sotto', { n: dati.totale, accese: accese.filter(v => v.attivo).length })),
+    h('div.conn-barra', cerca, h('div.conn-rapidi', rapidi)), categorie, tue, h('div.conn-riga', conteggio), griglia, vuoto,
+    h('p.nota', t('connettori.terzi'), ' ', t('connettori.smanettoni'))));
+  aggiorna();
+  if (matchMedia('(pointer: fine)').matches) cerca.focus();
+}
+// una carta: monogramma, nome, categoria, stato; descrizione; costo, difficoltà e «provato con un servizio finto»
+function carta(k, v) {
+  const { h } = k, c = v.catalogo || {};
+  return h('a.conn-carta', { href: `#/connettori/${encodeURIComponent(v.id)}` },
+    h('div.conn-carta-testa', monogramma(k, v), h('div.conn-carta-nome', h('b', v.nome || v.id), h('span.nota', nomeCat(c.categoria))), chipDi(k, statoDi(v))),
+    h('p', v.rotto ? t('connettori.rotto') : v.descrizione || ''),
+    h('div.conn-carta-piede',
+      c.costo ? h('span.conn-tag', t('connettori.costo-' + c.costo)) : null,
+      c.difficolta ? h('span.conn-tag', t('connettori.diff-' + c.difficolta)) : null,
+      c.prova === 'finto' ? h('span.conn-tag.finto', { title: t('connettori.prova-finto-aiuto') }, t('connettori.prova-finto')) : null,
+      v.origine === 'locale' ? h('span.conn-tag', t('connettori.locale')) : null));
 }
 
 // ---------- pagina di un connettore ----------
@@ -44,15 +83,96 @@ async function pagina(contenuto, k, id) {
   // dopo un'accensione o uno spegnimento i bottoni nelle schede cambiano subito, senza ricaricare l'app
   const salva = async corpo => { try { await k.api('PUT', `/connettori/${encodeURIComponent(id)}`, corpo); k.toast(t('connettori.salvato')); azioni = await k.get('/connettori/azioni').catch(() => azioni); ricarica(); } catch (e) { k.toast(e.message, true); } };
   const corpo = h('div.corpo.conn');
-  contenuto.replaceChildren(h('div.testa', h('a.btn.nudo', { href: '#/connettori' }, '←'), h('h1', c.nome || c.id), chipDi(k, statoDi(c)), h('div.conn-spazio'), interruttore(k, c, salva)), corpo);
+  contenuto.replaceChildren(h('div.testa', h('a.btn.nudo', { href: '#/connettori', 'aria-label': t('connettori.libreria') }, '←'), monogramma(k, c), h('h1', c.nome || c.id), chipDi(k, statoDi(c)), h('div.conn-spazio'), interruttore(k, c, salva)), corpo);
   if (c.rotto) { corpo.append(h('div.avviso', t('connettori.rotto'))); return; }
   if (c.daApprovare) { corpo.append(h('div.avviso', t(c.cambiato ? 'connettori.cambiato' : 'connettori.da-approvare')), h('p', t('connettori.somma'), h('br'), h('code.mono.conn-somma', c.somma))); return; }
-  corpo.append(h('p.nota', c.descrizione || ''));
+  corpo.append(guida(k, c));
   if (c.mancano?.length) corpo.append(h('div.avviso', t('connettori.mancano', { cosa: c.mancano.join(', ') })));
   if (c.cambiato) corpo.append(h('div.avviso', t('connettori.cambiato')));
   corpo.append(impostazioni(k, c, salva), collegamenti(k, c, ricarica));
   if (c.mappe.length) corpo.append(mappe(k, c, salva));
   corpo.append(lavori(k, c, ricarica), registro(k, c));
+}
+
+// ---------- la guida dal catalogo: cosa fa, cosa serve e dove, passo per passo, costo, difficoltà, permessi, fonti ----------
+const sicuro = u => (/^https?:\/\//i.test(String(u || '')) ? u : null);   // i link vengono dai manifesti: solo http(s)
+const fuori = (k, href, ...figli) => (sicuro(href) ? k.h('a', { href, target: '_blank', rel: 'noopener noreferrer' }, ...figli) : null);
+const cosaPuo = p => ['leggi', 'crea', 'modifica', 'elimina'].filter(x => p[x]).map(x => t('connettori.p-' + x)).join(', ');
+function guida(k, c) {
+  const { h } = k, g = c.catalogo;
+  const permessi = h('section.foglio', h('h2', t('connettori.permessi-titolo')), c.permessi?.length
+    ? h('ul.conn-elenco', c.permessi.map(p => h('li', t('connettori.permesso', { sezione: p.entita, cosa: cosaPuo(p) }))))
+    : h('p.nota', t('connettori.nessun-permesso')));
+  if (!g) return h('div.conn-guida', h('p.conn-sotto', c.descrizione || ''), permessi);
+  const tag = (x, finto) => h(finto ? 'span.conn-tag.finto' : 'span.conn-tag', x);
+  return h('div.conn-guida',
+    h('section.conn-eroe', h('p.conn-sotto', c.descrizione || ''),
+      h('div.conn-carta-piede', tag(nomeCat(g.categoria)), tag(t('connettori.costo-' + g.costo)), tag(t('connettori.diff-' + g.difficolta)),
+        (g.zone || []).map(z => tag(t('connettori.zona-' + z))), tag(t('connettori.prova-' + (g.prova === 'vero' ? 'vero' : 'finto')), g.prova !== 'vero')),
+      fuori(k, g.sito, t('connettori.sito'), ' ↗')),
+    h('div.conn-due',
+      h('section.foglio', h('h2', t('connettori.cosa-serve')), h('ul.conn-serve', (g.serve || []).map(x => h('li', h('b', x.cosa), h('span.nota', x.dove), fuori(k, x.link, t('connettori.apri'), ' ↗'))))),
+      h('section.foglio', h('h2', t('connettori.passi')), h('ol.conn-passi', (g.passi || []).map(x => h('li', x))))),
+    h('div.conn-due',
+      h('section.foglio', h('h2', t('connettori.costo')), h('p', h('b', t('connettori.costo-' + g.costo))), g.costoNota ? h('p.nota', g.costoNota) : null,
+        h('p', h('b', t('connettori.difficolta')), ' · ', t('connettori.diff-' + g.difficolta))),
+      permessi),
+    h('details.conn-fonti', h('summary', t('connettori.fonti', { n: (g.fonti || []).length })),
+      h('ul', (g.fonti || []).map(f => h('li', fuori(k, f, f)))), h('p.nota', t(g.prova === 'vero' ? 'connettori.prova-vero-aiuto' : 'connettori.prova-finto-aiuto'))));
+}
+
+// ---------- le ricette (connettore HTTP e ponti): un editor fatto di campi, niente codice ----------
+// Tiene l'elenco in memoria; «Salva» delle impostazioni lo manda al server, che lo controlla (connettori-ricette.js).
+const TIPI_RICETTA = ['uscita', 'azione', 'entrata'], EVENTI = ['crea', 'modifica', 'elimina', 'ripristina'], METODI = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
+function editorRicette(k, c, i) {
+  const { h } = k, lista = JSON.parse(JSON.stringify(Array.isArray(i.valore) ? i.valore : [])), el = h('div.conn-ricette');
+  const sezioni = k.schema.filter(e => !e.nascosta), campiDi = id => (k.schema.find(e => e.id === id)?.campi || []).filter(x => !x.archiviato);
+  const gen = c.impostazioni.find(x => x.generato)?.valore, salvate = new Set(lista.map(r => r.id));
+  const nuovoId = () => { let n = lista.length + 1; while (lista.some(r => r.id === `r${n}`)) n++; return `r${n}`; };
+  const campo = (etichetta, input, nota) => h('label', h('span.etichetta', etichetta), input, nota ? h('span.nota', nota) : null);
+  const scrivi = (r, chiave, { area = false, ph = '' } = {}) => h(area ? 'textarea.campo.mono' : 'input.campo', { value: r[chiave] ?? '', placeholder: ph, rows: area ? 4 : null, spellcheck: false, on: { input: ev => { r[chiave] = ev.target.value; } } });
+  const scegli = (r, chiave, opzioni, poi) => h('select.campo', { on: { change: ev => { r[chiave] = ev.target.value; poi?.(); } } }, opzioni.map(([v, n]) => h('option', { value: v, testo: n, selected: (r[chiave] ?? '') === v })));
+  const spunta = (acceso, testo, f) => h('label.conn-spunta', h('input', { type: 'checkbox', checked: acceso, on: { change: ev => f(ev.target.checked) } }), h('span', testo));
+  function ricetta(r, n) {
+    const campi = campiDi(r.sezione);
+    const testa = h('div.conn-ricetta-testa', h('span.conn-tag', t('connettori.r-tipo-' + r.tipo)),
+      h('input.campo.conn-ricetta-nome', { value: r.nome || '', placeholder: t('connettori.r-nome'), 'aria-label': t('connettori.r-nome'), on: { input: ev => { r.nome = ev.target.value; } } }),
+      spunta(r.attiva !== false, t('connettori.r-attiva'), v => { r.attiva = v; }),
+      h('button.btn.piccolo.nudo.pericolo', { type: 'button', on: { click: () => { lista.splice(n, 1); disegna(); } } }, t('connettori.togli')));
+    const parti = [campo(t('connettori.r-sezione'), scegli(r, 'sezione', sezioni.map(e => [e.id, e.nome]), disegna))];
+    if (r.tipo === 'entrata') {
+      r.campi ||= [];
+      parti.push(campo(t('connettori.r-modo'), scegli(r, 'modo', ['crea-o-aggiorna', 'crea', 'aggiorna'].map(m => [m, t('connettori.modo-' + m)]))),
+        campo(t('connettori.r-chiave'), scegli(r, 'chiave', [['', '—'], ...campi.map(x => [x.id, x.nome])])),
+        campo(t('connettori.r-elenco'), scrivi(r, 'elenco', { ph: 'items' })), campo(t('connettori.r-idevento'), scrivi(r, 'idEvento', { ph: 'id' })));
+      const abbinamenti = h('div.conn-abbinamenti', r.campi.map((x, j) => h('div.conn-riga',
+        h('input.campo.mono', { value: x.da || '', placeholder: t('connettori.r-da'), 'aria-label': t('connettori.r-da'), on: { input: ev => { x.da = ev.target.value; } } }), h('span', '→'),
+        h('select.campo', { 'aria-label': t('connettori.r-a'), on: { change: ev => { x.a = ev.target.value; } } }, h('option', { value: '', testo: t('connettori.r-a') }), campi.map(f => h('option', { value: f.id, testo: f.nome, selected: f.id === x.a }))),
+        h('button.btn.piccolo.nudo', { type: 'button', 'aria-label': t('connettori.togli'), on: { click: () => { r.campi.splice(j, 1); disegna(); } } }, '×'))),
+        h('button.btn.piccolo', { type: 'button', on: { click: () => { r.campi.push({ da: '', a: '' }); disegna(); } } }, '+ ', t('connettori.r-aggiungi-campo')));
+      const u = salvate.has(r.id) && gen ? `${location.origin}/api/connettori/${encodeURIComponent(c.id)}/in/${gen}?ricetta=${encodeURIComponent(r.id)}` : null;
+      return h('div.conn-ricetta', testa, h('div.conn-campi', parti), h('span.etichetta', t('connettori.r-campi')), abbinamenti,
+        h('div.conn-indirizzo', h('span.etichetta', t('connettori.r-indirizzo-entrata')),
+          u ? h('div.conn-riga', h('code.mono.conn-valore', u), h('button.btn.piccolo', { type: 'button', on: { click: () => copia(k, u) } }, t('connettori.copia'))) : h('span.nota', t('connettori.r-salva-prima'))));
+    }
+    parti.push(campo(t('connettori.r-metodo'), scegli(r, 'metodo', METODI.map(m => [m, m]))),
+      campo(i.assoluti ? t('connettori.r-indirizzo') : t('connettori.r-percorso'), scrivi(r, 'percorso', { ph: i.assoluti ? 'https://hooks.esempio.com/…' : '/contatti/{id}' })));
+    if (r.tipo === 'uscita') parti.push(h('fieldset.conn-eventi', h('legend.etichetta', t('connettori.r-eventi')),
+      EVENTI.map(e => spunta((r.eventi || []).includes(e), t('connettori.ev-' + e), v => { r.eventi = EVENTI.filter(x => (x === e ? v : (r.eventi || []).includes(x))); }))));
+    else parti.push(spunta(r.scrive !== false, t('connettori.r-scrive'), v => { r.scrive = v; }));
+    return h('div.conn-ricetta', testa, h('div.conn-campi', parti),
+      campo(t('connettori.r-corpo'), scrivi(r, 'corpo', { area: true, ph: '{"email":"{email}"}' }), t('connettori.r-segnaposto', { campi: ['id', ...campi.map(x => x.id)].map(x => `{${x}}`).join(' ') })));
+  }
+  function disegna() {
+    el.replaceChildren(...(lista.length ? lista.map(ricetta) : [h('p.nota', t('connettori.r-nessuna'))]),
+      h('div.conn-riga', TIPI_RICETTA.map(tipo => h('button.btn.piccolo', { type: 'button', on: { click: () => {
+        lista.push({ id: nuovoId(), nome: '', tipo, sezione: sezioni[0]?.id || '', attiva: true,
+          ...(tipo === 'entrata' ? { modo: 'crea-o-aggiorna', campi: [] } : { metodo: 'POST', percorso: '', corpo: '', ...(tipo === 'uscita' ? { eventi: ['crea', 'modifica'] } : { scrive: true }) }) });
+        disegna();
+      } } }, '+ ', t('connettori.r-tipo-' + tipo)))));
+  }
+  disegna();
+  return { el, get value() { return lista; } };
 }
 
 // accendere chiede conferma con i permessi (e la somma, per un connettore che non è di Kubo)
@@ -75,6 +195,8 @@ function impostazioni(k, c, salva) {
       h('button.btn.piccolo', { type: 'button', on: { click: ev => { const x = h('input.campo', { type: 'password', autocomplete: 'off' }); segreti[i.id] = x; ev.target.parentNode.replaceWith(x); x.focus(); } } }, t('connettori.cambia')),
       h('button.btn.piccolo.nudo.pericolo', { type: 'button', on: { click: () => salva({ segreti: { [i.id]: null } }) } }, t('connettori.togli')));
     else if (i.segreto) el = segreti[i.id] = h('input.campo', { type: 'password', autocomplete: 'off' });
+    else if (i.tipo === 'ricette') { const ed = editorRicette(k, c, i); valori[i.id] = ed; return h('div.conn-ricette-campo', h('span.etichetta', i.nome), ed.el); }
+    else if (i.tipo === 'json') el = valori[i.id] = h('textarea.campo.mono', { rows: 3, spellcheck: false, value: i.valore == null ? '' : JSON.stringify(i.valore, null, 2) });
     else if (i.tipo === 'scelta') el = valori[i.id] = h('select.campo', (i.opzioni || []).map(o => h('option', { value: o.id ?? o, testo: o.nome ?? o, selected: (o.id ?? o) === i.valore })));
     else if (i.tipo === 'si_no') el = valori[i.id] = h('input', { type: 'checkbox', checked: !!i.valore });
     else el = valori[i.id] = h('input.campo', { type: i.tipo === 'numero' ? 'number' : i.tipo === 'url' ? 'url' : 'text', value: i.valore ?? '', autocomplete: 'off' });
@@ -84,7 +206,7 @@ function impostazioni(k, c, salva) {
   const esito = h('span.nota');
   const form = h('form', { on: { submit: ev => {
     ev.preventDefault();
-    const imp = Object.fromEntries(Object.entries(valori).map(([x, el]) => [x, el.type === 'checkbox' ? el.checked : el.value]));
+    const imp = Object.fromEntries(Object.entries(valori).map(([x, el]) => [x, el.type === 'checkbox' ? el.checked : el.value]));   // le ricette danno l'elenco
     const seg = Object.fromEntries(Object.entries(segreti).filter(([, el]) => el.value).map(([x, el]) => [x, el.value]));
     salva({ impostazioni: imp, segreti: seg, interni: interni.checked });
   } } },
@@ -99,7 +221,7 @@ function impostazioni(k, c, salva) {
 function collegamenti(k, c, ricarica) {
   const { h } = k, righe = [], gen = c.impostazioni.find(i => i.generato)?.valore;
   if (c.webhook) {
-    const u = location.origin + c.webhook.percorso + (c.webhook.firma === 'token' && gen ? '/' + gen : '');   // il codice segreto in fondo all'indirizzo
+    const u = location.origin + c.webhook.percorso + ((c.webhook.firma === 'token' || c.webhook.nelPercorso) && gen ? '/' + gen : '');   // il codice segreto in fondo all'indirizzo
     righe.push(h('label', h('span.etichetta', t('connettori.webhook')), h('div.conn-riga', h('code.mono.conn-valore', u), h('button.btn.piccolo', { type: 'button', on: { click: () => copia(k, u) } }, t('connettori.copia'))), h('span.nota', t('connettori.webhook-aiuto'))));
   }
   for (const p of c.pubbliche) if (gen) {
@@ -172,7 +294,7 @@ async function eseguiAzione(k, a, riga) {
 export default {
   nome: 'connettori',
   async avvio(k) { caricaCss(); try { azioni = await k.get('/connettori/azioni'); } catch { azioni = []; } },
-  lato: k => (titolare(k) ? [{ href: '#/connettori', icona: 'ingranaggio', nome: t('connettori.titolo') }] : []),
-  rotte: { connettori: (contenuto, k, a) => { caricaCss(); return (a ? pagina(contenuto, k, decodeURIComponent(a.split('?')[0])) : catalogo(contenuto, k)).catch(e => contenuto.replaceChildren(k.h('div.corpo', k.h('div.avviso', e.message)))); } },
+  lato: k => (titolare(k) ? [{ href: '#/connettori', icona: 'ingranaggio', nome: t('connettori.libreria') }] : []),
+  rotte: { connettori: (contenuto, k, a) => { caricaCss(); return (a ? pagina(contenuto, k, decodeURIComponent(a.split('?')[0])) : libreria(contenuto, k)).catch(e => contenuto.replaceChildren(k.h('div.corpo', k.h('div.avviso', e.message)))); } },
   azioniScheda: (def, riga, k) => azioni.filter(a => a.su === def.id).map(a => k.h('button.btn', { on: { click: () => eseguiAzione(k, a, riga) } }, a.nome)),
 };

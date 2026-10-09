@@ -99,6 +99,8 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
   // ---------- messaggi nelle sei lingue (server/moduli/connettori-lingue.js) ----------
   const linguaDi = (req, ctx) => { try { return (ctx?.utente && db.prepare('SELECT lingua FROM _lingue_utenti WHERE utente = ?').get(ctx.utente.id)?.lingua) || meta.leggi(db, 'lingue.azienda') || 'it'; } catch { return 'it'; } };
   const errore = (stato, chiave, p = {}) => new ErroreHttp(stato, testo('it', chiave, p), { _conn: chiave, _p: p });
+  // un errore con una chiave dei messaggi dei connettori (es. ErroreRicetta) diventa un errore HTTP tradotto
+  const tradotto = (e, stato = 400) => (e?.chiave && TESTI.it[e.chiave] && !(e instanceof ErroreHttp) ? errore(e.stato || stato, e.chiave, e.p) : e);
   suErrore?.((corpo, { req, ctx }) => {
     if (!corpo?._conn) return corpo;
     const { _conn, _p, ...resto } = corpo; return { ...resto, errore: testo(linguaDi(req, ctx), _conn, _p) };
@@ -395,6 +397,7 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
       annota(id, 'azione', 'errore', nome, String(e.message).slice(0, 500), Date.now() - t0);
       // l'errore di un servizio (o del connettore) arriva a chi ha chiesto, non come «errore interno»
       if (e instanceof ErroreHttp || e instanceof P.ErrorePermesso || e instanceof D.ErroreDati) throw e;
+      if (tradotto(e) !== e) throw tradotto(e, 502);
       throw errore(502, 'servizio', { dettaglio: String(e.message).slice(0, 300) });
     }
   }
@@ -504,7 +507,7 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
     if (def.tipo === 'ricette' || def.tipo === 'json') {
       let x = v; if (typeof x === 'string') { try { x = JSON.parse(x); } catch { throw errore(400, 'valore-non-valido', { nome: def.nome }); } }
       if (JSON.stringify(x).length > 200000) throw errore(400, 'valore-non-valido', { nome: def.nome });
-      if (typeof def.controlla === 'function') { try { x = def.controlla(x, { interni: process.env.KUBO_CONNETTORI_INTERNI === '1' || !!riga(id)?.interni, S, db }); } catch (e) { throw new ErroreHttp(400, String(e.message).slice(0, 300)); } }
+      if (typeof def.controlla === 'function') { try { x = def.controlla(x, { interni: process.env.KUBO_CONNETTORI_INTERNI === '1' || !!riga(id)?.interni, S, db }); } catch (e) { const x = tradotto(e); throw x !== e ? x : new ErroreHttp(400, String(e.message).slice(0, 300)); } }
       return x;
     }
     const t = String(v).trim().slice(0, 4000);
@@ -585,7 +588,7 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
     if (chiaveE && db.prepare('SELECT 1 FROM _connettori_eventi WHERE connettore = ? AND chiave = ?').get(p.id, chiaveE)) return { ok: true, doppione: true };
     const t0 = Date.now(); let esito;
     try { esito = await en.gestisci(ev, k, { req, nome: p.nome ?? null, q }); }
-    catch (e) { annota(p.id, 'entrata', 'errore', chiaveE || 'evento', String(e.message).slice(0, 500), Date.now() - t0); throw e; }
+    catch (e) { annota(p.id, 'entrata', 'errore', chiaveE || 'evento', String(e.message).slice(0, 500), Date.now() - t0); throw tradotto(e); }
     // un evento ignorato non si segna: se il servizio lo rimanda quando è cambiato qualcosa (SumUp «richiama»), si rilegge
     if (chiaveE && !/^ignorato/.test(String(esito))) db.prepare('INSERT OR IGNORE INTO _connettori_eventi (connettore, chiave, quando) VALUES (?, ?, ?)').run(p.id, chiaveE, new Date().toISOString());
     annota(p.id, 'entrata', /^(ignorato|doppione)/.test(String(esito)) ? 'ignorato' : 'ok', chiaveE || 'evento', esito, Date.now() - t0);

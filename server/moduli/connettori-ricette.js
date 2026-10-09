@@ -15,6 +15,11 @@ import { firma as firmaKubo } from './import-api.js';
 import { transazione } from '../db.js';
 import { controllaUrl } from './sicurezza-rete.js';
 import { normalizza } from '../../web/libreria.js';
+import { testo as messaggio } from './connettori-lingue.js';
+
+// un errore con la chiave dei messaggi dei connettori (connettori-lingue.js): il nucleo lo traduce nella lingua di chi chiede
+export class ErroreRicetta extends Error { constructor(chiave, p = {}, stato = 400) { super(messaggio('it', chiave, p)); Object.assign(this, { chiave, p, stato }); } }
+const sbaglia = (chiave, p = {}, stato = 400) => { throw new ErroreRicetta(chiave, p, stato); };
 
 export const TIPI = ['uscita', 'azione', 'entrata'];
 export const METODI = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
@@ -28,37 +33,37 @@ const testo = (v, max) => String(v ?? '').trim().slice(0, max);
 
 // ---------- controllo delle ricette salvate (lancia un Error con un messaggio per il titolare) ----------
 export function controllaRicette(lista, { S, db, interni = false, tipi = TIPI, assoluti = false } = {}) {
-  if (!Array.isArray(lista)) throw new Error('Le ricette sono un elenco');
-  if (lista.length > 100) throw new Error('Al massimo 100 ricette');
+  if (!Array.isArray(lista)) sbaglia('ricette-elenco');
+  if (lista.length > 100) sbaglia('ricette-troppe');
   const visti = new Set();
   return lista.map((r, i) => {
     const n = i + 1, id = testo(r?.id, 40).toLowerCase() || `r${n}`;
-    if (!ID.test(id) || visti.has(id)) throw new Error(`Ricetta ${n}: id «${id}» non valido o doppio`); visti.add(id);
-    const tipo = r.tipo; if (!tipi.includes(tipo)) throw new Error(`Ricetta ${n}: tipo «${tipo}» non valido (${tipi.join(', ')})`);
+    if (!ID.test(id) || visti.has(id)) sbaglia('ricetta-id', { n, id }); visti.add(id);
+    const tipo = r.tipo; if (!tipi.includes(tipo)) sbaglia('ricetta-tipo', { n, tipo: String(tipo), tipi: tipi.join(', ') });
     const sezione = testo(r.sezione, 60), def = S && db ? S.leggi(db, sezione) : { campi: [] };
-    if (!sezione || !def || def.archiviata) throw new Error(`Ricetta ${n}: la sezione «${sezione}» non c'è`);
+    if (!sezione || !def || def.archiviata) sbaglia('ricetta-sezione', { n, sezione });
     const campiOk = new Set((S && db ? S.campiAttivi(def) : []).map(c => c.id));
     const base = { id, nome: testo(r.nome, 80) || `Ricetta ${n}`, tipo, sezione, attiva: r.attiva !== false };
     if (tipo === 'entrata') {
       const modo = MODI.includes(r.modo) ? r.modo : 'crea-o-aggiorna', chiave = testo(r.chiave, 60) || null;
-      if (chiave && S && !campiOk.has(chiave)) throw new Error(`Ricetta ${n}: il campo chiave «${chiave}» non c'è nella sezione`);
-      if (modo !== 'crea' && !chiave) throw new Error(`Ricetta ${n}: per aggiornare serve un campo chiave (es. l'email)`);
+      if (chiave && S && !campiOk.has(chiave)) sbaglia('ricetta-campo', { n, campo: chiave });
+      if (modo !== 'crea' && !chiave) sbaglia('ricetta-serve-chiave', { n });
       const campi = (Array.isArray(r.campi) ? r.campi : []).slice(0, 100).map(c => ({ da: testo(c?.da, 200), a: testo(c?.a, 60) })).filter(c => c.da || c.a);
       for (const c of campi) {
-        if (!PERCORSO.test(c.da)) throw new Error(`Ricetta ${n}: il percorso «${c.da}» non è valido (es. data.email)`);
-        if (S && !campiOk.has(c.a)) throw new Error(`Ricetta ${n}: il campo «${c.a}» non c'è nella sezione`);
+        if (!PERCORSO.test(c.da)) sbaglia('ricetta-percorso-json', { n, percorso: c.da });
+        if (S && !campiOk.has(c.a)) sbaglia('ricetta-campo', { n, campo: c.a });
       }
-      for (const [k, v] of [['elenco', r.elenco], ['idEvento', r.idEvento]]) if (v && !PERCORSO.test(String(v))) throw new Error(`Ricetta ${n}: ${k} «${v}» non è un percorso valido`);
+      for (const [k, v] of [['elenco', r.elenco], ['idEvento', r.idEvento]]) if (v && !PERCORSO.test(String(v))) sbaglia('ricetta-percorso-json', { n, percorso: String(v) });
       return { ...base, modo, chiave, campi, elenco: testo(r.elenco, 200) || null, idEvento: testo(r.idEvento, 200) || null };
     }
     const metodo = METODI.includes(String(r.metodo || '').toUpperCase()) ? String(r.metodo).toUpperCase() : 'POST';
-    const percorso = testo(r.percorso, 2000); if (!percorso) throw new Error(`Ricetta ${n}: manca il percorso o l'indirizzo`);
+    const percorso = testo(r.percorso, 2000); if (!percorso) sbaglia('ricetta-manca-percorso', { n });
     if (/^[a-z][a-z0-9+.-]*:/i.test(percorso)) {
       const prova = percorso.replace(/\{[^{}]*\}/g, 'x');
-      if (!/^https?:\/\//i.test(prova)) throw new Error(`Ricetta ${n}: l'indirizzo deve iniziare con http:// o https://`);
-      const no = controllaUrl(prova, { interni }); if (no) throw new Error(`Ricetta ${n}: ${no}`);
-    } else if (assoluti) throw new Error(`Ricetta ${n}: serve l'indirizzo completo che ti dà la piattaforma (https://…)`);
-    else if (!percorso.startsWith('/')) throw new Error(`Ricetta ${n}: il percorso inizia con «/» (o è un indirizzo completo)`);
+      if (!/^https?:\/\//i.test(prova)) sbaglia('ricetta-http', { n });
+      if (controllaUrl(prova, { interni })) sbaglia('ricetta-rete', { n });
+    } else if (assoluti) sbaglia('ricetta-assoluto', { n });
+    else if (!percorso.startsWith('/')) sbaglia('ricetta-barra', { n });
     const corpo = String(r.corpo ?? '').slice(0, 20000);
     const out = { ...base, metodo, percorso, corpo };
     if (tipo === 'uscita') { const ev = (Array.isArray(r.eventi) ? r.eventi : ['crea', 'modifica']).filter(e => EVENTI.includes(e)); out.eventi = ev.length ? ev : ['crea', 'modifica']; }
@@ -111,7 +116,7 @@ function intestazioniExtra(imp) {
 export async function prepara(k, r, v, { anteprima = false } = {}) {
   const def = k.S.leggi(k.db, r.sezione), campi = def ? k.S.campiAttivi(def) : [];
   const assoluto = /^https?:\/\//i.test(r.percorso), base = String(k.imp.base || k.base || '').replace(/\/+$/, '');
-  if (!assoluto && !base) throw new Error('Manca l\'indirizzo base del servizio');
+  if (!assoluto && !base) sbaglia('ricette-base');
   const u = new URL(assoluto ? riempi(r.percorso, v, campi, true) : base + riempi(r.percorso, v, campi, true));
   const opz = { intestazioni: intestazioniExtra(k.imp) }, a = k.imp.accesso || 'nessuno', s = k.segreti, nome = k.imp.accesso_nome;
   let visibile = u.href;
@@ -155,7 +160,7 @@ export function manifestoRicette({ accesso = true } = {}) {
       { id: 'client_secret', nome: 'OAuth2: client secret', segreto: true, obbligatorio: false },
       { id: 'prova_percorso', nome: 'Percorso per provare la connessione (es. /me)' },
     ] : []),
-    { id: 'intestazioni', nome: 'Intestazioni in più (JSON, es. {"Accept-Language":"it"})', tipo: 'json', controlla: v => { if (v == null || v === '') return null; if (typeof v !== 'object' || Array.isArray(v)) throw new Error('Le intestazioni sono un oggetto JSON'); return Object.fromEntries(Object.entries(v).slice(0, 30).map(([a, b]) => { if (!/^[A-Za-z0-9-]{1,64}$/.test(a)) throw new Error(`Intestazione non valida: ${a}`); return [a, String(b).slice(0, 2000)]; })); } },
+    { id: 'intestazioni', nome: 'Intestazioni in più (JSON, es. {"Accept-Language":"it"})', tipo: 'json', controlla: v => { if (v == null || v === '') return null; if (typeof v !== 'object' || Array.isArray(v)) sbaglia('ricette-intestazioni'); return Object.fromEntries(Object.entries(v).slice(0, 30).map(([a, b]) => { if (!/^[A-Za-z0-9-]{1,64}$/.test(a)) sbaglia('ricette-intestazioni'); return [a, String(b).slice(0, 2000)]; })); } },
     { id: 'ricette', nome: 'Ricette', tipo: 'ricette', predefinito: [], assoluti: !accesso, controlla: (v, x) => controllaRicette(v, { ...x, assoluti: !accesso }) },
     { id: 'codice', nome: 'Codice segreto delle ricette in entrata (va in fondo all\'indirizzo)', segreto: true, generato: true },
     { id: 'firma_entrata', nome: 'Segreto HMAC delle richieste in entrata (facoltativo)', segreto: true, obbligatorio: false },
@@ -184,7 +189,7 @@ export function manifestoRicette({ accesso = true } = {}) {
         const r = attive(k.imp, 'uscita').find(x => x.id === c.ricetta); if (!r) return;   // tolta o spenta nel frattempo: niente
         let riga = c.dati; if (c.evento !== 'elimina') { try { riga = k.dati.leggi(r.sezione, c.id); } catch { /* sparita: si manda quella dell'evento */ } }
         const x = await chiama(k, r, valoriDi(k, r, riga, { id: c.id, evento: c.evento }));
-        if (!x.ok) throw new Error(`${r.nome}: il servizio ha risposto ${x.stato}${x.testo ? ` · ${x.testo.slice(0, 200)}` : ''}`);
+        if (!x.ok) sbaglia('ricette-risposta', { stato: x.stato, dettaglio: `${r.nome}${x.testo ? ` · ${x.testo.slice(0, 200)}` : ''}` }, 502);
       },
     },
     // le azioni: una per ricetta «azione», nella scheda della sua sezione e come strumento di Lumi
@@ -197,7 +202,7 @@ export function manifestoRicette({ accesso = true } = {}) {
       },
       async esegui({ riga }, k) {
         const x = await chiama(k, r, valoriDi(k, r, riga, { evento: 'azione' }));
-        if (!x.ok) throw new Error(`il servizio ha risposto ${x.stato}`);
+        if (!x.ok) sbaglia('ricette-risposta', { stato: x.stato, dettaglio: r.nome }, 502);
         const url = typeof x.json?.url === 'string' && /^https:\/\//.test(x.json.url) ? x.json.url : undefined;   // un link (pagamento, documento) si mostra da copiare
         return { ok: true, stato: x.stato, ...(url ? { url } : {}) };
       },
@@ -218,7 +223,7 @@ export function manifestoRicette({ accesso = true } = {}) {
       async gestisci(ev, k, { q } = {}) {
         const r = scegli(k, q); if (!r) return 'ignorato: nessuna ricetta in entrata (aggiungi ?ricetta=<id>)';
         const voci = r.elenco ? [].concat(prendi(ev, r.elenco) ?? []) : Array.isArray(ev) ? ev : [ev];
-        if (voci.length > 500) throw new Error('Al massimo 500 righe per richiesta');
+        if (voci.length > 500) sbaglia('ricette-righe', {}, 413);
         const def = k.S.leggi(k.db, k.entita(r.sezione)), campi = def ? k.S.campiAttivi(def) : [];
         // senza abbinamenti: le chiavi del JSON che sono id o nomi di campi della sezione
         const diretti = o => Object.fromEntries(Object.entries(o && typeof o === 'object' ? o : {}).map(([a, b]) => [campi.find(c => c.id === a || normalizza(c.nome) === normalizza(a))?.id, b]).filter(([a]) => a));
