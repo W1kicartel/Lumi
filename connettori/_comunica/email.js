@@ -39,7 +39,7 @@ function documento(sem, nomeDoc) {
   };
 }
 
-// def: { id, nome, descrizione, base, impostazioni, prova, invia, catalogo, testi }
+// def: { id, nome, descrizione, base, oauth?, impostazioni, prova, invia, catalogo, testi }
 export function connettoreEmail(def) {
   const az = { manda_email: {
     nome: 'Manda un\'email', descrizione: `Manda un'email al cliente con ${def.nome}`, su: 'clienti', lumi: true, scrive: true,
@@ -55,7 +55,7 @@ export function connettoreEmail(def) {
   // le azioni sui documenti chiamano invia() del connettore
   for (const n of ['invia_fattura', 'invia_preventivo']) { const e = az[n].esegui; az[n].esegui = (i, k) => e(i, k, def); }
   return {
-    id: def.id, nome: def.nome, versione: 1, icona: 'documento', ...(def.base ? { base: def.base } : {}), descrizione: def.descrizione,
+    id: def.id, nome: def.nome, versione: 1, icona: 'documento', ...(def.base ? { base: def.base } : {}), ...(def.oauth ? { oauth: def.oauth } : {}), descrizione: def.descrizione,
     impostazioni: [...def.impostazioni, ...impostazioniMittente],
     richiede: { clienti: { email: { tipo: ['email'] } }, fatture: { numero: { facoltativo: true }, stato: { tipo: 'stato', facoltativo: true }, cliente: { tipo: 'relazione', facoltativo: true } }, preventivi: { cliente: { tipo: 'relazione', facoltativo: true } } },
     permessi: { clienti: { leggi: true }, fatture: { leggi: true }, preventivi: { leggi: true }, vendite: { leggi: true } },

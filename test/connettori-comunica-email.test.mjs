@@ -87,3 +87,42 @@ test('email transazionali: cinque servizi, email al cliente e fattura con stampa
     assert.equal(no.stato, 502); assert.match(no.json.errore, /SignatureDoesNotMatch/);
   } finally { await K.chiudi(); await S.chiudi(); }
 });
+
+test('Gmail e Outlook (OAuth), Mailjet e MailerSend: email al cliente e fattura con gli allegati', async () => {
+  const K = await kubo(['negozio', 'fatture']), arrivi = {};
+  const segna = (id, x) => { (arrivi[id] ||= []).push(x); };
+  const S = await finto({
+    'POST /gmail/v1/users/me/messages/send': (p, c, { intestazioni }) => { segna('gmail', { c, h: intestazioni }); return { id: 'gm-1', threadId: 't1' }; },
+    'GET /v1.0/me': () => ({ mail: 'titolare@bottega.example', userPrincipalName: 'titolare@bottega.example' }),
+    'POST /v1.0/me/sendMail': (p, c, { intestazioni }) => { segna('outlook-posta', { c, h: intestazioni }); return { stato: 202, corpo: '' }; },
+    'GET /v3/REST/sender': () => ({ Count: 1, Data: [{ Email: 'fatture@bottega.example', Status: 'Active' }] }),
+    'POST /v3.1/send': (p, c, { intestazioni }) => { segna('mailjet', { c, h: intestazioni }); return { Messages: [{ Status: 'success', To: [{ Email: c.Messages[0].To[0].Email, MessageUUID: 'mj-1' }] }] }; },
+    'GET /v1/domains': () => ({ data: [{ name: 'bottega.example', is_verified: true }] }),
+    'POST /v1/email': (p, c, { intestazioni }) => { segna('mailersend', { c, h: intestazioni }); return { stato: 202, intestazioni: { 'X-Message-Id': 'ms-1' }, corpo: '' }; },
+  });
+  try {
+    const { cl, f } = await fattura(K);
+    await accendi(K, 'gmail', { base: S.url, segreti: { client_id: 'cid.apps.googleusercontent.com', client_secret: 'gsec' }, impostazioni: MITT });
+    await accendi(K, 'outlook-posta', { base: S.url, segreti: { client_id: 'app-1234' }, impostazioni: { ...MITT, tenant: 'consumers' } });
+    await accendi(K, 'mailjet', { base: S.url, segreti: { segreto: 'b'.repeat(32) }, impostazioni: { ...MITT, chiave: 'a'.repeat(32) } });
+    await accendi(K, 'mailersend', { base: S.url, segreti: { token: 'mlsn.prova' }, impostazioni: MITT });
+    assert.equal((await K.chiama('POST', '/api/connettori/gmail/prova')).json.ok, false);   // non ancora collegato
+    for (const id of ['gmail', 'outlook-posta']) K.nucleo.k(id).salvaSegreto('_oauth', JSON.stringify({ access_token: `tok-${id}`, refresh_token: 'r', scade: Date.now() + 36e5 }));
+    const prove = {};
+    for (const id of ['gmail', 'outlook-posta', 'mailjet', 'mailersend']) prove[id] = (await K.chiama('POST', `/api/connettori/${id}/prova`)).json.messaggio;
+    assert.deepEqual(prove, { gmail: 'collegato', 'outlook-posta': 'titolare@bottega.example', mailjet: 'fatture@bottega.example (Active)', mailersend: 'bottega.example' });
+    for (const id of ['gmail', 'outlook-posta', 'mailjet', 'mailersend']) {
+      assert.equal((await K.chiama('POST', `/api/connettori/${id}/azioni/manda_email`, { args: { cliente: cl.id, oggetto: 'Ritiro', testo: 'Il lavoro è pronto.' } })).stato, 200, id);
+      const r = await K.chiama('POST', `/api/connettori/${id}/azioni/invia_fattura`, { args: { doc: f.id } }); assert.equal(r.stato, 200, `${id} ${JSON.stringify(r.json)}`);
+    }
+    // Gmail: il MIME intero in base64url, con il Bearer
+    const g = arrivi.gmail; assert.equal(g[0].h.authorization, 'Bearer tok-gmail');
+    const mime = Buffer.from(g[1].c.raw, 'base64url').toString(); assert.match(mime, /^From: Bottega Prova <fatture@bottega\.example>\r\nTo: Rossi srl <rossi@cliente\.example>\r\nSubject: Fattura /); assert.match(mime, /filename="[^"]+\.xml"/);
+    // Outlook: sendMail con gli allegati fileAttachment
+    const o = arrivi['outlook-posta'][1].c; assert.equal(o.saveToSentItems, true); assert.equal(o.message.toRecipients[0].emailAddress.address, 'rossi@cliente.example');
+    assert.deepEqual(o.message.attachments.map(a => a['@odata.type']), ['#microsoft.graph.fileAttachment', '#microsoft.graph.fileAttachment']);
+    // Mailjet: Basic chiave:segreto, Messages[0]; MailerSend: Bearer e allegati
+    assert.equal(arrivi.mailjet[0].h.authorization, 'Basic ' + Buffer.from(`${'a'.repeat(32)}:${'b'.repeat(32)}`).toString('base64'));
+    assert.equal(arrivi.mailjet[1].c.Messages[0].Attachments.length, 2); assert.equal(arrivi.mailersend[1].c.attachments.length, 2); assert.equal(arrivi.mailersend[0].h.authorization, 'Bearer mlsn.prova');
+  } finally { await K.chiudi(); await S.chiudi(); }
+});
