@@ -1,0 +1,20 @@
+// n8n: il nodo «Webhook» riceve gli eventi di Kubo; il nodo «HTTP Request» scrive in Kubo (o legge l'OpenAPI di Kubo).
+// Un ponte verso una piattaforma di automazione: lo stesso motore di ricette del connettore HTTP (server/moduli/connettori-ricette.js),
+// con gli indirizzi completi che dà la piattaforma. In entrata: POST JSON a /api/connettori/n8n/in/<codice>[?ricetta=<id>].
+import { manifestoRicette, testiRicette } from '../../server/moduli/connettori-ricette.js';
+
+export default {
+  id: 'n8n', nome: 'n8n', versione: 1, icona: 'ingranaggio',
+  descrizione: 'Kubo nei flussi di n8n, anche installato sul tuo computer: eventi verso n8n e righe create da n8n.',
+  catalogo: { categoria: 'automazione', sito: 'https://n8n.io', costo: 'gratis', costoNota: 'Gratis se lo installi tu (Community Edition); n8n Cloud è in abbonamento', serve: [{ cosa: 'L\'indirizzo di produzione del nodo Webhook (…/webhook/<percorso>)', dove: 'n8n → workflow → nodo «Webhook» → Production URL', link: 'https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/' }, { cosa: 'Se il Webhook usa Header Auth: il nome e il valore dell\'intestazione', dove: 'n8n → nodo «Webhook» → Authentication → Header Auth' }], passi: ['In n8n crea un workflow con il nodo «Webhook», metodo POST', 'Copia la «Production URL» e attiva il workflow', 'Qui aggiungi una ricetta «in uscita» con quell\'indirizzo; se usi Header Auth, mettila in «Intestazioni in più»', 'Se n8n gira in negozio o sullo stesso computer, spunta «Permetti indirizzi della rete interna»', 'Per scrivere in Kubo dalla piattaforma: aggiungi una ricetta «in entrata» e fai mandare un POST JSON all\'indirizzo che compare sotto (Kubo deve essere raggiungibile da internet): in n8n usa il nodo «HTTP Request», metodo POST, «Send Body» in JSON', 'Per leggere e scrivere tutto il resto importa in n8n la descrizione OpenAPI di Kubo con un token personale'], difficolta: 'media', zone: ['IT', 'UE', 'mondo'], fonti: ['https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/', 'https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/'], prova: 'finto', parole: ['workflow', 'self-hosted', 'automazione', 'webhook', 'open source', 'automation'] },
+  ...manifestoRicette({ accesso: false }),
+  testi: testiRicette({
+    en: { descrizione: 'Kubo in n8n workflows, even self-hosted: events to n8n and rows created by n8n.', 'cat.costoNota': 'Free if you host it yourself (Community Edition); n8n Cloud is a subscription',
+      'cat.serve': [{ cosa: 'The production address of the Webhook node (…/webhook/<path>)', dove: 'n8n → workflow → «Webhook» node → Production URL' }, { cosa: 'If the Webhook uses Header Auth: the header name and value', dove: 'n8n → «Webhook» node → Authentication → Header Auth' }],
+      'cat.passi': ['In n8n create a workflow with the «Webhook» node, method POST', 'Copy the «Production URL» and activate the workflow', 'Here add an «outgoing» recipe with that address; if you use Header Auth, put it in «Extra headers»', 'If n8n runs in the shop or on the same computer, tick «Allow internal network addresses»', 'To write into Kubo from the platform: add an «incoming» recipe and have it send a JSON POST to the address shown under it (Kubo must be reachable from the internet): in n8n use the «HTTP Request» node, method POST, «Send Body» as JSON', 'To read and write everything else, import Kubo\'s OpenAPI description into n8n with a personal token'] },
+    es: { descrizione: 'Kubo en los flujos de n8n, también instalado en tu equipo: eventos hacia n8n y filas creadas por n8n.' },
+    fr: { descrizione: 'Kubo dans les workflows n8n, même auto-hébergé : des événements vers n8n et des lignes créées par n8n.' },
+    de: { descrizione: 'Kubo in n8n-Workflows, auch selbst gehostet: Ereignisse an n8n und von n8n angelegte Zeilen.' },
+    pt: { descrizione: 'O Kubo nos fluxos do n8n, mesmo instalado no seu computador: eventos para o n8n e linhas criadas pelo n8n.' },
+  }),
+};
