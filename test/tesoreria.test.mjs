@@ -356,3 +356,39 @@ test('API: prepara, impostazioni, scadenze, estratto, banca, distinta da scarica
     assert.equal((await chiama('PUT', '/api/tesoreria/impostazioni', { sia: 'ZZZZZ' })).stato, 403);
   } finally { srv.close(); }
 });
+
+test('verifica: disabbina riapre la fattura e la distinta, movimenti uguali nello stesso file, storni CAMT, distinte e Lumi', async () => {
+  // due pagamenti parziali: tolto il secondo, la fattura non è più pagata
+  { const { db, k, fattura } = gestionale();
+    const f = fattura('2026-09-01', 1000, { scadenza: '2026-10-01', numero: '7' }), ch = `f:${f.id}:1`;
+    T.importaEstratto(k, null, Buffer.from('Data;Importo;Descrizione\n02/10/2026;200,00;ACCONTO FT 7\n05/10/2026;1.020,00;SALDO FT 7\n'), 'x.csv');
+    const mov = T.movimenti(k, null), m1 = mov.find(m => m.importo === 20000), m2 = mov.find(m => m.importo === 102000);
+    T.abbina(k, null, m1.id, [ch]); T.abbina(k, null, m2.id, [ch]); assert.equal(D.leggi(db, 'fatture', f.id).stato, 'pagata');
+    T.disabbina(k, null, m2.id);
+    assert.equal(D.leggi(db, 'fatture', f.id).stato, 'emessa'); assert.equal(T.scadenzario(k, null).find(x => x.chiave === ch).residuo, 102000);
+    // annullato il pagamento dalla scadenza, il movimento torna da abbinare
+    T.annullaPagamento(k, null, ch); assert.equal(T.movimenti(k, null).find(m => m.id === m1.id).stato, 'da_abbinare'); }
+  // la Ri.Ba. disabbinata torna da incassare: la stessa ricevuta non va in una seconda distinta; una distinta estranea no
+  { const { db, k, fattura } = gestionale(); T.salvaImpostazioni(db, meta, { sia: 'A1B2C' });
+    const f = fattura('2026-09-01', 1000, { scadenza: '2026-12-01', numero: '5' }), g = fattura('2026-09-02', 1000, { scadenza: '2026-12-01', numero: '6' }), ch = `f:${f.id}:1`;
+    const d = T.creaDistinta(k, null, { tipo: 'riba', chiavi: [ch] });
+    T.importaEstratto(k, null, Buffer.from('Data;Importo;Descrizione\n05/10/2026;1.220,00;ACCREDITO EFFETTI\n06/10/2026;1.220,00;BONIFICO FT 6\n'), 'x.csv');
+    const [m, n] = T.movimenti(k, null).sort((a, b) => a.data.localeCompare(b.data));
+    assert.throws(() => T.abbina(k, null, n.id, [`f:${g.id}:1`], { distinta: d.id }), /distinta/);
+    T.abbina(k, null, m.id, [ch], { distinta: d.id }); T.disabbina(k, null, m.id);
+    assert.equal(T.distinte(db)[0].incassata, null); assert.throws(() => T.creaDistinta(k, null, { tipo: 'riba', chiavi: [ch] }), /già nella distinta/);
+    assert.throws(() => T.incassaDistinta(k, null, d.id, { data: 'qualsiasi' }), /Data non valida/); }
+  // due caffè uguali lo stesso giorno sono due movimenti; reimportando lo stesso file, nessun doppio
+  { const { k } = gestionale(), csv = Buffer.from('Data;Importo;Descrizione\n02/10/2026;-1,20;PAGAMENTO POS BAR CENTRALE\n02/10/2026;-1,20;PAGAMENTO POS BAR CENTRALE\n');
+    assert.equal(T.importaEstratto(k, null, csv, 'x.csv').importati, 2); assert.equal(T.importaEstratto(k, null, csv, 'x.csv').importati, 0); }
+  // CAMT: lo storno segue CdtDbtInd (CRDT + RvslInd = soldi che rientrano)
+  const x = ind => `<?xml version="1.0"?><Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.053.001.02"><BkToCstmrStmt><Stmt><Acct><Id><IBAN>${IBAN_AZ}</IBAN></Id></Acct><Ntry><Amt Ccy="EUR">100.00</Amt><CdtDbtInd>${ind}</CdtDbtInd><RvslInd>true</RvslInd><Sts>BOOK</Sts><BookgDt><Dt>2026-10-05</Dt></BookgDt><AcctSvcrRef>A${ind}</AcctSvcrRef></Ntry></Stmt></BkToCstmrStmt></Document>`;
+  assert.ok(F.camt053(x('CRDT')).movimenti[0].importo > 0); assert.ok(F.camt053(x('DBIT')).movimenti[0].importo < 0);
+  // Lumi: «12/2026» non paga anche la 12/2025
+  { const { db, k, fattura } = gestionale(), f25 = fattura('2025-12-01', 100, { numero: '12/2025' }), f26 = fattura('2026-09-01', 100, { numero: '12/2026' });
+    const strumenti = []; registraTesoreria({ ...k, r: () => {}, serve: c => c, lumi: { strumento: s => strumenti.push(s) } });
+    const s = strumenti.find(x => x.nome === 'tesoreria_segna_pagata');
+    assert.match((await s.anteprima({ ctx: null, args: { numero_fattura: '12' } })).errore || '', /Più fatture/);
+    await s.esegui({ ctx: null, args: { numero_fattura: '12/2026' } });
+    assert.equal(D.leggi(db, 'fatture', f26.id).stato, 'pagata'); assert.equal(D.leggi(db, 'fatture', f25.id).stato, 'emessa'); }
+});

@@ -191,8 +191,9 @@ export function camt053(testo) {
     for (const e of figli(st, 'Ntry')) {
       const sts = testoDi(e, 'Sts') || testoDi(e, 'Sts/Cd');
       if (sts && sts !== 'BOOK') continue;   // solo i movimenti contabilizzati
-      let segno = testoDi(e, 'CdtDbtInd') === 'DBIT' ? -1 : 1;
-      if (testoDi(e, 'RvslInd') === 'true') segno = -segno;
+      // il segno è quello di CdtDbtInd anche per gli storni (RvslInd): ISO 20022 dice che CRDT + storno è un addebito
+      // annullato, cioè soldi che rientrano; i saldi del file tornano solo così
+      const segno = testoDi(e, 'CdtDbtInd') === 'DBIT' ? -1 : 1;
       const tx = cerca(e, 'TxDtls')[0], entrata = segno > 0;
       const parte = tx ? figlio(tx, `RltdPties/${entrata ? 'Dbtr' : 'Cdtr'}`) : null;
       const nome = parte ? testoDi(parte, 'Nm') || testoDi(parte, 'Pty/Nm') : '';
