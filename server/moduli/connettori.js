@@ -151,6 +151,10 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
     : db.prepare('INSERT INTO _connettori_segreti (connettore, nome, cifrato, aggiornato) VALUES (?, ?, ?, ?) ON CONFLICT(connettore, nome) DO UPDATE SET cifrato = excluded.cifrato, aggiornato = excluded.aggiornato')
       .run(id, nome, cifra(id, nome, v), new Date().toISOString());
   const segretiSalvati = id => new Set(db.prepare('SELECT nome FROM _connettori_segreti WHERE connettore = ?').all(id).map(x => x.nome));
+  // i codici «generato» che un connettore già acceso non ha ancora (una versione nuova ne ha aggiunto uno, come la verifica
+  // di Meta Lead Ads): si creano all'avvio, senza chiedere di spegnerlo e riaccenderlo
+  const generaMancanti = id => { for (const i of tutti.get(id)?.man?.impostazioni || []) if (i.generato && !segreto(id, i.id)) salvaSegreto(id, i.id, randomBytes(24).toString('base64url')); };
+  pronti.then(() => { for (const id of tutti.keys()) { try { if (attivo(id)) generaMancanti(id); } catch (e) { console.error('connettori codici', id, e.message); } } });
 
   // ---------- registro (90 giorni) ----------
   let pulito = 0;
@@ -559,7 +563,7 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
         // un connettore locale si attiva confermando la sua somma: è codice che gira con i permessi del server
         if (c.origine === 'locale' && corpo.somma !== c.somma) throw errore(409, 'somma-diversa');
         scriviRiga(p.id, { attivo: 1, somma: c.somma, versione: man.versione || 1 }); ctxServizio(p.id);
-        for (const i of man.impostazioni || []) if (i.generato && !segreto(p.id, i.id)) salvaSegreto(p.id, i.id, randomBytes(24).toString('base64url'));
+        generaMancanti(p.id);
       }
       if (corpo.attivo === false) scriviRiga(p.id, { attivo: 0 });
       // client credentials: il token in memoria vale per l'indirizzo e le credenziali di prima. Cambiati quelli (un altro

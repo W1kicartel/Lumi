@@ -62,6 +62,10 @@ test('webhook: verifica GET, risposta su misura, stato su misura per la firma sb
     const v = await fuori(K, 'POST', `/api/connettori/prova/in/${codice}?validationToken=tok%20en`, '', { 'Content-Type': 'text/plain' }); assert.equal(v.testo, 'tok en');
     // la pagina dice che c'è la verifica GET
     assert.equal((await K.chiama('GET', '/api/connettori/prova')).json.webhook.verificaGet, true);
+    // un codice «generato» sparito (o aggiunto da una versione nuova) torna al riavvio, senza spegnere il connettore
+    K.db.prepare("DELETE FROM _connettori_segreti WHERE connettore = 'prova' AND nome = 'codice'").run();
+    const altro = creaServer(K.db), n2 = istanze.get(K.db); await n2.pronti; await new Promise(r => setImmediate(r));
+    assert.ok(n2.segreto('prova', 'codice')?.length >= 32); altro.close?.();
   } finally { await K.chiudi(); }
 });
 
