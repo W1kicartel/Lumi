@@ -74,3 +74,30 @@ test('Qapla\': pushShipment dalla vendita, stato con getShipment sulla vendita, 
     assert.deepEqual((await K.chiama('POST', '/api/connettori/qapla/giri/stati')).json.risultato, { lette: 0, consegnate: 0 });   // consegnata: esce dal giro
   } finally { await K.chiudi(); await S.chiudi(); }
 });
+
+test('Packlink PRO: bozza dalla vendita con Authorization, evento col codice segreto → spedizione riletta e tracking sulla vendita', async () => {
+  const K = await kubo(), bozze = []; let stato = 'AWAITING_COMPLETION';
+  const S = await finto({
+    'GET /v1/users/me': (p, c, { intestazioni }) => (intestazioni.authorization === 'pk-finta' ? { email: 'spedizioni@bottega.example' } : { stato: 401, corpo: {} }),
+    'POST /v1/shipments': (p, c) => { bozze.push(c); return { reference: 'IT2026PRO0001' }; },
+    'GET /v1/shipments/:rif': p => ({ reference: p.rif, state: stato, carrier: 'GLS', tracking_codes: stato === 'AWAITING_COMPLETION' ? [] : ['GLS99887766'] }),
+    'GET /v1/shipments/:rif/track': () => [{ description: 'In consegna', city: 'Parma', timestamp: 1760000000 }],
+  });
+  try {
+    const pag = await accendi(K, 'packlink', { base: S.url, segreti: { chiave: 'pk-finta' }, impostazioni: { servizio: 20945, mittente_nome: 'Bottega', mittente_via: 'Via del Corso 1', mittente_cap: '00186', mittente_comune: 'Roma' } });
+    const codice = pag.impostazioni.find(i => i.id === 'codice').valore;
+    assert.equal((await K.chiama('POST', '/api/connettori/packlink/prova')).json.messaggio, 'spedizioni@bottega.example');
+    const v = await venditaConCliente(K, { nome: 'Luca De Santis', indirizzo: 'Borgo Parmigianino 7, 43121 Parma (PR)' });
+    const r = await K.chiama('POST', '/api/connettori/packlink/azioni/bozza', { args: { vendita: v.numero, peso: 3 } });
+    assert.equal(r.json.riferimento, 'IT2026PRO0001', JSON.stringify(r.json));
+    assert.deepEqual(bozze[0].to, { name: 'Luca', surname: 'De Santis', street1: 'Borgo Parmigianino 7', zip_code: '43121', city: 'Parma', country: 'IT', phone: '3330000000', email: 'mario.rossi@esempio.it' });
+    assert.equal(bozze[0].service_id, 20945); assert.deepEqual(bozze[0].packages, [{ weight: 3, width: 20, height: 10, length: 30 }]); assert.equal(bozze[0].from.zip_code, '00186');
+    stato = 'IN_TRANSIT';
+    const ev = JSON.stringify({ event: 'shipment.tracking.update', datetime: '2026-10-09 10:00:00', data: { shipment_reference: 'IT2026PRO0001' } });
+    assert.equal((await manda(K, '/api/connettori/packlink/in/no', ev)).stato, 401);
+    assert.equal((await manda(K, `/api/connettori/packlink/in/${codice}`, ev)).json.esito, 'spedizione: In viaggio');
+    assert.match((await K.chiama('GET', `/api/dati/vendite/${v.id}`)).json.note, /Spedizione GLS GLS99887766: In viaggio/);
+    const d = await K.chiama('POST', '/api/connettori/packlink/azioni/dove', { args: { chi: 'De Santis' } });
+    assert.equal(d.json.stato, 'In viaggio', JSON.stringify(d.json)); assert.match(d.json.ultimo, /In consegna Parma/);
+  } finally { await K.chiudi(); await S.chiudi(); }
+});
