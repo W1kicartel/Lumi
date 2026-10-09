@@ -5,6 +5,9 @@
 //       { tipo: 'aggiorna_collegato', relazione, campo, aggiungi | formula, perOgniRiga? }   es. scala il magazzino
 //       { tipo: 'crea', entita, valori: { campo: formula } }                  es. crea un promemoria
 //       { tipo: 'avvisa', testo: formula }                                    un avviso per tutti (evento in tempo reale)
+//       { tipo: 'whatsapp', modello?, lingua?, variabili?: { '1': formula }, testo?: formula, cliente?: campo, ricetta? }
+//                                                                             un messaggio WhatsApp (server/moduli/whatsapp.js):
+//                                                                             va in coda, con consenso, finestra e limiti controllati all'invio
 //     ] }
 // Le formule vedono i valori della riga (dopo la modifica), «prima.campo» per i valori di prima, e nelle azioni per ogni
 // riga figlia i campi della riga. Girano come «sistema» (senza permessi), con un limite di 5 livelli contro i cicli.
@@ -43,14 +46,17 @@ export function valida(db, a) {
       formula(x.aggiungi ?? x.formula ?? '', dove);
     } else if (x.tipo === 'crea') { if (!S.leggi(db, x.entita)) e.push(`${dove}: entità sconosciuta «${x.entita}»`); for (const f of Object.values(x.valori || {})) formula(String(f), dove); }
     else if (x.tipo === 'avvisa') formula(x.testo, dove);
+    else if (x.tipo === 'whatsapp') { if (x.testo) formula(String(x.testo), dove); for (const f of Object.values(x.variabili || {})) formula(String(f), dove); }
     else e.push(`${dove}: tipo sconosciuto «${x.tipo}»`);
   }
   return e;
 }
 
 let profondita = 0;
-const avvisi = [];
+const avvisi = [], whatsapp = [];
 export const suAvviso = f => avvisi.push(f);
+// chi manda i messaggi WhatsApp delle automazioni (server/moduli/whatsapp.js): f({ db, azione, variabili, testo, valori, ev, automazione })
+export const suWhatsapp = f => whatsapp.push(f);
 
 function scatta(a, ev) {
   if (a.entita !== ev.entita) return false;
@@ -77,6 +83,11 @@ export function esegui(db, a, ev) {
     if (x.tipo === 'imposta') D.modifica(db, ev.entita, ev.id, { [x.campo]: calcola(x.formula, { valori }) }, null, { interno: true });
     if (x.tipo === 'crea') D.crea(db, x.entita, Object.fromEntries(Object.entries(x.valori || {}).map(([k, f]) => [k, calcola(String(f), { valori })])), null, { interno: true });
     if (x.tipo === 'avvisa') { const t = String(calcola(x.testo, { valori }) ?? ''); for (const f of avvisi) f({ testo: t, entita: ev.entita, id: ev.id, automazione: a.nome }); }
+    if (x.tipo === 'whatsapp') {
+      const variabili = Object.fromEntries(Object.entries(x.variabili || {}).map(([n, f]) => [n, String(calcola(String(f), { valori }) ?? '')]));
+      const testo = x.testo ? String(calcola(String(x.testo), { valori }) ?? '') : null;
+      for (const f of whatsapp) f({ db, azione: x, variabili, testo, valori, ev, automazione: a.nome });
+    }
     if (x.tipo === 'aggiorna_collegato') {
       const righe = x.perOgniRiga ? (D.leggi(db, ev.entita, ev.id, null)[x.perOgniRiga] || []) : [ev.dopo || ev.prima];
       for (const r of righe) {
