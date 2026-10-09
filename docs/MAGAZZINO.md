@@ -49,7 +49,7 @@ Avvisa anche delle giacenze negative e degli articoli in giacenza senza costo, c
 
 ## Inventario fisico
 
-1. **Inizia un inventario.** Kubo fotografa la giacenza di ogni articolo: è l'«atteso». Per ogni sezione può esserci un solo inventario aperto.
+1. **Inizia un inventario.** Lumi fotografa la giacenza di ogni articolo: è l'«atteso». Per ogni sezione può esserci un solo inventario aperto.
 2. **Conta.** Per ogni articolo si scrive la quantità trovata. Si può anche usare il lettore di codici a barre: nel campo «Leggi un codice» ogni lettura del codice a barre (campo `barcode`) o del codice articolo (`codice`) aggiunge 1. I numeri in alto (contati, differenze, valore delle differenze) si aggiornano a ogni conta.
 3. **Chiudi l'inventario.** Ogni articolo contato si corregge della **differenza fra contato e atteso**: `nuova giacenza = giacenza di adesso + (contato − atteso)`. Le vendite e i carichi fatti mentre si contava restano giusti. Gli articoli non contati non si toccano. Le rettifiche entrano nel registro con origine `inventario`.
 

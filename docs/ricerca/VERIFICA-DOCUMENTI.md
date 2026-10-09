@@ -1,6 +1,6 @@
-# Kubo + Lumi può sostituire il commercialista per i documenti? Verifica pratica
+# Lumi (gestionale e assistente) può sostituire il commercialista per i documenti? Verifica pratica
 
-Data: 7 ottobre 2026. Ho lavorato su una copia: worktree `prova-documenti` da `main` (c56ee89). `~/Desktop/kubo` non è stato toccato. Worktree e ramo sono stati tolti alla fine e non c'è nessun commit.
+Data: 7 ottobre 2026. Ho lavorato su una copia: worktree `prova-documenti` da `main` (c56ee89). La copia principale non è stata toccata. Worktree e ramo sono stati tolti alla fine e non c'è nessun commit.
 
 I test scritti sono in `scratchpad/test-documenti/`:
 
@@ -8,11 +8,11 @@ I test scritti sono in `scratchpad/test-documenti/`:
 - `prova-lumi-documenti.test.mjs`: 5 test. 4 passano e 1 è `todo`.
 - `documenti/xsd/`: lo schema ufficiale e xmldsig.
 
-Per rieseguirli bisogna copiarli in `test/` di Kubo. I file XML generati sono in `scratchpad/xml-generati/`.
+Per rieseguirli bisogna copiarli in `test/` di Lumi. I file XML generati sono in `scratchpad/xml-generati/`.
 
 Le suite esistenti `documenti.test.mjs` e `lumi.test.mjs` passano tutte, 20 su 20.
 
-**Risposta breve: no, non ancora.** Per le fatture «normali» tra privati in regime ordinario o forfettario, Kubo produce un file FatturaPA **valido contro lo schema XSD ufficiale 1.2.2**, coerente con i controlli aritmetici dello SDI. Lumi riesce già a crearlo a parole, ma solo in bozza. Mancano però:
+**Risposta breve: no, non ancora.** Per le fatture «normali» tra privati in regime ordinario o forfettario, Lumi produce un file FatturaPA **valido contro lo schema XSD ufficiale 1.2.2**, coerente con i controlli aritmetici dello SDI. L'assistente riesce già a crearlo a parole, ma solo in bozza. Mancano però:
 
 - casi interi: PA, cassa previdenziale, autofatture;
 - due errori di calcolo o di controllo;
@@ -22,7 +22,7 @@ Lumi poi non ha strumenti dedicati ai documenti: fa le fatture con gli strumenti
 
 ---
 
-## 1. Inventario: cosa produce Kubo oggi
+## 1. Inventario: cosa produce Lumi oggi
 
 Fonti: `server/moduli/documenti*.js`, `modelli/fatture.json`, `docs/DOCUMENTI.md`.
 
@@ -80,7 +80,7 @@ Oltre allo schema, il test applica i **controlli di coerenza dello SDI**, riscri
 
 | Caso | Schema XSD | Controlli SDI | Note |
 |---|---|---|---|
-| File atteso dei test di Kubo (`fattura-attesa.xml`) | valido | — | I test di Kubo controllavano solo che fosse XML ben formato, mai lo schema |
+| File atteso dei test di Lumi (`fattura-attesa.xml`) | valido | — | I test di Lumi controllavano solo che fosse XML ben formato, mai lo schema |
 | 1. Forfettario RF19, N2.2, bollo, dicitura | **valido** | ok | `controlla()` avverte se manca il bollo o se c'è l'IVA |
 | 1b. Bollo rifatturato nel totale | — | — | todo: il totale e il netto non includono i 2 € |
 | 2. Professionista con ritenuta 20% RT01/A e riga spese N1 | **valido** | ok | |
@@ -89,7 +89,7 @@ Oltre allo schema, il test applica i **controlli di coerenza dello SDI**, riscri
 | 3. Nota di credito TD04 collegata | **valido** | ok | `DatiFattureCollegate` con numero e data |
 | 4. Cliente UE (DE, N3.2) ed extra UE (US, N3.1), `XXXXXXX` | **valido** | ok | ma vedi 4c |
 | 4c. Bollo su N3.1, N3.2, N6 | — | — | **bug**: `controlla()` lo pretende e blocca l'esportazione |
-| 5. PA (codice ufficio di 6 caratteri) | valido se forzato | **00427: scarto** | Kubo si ferma prima, giustamente («serve FPA12») |
+| 5. PA (codice ufficio di 6 caratteri) | valido se forzato | **00427: scarto** | Lumi si ferma prima, giustamente («serve FPA12») |
 | 5b. FPA12, split payment, CIG/CUP | — | — | **manca** |
 | 6. Privato con solo codice fiscale | **valido** | ok | |
 | 7. Sconti 10%, 33,33%, maggiorazione 15%, quantità 2,5 | **valido** | ok | |
@@ -99,7 +99,7 @@ Oltre allo schema, il test applica i **controlli di coerenza dello SDI**, riscri
 | 9. Tipi TD02, TD07, TD16-19 | — | — | mancano nel modello |
 | 10. Controprova: date sbagliate, ordine degli elementi, natura N9 | **rifiutato** | — | la validazione XSD morde davvero |
 
-**Esito:** tutti i file che Kubo accetta di esportare sono validi contro lo schema ufficiale 1.2.2 e superano i controlli aritmetici dello SDI.
+**Esito:** tutti i file che Lumi accetta di esportare sono validi contro lo schema ufficiale 1.2.2 e superano i controlli aritmetici dello SDI.
 
 Non ho potuto provare le **altre** verifiche dello SDI che richiedono i suoi archivi: partita IVA esistente in Anagrafe tributaria, codice destinatario registrato, file già ricevuto. Lì l'unica prova vera è il caricamento su «Fatture e Corrispettivi».
 
@@ -116,7 +116,7 @@ La prova usa un finto Claude locale, come `test/lumi.test.mjs`. Il percorso è q
 **«fai una fattura a Rossi Srl per 3 ore di consulenza a 80 euro più IVA»: riesce.**
 
 1. `cerca_clienti`, poi `crea_fatture` con `{ cliente: "Rossi Srl", righe: [{ quantita: 3, prezzo: 80, aliquota: 22 }] }`. Il risultato è una fattura **in bozza** da 240 € + 52,80 € di IVA = 292,80 €, con l'IVA ricalcolata dal server.
-2. «emettila»: `modifica_fatture { stato: "emessa" }`. Il numero lo assegna Kubo.
+2. «emettila»: `modifica_fatture { stato: "emessa" }`. Il numero lo assegna Lumi.
 3. «mandami l'XML»: **nessuno strumento**. Bisogna premere il bottone FatturaPA. Il file che esce dai dati scritti da Lumi è comunque **valido contro l'XSD** (verificato nel test).
 
 **«fai la nota di credito della fattura 12»: riesce solo se il modello «indovina» la ricostruzione.**
@@ -134,7 +134,7 @@ Se lo fa giusto, il risultato coincide con quello del bottone (tipo, totale, rit
 - **La scheda di conferma non mostra gli importi.** La persona conferma vedendo `[Documento: Fattura] [Cliente: Rossi Srl] [Data] [Righe: 1 riga]`, senza prezzi, IVA né totale (todo).
 - **Nessun controllo fiscale prima della conferma.** Lumi crea ed emette una fattura con IVA 0 e senza natura; l'errore esce solo all'esportazione.
 - **Una fattura emessa si cambia a parole** (il prezzo passa da 100 a 150), senza nota di credito.
-- **Il numero si può scrivere a mano.** Kubo rifiuta solo i doppioni dello stesso anno, e questo è un controllo buono.
+- **Il numero si può scrivere a mano.** Lumi rifiuta solo i doppioni dello stesso anno, e questo è un controllo buono.
 
 **Cosa manca perché Lumi lo faccia davvero:**
 
@@ -164,7 +164,7 @@ Se lo fa giusto, il risultato coincide con quello del bottone (tipo, totale, rit
 | Fattura differita TD24 | **parziale**: mancano i DDT |
 | Stampa e PDF | **fatto**, ma non da Lumi |
 | Prezzi con 3 o più decimali, sconti in valore | **manca** (con errore d'importo) |
-| PA (FPA12, split payment, CIG/CUP) | **manca** (Kubo blocca correttamente) |
+| PA (FPA12, split payment, CIG/CUP) | **manca** (Lumi blocca correttamente) |
 | Autofatture TD16-19, acconto, semplificata | **manca** |
 | Fatture passive, registri IVA, liquidazione, prima nota, F24, corrispettivi | **manca** |
 | Lumi «a parole» | **parziale**: crea ed emette fatture con strumenti generici; non esporta, non stampa, non storna con la rotta dedicata, non controlla prima della conferma |
@@ -177,19 +177,19 @@ Se lo fa giusto, il risultato coincide con quello del bottone (tipo, totale, rit
    - Prezzo unitario fino a 8 decimali (`Amount8DecimalType`).
 2. **Blocco dopo l'emissione.** Una fattura emessa o inviata non si modifica più: si corregge con una nota di credito. Lo stato «inviata» va registrato con la data e il nome del file.
 3. **Strumenti Lumi dedicati** con controllo e scheda completa: emetti, nota di credito, controlla, esporta FatturaPA, stampa/PDF, più le istruzioni fiscali nel prompt.
-4. **Validazione XSD nei test di Kubo**, con lo schema ufficiale versionato in `test/documenti/xsd/`, come fatto qui.
+4. **Validazione XSD nei test di Lumi**, con lo schema ufficiale versionato in `test/documenti/xsd/`, come fatto qui.
 5. **Professionisti**: `DatiCassaPrevidenziale` (TC01-TC22, con l'aliquota IVA della cassa e la ritenuta sulla cassa), RT03-RT06, `DatiDDT` per TD24, rivalsa del bollo nel totale.
 6. **Tipi mancanti**: TD02, TD07, TD16-TD19 (autofattura reverse charge e integrazione, con il fornitore come cedente) e TD20.
 7. **PA**: FPA12, codice ufficio, CIG/CUP, split payment, firma digitale (CAdES `.p7m`, con un certificato del titolare).
 8. **Ciclo passivo**: import degli XML e P7M ricevuti dal cassetto fiscale, fornitori, scadenzario dei debiti.
 9. **Per il commercialista**: registri IVA vendite e acquisti, riepilogo della liquidazione periodica, ZIP degli XML del periodo, CSV della prima nota.
-10. **Facoltativo**: invio allo SDI tramite un intermediario accreditato (plugin che usa `POST /api/documenti/fatturapa/:id`) e ricevute dentro Kubo.
+10. **Facoltativo**: invio allo SDI tramite un intermediario accreditato (plugin che usa `POST /api/documenti/fatturapa/:id`) e ricevute dentro Lumi.
 
 ### Cosa resta comunque fuori: per legge o perché serve un soggetto abilitato
 
 - **Trasmissione allo SDI**: la puoi fare da solo dal portale «Fatture e Corrispettivi» (SPID/CIE). Un canale diretto SDICoop o SFTP richiede l'accreditamento all'Agenzia: nella pratica serve un intermediario.
-- **Conservazione a norma per 10 anni**: con il servizio gratuito dell'Agenzia (adesione) o con un conservatore accreditato, non dentro Kubo.
-- **Dichiarazioni** (IVA annuale, Redditi, IRAP, 770, Certificazione Unica, LIPE) e **invio telematico** dell'F24 con compensazioni: la trasmissione è riservata agli intermediari abilitati (art. 3 c.3 DPR 322/98), cioè commercialisti, CAF e consulenti del lavoro. In alternativa le invii da solo con le tue credenziali Entratel/Fisconline. Kubo può prepararne i dati, ma non è un intermediario.
+- **Conservazione a norma per 10 anni**: con il servizio gratuito dell'Agenzia (adesione) o con un conservatore accreditato, non dentro Lumi.
+- **Dichiarazioni** (IVA annuale, Redditi, IRAP, 770, Certificazione Unica, LIPE) e **invio telematico** dell'F24 con compensazioni: la trasmissione è riservata agli intermediari abilitati (art. 3 c.3 DPR 322/98), cioè commercialisti, CAF e consulenti del lavoro. In alternativa le invii da solo con le tue credenziali Entratel/Fisconline. Lumi può prepararne i dati, ma non è un intermediario.
 - **Responsabilità e scelte fiscali**: regime, natura e qualifica delle operazioni, dichiarazioni d'intento, ravvedimenti, bilancio delle società di capitali. Un software, Lumi compreso, può proporre ma non firma e non risponde. Il contribuente resta responsabile di quello che emette.
 
-**In una riga:** per **emettere** fatture ordinarie e del forfettario, Kubo è già affidabile (file valido contro lo schema ufficiale). Lumi ci arriva a metà: crea ed emette, ma non esporta e non controlla. «Non mi serve il commercialista per i documenti» è raggiungibile con i punti 1-6. Per la contabilità e le dichiarazioni il commercialista, o un intermediario, resta necessario per legge o per competenza.
+**In una riga:** per **emettere** fatture ordinarie e del forfettario, Lumi è già affidabile (file valido contro lo schema ufficiale). L'assistente ci arriva a metà: crea ed emette, ma non esporta e non controlla. «Non mi serve il commercialista per i documenti» è raggiungibile con i punti 1-6. Per la contabilità e le dichiarazioni il commercialista, o un intermediario, resta necessario per legge o per competenza.

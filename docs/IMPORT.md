@@ -8,7 +8,7 @@ Tutto senza dipendenze: lo zip dei file `.xlsx` si legge e si scrive con `node:z
 
 1. Scegli dove vanno le righe: una sezione che c'è già, oppure **una nuova sezione dal foglio**.
 2. Carica il file `.xlsx` o `.csv`, anche trascinandolo. La prima riga deve avere i nomi delle colonne.
-3. Kubo mostra le prime righe e abbina da solo le colonne ai campi: nomi uguali o simili, e sinonimi come «E-mail», «Cell.» e «Ragione sociale». Ogni abbinamento si può cambiare, oppure si sceglie **+ Crea il campo** e il tipo viene indovinato dai valori.
+3. Lumi mostra le prime righe e abbina da solo le colonne ai campi: nomi uguali o simili, e sinonimi come «E-mail», «Cell.» e «Ragione sociale». Ogni abbinamento si può cambiare, oppure si sceglie **+ Crea il campo** e il tipo viene indovinato dai valori.
 4. **Righe già presenti**: scegli un campo che le riconosce (di solito quello «senza doppioni», come l'email) e cosa fare quando ne trova una: aggiornarla o saltarla. Anche i doppioni dentro lo stesso file finiscono su una riga sola.
 5. **Prova senza salvare** fa tutto il giro e poi annulla. **Importa** salva tutto in una transazione.
 
@@ -50,31 +50,31 @@ Le celle vuote non cancellano niente. Il CSV può essere UTF-8 o Windows-1252, c
 In **API e integrazioni** ognuno crea i suoi token: un nome, una scadenza (30 giorni, 90, un anno o mai).
 
 - Il token si vede una volta sola. Nel database resta solo la sua impronta SHA-256.
-- Con `Authorization: Bearer kubo_…` vale per tutte le `/api/*` e ha gli stessi permessi del ruolo di chi l'ha creato.
+- Con `Authorization: Bearer lumi_…` vale per tutte le `/api/*` e ha gli stessi permessi del ruolo di chi l'ha creato.
 - Con un token non si creano altri token, non si gestiscono i webhook e non si scarica il backup.
 - La pagina contiene la documentazione generata dallo schema: campi, formati ed esempi `curl` per ogni sezione.
 - `GET /api/openapi.json` dà la descrizione OpenAPI 3, utile per Postman, Swagger o per generare un client.
 
 ```bash
-curl -H "Authorization: Bearer $KUBO_TOKEN" "http://localhost:4380/api/dati/clienti?q=rossi"
-curl -X POST -H "Authorization: Bearer $KUBO_TOKEN" -H "Content-Type: application/json" \
+curl -H "Authorization: Bearer $LUMI_TOKEN" "http://localhost:4380/api/dati/clienti?q=rossi"
+curl -X POST -H "Authorization: Bearer $LUMI_TOKEN" -H "Content-Type: application/json" \
   -d '{"nome":"Bar Centrale","email":"bar@centrale.it"}' http://localhost:4380/api/dati/clienti
 ```
 
 ## Webhook
 
-I webhook li gestisce solo il titolare. Per ogni webhook si sceglie un indirizzo, le sezioni (oppure tutte) e gli eventi: creato, modificato, archiviato, ripristinato. Kubo manda un `POST` JSON:
+I webhook li gestisce solo il titolare. Per ogni webhook si sceglie un indirizzo, le sezioni (oppure tutte) e gli eventi: creato, modificato, archiviato, ripristinato. Lumi manda un `POST` JSON:
 
 ```json
 { "evento": "clienti.crea", "entita": "clienti", "id": "…", "tipo": "crea", "quando": "…", "da": "<id persona>",
   "dati": { … la riga dopo … }, "prima": { … solo per modifica ed elimina … }, "consegna": 42 }
 ```
 
-Le intestazioni sono `X-Kubo-Evento`, `X-Kubo-Consegna`, `X-Kubo-Tempo` e `X-Kubo-Firma: sha256=<HMAC-SHA256 del segreto su "<tempo>.<corpo>">`.
+Le intestazioni sono `X-Lumi-Evento`, `X-Lumi-Consegna`, `X-Lumi-Tempo` e `X-Lumi-Firma: sha256=<HMAC-SHA256 del segreto su "<tempo>.<corpo>">`.
 
 - La consegna si scrive nella stessa transazione della modifica: se la modifica si annulla, non parte niente.
 - La spedizione avviene dopo.
-- Se l'indirizzo non risponde 2xx, Kubo riprova dopo 30 s, 2 min, 10 min, 30 min e 2 h. Dopo l'ultimo tentativo la consegna risulta «fallita» e si può riprovare a mano.
+- Se l'indirizzo non risponde 2xx, Lumi riprova dopo 30 s, 2 min, 10 min, 30 min e 2 h. Dopo l'ultimo tentativo la consegna risulta «fallita» e si può riprovare a mano.
 - Il registro mostra stato, tentativi, codice e inizio della risposta.
 
 ## File

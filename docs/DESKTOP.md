@@ -6,9 +6,9 @@ Come si installa: [INSTALLARE.md](INSTALLARE.md). Qui c'è come è fatto.
 
 | file | cosa fa |
 |---|---|
-| `desktop/main.mjs` | l'app Electron: la prima scelta, Kubo nel processo principale, la finestra, l'icona nel vassoio, l'avvio con il sistema |
-| `desktop/kubo.mjs` | `accendi({ radice, cartella, porta, rete })`: accende lo stesso server di `server/` (porta occupata → prova le 10 dopo) e restituisce `chiudi()` |
-| `desktop/scelta.html`, `scelta.js`, `preload.cjs` | la prima scelta «Questo PC tiene i dati» / «Collegati a un Kubo in rete» e il ponte minimo con la pagina |
+| `desktop/main.mjs` | l'app Electron: la prima scelta, Lumi nel processo principale, la finestra, l'icona nel vassoio, l'avvio con il sistema |
+| `desktop/server.mjs` | `accendi({ radice, cartella, porta, rete })`: accende lo stesso server di `server/` (porta occupata → prova le 10 dopo) e restituisce `chiudi()` |
+| `desktop/scelta.html`, `scelta.js`, `preload.cjs` | la prima scelta «Questo PC tiene i dati» / «Collegati a Lumi in rete» e il ponte minimo con la pagina |
 | `desktop/icona.mjs` | disegna l'icona dell'app (`build/icon.png`) e quella del vassoio, senza file di grafica |
 | `server/moduli/desktop.js` | le rotte e gli orari: backup del giorno, backup prima delle modifiche, versioni nuove |
 | `server/moduli/desktop-backup.js` | copia (VACUUM INTO), rotazione, allegati incrementali, verifica, ripristino |
@@ -20,11 +20,11 @@ Come si installa: [INSTALLARE.md](INSTALLARE.md). Qui c'è come è fatto.
 
 ## L'app
 
-- **Il processo principale.** Kubo gira dentro il processo principale di Electron (Node 24 in Electron 44, con `node:sqlite`). Non c'è un secondo processo né un Node a parte.
-- **Cartelle.** Nel pacchetto `server/`, `web/` e `modelli/` stanno in `resources/kubo`. In sviluppo si usa la cartella sopra `desktop/`.
-- **Le finestre sono isolate.** Hanno `contextIsolation` e `sandbox`, e niente Node nella pagina. Navigano solo sull'origine di Kubo. I collegamenti esterni (solo `https:` e `mailto:`) si aprono nel browser.
-- **Il ponte.** Il preload espone `kuboAvvio.scegli()` alla prima scelta e `kuboDesktop.scegliCartella()` al gestionale, dove serve per scegliere la cartella dei backup con la finestra del sistema: solo quando i dati sono su questo PC (a un Kubo in rete non si dà niente, e la cartella sarebbe di questo PC e non del server). Il processo principale controlla sempre chi chiede.
-- **Un ripristino ricarica la finestra.** Il server emette `process.emit('kubo:ripristinato')` e l'app ricarica.
+- **Il processo principale.** Lumi gira dentro il processo principale di Electron (Node 24 in Electron 44, con `node:sqlite`). Non c'è un secondo processo né un Node a parte.
+- **Cartelle.** Nel pacchetto `server/`, `web/` e `modelli/` stanno in `resources/lumi`. In sviluppo si usa la cartella sopra `desktop/`.
+- **Le finestre sono isolate.** Hanno `contextIsolation` e `sandbox`, e niente Node nella pagina. Navigano solo sull'origine di Lumi. I collegamenti esterni (solo `https:` e `mailto:`) si aprono nel browser.
+- **Il ponte.** Il preload espone `gestionaleAvvio.scegli()` alla prima scelta e `gestionaleDesktop.scegliCartella()` al gestionale, dove serve per scegliere la cartella dei backup con la finestra del sistema: solo quando i dati sono su questo PC (a Lumi in rete non si dà niente, e la cartella sarebbe di questo PC e non del server). Il processo principale controlla sempre chi chiede.
+- **Un ripristino ricarica la finestra.** Il server emette `process.emit('gestionale:ripristinato')` e l'app ricarica.
 
 Le opzioni:
 
@@ -32,7 +32,7 @@ Le opzioni:
 |---|---|
 | `--nascosto` | parte senza finestra; è quella dell'avvio con il sistema |
 | `--cartella-utente <dir>` | impostazioni e dati altrove (installazione portatile) |
-| `--prova` | accende Kubo senza finestre in una cartella temporanea, controlla `/api/stato`, stampa `PROVA OK` ed esce |
+| `--prova` | accende Lumi senza finestre in una cartella temporanea, controlla `/api/stato`, stampa `PROVA OK` ed esce |
 | `--foto <prefisso>` | per le prove: fotografa la prima scelta e il gestionale ed esce |
 
 ### Costruire gli installatori
@@ -44,12 +44,12 @@ cd desktop
 npm install          # electron e electron-builder (devDependencies)
 npm start            # prova l'app dai sorgenti
 npm run prova        # la modalità di prova, senza finestre
-npm run dist:mac     # dist/Kubo-x.y.z-mac.dmg (universale)
-npm run dist:win     # dist/Kubo-x.y.z-windows.exe (NSIS, senza diritti di amministratore)
-npm run dist:linux   # dist/Kubo-x.y.z-linux.AppImage e .deb
+npm run dist:mac     # dist/Lumi-x.y.z-mac.dmg (universale)
+npm run dist:win     # dist/Lumi-x.y.z-windows.exe (NSIS, senza diritti di amministratore)
+npm run dist:linux   # dist/Lumi-x.y.z-linux.AppImage e .deb
 ```
 
-`dist:*` disegna prima l'icona (`npm run icona`). Sul Mac, prima di `dist:mac`, compila la voce locale con `bash voce-mac/compila.sh`: `desktop/bin/kubo-voce` (solo arm64) entra nel pacchetto in `Resources/kubo/bin`, e `x64ArchFiles` lo lascia com'è nell'app universale. Se manca, l'app si costruisce lo stesso, senza voce locale. Il microfono ha la sua frase in `NSMicrophoneUsageDescription`. Nell'app per Windows e Linux sherpa-onnx non c'è ancora: lì Lumi ascolta con Deepgram o con la voce del browser ([LUMI.md](LUMI.md#la-voce)). Gli installatori vanno pubblicati come «release» su GitHub (W1kicartel/Lumi).
+`dist:*` disegna prima l'icona (`npm run icona`). Sul Mac, prima di `dist:mac`, compila la voce locale con `bash voce-mac/compila.sh`: `desktop/bin/lumi-voce` (solo arm64) entra nel pacchetto in `Resources/lumi/bin`, e `x64ArchFiles` lo lascia com'è nell'app universale. Se manca, l'app si costruisce lo stesso, senza voce locale. Il microfono ha la sua frase in `NSMicrophoneUsageDescription`. Nell'app per Windows e Linux sherpa-onnx non c'è ancora: lì Lumi ascolta con Deepgram o con la voce del browser ([LUMI.md](LUMI.md#la-voce)). Gli installatori vanno pubblicati come «release» su GitHub (W1kicartel/Lumi).
 
 Prima di distribuirli bisogna firmarli:
 
@@ -61,7 +61,7 @@ Prima di distribuirli bisogna firmarli:
 - `GET /api/desktop/rete` restituisce gli IPv4 della rete locale, prima quelli privati (192.168, 10, 172.16-31).
 - Per ognuno dà l'URL, il **codice** e la matrice del **QR**. Il codice è IP e porta in 10 caratteri base 32, senza I, L, O, U, per esempio `R8M0-0A1C-4W`.
 - Dietro un proxy si aggiunge l'indirizzo con cui si è arrivati (`Host` e `X-Forwarded-Proto`).
-- Se Kubo ascolta solo su 127.0.0.1, la pagina spiega come aprirlo alla rete.
+- Se Lumi ascolta solo su 127.0.0.1, la pagina spiega come aprirlo alla rete.
 
 Il QR usa il modo byte con la correzione M: sopporta circa il 15% di danni, abbastanza per uno schermo fotografato. Si sceglie la versione più piccola che basta: un indirizzo locale sta nella versione 2 (25×25). La maschera è quella con la penalità più bassa, come vuole la norma.
 
@@ -69,7 +69,7 @@ Il test lo rilegge con un lettore scritto da capo e controlla i valori noti dell
 
 ## Backup
 
-Nomi dei file: `kubo-AAAA-MM-GG-hh-mm-ss-<tipo>.db`, nella cartella `backup/` accanto ai dati oppure in una cartella scelta dal titolare.
+Nomi dei file: `lumi-AAAA-MM-GG-hh-mm-ss-<tipo>.db`, nella cartella `backup/` accanto ai dati oppure in una cartella scelta dal titolare.
 
 | tipo | quando | quanti se ne tengono |
 |---|---|---|
@@ -92,7 +92,7 @@ Il ripristino non spegne il server. Va così:
    - `integrity_check`;
    - le tabelle del motore;
    - almeno un titolare attivo;
-   - una versione dello schema non più nuova di quella di Kubo.
+   - una versione dello schema non più nuova di quella di Lumi.
 2. Si fa una copia di **sicurezza** di adesso.
 3. Il backup si prepara in un file a parte, in una cartella provvisoria:
    - si apre con `apri()` di `server/db.js`, che fa le migrazioni del motore che mancano a un backup di una versione vecchia;
@@ -117,4 +117,4 @@ Il controllo è spento finché il titolare non lo accende. Una volta al giorno l
 - si confronta il numero con la versione di `package.json`, saltando bozze e pre-release;
 - il collegamento mostrato è solo una pagina `https://github.com/…`.
 
-Se c'è una versione nuova, il titolare vede un avviso discreto, una volta per versione. Kubo non scarica e non installa mai niente. Nei test `KUBO_AGGIORNAMENTI_URL` punta a un finto server locale.
+Se c'è una versione nuova, il titolare vede un avviso discreto, una volta per versione. Lumi non scarica e non installa mai niente. Nei test `LUMI_AGGIORNAMENTI_URL` punta a un finto server locale.

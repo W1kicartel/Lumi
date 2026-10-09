@@ -1,6 +1,6 @@
 # Documenti, stampe e fattura elettronica
 
-Il modulo **Documenti** fa uscire i dati da Kubo in forma ufficiale: documenti A4 da stampare o salvare in PDF, fatture numerate come vuole la legge e il file **FatturaPA** da mandare allo SDI.
+Il modulo **Documenti** fa uscire i dati da Lumi in forma ufficiale: documenti A4 da stampare o salvare in PDF, fatture numerate come vuole la legge e il file **FatturaPA** da mandare allo SDI.
 
 Il codice sta tutto in file suoi:
 
@@ -35,7 +35,7 @@ La partita IVA, il codice fiscale e l'IBAN si controllano con la cifra di contro
 - **codice fiscale delle società:** 11 cifre, come la partita IVA;
 - **IBAN:** il modulo 97, con la lunghezza giusta per ogni paese.
 
-Il **logo** è un PNG o un JPEG di al massimo 300 KB. Si riconosce dai primi byte del file, non dal nome. Si salva in `<cartella dati>/documenti/logo.png` (o `.jpg`), accanto a `kubo.db`, e nel backup della cartella c'è anche lui.
+Il **logo** è un PNG o un JPEG di al massimo 300 KB. Si riconosce dai primi byte del file, non dal nome. Si salva in `<cartella dati>/documenti/logo.png` (o `.jpg`), accanto a `lumi.db`, e nel backup della cartella c'è anche lui.
 
 ## Modelli di stampa
 
@@ -83,13 +83,13 @@ Le vendite al banco hanno i prezzi con l'IVA dentro. Lì il modello predefinito 
 Il modello **Fatture e fattura elettronica** (`modelli/fatture.json`) si aggiunge a qualsiasi modello di settore e porta tre sezioni: fatture, righe e rate.
 
 - **Il documento:** fattura (TD01), fattura differita (TD24), nota di credito (TD04), nota di debito (TD05) o parcella (TD06).
-- **Numero:** lo assegna Kubo quando la fattura esce dalla bozza, cioè quando diventa **emessa**. Il numero conta per serie e per anno, prendendo l'anno dalla data della fattura: una fattura datata 31/12 ed emessa il 2/1 resta nell'anno vecchio. La serie è facoltativa: con la serie `B` i numeri sono `1/B`, `2/B`… Le bozze non hanno numero, così non restano buchi. Un numero scritto a mano viene rifiutato se nello stesso anno e nella stessa serie c'è già.
+- **Numero:** lo assegna Lumi quando la fattura esce dalla bozza, cioè quando diventa **emessa**. Il numero conta per serie e per anno, prendendo l'anno dalla data della fattura: una fattura datata 31/12 ed emessa il 2/1 resta nell'anno vecchio. La serie è facoltativa: con la serie `B` i numeri sono `1/B`, `2/B`… Le bozze non hanno numero, così non restano buchi. Un numero scritto a mano viene rifiutato se nello stesso anno e nella stessa serie c'è già.
 - **Righe:** descrizione, quantità, prezzo, sconto, aliquota IVA. Con l'IVA a 0 serve la **natura** (N1…N7, con le sottocategorie del 2021).
 - **IVA:** si calcola da sola a ogni salvataggio, per aliquota sul totale delle righe e non riga per riga, come vuole la FatturaPA. Tre righe da 0,10 € al 22% fanno 0,07 € di IVA, non 0,06 €.
 - **Ritenuta d'acconto:** aliquota, tipo (RT01 o RT02) e causale. Poi il netto a pagare.
 - **Bollo virtuale da 2 €:** il controllo avverte se le righe senza IVA superano 77,47 €.
 - **Pagamento:** condizioni (completo, a rate, anticipo), modalità (bonifico, contanti, carta, RIBA, SDD, PagoPA), scadenza, rate. «Scaduta» si calcola da sola. Quando la fattura passa a **pagata**, un'automazione segna la data.
-- **Regime forfettario (RF19):** le fatture create da Kubo hanno righe a 0 con natura N2.2, e la dicitura di legge va sia in stampa sia nel file XML.
+- **Regime forfettario (RF19):** le fatture create da Lumi hanno righe a 0 con natura N2.2, e la dicitura di legge va sia in stampa sia nel file XML.
 
 **Crea fattura.** Nella scheda di una vendita, di un preventivo, di una commessa o di qualsiasi sezione collegata ai clienti c'è il bottone **Crea fattura**, che crea una fattura in bozza:
 
@@ -126,7 +126,7 @@ I test confrontano il file con un esempio atteso (`test/documenti/fattura-attesa
 
 ### Come si manda allo SDI
 
-Kubo **non** manda niente allo SDI e non si collega a nessun servizio esterno. Il file va consegnato in uno di questi modi:
+Lumi **non** manda niente allo SDI e non si collega a nessun servizio esterno. Il file va consegnato in uno di questi modi:
 
 1. **Portale «Fatture e Corrispettivi» dell'Agenzia delle Entrate.** È gratuito: si entra con SPID, CIE o CNS e si carica il file XML. La firma digitale non è obbligatoria per le fatture tra privati. Le ricevute (consegna, scarto, mancata consegna) si leggono sul portale.
 2. **Un intermediario** (il commercialista o un servizio di fatturazione elettronica). Si carica il file sul loro portale, oppure lo si manda con la loro API o via PEC. Loro lo trasmettono, ti girano le ricevute e di solito pensano anche alla conservazione a norma per 10 anni.
@@ -134,18 +134,18 @@ Kubo **non** manda niente allo SDI e non si collega a nessun servizio esterno. I
 
 Per un collegamento diretto (canali SDICoop o SFTP) serve l'accreditamento presso l'Agenzia delle Entrate. Il posto giusto è un plugin che legge il file da `POST /api/documenti/fatturapa/:id` e lo passa all'intermediario.
 
-Se lo SDI scarta una fattura, correggila in Kubo ed esportala di nuovo: il file avrà un progressivo nuovo. Lascia la stessa data e lo stesso numero, se la fattura scartata non è mai stata consegnata.
+Se lo SDI scarta una fattura, correggila in Lumi ed esportala di nuovo: il file avrà un progressivo nuovo. Lascia la stessa data e lo stesso numero, se la fattura scartata non è mai stata consegnata.
 
 ### Cosa non c'è ancora
 
 - Le fatture alla Pubblica Amministrazione: servono il formato FPA12, il codice ufficio di 6 caratteri, il CIG/CUP e la firma.
-- L'invio diretto allo SDI, le ricevute dentro Kubo, le fatture passive (quelle che ricevi) e la conservazione a norma.
+- L'invio diretto allo SDI, le ricevute dentro Lumi, le fatture passive (quelle che ricevi) e la conservazione a norma.
 - Cassa previdenziale, sconti in valore, prezzi unitari con più di due decimali e il cliente persona fisica con Nome e Cognome separati: oggi tutto va in `Denominazione`, che lo SDI accetta.
 - Il blocco delle modifiche dopo l'emissione: oggi una fattura emessa si può ancora correggere. Una volta inviata, per correggerla si fa una nota di credito (c'è il bottone).
 
 ## API
 
-Tutte le chiamate vogliono l'accesso. Quelle che scrivono vogliono l'intestazione `X-Kubo: 1`.
+Tutte le chiamate vogliono l'accesso. Quelle che scrivono vogliono l'intestazione `X-Lumi: 1`.
 
 | metodo e percorso | cosa fa |
 |---|---|

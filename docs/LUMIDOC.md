@@ -49,7 +49,7 @@ Gli errori tornano al modello in parole: argomenti sbagliati («args.righe[0].pr
 
 | Strumento | | Cosa fa |
 |---|---|---|
-| `fattura_nuova` | scrive | Prepara la fattura in bozza: il cliente per nome e le righe a parole. IVA, natura, ritenuta, cassa e bollo li deduce Kubo |
+| `fattura_nuova` | scrive | Prepara la fattura in bozza: il cliente per nome e le righe a parole. IVA, natura, ritenuta, cassa e bollo li deduce Lumi |
 | `fattura_emetti` | scrive | La bozza prende il numero. Si ferma se l'esportazione non passerebbe |
 | `fattura_nota_di_credito` | scrive | Storno totale (uguale al bottone) o parziale (righe scelte o un importo, sempre positivo), mai oltre quello che resta della fattura |
 | `fattura_controlla` | legge | Gli stessi controlli dell'esportazione FatturaPA |

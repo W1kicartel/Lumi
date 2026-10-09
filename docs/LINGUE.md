@@ -1,6 +1,6 @@
-# Le lingue di Kubo
+# Le lingue di Lumi
 
-Kubo parla italiano, inglese, spagnolo, francese, tedesco e portoghese del Brasile.
+Lumi parla italiano, inglese, spagnolo, francese, tedesco e portoghese del Brasile.
 
 L'**italiano resta la lingua di partenza**: ogni testo nasce in italiano, ogni chiave c'è sempre in italiano, e se una traduzione manca si vede l'italiano.
 
@@ -15,15 +15,15 @@ L'**italiano resta la lingua di partenza**: ogni testo nasce in italiano, ogni c
 | i nomi dei modelli **nuovi**, installati nella lingua dell'azienda | |
 | i nomi delle funzioni nelle formule (accettati tutti, sempre) | |
 
-**La lingua è della persona, la valuta è dell'azienda.** In un negozio di Lugano la cassiera può avere Kubo in italiano e il titolare in tedesco: tutti e due vedono gli importi in franchi.
+**La lingua è della persona, la valuta è dell'azienda.** In un negozio di Lugano la cassiera può avere Lumi in italiano e il titolare in tedesco: tutti e due vedono gli importi in franchi.
 
 ## Come si sceglie la lingua
 
 `web/lingua.js` la legge prima di tutto il resto (`await` in cima al modulo). L'ordine:
 
 1. la lingua salvata sul server per l'utente (`GET /api/lingua`, tabella `_lingue_utenti`);
-2. l'ultima lingua usata in questo browser (`localStorage['kubo.lingua']`): serve prima dell'accesso, quando ancora non si sa chi è;
-3. la prima lingua del browser che Kubo conosce;
+2. l'ultima lingua usata in questo browser (`localStorage['lumi.lingua']`): serve prima dell'accesso, quando ancora non si sa chi è;
+3. la prima lingua del browser che Lumi conosce;
 4. l'italiano.
 
 Si cambia:

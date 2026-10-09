@@ -1,6 +1,6 @@
 # Sicurezza
 
-Kubo tiene i dati di un'azienda: clienti, prezzi, costi, fatture. Questa pagina dice cosa lo protegge, cosa si può regolare e cosa resta da fare. Il codice sta in `server/moduli/sicurezza.js` (con `sicurezza-rete.js`, `sicurezza-sql.js` e `sicurezza-migrazioni.js`) e in `web/moduli/sicurezza.js`. I test sono in `test/sicurezza.test.mjs`: ogni falla chiusa ha il suo.
+Lumi tiene i dati di un'azienda: clienti, prezzi, costi, fatture. Questa pagina dice cosa lo protegge, cosa si può regolare e cosa resta da fare. Il codice sta in `server/moduli/sicurezza.js` (con `sicurezza-rete.js`, `sicurezza-sql.js` e `sicurezza-migrazioni.js`) e in `web/moduli/sicurezza.js`. I test sono in `test/sicurezza.test.mjs`: ogni falla chiusa ha il suo.
 
 ## Accesso
 
@@ -14,7 +14,7 @@ Kubo tiene i dati di un'azienda: clienti, prezzi, costi, fatture. Questa pagina 
 
 ## Sessioni
 
-- Il cookie è `HttpOnly` e `SameSite=Strict`. Ogni scrittura vuole l'intestazione `X-Kubo: 1`, che una pagina di un altro sito non può aggiungere (CSRF).
+- Il cookie è `HttpOnly` e `SameSite=Strict`. Ogni scrittura vuole l'intestazione `X-Lumi: 1`, che una pagina di un altro sito non può aggiungere (CSRF).
 - **Inattività.** Una sessione ferma da più di 12 ore si chiude da sola, anche se la scheda resta aperta (smette di ricevere gli aggiornamenti). Il titolare sceglie il tempo, da 5 minuti a 30 giorni.
 - **Dispositivi.** *Sicurezza → Dispositivi collegati* elenca le proprie sessioni: browser e sistema, ultimo uso, indirizzo. Si può scollegare un dispositivo o tutti gli altri. Il token non esce mai: ogni sessione ha un'impronta.
 - Chi gestisce le persone può scollegare qualcuno da tutti i dispositivi.
@@ -48,13 +48,13 @@ Il vecchio campo si **archivia**: la colonna e i valori restano e si ripristina 
 
 ## Webhook e rete interna (SSRF)
 
-Un webhook verso `127.0.0.1`, `192.168.x.x`, `10.x`, `169.254.169.254` (i metadati dei cloud), `::1` o un nome come `router.lan` farebbe di Kubo un ponte verso i servizi dell'ufficio. Per questo:
+Un webhook verso `127.0.0.1`, `192.168.x.x`, `10.x`, `169.254.169.254` (i metadati dei cloud), `::1` o un nome come `router.lan` farebbe di Lumi un ponte verso i servizi dell'ufficio. Per questo:
 
 - **al salvataggio** si rifiuta l'indirizzo, e anche i numeri scritti in forme strane come `0x7f000001`, `2130706433` o `[::ffff:7f00:1]` (un IPv4 dentro IPv6);
 - **all'invio** si controlla l'indirizzo vero a cui ci si collega, dentro la connessione: un DNS che cambia risposta fra il controllo e l'invio (DNS rebinding) non passa;
 - i redirect non si seguono, e ogni invio ha un limite di tempo totale di 10 secondi (un ricevitore lento non ferma la coda).
 
-Se serve davvero un webhook interno, il titolare lo permette in *Sicurezza* (o con `KUBO_WEBHOOK_INTERNI=1`).
+Se serve davvero un webhook interno, il titolare lo permette in *Sicurezza* (o con `LUMI_WEBHOOK_INTERNI=1`).
 
 ## Allegati
 

@@ -21,7 +21,7 @@ Il giro completo di chi compra merce:
 
 ## Prepara gli acquisti
 
-La prima volta, **Acquisti → Prepara**. Solo chi può personalizzare può farlo. Kubo:
+La prima volta, **Acquisti → Prepara**. Solo chi può personalizzare può farlo. Lumi:
 
 - **sceglie la sezione del magazzino**: quella con la giacenza, cioè articoli nel negozio, ricambi nell'officina, materiali nel laboratorio, ingredienti nel ristorante, prodotti nel beauty. Se ce ne sono più di una si sceglie dalla tendina;
 - **usa gli «Ordini ai fornitori» che ci sono già** (il modello negozio), oppure li crea con le loro righe: numero `OF-AAAA-NNN`, data, fornitore, stato, consegna prevista, articoli, totale, note. Se c'è una sezione «ordini» che non è degli acquisti, crea `ordini_acquisto`. Se mancano i fornitori, crea anche quelli;
@@ -36,7 +36,7 @@ La prima volta, **Acquisti → Prepara**. Solo chi può personalizzare può farl
 
 Un articolo va riordinato quando la sua giacenza, più quanto è già ordinato e non ancora arrivato (ordini in bozza, inviati o arrivati in parte), non supera la soglia. Gli articoli con soglia 0 o vuota restano fuori.
 
-Kubo propone di tornare a **due volte la soglia**: quantità = 2 × soglia − giacenza − in arrivo, almeno 1. Il moltiplicatore si cambia con `PUT /api/acquisti/impostazioni { scorta }`, da 1 a 12. Le proposte sono divise per fornitore, quello scritto nella scheda dell'articolo, con il totale stimato al costo dell'articolo.
+Lumi propone di tornare a **due volte la soglia**: quantità = 2 × soglia − giacenza − in arrivo, almeno 1. Il moltiplicatore si cambia con `PUT /api/acquisti/impostazioni { scorta }`, da 1 a 12. Le proposte sono divise per fornitore, quello scritto nella scheda dell'articolo, con il totale stimato al costo dell'articolo.
 
 Nella pagina si ritoccano le quantità, si tolgono le righe che non servono e si sceglie il fornitore per gli articoli che non ce l'hanno. **Crea gli ordini** fa un ordine in bozza per ogni fornitore, con le righe al costo dell'articolo. Se il fornitore ha i «giorni di consegna», calcola anche la consegna prevista. Gli articoli già ordinati non vengono riproposti.
 
@@ -61,7 +61,7 @@ Non si riceve più di quello che manca, e un ordine arrivato o annullato non si 
 - il **ricevuto**: quantità ricevute × costo;
 - il **fatturato**: l'imponibile, senza IVA, della fattura ricevuta abbinata.
 
-Le candidate sono le fatture ricevute dello stesso fornitore, non ancora abbinate a un altro ordine e datate dal giorno dell'ordine in poi. Vengono ordinate per differenza dal ricevuto. Una fattura **torna** se la differenza sta entro 1 € o l'1%. **Abbina** la collega all'ordine, **Togli** la scollega. Una fattura di un altro fornitore, o già usata, viene rifiutata. È il confronto a tre vie (ordine, ricevimento, fattura) dei gestionali grandi, fatto sul valore. Le righe della fattura ricevuta non sono una sezione di Kubo, quindi il confronto riga per riga non si può ancora fare.
+Le candidate sono le fatture ricevute dello stesso fornitore, non ancora abbinate a un altro ordine e datate dal giorno dell'ordine in poi. Vengono ordinate per differenza dal ricevuto. Una fattura **torna** se la differenza sta entro 1 € o l'1%. **Abbina** la collega all'ordine, **Togli** la scollega. Una fattura di un altro fornitore, o già usata, viene rifiutata. È il confronto a tre vie (ordine, ricevimento, fattura) dei gestionali grandi, fatto sul valore. Le righe della fattura ricevuta non sono una sezione di Lumi, quindi il confronto riga per riga non si può ancora fare.
 
 ## Rotte
 

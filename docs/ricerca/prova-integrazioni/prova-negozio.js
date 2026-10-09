@@ -1,7 +1,7 @@
 // PROVA (ramo prova-integrazioni): un e-commerce tipo WooCommerce. Articoli e giacenze nei due sensi.
-//   dal negozio: i prodotti (sku → codice) entrano o si aggiornano negli articoli di Kubo (giro pianificato + «sincronizza ora»)
-//   verso il negozio: quando in Kubo cambia la giacenza di un articolo abbinato, PUT stock_quantity (coda in uscita)
-// Regola dei conflitti: per la giacenza comanda Kubo (la cassa scala il magazzino); dal negozio arrivano i prodotti nuovi,
+//   dal negozio: i prodotti (sku → codice) entrano o si aggiornano negli articoli di Lumi (giro pianificato + «sincronizza ora»)
+//   verso il negozio: quando in Lumi cambia la giacenza di un articolo abbinato, PUT stock_quantity (coda in uscita)
+// Regola dei conflitti: per la giacenza comanda Lumi (la cassa scala il magazzino); dal negozio arrivano i prodotti nuovi,
 // nome e prezzo. Scritto usando SOLO il contratto dei moduli, per misurare gli attriti.
 const PREFISSO = 'provaneg.';
 
@@ -19,7 +19,7 @@ export default function registra({ r, db, D, S, meta, serve, ErroreHttp }) {
   async function chiama(metodo, percorso, corpo) {
     const base = imp('url').replace(/\/+$/, ''), auth = 'Basic ' + Buffer.from(`${imp('chiave')}:${imp('segreto')}`).toString('base64');
     const rr = await fetch(`${base}/wp-json/wc/v3${percorso}`, { method: metodo, signal: AbortSignal.timeout(15000),
-      headers: { Authorization: auth, 'Content-Type': 'application/json', 'User-Agent': 'Kubo-Connettore/0' }, body: corpo ? JSON.stringify(corpo) : undefined });
+      headers: { Authorization: auth, 'Content-Type': 'application/json', 'User-Agent': 'Lumi-Connettore/0' }, body: corpo ? JSON.stringify(corpo) : undefined });
     if (!rr.ok) throw new Error(`${metodo} ${percorso}: ${rr.status} ${(await rr.text()).slice(0, 200)}`);
     return { json: await rr.json(), pagine: Number(rr.headers.get('x-wp-totalpages') || 1) };
   }
@@ -44,7 +44,7 @@ export default function registra({ r, db, D, S, meta, serve, ErroreHttp }) {
           }
           const a = D.leggi(db, 'articoli', id, null);
           if (a.nome !== valori.nome || a.prezzo !== valori.prezzo) { D.modifica(db, 'articoli', id, valori, null); n.aggiornati++; } else n.uguali++;
-          // la giacenza comanda Kubo: se il negozio è diverso, lo si riallinea
+          // la giacenza comanda Lumi: se il negozio è diverso, lo si riallinea
           if (pr.manage_stock && pr.stock_quantity !== a.giacenza) accoda(id, String(pr.id), a.giacenza);
         } finally { ineco = false; }
       }

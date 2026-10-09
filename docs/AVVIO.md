@@ -1,13 +1,13 @@
 # L'avvio guidato, i settori e i dati d'esempio
 
-I primi tre minuti decidono se Kubo piace. Per questo il primo avvio non mostra un modulo da riempire ma una domanda per schermata, e alla fine un gestionale già cucito sul lavoro di chi lo usa.
+I primi tre minuti decidono se Lumi piace. Per questo il primo avvio non mostra un modulo da riempire ma una domanda per schermata, e alla fine un gestionale già cucito sul lavoro di chi lo usa.
 
 ## Il percorso
 
 1. **Il nome dell'attività.**
 2. **Le domande** (`DOMANDE` in `server/moduli/avvio-piano.js`): che lavoro fai, prodotti o servizi, magazzino, lavori su misura, appuntamenti, fornitori, fatture, quante persone, chi sono (solo se non sei da solo), Lumi, dati d'esempio. Scegliendo il settore le altre risposte si preimpostano su quelle tipiche; quelle toccate a mano restano.
 3. **Il titolare** e il riepilogo di cosa verrà preparato.
-4. **«Prepara Kubo»**: tutto in una transazione (se qualcosa non va, non resta niente a metà). Se ci sono altre persone, Kubo mostra una volta le loro password provvisorie.
+4. **«Prepara Lumi»**: tutto in una transazione (se qualcosa non va, non resta niente a metà). Se ci sono altre persone, Lumi mostra una volta le loro password provvisorie.
 5. **Il giro guidato**: quattro tappe sopra l'interfaccia vera (sezioni, Personalizza, Lumi, cruscotto). Si salta con «Salta» o Esc e si rifà da *Primi passi → Dati d'esempio e giro*.
 
 ## Dalle risposte al piano
@@ -37,7 +37,7 @@ Un modello può dichiarare i suoi `ruoli` (Banco, Sala e Cucina, Tecnico, Istrut
 
 ## Il cruscotto
 
-Ogni modello può dichiarare il suo `cruscotto`: `widget` (numeri e grafici, come quelli di `server/moduli/agenda.js`) e voci di `attenzione`. All'avvio Kubo li unisce a quelli che l'agenda sa già fare per negozio, laboratorio e studio, e scarta quelli che usano campi spenti.
+Ogni modello può dichiarare il suo `cruscotto`: `widget` (numeri e grafici, come quelli di `server/moduli/agenda.js`) e voci di `attenzione`. All'avvio Lumi li unisce a quelli che l'agenda sa già fare per negozio, laboratorio e studio, e scarta quelli che usano campi spenti.
 
 ## I dati d'esempio
 

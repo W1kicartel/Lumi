@@ -80,7 +80,7 @@ Un cliente italiano con un codice ufficio di 6 caratteri è una PA.
 - Si sceglie l'esigibilità IVA, di solito S, cioè la scissione dei pagamenti.
 - **CIG** (10 caratteri) e **CUP** (15) vanno in `DatiOrdineAcquisto`, `DatiContratto` o `DatiConvenzione`. Il numero e la data del documento sono obbligatori se c'è il CIG o il CUP.
 
-La firma digitale che la PA pretende non la mette Kubo: il file si firma con lo strumento del titolare (CAdES `.p7m`) o lo firma l'intermediario.
+La firma digitale che la PA pretende non la mette Lumi: il file si firma con lo strumento del titolare (CAdES `.p7m`) o lo firma l'intermediario.
 
 ## Fatture ricevute
 

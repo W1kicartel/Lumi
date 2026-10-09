@@ -1,13 +1,13 @@
 # Prestazioni
 
-Kubo deve restare veloce anche quando l'azienda ha anni di dati: le liste sotto i 300 ms, gli aggregati sotto il secondo, anche con dieci persone collegate insieme.
+Lumi deve restare veloce anche quando l'azienda ha anni di dati: le liste sotto i 300 ms, gli aggregati sotto il secondo, anche con dieci persone collegate insieme.
 
 ## Come si misura
 
 ```bash
 node test/carico.mjs                      # questo ramo
-node test/carico.mjs --radice ../kubo     # un'altra copia (per esempio main): il «prima»
-KUBO_SENZA_SQL=1 node test/carico.mjs     # questo ramo senza percorso SQL dei calcolati e senza indici
+node test/carico.mjs --radice ../lumi     # un'altra copia (per esempio main): il «prima»
+LUMI_SENZA_SQL=1 node test/carico.mjs     # questo ramo senza percorso SQL dei calcolati e senza indici
 ```
 
 Lo script non fa parte di `npm test`. Crea un database in una cartella temporanea con il modello «negozio»:

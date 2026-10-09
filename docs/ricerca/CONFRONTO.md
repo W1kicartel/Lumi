@@ -1,6 +1,6 @@
-# Kubo contro i gestionali migliori
+# Lumi contro i gestionali migliori
 
-Ottobre 2026. Il confronto guarda quello che una piccola o media impresa italiana usa davvero ogni settimana, non l'elenco completo delle funzioni. Kubo è valutato sul codice di questo repository (modelli in `modelli/*.json`, moduli in `server/moduli/`). Gli altri prodotti sono valutati sulle edizioni che una PMI compra di solito:
+Ottobre 2026. Il confronto guarda quello che una piccola o media impresa italiana usa davvero ogni settimana, non l'elenco completo delle funzioni. Lumi è valutato sul codice di questo repository (modelli in `modelli/*.json`, moduli in `server/moduli/`). Gli altri prodotti sono valutati sulle edizioni che una PMI compra di solito:
 
 - **SAP B1**: SAP Business One 10, con la localizzazione italiana;
 - **Odoo CE / EE**: Odoo 18 Community ed Enterprise, con la localizzazione `l10n_it` e i moduli OCA per l'Italia;
@@ -11,7 +11,7 @@ Ottobre 2026. Il confronto guarda quello che una piccola o media impresa italian
 - **Danea**: Danea Easyfatt, edizioni Professional ed Enterprise.
 
 Legenda per gli altri prodotti: ● c'è · ◐ in parte, o solo con un modulo o un'app a pagamento · ○ manca.
-Per Kubo la colonna dice **c'è**, **parziale** o **manca**, con cosa c'è oggi.
+Per Lumi la colonna dice **c'è**, **parziale** o **manca**, con cosa c'è oggi.
 
 Fonti: le pagine di prodotto e le documentazioni ufficiali, consultate a memoria e ricontrollate nei punti dubbi:
 
@@ -27,7 +27,7 @@ Una funzione che esiste solo come app di terze parti è segnata ◐.
 
 ## La matrice
 
-| Area | Kubo | SAP B1 | Odoo CE | Odoo EE | BC | Zoho | TS / FiC | Zucchetti | Danea |
+| Area | Lumi | SAP B1 | Odoo CE | Odoo EE | BC | Zoho | TS / FiC | Zucchetti | Danea |
 |---|---|---|---|---|---|---|---|---|---|
 | **Vendite: preventivo → ordine → DDT → fattura** | **parziale**: preventivi (laboratorio, professionista), vendite al banco, «Crea fattura da», fattura differita TD24 con i DDT. Mancano l'ordine cliente con l'evasione parziale, il DDT come documento emesso con la causale del trasporto e la fattura riepilogativa di più DDT | ● | ● | ● | ● | ● | ● / ◐ | ● | ● |
 | **Acquisti: RdA, ordine al fornitore, ricevimento, abbinamento con la fattura** | **parziale**: ordini ai fornitori nel modello negozio, carico in un colpo solo, import XML delle fatture ricevute. Mancano i ricevimenti parziali, il confronto ordine-ricevuto-fattura (three-way match) e la proposta di riordino | ● | ● | ● | ● | ● | ● / ◐ | ● | ● |
@@ -61,7 +61,7 @@ Una funzione che esiste solo come app di terze parti è segnata ◐.
 | **Assistente AI che agisce sui dati, con conferma** | **c'è**: Lumi, con strumenti dei moduli e la scheda Conferma/Annulla | ◐ (Joule) | ○ | ◐ | ◐ (Copilot) | ◐ (Zia) | ◐ | ◐ | ○ |
 | **Personalizzazione senza codice e open source** | **c'è**: schema come dato, MIT, dati in locale | ○ | ● (codice) | ◐ (Studio) | ◐ | ◐ | ○ | ○ | ○ |
 
-### Dove Kubo è già davanti
+### Dove Lumi è già davanti
 
 L'assistente Lumi che agisce sui dati, sempre dopo un «Conferma»; lo schema che si cambia senza codice e senza perdere dati; il fisco del forfettario e dell'ordinario con F24 e LIPE pronti; i dati sul PC dell'azienda, senza canone.
 
@@ -80,15 +80,15 @@ Subito dopo vengono il ciclo degli acquisti e il magazzino vero: depositi, lotti
 5. **Acquisti completi: dall'ordine al fornitore al ricevimento parziale, poi l'abbinamento con la fattura passiva e la proposta di riordino.** Chi compra merce deve sapere cosa è arrivato e se la fattura corrisponde. Oggi il carico avviene in un colpo solo.
 6. **Magazzino avanzato: più depositi, trasferimenti, lotti, seriali e scadenze, inventario fisico, costo medio o FIFO.** Alimentari, cosmetica, ricambi ed elettronica hanno bisogno della tracciabilità dei lotti. Il bilancio vuole il magazzino valorizzato.
 7. **Ciclo di vendita a documenti: ordine cliente, DDT con la causale del trasporto, fattura differita riepilogativa, evasione parziale.** È il flusso del commercio all'ingrosso e dell'artigiano che consegna. Oggi la fattura nasce da un documento solo.
-8. **Contratti ricorrenti con fatture automatiche** (canoni, manutenzioni, abbonamenti). Fanno ricavi fissi senza lavoro manuale. Tutti i concorrenti li hanno, Kubo no.
+8. **Contratti ricorrenti con fatture automatiche** (canoni, manutenzioni, abbonamenti). Fanno ricavi fissi senza lavoro manuale. Tutti i concorrenti li hanno, Lumi no.
 9. **CRM con pipeline di opportunità** (valore, probabilità, fase, attività). Serve a chi vende servizi o fa preventivi, per sapere cosa entrerà. È un modello di settore più che codice: si fa presto.
-10. **Cassa touch con registratore telematico e documento commerciale.** Negozi, bar e ristoranti devono trasmettere i corrispettivi. Senza il collegamento al registratore telematico Kubo non può sostituire la cassa.
+10. **Cassa touch con registratore telematico e documento commerciale.** Negozi, bar e ristoranti devono trasmettere i corrispettivi. Senza il collegamento al registratore telematico Lumi non può sostituire la cassa.
 
 Poi vengono la contabilità analitica per centri di costo, le presenze e le note spese, il portale clienti, la distinta base con la produzione, l'helpdesk con gli SLA, la fidelity e la gestione di più aziende.
 
 ## Cosa è stato costruito in questo giro (giro 4, squadra «confronto»)
 
-La matrice qui sopra descrive Kubo **prima** di questo giro. Questo giro ha chiuso le lacune dalla 1 alla 5 e la 8, più una parte della 6:
+La matrice qui sopra descrive Lumi **prima** di questo giro. Questo giro ha chiuso le lacune dalla 1 alla 5 e la 8, più una parte della 6:
 
 | lacuna | modulo | adesso |
 |---|---|---|

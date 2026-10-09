@@ -9,10 +9,10 @@ import { attiva } from '../server/automazioni.js';
 
 attiva();
 const ascolta = srv => new Promise(r => srv.listen(0, '127.0.0.1', () => r(`http://127.0.0.1:${srv.address().port}`)));
-async function kubo() {
+async function gestionale() {
   const srv = creaServer(apri()), base = await ascolta(srv); let biscotto = '';
   const chiama = async (metodo, percorso, corpo) => {
-    const r = await fetch(base + percorso, { method: metodo, headers: { 'Content-Type': 'application/json', 'X-Kubo': '1', ...(biscotto ? { Cookie: biscotto } : {}) }, body: corpo ? JSON.stringify(corpo) : undefined });
+    const r = await fetch(base + percorso, { method: metodo, headers: { 'Content-Type': 'application/json', 'X-Lumi': '1', ...(biscotto ? { Cookie: biscotto } : {}) }, body: corpo ? JSON.stringify(corpo) : undefined });
     const c = r.headers.get('set-cookie'); if (c) biscotto = c.split(';')[0];
     return { stato: r.status, json: await r.json().catch(() => null) };
   };
@@ -29,7 +29,7 @@ async function mandaStripe(base, segreto, evento, { firma } = {}) {
 }
 
 test('(a) pagamento in ingresso → vendita pagata', async () => {
-  const { srv, base, chiama } = await kubo();
+  const { srv, base, chiama } = await gestionale();
   try {
     const art = (await chiama('POST', '/api/dati/articoli', { nome: 'Vaso', codice: 'V1', prezzo: 30, giacenza: 5 })).json;
     const v = await chiama('POST', '/api/dati/vendite', { righe: [{ articolo: art.id, quantita: 2, prezzo: 30 }] });
@@ -37,9 +37,9 @@ test('(a) pagamento in ingresso → vendita pagata', async () => {
     const segreto = 'whsec_provaprovaprova';
     assert.equal((await chiama('PUT', '/api/prova-pagamenti/impostazioni', { segreto })).stato, 200);
     const ev = { id: 'evt_1', object: 'event', type: 'payment_intent.succeeded', data: { object: { id: 'pi_1', amount: 6000, amount_received: 6000, currency: 'eur', metadata: { vendita: v.json.id } } } };
-    { // anche con X-Kubo (che Stripe non può mettere) il corpo ricostruito non ha la stessa firma del corpo grezzo
-      const corpo = JSON.stringify(ev, null, 2), r0 = await fetch(base + '/api/prova-pagamenti/webhook', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Kubo': '1', 'Stripe-Signature': firmaStripe(segreto, corpo) }, body: corpo });
-      console.log('con X-Kubo aggiunta a mano:', r0.status, await r0.text()); }
+    { // anche con X-Lumi (che Stripe non può mettere) il corpo ricostruito non ha la stessa firma del corpo grezzo
+      const corpo = JSON.stringify(ev, null, 2), r0 = await fetch(base + '/api/prova-pagamenti/webhook', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Lumi': '1', 'Stripe-Signature': firmaStripe(segreto, corpo) }, body: corpo });
+      console.log('con X-Lumi aggiunta a mano:', r0.status, await r0.text()); }
     const r1 = await mandaStripe(base, segreto, ev); console.log('webhook firmato:', r1.stato, JSON.stringify(r1.json));
     assert.equal(r1.stato, 200);
     assert.equal((await chiama('GET', `/api/dati/vendite/${v.json.id}`)).json.stato, 'pagata');
@@ -64,7 +64,7 @@ test('(b) WooCommerce: prodotti in entrata, giacenze in uscita', async () => {
     });
   });
   const urlWoo = await ascolta(woo);
-  const { srv, chiama } = await kubo();
+  const { srv, chiama } = await gestionale();
   try {
     const gia = (await chiama('POST', '/api/dati/articoli', { nome: 'Vaso', codice: 'V1', prezzo: 25, giacenza: 5 })).json;
     assert.equal((await chiama('PUT', '/api/prova-negozio/impostazioni', { url: urlWoo, chiave: 'ck_x', segreto: 'cs_y', minuti: 0 })).stato, 200);
@@ -73,7 +73,7 @@ test('(b) WooCommerce: prodotti in entrata, giacenze in uscita', async () => {
     assert.deepEqual(s.json, { creati: 1, aggiornati: 1, uguali: 1 });   // V1 abbinato per codice e aggiornato; P9 creato
     assert.equal((await chiama('GET', `/api/dati/articoli/${gia.id}`)).json.nome, 'Vaso blu');
     await chiama('POST', '/api/prova-negozio/spedisci');
-    assert.equal(prodotti[0].stock_quantity, 5, 'la giacenza comanda Kubo: il negozio torna a 5');
+    assert.equal(prodotti[0].stock_quantity, 5, 'la giacenza comanda Lumi: il negozio torna a 5');
     // una vendita in cassa scala il magazzino (automazione del modello) → la giacenza va al negozio
     await chiama('PATCH', `/api/dati/articoli/${gia.id}`, { giacenza: 2 });
     await chiama('POST', '/api/prova-negozio/spedisci');
@@ -81,7 +81,7 @@ test('(b) WooCommerce: prodotti in entrata, giacenze in uscita', async () => {
     const vend = await chiama('POST', '/api/dati/vendite', { righe: [{ articolo: gia.id, quantita: 1, prezzo: 30 }] });
     await chiama('PATCH', `/api/dati/vendite/${vend.json.id}`, { stato: 'pagata' });
     await chiama('POST', '/api/prova-negozio/spedisci');
-    console.log('dopo una vendita in cassa: Kubo', (await chiama('GET', `/api/dati/articoli/${gia.id}`)).json.giacenza, '· negozio', prodotti[0].stock_quantity);
+    console.log('dopo una vendita in cassa: Lumi', (await chiama('GET', `/api/dati/articoli/${gia.id}`)).json.giacenza, '· negozio', prodotti[0].stock_quantity);
     console.log('registro:', JSON.stringify((await chiama('GET', '/api/prova-negozio/registro')).json.map(x => `${x.verso}:${x.esito}`)));
     console.log('chiamate al finto Woo:', chiamate.join(' | '));
   } finally { srv.close(); woo.close(); }

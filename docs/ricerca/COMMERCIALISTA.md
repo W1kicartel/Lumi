@@ -1,4 +1,4 @@
-# Kubo / Lumi può sostituire il commercialista nella produzione dei documenti?
+# Lumi (gestionale e assistente) può sostituire il commercialista nella produzione dei documenti?
 
 Ricerca del 7 ottobre 2026: regole in vigore nel 2026, verificate sul web. Le fonti sono in fondo e accanto alle voci. Dove una data o una cifra non l'ho confermata su una fonte primaria lo dico esplicitamente con **[da verificare]**.
 
@@ -23,7 +23,7 @@ Per una **SRL in ordinaria** il risparmio è molto minore. Bilancio CEE, nota in
 
 ---
 
-## 1. Classificazione: cosa può fare Kubo
+## 1. Classificazione: cosa può fare Lumi
 
 | Classe | Significato |
 |---|---|
@@ -66,8 +66,8 @@ Novità della **v1.9.1** (dal 15/5/2026):
 
 | Documento | Chi | Quando | Formato | Invio | Classe |
 |---|---|---|---|---|---|
-| Memorizzazione e invio telematico dei corrispettivi + documento commerciale | Commercio al dettaglio, ristorazione | Invio giornaliero entro **12 giorni** | Registratore Telematico (RT) che invia da solo, oppure procedura web "Documento commerciale online" su F&C | L'RT invia da solo; la procedura web si usa con SPID | **B** (Kubo non può sostituire l'RT oggi) |
-| **Collegamento POS-RT** (L. 207/2024) | Tutti gli esercenti con RT | Obbligo dal **01/01/2026**. Abbinamento logico matricola RT ↔ POS sul portale F&C, attivo dal **5/3/2026**, entro 45 giorni (Provv. AdE **424470 del 31/10/2025**) ([fonte](https://www.leggioggi.it/pos-registratore-di-cassa-collegati-dal-2026/)) | Servizio web | Il titolare con SPID | **B** (Kubo può guidare l'operazione) |
+| Memorizzazione e invio telematico dei corrispettivi + documento commerciale | Commercio al dettaglio, ristorazione | Invio giornaliero entro **12 giorni** | Registratore Telematico (RT) che invia da solo, oppure procedura web "Documento commerciale online" su F&C | L'RT invia da solo; la procedura web si usa con SPID | **B** (Lumi non può sostituire l'RT oggi) |
+| **Collegamento POS-RT** (L. 207/2024) | Tutti gli esercenti con RT | Obbligo dal **01/01/2026**. Abbinamento logico matricola RT ↔ POS sul portale F&C, attivo dal **5/3/2026**, entro 45 giorni (Provv. AdE **424470 del 31/10/2025**) ([fonte](https://www.leggioggi.it/pos-registratore-di-cassa-collegati-dal-2026/)) | Servizio web | Il titolare con SPID | **B** (Lumi può guidare l'operazione) |
 | **Soluzioni software** al posto dell'RT | — | Specifiche: Provv. **111204 del 7/3/2025** (moduli MF1 locale + MF2 trasmissione). Uso effettivo previsto dal **2027**, con certificazione obbligatoria ([fonte](https://www.studiopizzano.it/corrispettivi-telematici-via-software-la-road-map-verso-il-2027-e-confermata/)) | — | Il software deve essere approvato dall'AdE e validato da un ente certificatore | **opportunità strategica** |
 | Ventilazione / registro corrispettivi | Commercio | Mensile | Registro | — | **A** |
 
@@ -78,7 +78,7 @@ Novità della **v1.9.1** (dal 15/5/2026):
 | **Registri IVA** (vendite, acquisti, corrispettivi) | S O P (non F) | Tenuta continua. Conservazione elettronica entro 3 mesi dal termine della dichiarazione dei redditi | Libero (PDF/XML) + conservazione a norma. Bozze precompilate dall'AdE (sperimentazione estesa al 2026, Provv. 42054 del 3/2/2026, [fonte](https://www.informazionefiscale.it/dichiarazione-iva-2026-lipe-registri-precompilata-novita)) | Non si inviano | **A** |
 | **Liquidazione IVA** mensile o trimestrale | S O P | Mensili: **16 del mese dopo** (codici 6001-6012). Trimestrali (volume d'affari ≤ 500k € servizi / 800k € altre attività): **16/5, 20/8, 16/11**, Q4 al 16/3 con la dichiarazione annuale (codici 6031-6033, saldo annuale **6099**), **+1% di interessi** | F24 | F24 web / home banking | **A** (calcolo) + **B** (pagamento) |
 | **Acconto IVA** | S O P | **27/12** (6013 mensili, 6035 trimestrali). Non dovuto se < 103,29 € | F24 | idem | **A** + **B** |
-| **LIPE**: comunicazione liquidazioni periodiche | S O P | Q1 **1/6/2026**, Q2 **30/9**, Q3 **30/11**, Q4 entro fine febbraio (2/3/2026 per il Q4 2025) ([fonte](https://www.informazionefiscale.it/LIPE-2023-comunicazioni-IVA-trimestrali-scadenza-istruzioni)) | XML secondo il tracciato AdE (schema "Comunicazione liquidazioni periodiche IVA"). Esiste la precompilata | **Sì**: upload o compilazione su **F&C** con SPID, oppure tramite intermediario | **B** (file prodotto da Kubo) |
+| **LIPE**: comunicazione liquidazioni periodiche | S O P | Q1 **1/6/2026**, Q2 **30/9**, Q3 **30/11**, Q4 entro fine febbraio (2/3/2026 per il Q4 2025) ([fonte](https://www.informazionefiscale.it/LIPE-2023-comunicazioni-IVA-trimestrali-scadenza-istruzioni)) | XML secondo il tracciato AdE (schema "Comunicazione liquidazioni periodiche IVA"). Esiste la precompilata | **Sì**: upload o compilazione su **F&C** con SPID, oppure tramite intermediario | **B** (file prodotto da Lumi) |
 | **Dichiarazione IVA annuale** | S O P (non F) | **1/2 – 30/4** | Modello IVA (tracciato telematico .txt da controllare con il software di controllo dell'AdE). Esiste la precompilata (sperimentale 2026; esclusi regimi speciali, ventilazione, gruppi IVA) | **Sì** via Fisconline (invio file o precompilata web) | **B** (tracciato complesso) |
 | **Visto di conformità** per compensare un credito IVA > **5.000 €** (fino a 50k € per start-up innovative e fino a **70k €** per soggetti ISA premiali o aderenti al CPB) | S O P | Con la dichiarazione | — | Solo commercialisti, consulenti del lavoro, CAF | **C** |
 | Integrazioni d'acquisto reverse charge TD16-19 | vedi 2.1 | | | | **A** |
@@ -87,7 +87,7 @@ Novità della **v1.9.1** (dal 15/5/2026):
 ### 2.4 Pagamenti: F24
 
 - I titolari di partita IVA devono pagare l'F24 **solo in via telematica**: home banking/CBI se c'è un saldo a debito senza compensazioni; **servizi dell'AdE (F24 web/online, Entratel/Fisconline)** se ci sono compensazioni o il saldo è zero ([fonte](https://www.informazionefiscale.it/modello-f24-come-si-compila)).
-- Kubo può generare **l'F24 completo** (sezioni Erario/INPS/Regioni/IMU, codici tributo, rateazioni, ravvedimento): **classe A**.
+- Lumi può generare **l'F24 completo** (sezioni Erario/INPS/Regioni/IMU, codici tributo, rateazioni, ravvedimento): **classe A**.
 - Può anche generare il file in formato **F24 telematico** da caricare su F24 web/Fisconline (tracciato AdE): **classe B**.
 
 Codici tributo più usati:
@@ -125,7 +125,7 @@ Le voci INPS sono **[da verificare singolarmente]** sulla tabella codici.
 
 | Documento | Chi | Quando (2026) | Invio da solo? | Classe |
 |---|---|---|---|---|
-| **Redditi PF**: quadro LM (forfettario), RG (semplificata), RE (professionisti), RR (contributi) | F S P, soci di SNC/SAS | Invio entro il **31/10 (2/11/2026)**. Versamento del saldo e del 1° acconto entro il 30/6; **per ISA e forfettari prorogato al 20/7/2026**, con maggiorazione nei 30 giorni successivi ([ecnews](https://www.ecnews.it/fiscale/in-pratica/guida-agli-adempimenti/contribuenti-forfettari-le-scadenze-di-versamento-delle-imposte/), maggiorazione 0,40% ordinaria; la fonte cita 0,80% **[da verificare]**). 2° acconto **30/11 (1/12/2026)** | **Sì**: **Redditi PF precompilato web** disponibile dal 2025 anche per autonomi e impresa, **compreso il forfettario (quadro LM)**. Online dal 15/4/2026, invio dal 30/4 ([fonte](https://www.partitaiva.it/dichiarazione-redditi-precompilata-2026-guida/)) | **B**: Kubo prepara i valori quadro per quadro (rigo per rigo), il titolare li inserisce o verifica nella precompilata |
+| **Redditi PF**: quadro LM (forfettario), RG (semplificata), RE (professionisti), RR (contributi) | F S P, soci di SNC/SAS | Invio entro il **31/10 (2/11/2026)**. Versamento del saldo e del 1° acconto entro il 30/6; **per ISA e forfettari prorogato al 20/7/2026**, con maggiorazione nei 30 giorni successivi ([ecnews](https://www.ecnews.it/fiscale/in-pratica/guida-agli-adempimenti/contribuenti-forfettari-le-scadenze-di-versamento-delle-imposte/), maggiorazione 0,40% ordinaria; la fonte cita 0,80% **[da verificare]**). 2° acconto **30/11 (1/12/2026)** | **Sì**: **Redditi PF precompilato web** disponibile dal 2025 anche per autonomi e impresa, **compreso il forfettario (quadro LM)**. Online dal 15/4/2026, invio dal 30/4 ([fonte](https://www.partitaiva.it/dichiarazione-redditi-precompilata-2026-guida/)) | **B**: Lumi prepara i valori quadro per quadro (rigo per rigo), il titolare li inserisce o verifica nella precompilata |
 | Redditi SP + IRAP | SNC/SAS | 31/10 | Fisconline (legale rappresentante) | **B/C** |
 | Redditi SC + IRAP (IRES 24%, IRAP 3,9%) | SRL | 31/10. Versamenti entro l'ultimo giorno del 6° mese dopo la chiusura | Fisconline del legale rappresentante possibile, ma in pratica tramite intermediario | **C** (preparabile in bozza) |
 | **ISA** (indici sintetici di affidabilità) | S O P (non F) | Allegato a Redditi | Software gratuito AdE "Il tuo ISA" | **B/C** |
@@ -135,7 +135,7 @@ Le voci INPS sono **[da verificare singolarmente]** sulla tabella codici.
 
 | Documento | Quando | Formato | Invio da solo? | Classe |
 |---|---|---|---|---|
-| Libro giornale, mastri, libro inventari, registro dei beni ammortizzabili | Tenuta continua | Elettronico + conservazione | — | **A** solo se Kubo fa partita doppia (oggi no?) |
+| Libro giornale, mastri, libro inventari, registro dei beni ammortizzabili | Tenuta continua | Elettronico + conservazione | — | **A** solo se Lumi fa partita doppia (oggi no?) |
 | Scritture di assestamento: ratei/risconti, ammortamenti, TFR, rimanenze, imposte differite | Fine esercizio | — | — | **C** (giudizio professionale) |
 | **Bilancio d'esercizio** (abbreviato/micro, art. 2435-bis/ter c.c.) | Approvazione entro 120 giorni (180 in casi particolari) | — | — | **C** (bozza A/B) |
 | **Deposito del bilancio** al Registro Imprese | Entro **30 giorni** dall'approvazione | **XBRL** (tassonomia PCI) + verbale + firma digitale | **Sì: l'amministratore con firma digitale** via **DIRE/ComUnica**, senza commercialista ([fonte](https://www.paen.camcom.gov.it/sites/default/files/Allegati_Sito/GUIDA%20DEPOSITO%20BILANCI%20PALERMO%20ENNA%202026.pdf)) | **B** |
@@ -156,7 +156,7 @@ Le voci INPS sono **[da verificare singolarmente]** sulla tabella codici.
 
 | Voce | Classe |
 |---|---|
-| **Conservazione a norma delle fatture elettroniche**: servizio **gratuito dell'AdE** (15 anni) da attivare con un'adesione su F&C. Può anche recuperare le fatture dal 2019 ([fonte](https://www.money.it/fattura-elettronica-conservazione-retroattiva-novita-servizio-agenzia-delle-entrate)) | **B** (Kubo spiega e verifica l'adesione) |
+| **Conservazione a norma delle fatture elettroniche**: servizio **gratuito dell'AdE** (15 anni) da attivare con un'adesione su F&C. Può anche recuperare le fatture dal 2019 ([fonte](https://www.money.it/fattura-elettronica-conservazione-retroattiva-novita-servizio-agenzia-delle-entrate)) | **B** (Lumi spiega e verifica l'adesione) |
 | Conservazione di registri e libri: entro 3 mesi dal termine della dichiarazione. Serve un conservatore qualificato (marketplace ACN/AgID) oppure un sistema proprio conforme alle Linee guida AgID | **B** |
 
 ### 2.10 ASD / associazioni
@@ -275,7 +275,7 @@ Committente: versa la ritenuta entro il 16 del mese dopo il pagamento (codice 10
 
 **Lo standard di mercato** è fattura SDI + conservazione + stima delle tasse e della soglia. Chi va oltre (F24, dichiarazione) lo fa **affiancando un commercialista abilitato**.
 
-**Lo spazio libero per Kubo** è un gestionale che, senza intermediario:
+**Lo spazio libero per Lumi** è un gestionale che, senza intermediario:
 1. calcola tutto;
 2. prepara gli F24 e i file ufficiali;
 3. guida il titolare passo per passo nell'invio con SPID (LIPE su F&C, F24 web, Redditi precompilato);
@@ -285,7 +285,7 @@ Fiscozen e simili costano 500-1.500 €/anno proprio per questo pezzo.
 
 ---
 
-## 6. Priorità per Kubo/Lumi (in ordine di valore per il titolare)
+## 6. Priorità per Lumi (gestionale e assistente) (in ordine di valore per il titolare)
 
 1. **Fattura elettronica completa e corretta** (A): FPR12 conforme alla v1.9.1, controlli SDI prima dell'invio, TD01/04/06/24, bollo, ritenuta e cassa, N2.2/RF19, invio via PEC o provider, ricezione delle fatture passive. È la base di tutto il resto.
 2. **Cruscotto tasse del forfettario** (A): incassato vs 85k/100k, imposta sostitutiva, INPS (fissi + eccedenza, riduzione del 35%), acconti 50/50, con la data di ogni scadenza. È il motivo n. 1 per cui il forfettario paga Fiscozen.

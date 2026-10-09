@@ -1,6 +1,6 @@
-# I connettori di Kubo
+# I connettori di Lumi
 
-Un connettore collega Kubo a un servizio: pagamenti, negozio online, fatturazione elettronica, posta, calendario,
+Un connettore collega Lumi a un servizio: pagamenti, negozio online, fatturazione elettronica, posta, calendario,
 piattaforme di automazione. È **una cartella con un file**: `connettori/<id>/connettore.js`. Il connettore dichiara cosa gli
 serve, e il nucleo (`server/moduli/connettori.js`) fa il resto:
 
@@ -23,7 +23,7 @@ che non chiedono di scrivere codice:
 
 - il connettore **HTTP / API REST**, per un servizio qualunque;
 - i **ponti** verso Zapier, Make, n8n, Pipedream e i webhook generici;
-- la descrizione **OpenAPI 3.1** delle API di Kubo.
+- la descrizione **OpenAPI 3.1** delle API di Lumi.
 
 ## La Libreria delle integrazioni
 
@@ -101,13 +101,13 @@ paginazione, gli abbinamenti dei campi, i giri pianificati.
    `connettori/woocommerce` per uno da sincronizzare. Il nome della cartella è l'`id`: minuscole, cifre e trattini.
 2. **Scrivi il manifesto.** Ti servono:
    - le impostazioni: cosa chiedere al titolare (`segreto: true` va cifrato);
-   - `permessi`: cosa può toccare in Kubo;
+   - `permessi`: cosa può toccare in Lumi;
    - `prova`: la «prova la connessione»;
    - `entrata`, `azioni`, `pianificati`: quello che deve fare;
    - il blocco `catalogo` e i `testi` nelle sei lingue.
 3. **Scrivi il test** in `test/<id>.test.mjs` con gli attrezzi di `test/connettori-finto.mjs`:
    - `finto()` è il servizio finto;
-   - `kubo()` è un Kubo in memoria;
+   - `gestionale()` accende Lumi con il database in memoria;
    - `accendi()` accende il connettore;
    - `manda()` manda un webhook.
 
@@ -117,7 +117,7 @@ paginazione, gli abbinamenti dei campi, i giri pianificati.
 5. **Usalo.** Per l'azienda: copia la cartella in `<dati>/connettori/<id>/` e accendilo controllando la somma (vedi
    «Installare un connettore di terzi»). Per tutti: proponilo al repository.
 
-Un esempio completo. Un servizio di prenotazioni avvisa Kubo con un webhook firmato in HMAC. Il connettore crea il
+Un esempio completo. Un servizio di prenotazioni avvisa Lumi con un webhook firmato in HMAC. Il connettore crea il
 cliente e, se Lumi lo chiede, manda un messaggio di conferma:
 
 ```js
@@ -139,7 +139,7 @@ export default {
     { id: 'chiave', nome: 'Chiave API', segreto: true },
     { id: 'firma', nome: 'Segreto dei webhook', segreto: true },
   ],
-  // i campi che servono. La pagina li abbina a quelli di Kubo per id, e una rinomina non rompe niente
+  // i campi che servono. La pagina li abbina a quelli di Lumi per id, e una rinomina non rompe niente
   richiede: { clienti: { nome: { tipo: 'testo' }, email: { tipo: 'email' } } },
   // cosa può toccare: diventa il ruolo dell'identità di servizio, e nella storia le modifiche risultano fatte da «Prenota»
   permessi: { clienti: { leggi: true, crea: true } },
@@ -178,8 +178,8 @@ export default {
 Il test va in `test/` e usa gli attrezzi di `test/connettori-finto.mjs`. Non tocca la rete:
 
 ```js
-import { finto, kubo, accendi, manda, firmaHmacDi } from './connettori-finto.mjs';
-const K = await kubo(['negozio']), S = await finto({ 'POST /messaggi': (p, corpo) => ({ id: 1 }) });
+import { finto, gestionale, accendi, manda, firmaHmacDi } from './connettori-finto.mjs';
+const K = await gestionale(['negozio']), S = await finto({ 'POST /messaggi': (p, corpo) => ({ id: 1 }) });
 await accendi(K, 'prenota', { base: S.url, segreti: { chiave: 'k', firma: 's' } });   // il finto servizio è sulla rete interna: accendi() la permette solo per lui
 const corpo = JSON.stringify({ id: 'e1', tipo: 'prenotazione', nome: 'Anna', email: 'anna@esempio.it' });
 await manda(K, '/api/connettori/prenota/in', corpo, { 'X-Prenota-Firma': firmaHmacDi('s', corpo, 'hex') });
@@ -189,19 +189,19 @@ await manda(K, '/api/connettori/prenota/in', corpo, { 'X-Prenota-Firma': firmaHm
 
 | Voce | Cosa fa |
 |---|---|
-| `impostazioni` | `{ id, nome, tipo: 'testo'\|'url'\|'numero'\|'si_no'\|'scelta', opzioni, predefinito, schema: /regex/, segreto, generato, obbligatorio, minimo }`. `generato: true` vale per un codice creato da Kubo all'accensione (il codice segreto del feed o del callback): solo il titolare lo vede, per copiarlo; se una versione nuova del connettore ne aggiunge uno, Kubo lo crea al riavvio anche per i connettori già accesi. Se il titolare lo cambia, o sceglie lui il codice di un webhook con `firma.tipo: 'token'` o `nelPercorso`, servono almeno 16 caratteri (`minimo` alza la soglia per un segreto qualsiasi). Un `url` passa dal controllo SSRF. Un indirizzo pubblico di Kubo chiesto dal connettore ricade su `k.pubblico` quando è vuoto. |
+| `impostazioni` | `{ id, nome, tipo: 'testo'\|'url'\|'numero'\|'si_no'\|'scelta', opzioni, predefinito, schema: /regex/, segreto, generato, obbligatorio, minimo }`. `generato: true` vale per un codice creato da Lumi all'accensione (il codice segreto del feed o del callback): solo il titolare lo vede, per copiarlo; se una versione nuova del connettore ne aggiunge uno, Lumi lo crea al riavvio anche per i connettori già accesi. Se il titolare lo cambia, o sceglie lui il codice di un webhook con `firma.tipo: 'token'` o `nelPercorso`, servono almeno 16 caratteri (`minimo` alza la soglia per un segreto qualsiasi). Un `url` passa dal controllo SSRF. Un indirizzo pubblico di Lumi chiesto dal connettore ricade su `k.pubblico` quando è vuoto. |
 | `richiede` | `{ <sezione>: { <campo>: { tipo, alias, facoltativo } } }`: la pagina propone l'abbinamento e avvisa se un campo manca. Una sezione con tutti i campi facoltativi è facoltativa anche lei. |
 | `permessi` | il ruolo dell'identità `servizio:<id>`: un utente spento che non entra mai. Le righe figlie (per esempio le righe di una vendita) seguono il padre. |
 | `entrata` | il webhook. `firma.tipo` è uno di questi: `stripe`, `hmac` (`intestazione`, `formato` base64 o hex), `token` (un codice segreto in fondo all'indirizzo: `/in/<codice>`), `nessuna` (si rilegge l'evento dall'API, come per SumUp), oppure `verifica: ({ req, grezzo, segreto, k, nome, q }) => bool` (`nome` è quello che segue `/in/`, `q` la query; con `nelPercorso: true` la pagina mostra l'indirizzo con il codice generato in fondo). `idempotenza(ev, req, { k, q })` dà la chiave dell'evento. `gestisci(ev, k, { req, nome, q })`. Il nucleo pone un limite di 1 MB e di 120 richieste al minuto per indirizzo. I corpi JSON, form-urlencoded e multipart/form-data si leggono da soli (multipart: i campi in UTF-8, i file solo descritti in `_file: [{ campo, nome, tipo, dimensione }]`). Su misura: `verificaGet(q, k, { req, nome })` risponde a `GET /in[/<codice>]` (la sfida di Meta con `sfidaMeta(q, token)` di `connettori-rete.js`, il controllo di Mailchimp; con il codice nell'indirizzo il codice si controlla prima), `risposta` (oggetto o `({ esito, ev, k, req, q, doppione }) => …`) sostituisce il JSON di risposta (il TwiML vuoto di Twilio, il `validationToken` di Microsoft Graph), `rispostaFirma` lo stato e il corpo su una firma sbagliata. Le tre danno `{ stato?, testo? \| json?, tipo? }`. |
 | `azioni` | `{ nome, su, input, scrive, lumi, proponi, esegui }`. Le righe in `input` si leggono con i permessi di chi chiede; il servizio fa il resto. Un input con `facoltativo: true` non è obbligatorio nello schema dello strumento di Lumi e, se manca, arriva `undefined`. `proponi(x, k, { ctx })` sa chi guarda l'anteprima (per mascherare quello che solo il titolare deve vedere). |
 | `pianificati` | `{ <giro>: { ogni: '15m' \| alle: '03:00', giro: async k => risultato } }`. Ogni giro ha un lucchetto. Dopo uno spegnimento si recupera un solo giro. «Sincronizza ora» è nella pagina. |
-| `mappe` | `{ <nome>: { entita, id, chiave: [campoKubo, campoRemoto], campi: [{ kubo, remoto, da, comanda: 'kubo' }] } }` per `k.sincro.daRemoto(nome, oggetti)`. |
-| `uscita` | `{ <sezione>: { campi, unisci: 'ultimo', quando, invia: async (riga, k) => … } }`: le modifiche fatte in Kubo vanno in coda. Quello che arriva dal connettore stesso non torna indietro (anti-eco). |
+| `mappe` | `{ <nome>: { entita, id, chiave: [campoLocale, campoRemoto], campi: [{ locale, remoto, da, comanda: 'locale' }] } }` per `k.sincro.daRemoto(nome, oggetti)`. |
+| `uscita` | `{ <sezione>: { campi, unisci: 'ultimo', quando, invia: async (riga, k) => … } }`: le modifiche fatte in Lumi vanno in coda. Quello che arriva dal connettore stesso non torna indietro (anti-eco). |
 | `oauth` | `{ tipo: 'codice'\|'client', autorizza, token, dispositivo, scope, extra }`. Con il codice si usa PKCE S256 e uno `state` che vale una volta per 10 minuti. `client` serve per i client credentials (Shopify); `token` e `scope` possono essere funzioni di `k`, e `usato: imp => bool` nasconde il collegamento quando l'autenticazione scelta non è OAuth. `dispositivo` serve per il device code (un'app desktop senza indirizzo pubblico): la pagina ha il bottone «Collega con un codice», mostra codice e indirizzo e controlla da sola; la risposta può stare dentro `data`. I token si rinnovano da soli. Opzioni: `basic: true` (client_secret_basic: id e segreto in `Authorization: Basic`, non nel corpo: Xero, QuickBooks, DocuSign, eBay), `corpo: 'json'` (token e device code in JSON: Fatture in Cloud), `pkce: false` (chi rifiuta PKCE), `conserva: ['realmId', 'hostname', 'api_domain']` (valori del ritorno o della risposta del token, in `k.oauth.extra()`; quelli del ritorno ci sono già quando si calcola l'indirizzo del token), `redirect: k => …` (un redirect_uri su misura, come il RuName di eBay: vale per l'autorizzazione e per lo scambio del codice). La pagina mostra l'indirizzo di ritorno da registrare nel servizio. |
 | `pubbliche` | uscite GET in sola lettura (`/api/connettori/<id>/pub/<nome>`), come il feed .ics. Si proteggono da sole, per esempio con il codice generato. |
 | `testi` | le traduzioni: `{ en: { nome, descrizione, 'imp.<id>', 'aiuto.<id>', 'az.<id>', 'giro.<id>', 'cat.costoNota', 'cat.passi', 'cat.serve' } }`. Senza traduzione resta l'italiano (per il catalogo: lingua → en → it). |
 | `catalogo` | la carta e la guida nella Libreria: vedi «Il blocco catalogo». Obbligatorio per i connettori ufficiali. |
-| `eventi(ev, k)` | ogni crea/modifica/elimina/ripristina in Kubo che non viene dal connettore stesso (anti-eco), dentro la transazione: per mettere in coda (`k.accoda`), non per chiamare la rete. `ev = { tipo, entita, id, prima, dopo }`. |
+| `eventi(ev, k)` | ogni crea/modifica/elimina/ripristina in Lumi che non viene dal connettore stesso (anti-eco), dentro la transazione: per mettere in coda (`k.accoda`), non per chiamare la rete. `ev = { tipo, entita, id, prima, dopo }`. |
 | `azioni`, `permessi` come funzioni | `azioni: imp => ({ … })`, `permessi: imp => ({ … })`: dipendono dalle impostazioni salvate (con i predefiniti). Le ricette del connettore HTTP usano questo. Gli strumenti di Lumi si registrano di nuovo a ogni salvataggio. |
 | `copie: true` | il titolare può crearne altre istanze con un nome (`<id>-<nome>`), ognuna con impostazioni, segreti, ricette, identità e registro propri. |
 | impostazioni `ricette` e `json` | un valore strutturato (elenco o oggetto) salvato nelle impostazioni. `controlla(valore, { interni, S, db })` lo ripulisce o lancia un errore; la pagina ha un editor per `ricette` e un'area di testo per `json`. |
@@ -211,8 +211,8 @@ await manda(K, '/api/connettori/prenota/in', corpo, { 'X-Prenota-Firma': firmaHm
 | Strumento | Cosa fa |
 |---|---|
 | `k.imp`, `k.segreti`, `k.base` | le impostazioni, i segreti decifrati (solo sul server) e l'indirizzo del servizio |
-| `k.pubblico` | l'indirizzo pubblico di Kubo (`https://kubo.bottega.it`, senza barra finale) o `''`: vedi «L'indirizzo pubblico di Kubo» |
-| `k.db`, `k.S`, `k.D`, `k.P`, `k.meta`, `k.ctx` | per chi chiama un modulo di Kubo con l'identità del connettore (i connettori bancari chiedono le proposte alla tesoreria) |
+| `k.pubblico` | l'indirizzo pubblico di Lumi (`https://lumi.bottega.it`, senza barra finale) o `''`: vedi «L'indirizzo pubblico di Lumi» |
+| `k.db`, `k.S`, `k.D`, `k.P`, `k.meta`, `k.ctx` | per chi chiama un modulo di Lumi con l'identità del connettore (i connettori bancari chiedono le proposte alla tesoreria) |
 | `k.dati` | `leggi`, `elenca`, `crea`, `modifica`, `trova(sezione, campo, valore)` con i nomi del connettore, tradotti negli id dello schema, con l'identità di servizio e l'origine |
 | `k.valore(riga, sezione, campo)` | un valore della riga letto con il nome del connettore |
 | `k.http` | `get`, `post`, `put`, `patch`, `delete` (`json`, `form`, `testo`, `bearer`, `basic`, `intestazioni`) e `pagine(url, { totale })`. Restituisce `{ stato, ok, intestazioni, testo, json }`. Riprova su 429 e 5xx, e non va mai verso la rete interna senza il consenso del titolare. |
@@ -278,10 +278,10 @@ quando si salva e di nuovo quando parte. In un indirizzo completo i segnaposto v
 nel nome del sito o nella porta (`https://{negozio}.com/` è rifiutato): il sito lo sceglie il titolare, non una riga,
 altrimenti chi scrive quel campo deciderebbe dove partono la chiave e i dati.
 
-**In entrata.** L'indirizzo ha in fondo un codice segreto generato da Kubo. La pagina lo mostra sotto ogni ricetta.
+**In entrata.** L'indirizzo ha in fondo un codice segreto generato da Lumi. La pagina lo mostra sotto ogni ricetta.
 - **Firma.** Con il «segreto HMAC in entrata», la richiesta deve portare anche la firma HMAC-SHA256 del corpo grezzo,
   in hex o base64 (anche con `sha256=` davanti), nell'intestazione scelta (`X-Signature` se non dici niente).
-- **Riga da aggiornare.** `chiave` è il campo di Kubo che ritrova la riga, per esempio l'email. `modo` è uno di:
+- **Riga da aggiornare.** `chiave` è il campo di Lumi che ritrova la riga, per esempio l'email. `modo` è uno di:
   - `crea-o-aggiorna`;
   - `crea`;
   - `aggiorna`.
@@ -308,23 +308,23 @@ di ricette, con l'indirizzo completo che dà la piattaforma: non c'è un indiriz
 
 - **Dall'evento alla piattaforma.** Una ricetta `uscita`: «quando in Articoli si crea una riga → POST al Catch Hook di
   Zapier». Va bene anche per il Custom webhook di Make, il nodo Webhook di n8n e il trigger HTTP di Pipedream.
-- **Dalla piattaforma a Kubo.** Una ricetta `entrata`: la piattaforma fa un POST JSON a
-  `/api/connettori/<ponte>/in/<codice>`. Kubo deve essere raggiungibile da internet; per n8n sulla stessa rete basta
+- **Dalla piattaforma a Lumi.** Una ricetta `entrata`: la piattaforma fa un POST JSON a
+  `/api/connettori/<ponte>/in/<codice>`. Lumi deve essere raggiungibile da internet; per n8n sulla stessa rete basta
   permettere la rete interna nella pagina.
-- **Firma in uscita.** Con il «segreto per firmare le richieste in uscita», Kubo manda `X-Kubo-Tempo` e
-  `X-Kubo-Firma: sha256=<HMAC(segreto, "<tempo>.<corpo>")>`, come i webhook di «API e integrazioni». Un ricevitore
+- **Firma in uscita.** Con il «segreto per firmare le richieste in uscita», Lumi manda `X-Lumi-Tempo` e
+  `X-Lumi-Firma: sha256=<HMAC(segreto, "<tempo>.<corpo>")>`, come i webhook di «API e integrazioni». Un ricevitore
   solo può controllare tutte e due le firme.
-- **Per tutto il resto** (leggere, cercare, modificare qualsiasi sezione) le piattaforme usano l'API REST di Kubo con
+- **Per tutto il resto** (leggere, cercare, modificare qualsiasi sezione) le piattaforme usano l'API REST di Lumi con
   un token personale e la descrizione OpenAPI qui sotto.
 
 Le guide passo per passo di ogni piattaforma sono nel loro blocco `catalogo`: si leggono nella Libreria e in
 [CATALOGO.md](CATALOGO.md).
 
-## L'indirizzo pubblico di Kubo
+## L'indirizzo pubblico di Lumi
 
 Webhook e ritorni OAuth vogliono un indirizzo che il servizio raggiunga da internet. È uno per tutta l'azienda: il titolare
-lo scrive in fondo alla Libreria («Indirizzo pubblico di Kubo», `GET`/`PUT /api/connettori/impostazioni { pubblico }`), o
-lo dà la variabile `KUBO_PUBBLICO`. I connettori lo leggono in `k.pubblico`; quelli che chiedono un loro indirizzo
+lo scrive in fondo alla Libreria («Indirizzo pubblico di Lumi», `GET`/`PUT /api/connettori/impostazioni { pubblico }`), o
+lo dà la variabile `LUMI_PUBBLICO`. I connettori lo leggono in `k.pubblico`; quelli che chiedono un loro indirizzo
 (`indirizzo`, `pubblico`) lo usano quando il loro è vuoto, e la pagina di ogni connettore mostra l'indirizzo completo del
 webhook costruito da lì (senza, quello del browser). Gli attrezzi comuni: `pubblicoDi(k, campo)` in `connettori/_soldi/comuni.js`
 (i pagamenti: solo https) e `indirizzoDi(k)` in `connettori/_comunica/agenda.js` (moduli e agende, con l'errore chiaro se
@@ -340,7 +340,7 @@ movimenti alle fatture lo fa solo la tesoreria (pagina Banca, strumento `tesorer
 
 ## OpenAPI 3.1
 
-`GET /api/openapi-3.1.json` descrive le API di Kubo come le vede chi chiede. Si apre con la sessione o con
+`GET /api/openapi-3.1.json` descrive le API di Lumi come le vede chi chiede. Si apre con la sessione o con
 `Authorization: Bearer <token personale>`. Dentro ci sono:
 
 - **le sezioni e i campi** che può leggere, in JSON Schema 2020-12: un campo non obbligatorio è `["string", "null"]`;
@@ -349,7 +349,7 @@ movimenti alle fatture lo fa solo la tesoreria (pagina Banca, strumento `tesorer
   - storia e ripristino;
   - `/api/schema`;
   - ognuna con un `operationId` unico (`elenca_clienti`, `crea_clienti`…) e solo i metodi che i permessi concedono;
-- **`webhooks`**: le consegne dei webhook di Kubo per ogni sezione, con le intestazioni della firma;
+- **`webhooks`**: le consegne dei webhook di Lumi per ogni sezione, con le intestazioni della firma;
 - **per il titolare**, gli indirizzi in entrata dei connettori a ricette accesi, con le loro ricette. Il codice segreto
   non c'è.
 
@@ -369,9 +369,9 @@ Si importa in Postman, Insomnia, n8n (nodo HTTP Request), nelle app personalizza
 
 ## Installare un connettore di terzi
 
-1. Copia la cartella in `<dati>/connettori/<id>/`, accanto a `kubo.db`. Il nome della cartella deve essere uguale all'`id` del manifesto.
-2. Riavvia Kubo. Il connettore compare nel catalogo come «Installato a mano».
-3. Nella sua pagina, **Accendi** mostra la somma SHA-256 del file: confrontala con quella pubblicata dall'autore. Fino a quel momento Kubo non esegue il file (non lo importa nemmeno all'avvio): per questo nome, impostazioni e permessi si vedono solo dopo l'accensione.
+1. Copia la cartella in `<dati>/connettori/<id>/`, accanto a `lumi.db`. Il nome della cartella deve essere uguale all'`id` del manifesto.
+2. Riavvia Lumi. Il connettore compare nel catalogo come «Installato a mano».
+3. Nella sua pagina, **Accendi** mostra la somma SHA-256 del file: confrontala con quella pubblicata dall'autore. Fino a quel momento Lumi non esegue il file (non lo importa nemmeno all'avvio): per questo nome, impostazioni e permessi si vedono solo dopo l'accensione.
 4. Se il file cambia dopo l'accensione, al riavvio successivo il connettore non viene caricato e resta fermo («Cambiato») finché il titolare non lo riaccende controllando la nuova somma. Conta la somma di `connettore.js`: se il connettore importa altri file della sua cartella, cambiarli non cambia la somma.
 
 Un connettore è codice che gira con i permessi del server: installa solo quelli di cui ti fidi. Non si caricano mai dall'interfaccia.

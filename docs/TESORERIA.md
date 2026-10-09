@@ -61,7 +61,7 @@ I multipli di 30 giorni contano come **mesi commerciali**: 30 giorni dal 15/01 f
 
 ## I file per la banca
 
-Le distinte si preparano dallo scadenzario. Spunti le scadenze e scegli **Distinta Ri.Ba.**, **Addebito SDD** o **Bonifici SEPA**. Prima di creare il file Kubo controlla i dati: se manca qualcosa, mostra un elenco come «manca il codice SIA», «Rossi srl: manca l'IBAN della banca d'appoggio» o «manca il mandato SDD». Le scadenze messe in distinta non si mettono in un'altra finché la distinta non è accreditata.
+Le distinte si preparano dallo scadenzario. Spunti le scadenze e scegli **Distinta Ri.Ba.**, **Addebito SDD** o **Bonifici SEPA**. Prima di creare il file Lumi controlla i dati: se manca qualcosa, mostra un elenco come «manca il codice SIA», «Rossi srl: manca l'IBAN della banca d'appoggio» o «manca il mandato SDD». Le scadenze messe in distinta non si mettono in un'altra finché la distinta non è accreditata.
 
 | file | formato | fonte |
 |---|---|---|
@@ -83,7 +83,7 @@ Gli XSD ufficiali non sono nel repository. Per la validazione completa scarica `
 - **dati dell'azienda:** l'IBAN (Documenti → dati dell'azienda);
 - **impostazioni della tesoreria:**
   - il **codice SIA**, che dà la banca, per la Ri.Ba.;
-  - l'**identificativo del creditore SEPA** per gli SDD. Kubo propone `IT` + controllo + `ZZZ` + codice fiscale, con le cifre di controllo ISO 7064 mod 97-10 (EPC262-08), ma quello vero lo rilascia la banca;
+  - l'**identificativo del creditore SEPA** per gli SDD. Lumi propone `IT` + controllo + `ZZZ` + codice fiscale, con le cifre di controllo ISO 7064 mod 97-10 (EPC262-08), ma quello vero lo rilascia la banca;
 - **scheda del cliente:** l'IBAN della banca d'appoggio (da lì vengono ABI e CAB della Ri.Ba.), il codice e la data del mandato SDD, la partita IVA o il codice fiscale e l'indirizzo;
 - **scheda del fornitore:** l'IBAN, oppure quello scritto nella fattura ricevuta.
 
@@ -93,7 +93,7 @@ Quando la banca accredita la distinta, la riconciliazione propone l'accredito co
 
 ## Estratto conto e riconciliazione
 
-**Banca → trascina il file.** Kubo riconosce il formato dal contenuto:
+**Banca → trascina il file.** Lumi riconosce il formato dal contenuto:
 
 - **CAMT.053** (`camt.053.001.02` e successive). Entrano solo i movimenti contabilizzati (`Sts` BOOK), con gli storni (`RvslInd`). La controparte è il `Dbtr` delle entrate e il `Cdtr` delle uscite, anche con `Pty` della versione .08. Si leggono l'IBAN della controparte, l'`EndToEndId` e la causale (`Ustrd`, `Strd/CdtrRefInf/Ref`, `AddtlNtryInf`). Il saldo finale `CLBD` diventa il saldo di partenza della previsione, se è più recente di quello che c'è.
 - **CBI «RH»** (rendicontazione movimenti di c/c, 120 caratteri). Il record 62 è il movimento, il 63 la descrizione in più, il 61 e il 64 i saldi. Le posizioni vengono dal tracciato CBI: **da ricontrollare su un file vero della propria banca.**
@@ -129,7 +129,7 @@ Se un connettore usa una sua sezione con gli stessi id di campo, basta indicarla
 
 ### Le proposte
 
-Per ogni movimento da abbinare Kubo cerca fra le scadenze aperte dello stesso verso: un'entrata fra gli incassi, un'uscita fra i pagamenti. Poi dà un punteggio da 0 a 100:
+Per ogni movimento da abbinare Lumi cerca fra le scadenze aperte dello stesso verso: un'entrata fra gli incassi, un'uscita fra i pagamenti. Poi dà un punteggio da 0 a 100:
 
 | indizio | punti |
 |---|---|
@@ -139,14 +139,14 @@ Per ogni movimento da abbinare Kubo cerca fra le scadenze aperte dello stesso ve
 | nome della controparte nella causale (senza «srl», «spa»…) | 10-20 |
 | data entro 10 giorni dalla scadenza | 10 (entro 45: 4) |
 
-Kubo propone anche:
+Lumi propone anche:
 
 - **più fatture dello stesso cliente** che insieme fanno l'importo, cioè un bonifico che ne paga tre;
 - **l'accredito di una distinta** Ri.Ba. o SDD per il totale ancora aperto. Le scadenze che stanno in una distinta si abbinano solo così.
 
 Chi lavora sceglie **Abbina**, oppure abbina a mano dall'elenco, oppure **Ignora** (spese, giroconti, stipendi). Un abbinamento sbagliato si toglie con **Annulla**, che riapre anche le fatture.
 
-Se l'entrata è minore della scadenza, Kubo registra un acconto. Se è maggiore, la scadenza si chiude e Kubo dice quanto avanza.
+Se l'entrata è minore della scadenza, Lumi registra un acconto. Se è maggiore, la scadenza si chiude e Lumi dice quanto avanza.
 
 ## Previsione di cassa
 
@@ -170,7 +170,7 @@ La previsione mostra il saldo di ogni periodo e il **punto più basso**, e avvis
 | 2, sollecito | dopo 30 giorni, o 15 giorni dopo un primo sollecito |
 | 3, diffida | dopo 60 giorni, o 15 giorni dopo un secondo sollecito; cita gli interessi di mora del D.Lgs. 231/2002 |
 
-Un cliente sollecitato da meno di 15 giorni aspetta. Il testo è pronto, in italiano, la lingua dei documenti, con l'elenco delle fatture, il totale e l'IBAN. Si può copiare oppure aprire nell'email (`mailto:` alla PEC o all'email del cliente). **Segna come mandato** registra il sollecito, così la volta dopo il livello sale. Kubo non manda niente da solo.
+Un cliente sollecitato da meno di 15 giorni aspetta. Il testo è pronto, in italiano, la lingua dei documenti, con l'elenco delle fatture, il totale e l'IBAN. Si può copiare oppure aprire nell'email (`mailto:` alla PEC o all'email del cliente). **Segna come mandato** registra il sollecito, così la volta dopo il livello sale. Lumi non manda niente da solo.
 
 ## Rotte
 

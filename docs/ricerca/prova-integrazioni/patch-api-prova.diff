@@ -7,7 +7,7 @@ index bb8af28..e733bc3 100644
    const rotte = [], controlli = [];
    const controllo = f => { controlli.push(f); };
 -  const r = (metodo, percorso, f) => rotte.push({ metodo, re: new RegExp('^' + percorso.replace(/:(\w+)/g, '(?<$1>[^/]+)') + '$'), f });
-+  // opz.pubblica: niente X-Kubo (un servizio esterno non può metterla: la rotta si protegge da sé, es. con la firma);
++  // opz.pubblica: niente X-Lumi (un servizio esterno non può metterla: la rotta si protegge da sé, es. con la firma);
 +  // opz.grezzo: la rotta riceve anche il corpo com'è arrivato (Buffer), per verificare la firma, e i corpi non JSON
 +  const r = (metodo, percorso, f, opz = {}) => rotte.push({ metodo, re: new RegExp('^' + percorso.replace(/:(\w+)/g, '(?<$1>[^/]+)') + '$'), f, ...opz });
    // «prima»: un modulo può agire prima di una rotta di un altro (es. il backup prima di cambiare lo schema o di un import)
@@ -17,10 +17,10 @@ index bb8af28..e733bc3 100644
      }
      const risposta = { intestazioni: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } };
      try {
--      if (req.method !== 'GET' && req.headers['x-kubo'] !== '1' && !String(req.headers.authorization || '').startsWith('Bearer ')) throw new ErroreHttp(403, 'Richiesta senza intestazione X-Kubo');
+-      if (req.method !== 'GET' && req.headers['x-lumi'] !== '1' && !String(req.headers.authorization || '').startsWith('Bearer ')) throw new ErroreHttp(403, 'Richiesta senza intestazione X-Lumi');
 -      let corpo = {};
 +      const rotta = rotte.find(x => x.metodo === req.method && x.re.test(percorso));
-+      if (req.method !== 'GET' && !rotta?.pubblica && req.headers['x-kubo'] !== '1' && !String(req.headers.authorization || '').startsWith('Bearer ')) throw new ErroreHttp(403, 'Richiesta senza intestazione X-Kubo');
++      if (req.method !== 'GET' && !rotta?.pubblica && req.headers['x-lumi'] !== '1' && !String(req.headers.authorization || '').startsWith('Bearer ')) throw new ErroreHttp(403, 'Richiesta senza intestazione X-Lumi');
 +      let corpo = {}, grezzo = null;
        if (['POST', 'PUT', 'PATCH'].includes(req.method)) {
          let n = 0; const pezzi = [];

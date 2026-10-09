@@ -1,6 +1,6 @@
 # Contratti ricorrenti
 
-Canoni, manutenzioni, assistenza, abbonamenti. Il contratto si scrive una volta: cliente, descrizione, importo per periodo, IVA e periodicità. Poi Kubo prepara le fatture quando scadono. È la lacuna numero 8 del [confronto](ricerca/CONFRONTO.md).
+Canoni, manutenzioni, assistenza, abbonamenti. Il contratto si scrive una volta: cliente, descrizione, importo per periodo, IVA e periodicità. Poi Lumi prepara le fatture quando scadono. È la lacuna numero 8 del [confronto](ricerca/CONFRONTO.md).
 
 ## Dove sta
 
@@ -30,7 +30,7 @@ Canoni, manutenzioni, assistenza, abbonamenti. Il contratto si scrive una volta:
 
 Poi la prossima data va avanti. Quando supera la data di fine, il contratto passa a «chiuso». Le fatture passano dal modulo fatture, con la sua numerazione, i suoi conti e il blocco dopo l'emissione.
 
-**Giro automatico.** È spento finché non lo accendi dalla pagina: «Ogni giorno crea da solo le fatture dovute». Kubo controlla ogni ora e crea le fatture una volta al giorno.
+**Giro automatico.** È spento finché non lo accendi dalla pagina: «Ogni giorno crea da solo le fatture dovute». Lumi controlla ogni ora e crea le fatture una volta al giorno.
 
 **Previsione di cassa.** Le fatture future dei contratti attivi entrano nella [previsione della tesoreria](TESORERIA.md) come incassi, IVA compresa, alla data della fattura.
 

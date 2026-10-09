@@ -1,14 +1,14 @@
-# Kubo e Lumi: quanto è facile collegare altri servizi
+# Lumi: quanto è facile collegare altri servizi
 
-7 ottobre 2026. Ho letto il codice di `~/Desktop/kubo` (main, c56ee89) e ho scritto due integrazioni di prova in un worktree temporaneo (`prova-integrazioni`), con finti server locali. Il worktree e il ramo sono stati rimossi. Il codice di prova e la patch sono in `scratchpad/prova-integrazioni-codice/` (`prova-pagamenti.js`, `prova-negozio.js`, `prova-integrazioni.test.mjs`, `patch-api-prova.diff`).
+7 ottobre 2026. Ho letto il codice del gestionale (main, c56ee89) e ho scritto due integrazioni di prova in un worktree temporaneo (`prova-integrazioni`), con finti server locali. Il worktree e il ramo sono stati rimossi. Il codice di prova e la patch sono in `scratchpad/prova-integrazioni-codice/` (`prova-pagamenti.js`, `prova-negozio.js`, `prova-integrazioni.test.mjs`, `patch-api-prova.diff`).
 
 ---
 
 ## 1. Facilità di oggi: voto **5/10**
 
 **In sintesi:**
-- Le integrazioni **in uscita**, dove Kubo chiama un servizio, si scrivono bene già oggi con il contratto dei moduli.
-- Quelle **in entrata**, dove un servizio chiama Kubo, sono **bloccate dal motore**: nessun pagamento tipo Stripe/SumUp, Woo, Shopify o WhatsApp può arrivare a Kubo senza ritoccare `api.js`.
+- Le integrazioni **in uscita**, dove Lumi chiama un servizio, si scrivono bene già oggi con il contratto dei moduli.
+- Quelle **in entrata**, dove un servizio chiama Lumi, sono **bloccate dal motore**: nessun pagamento tipo Stripe/SumUp, Woo, Shopify o WhatsApp può arrivare a Lumi senza ritoccare `api.js`.
 - Tutto il resto si può fare, ma ogni connettore lo riscrive da zero:
   - segreti;
   - impostazioni;
@@ -22,21 +22,21 @@
 
 | Prova | Solo contratto dei moduli | Con la patch di 9 righe ad `api.js` |
 |---|---|---|
-| (a) Pagamenti tipo Stripe: webhook firmato `payment_intent.succeeded` → vendita «pagata» | **fallisce**: 403 «Richiesta senza intestazione X-Kubo». Anche aggiungendo X-Kubo a mano: 400, la firma non torna, perché il corpo è già stato trasformato in oggetto e ricostruirlo non dà gli stessi byte | **passa**: firma verificata sul corpo grezzo, tolleranza di 300 s contro il replay, idempotenza per `event.id`, controllo dell'importo, vendita → `pagata` |
+| (a) Pagamenti tipo Stripe: webhook firmato `payment_intent.succeeded` → vendita «pagata» | **fallisce**: 403 «Richiesta senza intestazione X-Lumi». Anche aggiungendo X-Lumi a mano: 400, la firma non torna, perché il corpo è già stato trasformato in oggetto e ricostruirlo non dà gli stessi byte | **passa**: firma verificata sul corpo grezzo, tolleranza di 300 s contro il replay, idempotenza per `event.id`, controllo dell'importo, vendita → `pagata` |
 | (b) WooCommerce: prodotti in entrata, giacenze in uscita | **passa**: 105 righe | passa |
-| Catena completa | — | **passa**: Stripe paga → la vendita diventa `pagata` → l'automazione del modello «negozio» scala la giacenza → la coda manda `PUT stock_quantity` al finto Woo (Kubo 1 · negozio 1) |
+| Catena completa | — | **passa**: Stripe paga → la vendita diventa `pagata` → l'automazione del modello «negozio» scala la giacenza → la coda manda `PUT stock_quantity` al finto Woo (Lumi 1 · negozio 1) |
 
 La suite completa con i due moduli di prova: **92/93**. L'unica rossa è `lingue.test.mjs`: ogni messaggio d'errore dei moduli deve stare nel catalogo delle sei lingue, e quelli dei connettori non c'erano. È un buon paletto, ma è un altro passo per chi scrive un connettore.
 
 La patch minima ad `api.js` (+9/−6) aggiunge alle rotte un parametro `r(metodo, percorso, f, { pubblica, grezzo })`:
-- con `pubblica` la rotta non pretende X-Kubo, e si protegge da sola con la firma;
+- con `pubblica` la rotta non pretende X-Lumi, e si protegge da sola con la firma;
 - con `grezzo` la rotta riceve il `Buffer` originale e il server non fa `JSON.parse` sui corpi che non sono JSON (form-urlencoded di Twilio e PayPal).
 
-La rotta va trovata prima del controllo X-Kubo. Gli altri 92 test restano verdi.
+La rotta va trovata prima del controllo X-Lumi. Gli altri 92 test restano verdi.
 
 ### Attriti trovati (in ordine di gravità)
 
-1. **Nessun webhook in entrata.** Una richiesta non GET pretende `X-Kubo: 1` o un `Bearer`, e nessun servizio esterno può mandarli. Il corpo viene consumato e trasformato con `JSON.parse` prima della rotta, quindi non si può verificare la firma HMAC:
+1. **Nessun webhook in entrata.** Una richiesta non GET pretende `X-Lumi: 1` o un `Bearer`, e nessun servizio esterno può mandarli. Il corpo viene consumato e trasformato con `JSON.parse` prima della rotta, quindi non si può verificare la firma HMAC:
    - Stripe: `Stripe-Signature`, sul corpo grezzo;
    - Woo: `X-WC-Webhook-Signature`, base64 HMAC-SHA256 del corpo;
    - Shopify: `X-Shopify-Hmac-Sha256`.
@@ -94,7 +94,7 @@ export default {
     { id: 'firma', nome: 'Segreto del webhook (whsec_…)', tipo: 'testo', segreto: true },
     { id: 'pagamento', nome: 'Metodo da segnare', tipo: 'scelta', opzioni: '@vendite.pagamento', predefinito: 'carta' },
   ],
-  // i campi di Kubo che servono: il nucleo li abbina (come l'import da Excel) e avvisa se spariscono
+  // i campi di Lumi che servono: il nucleo li abbina (come l'import da Excel) e avvisa se spariscono
   richiede: { vendite: { stato: { tipo: 'stato', opzioni: ['pagata'] }, totale: { tipo: 'calcolato' }, pagamento: { tipo: 'scelta' } } },
   // cosa può toccare: diventa il «ruolo» del connettore (identità di servizio, registro «Stripe»)
   permessi: { vendite: { leggi: true, modifica: true } },
@@ -140,9 +140,9 @@ export default {
   // mappatura proposta, modificabile nella pagina del connettore; «comanda» risolve i conflitti per campo
   mappe: {
     articoli: { remoto: 'products', chiave: ['codice', 'sku'], campi: [
-      { kubo: 'nome', remoto: 'name', comanda: 'remoto' },
-      { kubo: 'prezzo', remoto: 'regular_price', da: Number, a: String, comanda: 'remoto' },
-      { kubo: 'giacenza', remoto: 'stock_quantity', comanda: 'kubo' },   // la cassa scala il magazzino: Kubo è il padrone
+      { locale: 'nome', remoto: 'name', comanda: 'remoto' },
+      { locale: 'prezzo', remoto: 'regular_price', da: Number, a: String, comanda: 'remoto' },
+      { locale: 'giacenza', remoto: 'stock_quantity', comanda: 'locale' },   // la cassa scala il magazzino: Lumi è il padrone
     ] },
   },
   // giri pianificati: il nucleo tiene «ultimo giro», «prossimo», impedisce i giri sovrapposti e recupera dopo uno spegnimento
@@ -150,7 +150,7 @@ export default {
     for await (const p of k.http.pagine(`${k.imp.url}/wp-json/wc/v3/products?per_page=100`, { basic: [k.segreti.ck, k.segreti.cs], totale: 'x-wp-totalpages' }))
       await k.sincro.daRemoto('articoli', p);   // abbina per chiave, applica la mappa, scrive con origine = 'woocommerce'
   } } },
-  // in uscita: il nucleo chiama questo quando cambia un campo mappato con comanda: 'kubo', ma non se l'origine è questo connettore
+  // in uscita: il nucleo chiama questo quando cambia un campo mappato con comanda: 'locale', ma non se l'origine è questo connettore
   uscita: { articoli: { async invia(riga, cambiati, k) {
     await k.http.put(`${k.imp.url}/wp-json/wc/v3/products/${k.sincro.remoto(riga)}`, { basic: [k.segreti.ck, k.segreti.cs], json: { manage_stock: true, stock_quantity: riga.giacenza } });
   }, unisci: 'ultimo' } },   // nella coda conta solo l'ultimo valore per riga
@@ -195,7 +195,7 @@ Ogni connettore ha un `test.mjs` con la stessa forma della prova fatta qui (88 r
 
 ### Installazione
 
-1. `connettori/<id>/` nel repository: quelli ufficiali, mantenuti con Kubo.
+1. `connettori/<id>/` nel repository: quelli ufficiali, mantenuti con Lumi.
 2. `dati/connettori/<id>/` accanto al db: quelli dell'azienda o di terze parti, copiati a mano o scaricati da un catalogo con somma verificata.
 3. Il nucleo li carica all'avvio. Se un connettore ha una `versione` diversa dalla precedente, il nucleo esegue la sua `migra(k, da)`.
 
@@ -214,12 +214,12 @@ Dopo i passi 1–3, i connettori della prova scendono da circa 150 righe a circa
 
 ## 3. I servizi che un'attività italiana vorrebbe collegare
 
-Priorità: **P1** = il primo anno, **P2** = dopo, **P3** = solo su richiesta. La difficoltà è per il connettore Kubo.
+Priorità: **P1** = il primo anno, **P2** = dopo, **P3** = solo su richiesta. La difficoltà è per il connettore Lumi.
 
 | # | Servizio | Prio | API reale e autenticazione | Costo indicativo | Cosa serve a un piccolo negozio | Difficoltà |
 |---|---|---|---|---|---|---|
-| 1 | **SDI tramite intermediario**: Openapi.it SDI | P1 | REST, token Bearer. Invio XML FatturaPA, ricezione passive, conservazione a 10 anni | prime 1.440 richieste/giorno gratis, poi da **0,025 € + IVA** a fattura | mandare le fatture già prodotte da `documenti-xml.js` e ricevere quelle dei fornitori | media: Kubo genera già l'XML; restano le notifiche di esito (RC/NS/MC) da tracciare |
-| 2 | SDI: **Fatture in Cloud** API v2 | P1 | REST `api-v2.fattureincloud.it`. OAuth2 (codice, **device code**) o token manuale. Webhook | incluso negli abbonamenti FiC | per chi usa già FiC con il commercialista: sincronizzare clienti e fatture invece di inviare da Kubo | media (OAuth) |
+| 1 | **SDI tramite intermediario**: Openapi.it SDI | P1 | REST, token Bearer. Invio XML FatturaPA, ricezione passive, conservazione a 10 anni | prime 1.440 richieste/giorno gratis, poi da **0,025 € + IVA** a fattura | mandare le fatture già prodotte da `documenti-xml.js` e ricevere quelle dei fornitori | media: Lumi genera già l'XML; restano le notifiche di esito (RC/NS/MC) da tracciare |
+| 2 | SDI: **Fatture in Cloud** API v2 | P1 | REST `api-v2.fattureincloud.it`. OAuth2 (codice, **device code**) o token manuale. Webhook | incluso negli abbonamenti FiC | per chi usa già FiC con il commercialista: sincronizzare clienti e fatture invece di inviare da Lumi | media (OAuth) |
 | 3 | SDI: **Aruba Fatturazione Elettronica** | P1 | REST `ws.fatturazioneelettronica.aruba.it`, utente API dedicato, al massimo 1 autenticazione al minuto, file fino a 5 MB, ambiente DEMO | ~**29,90 € + IVA/anno** l'abbonamento base (opzione API da attivare) | come sopra, molto diffuso fra i piccoli | media |
 | 4 | SDI: **A-Cube**, **Invoicetronic** | P2 | REST. A-Cube è accreditato AdE e Peppol e simula SDI in sandbox (SDI non ha sandbox). Invoicetronic ha SDK aperti | prezzi su richiesta o non pubblici | alternative per volumi o Peppol | media |
 | 5 | **Stripe** (online + Terminal) | P1 | REST, chiave segreta. Webhook firmati (`Stripe-Signature`, HMAC sul corpo grezzo) | **1,5% + 0,25 €** carte UE standard, 2,8% + 0,25 € premium, 3,15% + 0,25 € internazionali. Terminal: **1,4% + 0,10 €** SEE | link di pagamento e acconti, vendita «pagata» da sola | **bassa**: provata qui |
@@ -230,12 +230,12 @@ Priorità: **P1** = il primo anno, **P2** = dopo, **P3** = solo su richiesta. La
 | 10 | **WooCommerce** | P1 | REST `wc/v3`, chiavi consumer (Basic su HTTPS). Webhook con `X-WC-Webhook-Signature` (HMAC-SHA256 base64) | gratis (plugin) | catalogo e giacenze in comune, ordini web → vendite | **bassa**: provata qui |
 | 11 | **Shopify** | P1 | Admin GraphQL. **Dal 1° gennaio 2026 niente nuove «custom app» legacy**: si crea l'app nel Dev Dashboard, con *client credentials* e token di 24 h da rinnovare. Webhook `X-Shopify-Hmac-Sha256` | piano Shopify | come Woo | media (token che scade, GraphQL) |
 | 12 | PrestaShop | P3 | Webservice REST/XML, chiave | gratis | come Woo | media (XML) |
-| 13 | **Google Calendar** | P1 | REST, OAuth2 (`calendar.events`), notifiche push via `watch` | gratis | appuntamenti dell'agenda Kubo sul telefono | media (OAuth) |
+| 13 | **Google Calendar** | P1 | REST, OAuth2 (`calendar.events`), notifiche push via `watch` | gratis | appuntamenti dell'agenda Lumi sul telefono | media (OAuth) |
 | 14 | **iCal (feed .ics) / CalDAV** | P1 | feed .ics in sola lettura con URL segreto; CalDAV con Basic o password per app (iCloud, Nextcloud) | gratis | «vedo l'agenda su iPhone»: il feed .ics è il 90% del valore con il 10% della fatica | bassa (.ics) / media (CalDAV) |
 | 15 | **Email SMTP / IMAP + PEC** | P1 | SMTP con login o password per app, IMAP per leggere. La PEC (Aruba, Legalmail, Namirial…) è SMTP/IMAP con ricevute in XML | casella o PEC da ~5–10 €/anno | mandare fatture, preventivi e promemoria; leggere ricevute e PEC | media: SMTP senza dipendenze va scritto a mano (STARTTLS con `node:tls`) |
 | 16 | **WhatsApp Business Platform** (Cloud API Meta, o via Twilio) | P1 | REST Graph API, token di sistema. Webhook firmati `X-Hub-Signature-256`. Modelli di messaggio approvati da Meta | a messaggio dal 1° luglio 2025: **utility in Italia ~0,03 $** fuori dalla finestra di 24 h, **gratis** dentro la finestra | promemoria degli appuntamenti, «il tuo ordine è pronto» | media-alta (verifica dell'azienda, modelli, consenso) |
 | 17 | SMS (Twilio, Skebby, Aruba SMS) | P2 | REST, chiave. Twilio firma i webhook (`X-Twilio-Signature`, corpo form) | ~0,07–0,09 € a SMS | promemoria per chi non usa WhatsApp | bassa |
-| 18 | **Registratore telematico (RT)** | P1 per i negozi | **Locale**: Epson FP-81 II / FP-90 III / RT Server con web service `fpmate.cgi` (XML ePOS-Print Fiscal) sulla rete del negozio. Custom e RCH hanno protocolli loro | gratis (l'RT si compra) | dalla vendita Kubo allo scontrino (documento commerciale) senza ribattere | **alta**: rete interna (va aperta l'eccezione SSRF per singolo connettore), stampanti diverse, errori fiscali, chiusure. Serve un RT fisico per provare |
+| 18 | **Registratore telematico (RT)** | P1 per i negozi | **Locale**: Epson FP-81 II / FP-90 III / RT Server con web service `fpmate.cgi` (XML ePOS-Print Fiscal) sulla rete del negozio. Custom e RCH hanno protocolli loro | gratis (l'RT si compra) | dalla vendita Lumi allo scontrino (documento commerciale) senza ribattere | **alta**: rete interna (va aperta l'eccezione SSRF per singolo connettore), stampanti diverse, errori fiscali, chiusure. Serve un RT fisico per provare |
 | 19 | Corrieri via **Sendcloud** | P2 | REST, chiave pubblica e segreta. Un'API per BRT, Poste, GLS e 170+ corrieri | piani da 35 €/mese (28 annuale) + 0,11 € a etichetta. BRT da ~4,99 €, Poste da ~5,04 € | etichette e tracking dagli ordini web | bassa-media |
 | 20 | BRT / Poste diretti | P3 | API proprie dei corrieri, con contratto | contratto | chi ha già un contratto | media-alta |
 | 21 | **Google Business Profile** | P2 | REST, OAuth2. **Accesso da chiedere con un modulo** (risposta entro ~14 giorni). La scheda dev'essere completa e non appena verificata | gratis | rispondere alle recensioni, orari, post | media (approvazione) |

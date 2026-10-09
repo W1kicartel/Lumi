@@ -24,7 +24,7 @@ export default function registra({ r, db, D, meta, serve, ErroreHttp }) {
   });
   r('GET', '/api/prova-pagamenti/registro', ({ ctx }) => { serve(ctx); return db.prepare('SELECT * FROM _provapag_eventi ORDER BY quando DESC LIMIT 100').all(); });
 
-  // il webhook in ingresso. ATTRITO: senza ritocchi al motore qui non si arriva (X-Kubo obbligatoria) e il corpo grezzo
+  // il webhook in ingresso. ATTRITO: senza ritocchi al motore qui non si arriva (X-Lumi obbligatoria) e il corpo grezzo
   // non c'è: «grezzo» esiste solo con la patch di prova in api.js (opzione { pubblica: true, grezzo: true }).
   r('POST', '/api/prova-pagamenti/webhook', ({ req, corpo, grezzo }) => {
     const s = segreto(); if (!s) throw new ErroreHttp(503, 'Pagamenti non configurati');

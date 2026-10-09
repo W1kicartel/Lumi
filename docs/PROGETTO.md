@@ -1,4 +1,4 @@
-# Kubo: il progetto
+# Lumi: il progetto
 
 
 **L'idea:** il gestionale open source più versatile che esista. Un'azienda non deve più cercare qualcuno che le scriva il gestionale: parte da un modello del suo settore e poi se lo cuce addosso da sola. Può farlo:
@@ -8,7 +8,7 @@
 - chiedendolo a Lumi a parole;
 - con un plugin, se ha uno sviluppatore.
 
-Kubo sono i blocchi: ogni azienda monta i suoi e il gestionale prende la sua forma.
+Lumi sono i blocchi: ogni azienda monta i suoi e il gestionale prende la sua forma.
 
 ## Principi
 
@@ -37,7 +37,7 @@ Kubo sono i blocchi: ogni azienda monta i suoi e il gestionale prende la sua for
  web/      l'interfaccia generica: lista, scheda, kanban, calendario, cruscotto, «Personalizza»
  modelli/  i modelli di settore in JSON: entità, viste, automazioni, domande dell'avvio guidato
  desktop/  Electron: «questo PC è il server» (indirizzo e QR per gli altri) oppure «collegati»
- lumi/     l'assistente (da github.com/W1kicartel/lumi): strumenti generati dallo schema
+ lumi/     l'assistente (il motore viene dal progetto Lumi per le aziende, MIT): strumenti generati dallo schema
 ```
 
 ### I dati
