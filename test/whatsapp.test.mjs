@@ -58,7 +58,9 @@ test('regole: numeri E.164, finestra di 24 ore, ore di silenzio, STOP, variabili
   assert.equal(R.inSilenzio(Date.parse('2026-10-09T08:00:00Z'), sil, 'Europe/Rome'), false);   // 10:00
   assert.equal(new Date(R.fineSilenzio(Date.parse('2026-10-09T20:30:00Z'), sil, 'Europe/Rome')).toISOString(), '2026-10-10T07:00:00.000Z');
   assert.equal(R.aperto(Date.parse('2026-10-11T10:00:00Z'), { apre: '09:00', chiude: '19:00', giorni: [1, 2, 3, 4, 5, 6] }, 'Europe/Rome'), false);   // domenica
-  for (const s of ['STOP', 'stop', ' Basta! ', 'ANNULLA', 'Stop per favore']) assert.equal(R.parolaChiave(s), 'stop', s);
+  for (const s of ['STOP', 'stop', ' Basta! ', 'ANNULLA', 'Stop per favore', 'basta grazie', 'Non scrivermi più', 'Stop.']) assert.equal(R.parolaChiave(s), 'stop', s);
+  // una frase vera che comincia con la parola non toglie i consensi da sola: decide il titolare
+  for (const s of ["Annulla l'appuntamento di domani", 'Basta che mi avvisate', 'Stop al pacco, lo ritiro io']) assert.equal(R.parolaChiave(s), 'forse', s);
   assert.equal(R.parolaChiave('non fermatevi, va tutto bene'), null); assert.equal(R.parolaChiave('START'), 'ripresa');
   const m = { corpo: 'Ciao {{1}}, il {{2}} da {{3}}. {{4}}' };
   const x = R.valoriModello(m, { 1: 'cliente.nome', 2: 'riga.quando', 3: 'azienda.nome', 4: 'riga.tracking|fisso:A presto' },
@@ -109,6 +111,10 @@ test('Meta: verifica GET del webhook, firma X-Hub-Signature-256, messaggio in ar
     const st = (await K.chiama('GET', `/api/whatsapp/cliente/${c.id}`)).json; assert.equal(st.messaggi.length, 2); assert.equal(st.finestra.aperta, true);
     // un solo servizio WhatsApp acceso
     const tw = await K.chiama('PUT', '/api/connettori/twilio-whatsapp', { attivo: true }); assert.equal(tw.stato, 409); assert.match(tw.json.errore, /WhatsApp \(Meta Cloud API\)/);
+    // una frase che comincia con «Annulla» non è uno STOP: i consensi restano, il messaggio è segnato per il titolare
+    const forse = entrata('393331234567', "Annulla l'appuntamento di domani"); await manda(K, '/api/connettori/whatsapp/in', forse, { 'X-Hub-Signature-256': firmaMeta('app-segreta', forse) });
+    assert.equal(K.db.prepare("SELECT stato FROM _whatsapp_messaggi WHERE verso = 'in' ORDER BY id DESC").get().stato, 'forse_stop');
+    assert.notEqual(W.consenso('+393331234567').servizio?.stato, 'no');
     // STOP: rispettato ovunque, e il motivo si legge
     const stop = entrata('393331234567', 'STOP'); await manda(K, '/api/connettori/whatsapp/in', stop, { 'X-Hub-Signature-256': firmaMeta('app-segreta', stop) });
     const dopo = await K.chiama('POST', '/api/whatsapp/invia', { cliente: c.id, testo: 'Ultima cosa' }); assert.equal(dopo.stato, 409); assert.equal(dopo.json.motivo, 'stop'); assert.match(dopo.json.errore, /STOP/);

@@ -56,8 +56,12 @@ async function conversazioni(corpo, k, st, numero, ridisegna) {
 async function chat(dove, k, st, numero, ridisegna) {
   const { h, api, get, toast } = k, c = await get(`/whatsapp/conversazioni/${encodeURIComponent(numero)}`);
   if (c.messaggi.some(m => m.verso === 'in' && !m.letto)) api('POST', `/whatsapp/conversazioni/${encodeURIComponent(numero)}/letti`).catch(() => null);
+  const cs0 = c.consenso || {}, segnaStop = testo => async () => {   // la parola era dentro una frase: decide il titolare
+    try { for (const categoria of ['servizio', 'marketing']) await api('POST', '/whatsapp/consensi', { numero, categoria, stato: 'no', fonte: `parola:${String(testo || '').trim().slice(0, 30)}`, testo }); ridisegna(); } catch (e) { toast(e.message, true); }
+  };
   const fumetti = h('div.wa-fumetti', c.messaggi.map(m => h(`div.wa-fumetto.${m.verso}`, h('div', { testo: m.testo || (m.modello ? `[${m.modello}]` : '') }),
-    h('div.wa-meta', m.modello ? h('span', { testo: m.modello }) : null, h('span', { testo: quando(m.quando) }), m.verso === 'out' ? chipStato(h, m.stato) : null, m.motivo ? h('span.wa-motivo', { testo: m.motivo }) : null))));
+    h('div.wa-meta', m.modello ? h('span', { testo: m.modello }) : null, h('span', { testo: quando(m.quando) }), m.verso === 'out' ? chipStato(h, m.stato) : null, m.motivo ? h('span.wa-motivo', { testo: m.motivo }) : null,
+      m.verso === 'in' && m.stato === 'forse_stop' && cs0.servizio?.stato !== 'no' ? h('span.wa-motivo', t('whatsapp.forse-stop'), ' ', h('button.btn.piccolo', { type: 'button', on: { click: segnaStop(m.testo) } }, t('whatsapp.segna-stop'))) : null))));
   const cs = c.consenso || {}, voceCons = (cat, x) => h('span', `${t('whatsapp.c-' + cat)}: `, h('b', { testo: x ? t('whatsapp.si-no-' + x.stato) : '—' }), x ? h('span.nota', { testo: ` (${quando(x.quando)}${x.fonte ? ' · ' + x.fonte : ''})` }) : null);
   const registraCons = (categoria, stato) => async () => {
     const fonte = prompt(t('whatsapp.fonte-chiedi')); if (fonte === null) return;

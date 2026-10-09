@@ -1,5 +1,7 @@
 // Il modulo WhatsApp dell'interfaccia (web/moduli/whatsapp.js): conversazioni, modelli, automazioni, impostazioni.
 export default {
+  'whatsapp.forse-stop': 'Klingt nach dem Wunsch, keine Nachrichten mehr zu erhalten',
+  'whatsapp.segna-stop': 'Als STOP markieren',
   'whatsapp.s-approvato': "Genehmigt",
   'whatsapp.s-in_attesa': "Ausstehend",
   'whatsapp.s-rifiutato': "Abgelehnt",

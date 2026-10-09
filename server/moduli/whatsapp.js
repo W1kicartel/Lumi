@@ -280,11 +280,12 @@ export default function registra({ r, prima, db, S, D, P, A, meta, serve, Errore
         if (ev.id && db.prepare("SELECT 1 FROM _whatsapp_messaggi WHERE id_remoto = ? AND verso = 'in'").get(ev.id)) continue;
         let cliente = clienteDi(numero);
         if (!cliente && ['cliente', 'lead'].includes(i.sconosciuti)) cliente = creaCliente(numero, ev.nome, i.sconosciuti);
-        db.prepare(`INSERT INTO _whatsapp_messaggi (numero, cliente, nome, verso, tipo, testo, categoria, stato, id_remoto, provider, quando, letto) VALUES (?, ?, ?, 'in', ?, ?, 'servizio', 'ricevuto', ?, ?, ?, 0)`)
-          .run(numero, cliente, ev.nome || null, ev.media ? 'media' : 'testo', ev.testo ?? (ev.media ? `[${ev.media}]` : ''), ev.id || null, pid, ev.quando || ora());
         const parola = R.parolaChiave(ev.testo);
+        db.prepare(`INSERT INTO _whatsapp_messaggi (numero, cliente, nome, verso, tipo, testo, categoria, stato, id_remoto, provider, quando, letto) VALUES (?, ?, ?, 'in', ?, ?, 'servizio', ?, ?, ?, ?, 0)`)
+          .run(numero, cliente, ev.nome || null, ev.media ? 'media' : 'testo', ev.testo ?? (ev.media ? `[${ev.media}]` : ''), parola === 'forse' ? 'forse_stop' : 'ricevuto', ev.id || null, pid, ev.quando || ora());
         if (parola === 'stop') for (const c of ['servizio', 'marketing']) scriviConsenso({ numero, cliente, categoria: c, stato: 'no', fonte: `parola:${String(ev.testo).trim().slice(0, 30)}`, testo: ev.testo, chi: 'cliente' });
         if (parola === 'ripresa') scriviConsenso({ numero, cliente, categoria: 'servizio', stato: 'si', fonte: `parola:${String(ev.testo).trim().slice(0, 30)}`, testo: ev.testo, chi: 'cliente' });
+        if (parola === 'forse') try { manda?.({ tipo: 'avviso', testo: `WhatsApp ${numero}: «${String(ev.testo).trim().slice(0, 60)}» sembra una richiesta di non ricevere più messaggi. Controlla la conversazione.` }); } catch { /* nessun browser collegato */ }
         avvisa(numero); n++;
         // la risposta fuori orario non fa aspettare il webhook (Meta vuole il 200 in pochi secondi): la riga si scrive subito, l'invio dopo
         if (!parola) fuoriOrario(numero, cliente).catch(e => nucleo()?.annota(pid, 'uscita', 'errore', 'fuori_orario', String(e.message).slice(0, 200)));

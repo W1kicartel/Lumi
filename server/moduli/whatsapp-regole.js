@@ -73,9 +73,14 @@ export function aperto(ora, orari, fuso = 'Europe/Rome') {
 export const PAROLE_STOP = ['STOP', 'BASTA', 'ANNULLA', 'CANCELLAMI', 'DISISCRIVIMI', 'DISISCRIVI', 'NON SCRIVERMI', 'UNSUBSCRIBE', 'STOPP', 'ALTO', 'ARRET', 'ARRÊT', 'PARAR', 'SAIR'];
 export const PAROLE_RIPRESA = ['START', 'RIPRENDI', 'ISCRIVIMI', 'UNSTOP'];
 const pulita = s => String(s || '').normalize('NFC').toUpperCase().replace(/[^\p{L}\p{N} ]/gu, ' ').replace(/\s+/g, ' ').trim();
+// «STOP», «Basta grazie», «non scrivermi più» fermano tutto. Una frase vera che comincia con la parola («Annulla l'appuntamento
+// di domani», «Basta che mi avvisate») non cambia i consensi: è «forse», e il titolare decide dalla conversazione.
+const RIEMPITIVI = new Set(['PER', 'FAVORE', 'PERFAVORE', 'GRAZIE', 'MILLE', 'PIÙ', 'PIU', 'TUTTO', 'TUTTI', 'MESSAGGI', 'NOTIFICHE', 'WHATSAPP',
+  'PLEASE', 'THANKS', 'THANK', 'YOU', 'MERCI', 'DANKE', 'GRACIAS', 'OBRIGADO', 'OBRIGADA', 'POR', 'FAVOR']);
 export function parolaChiave(testo) {
-  const t = pulita(testo); if (!t || t.length > 40) return null;
-  if (PAROLE_STOP.some(p => t === p || t.startsWith(p + ' '))) return 'stop';
+  const t = pulita(testo); if (!t || t.length > 160) return null;
+  const p = PAROLE_STOP.find(p => t === p || t.startsWith(p + ' '));
+  if (p) return t.slice(p.length).split(' ').filter(Boolean).every(w => RIEMPITIVI.has(w)) ? 'stop' : 'forse';
   if (PAROLE_RIPRESA.includes(t)) return 'ripresa';
   return null;
 }
