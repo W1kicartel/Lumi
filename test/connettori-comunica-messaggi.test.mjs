@@ -97,6 +97,12 @@ test('Slack, Teams e Discord: prova, scorte basse una volta (e di nuovo dopo il 
     const cl = (await K.chiama('POST', '/api/dati/clienti', { nome: 'Marco Verdi' })).json;
     await K.chiama('POST', '/api/dati/appuntamenti', { quando: '2026-11-03T14:30:00Z', cliente: cl.id }); await giro();
     assert.match(arrivi.slack.at(-1).text, /^Nuovo appuntamento: .*3.*15:30 · Marco Verdi$/);
+    // il riepilogo della sera: vendite di oggi, appuntamenti di domani, scorte basse
+    const domani = new Date(Date.now() + 864e5).toLocaleDateString('sv-SE', { timeZone: 'Europe/Rome' });
+    await K.chiama('POST', '/api/dati/appuntamenti', { quando: `${domani}T08:00:00Z`, cliente: cl.id });
+    await K.chiama('POST', '/api/dati/vendite', { righe: [{ articolo: a.id, quantita: 2, prezzo: 12 }] }); await giro();
+    const rp = await K.chiama('POST', '/api/connettori/slack/giri/riepilogo'); assert.equal(rp.json.risultato?.inviato, true, JSON.stringify(rp.json));
+    assert.match(arrivi.slack.at(-1).text, /^Riepilogo di \S+ \d+ \S+\n- Vendite: 1, 24,00 €\n- Appuntamenti di domani: 1\n- Articoli sotto scorta: 1$/);
     // Lumi scrive nel canale (solo il titolare); un indirizzo che risponde 404 diventa un errore leggibile
     assert.equal((await K.chiama('POST', '/api/connettori/slack/azioni/scrivi', { args: { testo: 'Chiusura alle 17 oggi' } })).json.inviato, true);
     assert.equal(arrivi.slack.at(-1).text, 'Chiusura alle 17 oggi');

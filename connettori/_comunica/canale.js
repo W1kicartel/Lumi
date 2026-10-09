@@ -1,6 +1,6 @@
 // Un canale di squadra a indirizzo segreto (Slack, Microsoft Teams, Discord, Mattermost…): gli avvisi degli eventi
 // scelti e l'azione «scrivi nel canale» per Lumi. L'indirizzo del webhook È la chiave: si custodisce come segreto.
-import { impostazioniAvvisi, testiAvvisi, uscitaAvvisi, segnaAcceso, lingua } from './notifiche.js';
+import { impostazioniAvvisi, testiAvvisi, uscitaAvvisi, segnaAcceso, lingua, impRiepilogo, testiRiepilogo, giroRiepilogo } from './notifiche.js';
 
 const PROVA = { it: 'Kubo è collegato a questo canale.', en: 'Kubo is connected to this channel.', es: 'Kubo está conectado a este canal.', fr: 'Kubo est connecté à ce canal.', de: 'Kubo ist mit diesem Kanal verbunden.', pt: 'O Kubo está ligado a este canal.' };
 const AZ = {
@@ -19,11 +19,12 @@ export function canale(def) {
   }
   return {
     id: def.id, nome: def.nome, versione: 1, icona: 'messaggio', descrizione: def.descrizione,
-    impostazioni: [...(def.impostazioni || [{ id: 'url', nome: 'Indirizzo del webhook', segreto: true, tipo: 'url' }]), ...impostazioniAvvisi()],
-    permessi: { clienti: { leggi: true }, vendite: { leggi: true }, appuntamenti: { leggi: true }, prenotazioni: { leggi: true }, articoli: { leggi: true } },
+    impostazioni: [...(def.impostazioni || [{ id: 'url', nome: 'Indirizzo del webhook', segreto: true, tipo: 'url' }]), ...impostazioniAvvisi(), impRiepilogo],
+    permessi: { clienti: { leggi: true }, vendite: { leggi: true }, appuntamenti: { leggi: true }, prenotazioni: { leggi: true }, articoli: { leggi: true }, fatture: { leggi: true } },
     attiva: async k => segnaAcceso(k),
     prova: async k => { await scrivi(k, PROVA[lingua(k)] || PROVA.it); return { ok: true }; },
     uscita: uscitaAvvisi(scrivi),
+    pianificati: { riepilogo: giroRiepilogo(scrivi) },
     azioni: { scrivi: {
       nome: 'Scrivi nel canale', descrizione: `Scrive un messaggio nel canale ${def.nome} della squadra`, lumi: true, scrive: true,
       input: { testo: { tipo: 'testo', nome: 'Il messaggio' } },
@@ -31,6 +32,6 @@ export function canale(def) {
       esegui: async ({ testo }, k) => { if (!String(testo || '').trim()) throw new Error('Il messaggio è vuoto'); return scrivi(k, testo); },
     } },
     catalogo: def.catalogo,
-    testi: Object.fromEntries(['en', 'es', 'fr', 'de', 'pt'].map(l => [l, { ...AZ[l], ...testiAvvisi(l), ...(def.testi[l] || {}) }])),
+    testi: Object.fromEntries(['en', 'es', 'fr', 'de', 'pt'].map(l => [l, { ...AZ[l], ...testiAvvisi(l), ...testiRiepilogo(l), ...(def.testi[l] || {}) }])),
   };
 }
