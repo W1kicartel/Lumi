@@ -10,5 +10,6 @@
   "scripts": {
     "start": "node server/avvia.js",
     "test": "node --test test/*.test.mjs"
-  }
+  },
+  "optionalDependencies": { "sherpa-onnx-node": "1.13.8" }
 }

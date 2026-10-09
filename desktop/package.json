@@ -33,7 +33,10 @@
       { "from": "../LICENSE", "to": "kubo/LICENSE" }
     ],
     "electronFuses": { "runAsNode": false, "enableNodeOptionsEnvironmentVariable": false, "enableNodeCliInspectArguments": false },
-    "mac": { "category": "public.app-category.business", "target": [{ "target": "dmg", "arch": ["universal"] }], "artifactName": "Kubo-${version}-mac.${ext}" },
+    "mac": { "category": "public.app-category.business", "target": [{ "target": "dmg", "arch": ["universal"] }], "artifactName": "Kubo-${version}-mac.${ext}",
+      "extraResources": [{ "from": "bin", "to": "kubo/bin", "filter": ["kubo-voce"] }],
+      "x64ArchFiles": "Contents/Resources/kubo/bin/kubo-voce",
+      "extendInfo": { "NSMicrophoneUsageDescription": "Kubo usa il microfono solo mentre parli con Lumi. Con la voce locale l'audio resta su questo computer." } },
     "win": { "target": "nsis", "artifactName": "Kubo-${version}-windows.${ext}" },
     "nsis": { "oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": true, "runAfterFinish": true },
     "linux": { "target": ["AppImage", "deb"], "category": "Office", "artifactName": "Kubo-${version}-linux.${ext}" }

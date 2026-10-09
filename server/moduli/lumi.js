@@ -6,17 +6,25 @@
 //   GET  /api/lumi/da-vedere        «cosa richiede attenzione», generato dallo schema e letto con i permessi dell'utente
 //   POST /api/lumi/riepilogo        conteggi e somme per filtro e periodo («quanto ho venduto questa settimana»)
 //   POST /api/lumi/verifica         prova una modifica dello schema o un'automazione senza applicarla (per la proposta)
+//   POST /api/lumi/voce/trascrivi   la voce locale (Parakeet v3 su questo computer, lumi/voce.js): corpo float32 little-endian
+//                                   mono 16 kHz (application/octet-stream), al massimo 60 secondi → { testo, motore }
 // La chiave sta in un file accanto al database (permessi 600) o, se il database è in memoria, nelle impostazioni; senza,
 // vale la variabile ANTHROPIC_API_KEY. Il motore di Lumi (lumi/nucleo.js) è quello del progetto Lumi, uguale.
 import { readFileSync, writeFileSync, unlinkSync, chmodSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { creaGestore, MODELLO } from './lumi/nucleo.js';
+import { creaVoceLocale, scegliMotore, daByte, MAX_BYTE } from './lumi/voce.js';
 import { mezzanotte, piuGiorni, giornoDi } from './agenda-aggregati.js';   // i giorni nel fuso dell'azienda
 
 const ORIGINE = 'http://kubo.lumi';   // il nucleo vuole un'origine ammessa: la richiesta la costruiamo noi, dopo la sessione
 const CHIAVE = /^sk-[\w-]{10,300}$/;
 const SENZA_CHIAVE = 'Lumi non ha ancora la chiave di Claude: il titolare la aggiunge in Gestione → Lumi.';
 const GIORNO = 864e5;
+const RADICE = join(dirname(fileURLToPath(import.meta.url)), '..', '..');   // server/, web/ e (in sviluppo) desktop/bin
+// le voci locali accese da questo processo (una per server): si chiudono tutte all'uscita
+const VOCI = new Set();
+process.once('exit', () => { for (const v of VOCI) v.chiudi(); });
 
 export default function registra({ r, db, S, D, P, A, meta, serve, ErroreHttp }) {
   // ---------- impostazioni ----------
@@ -35,8 +43,13 @@ export default function registra({ r, db, S, D, P, A, meta, serve, ErroreHttp })
   const acceso = () => meta.leggi(db, 'lumi.attivo') !== '0';
   const limite = () => Number(meta.leggi(db, 'lumi.limite') || process.env.KUBO_LUMI_LIMITE || 20);
   const titolare = ctx => { if (serve(ctx).r.id !== 'titolare') throw new P.ErrorePermesso('Solo il titolare cambia le impostazioni di Lumi'); return ctx; };
+  // la voce locale: il motore si sceglie una volta, all'avvio (kubo-voce sul Mac con chip Apple, sherpa-onnx altrove, o niente)
+  const cartellaDati = () => { const l = db.location?.(); return l ? dirname(l) : null; };
+  const voce = creaVoceLocale({ scelta: scegliMotore({ radice: RADICE, cartellaModello: process.env.KUBO_VOCE_MODELLO || (cartellaDati() && join(cartellaDati(), 'voce-onnx')) }),
+    temp: process.env.KUBO_VOCE_TEMP || undefined });
+  VOCI.add(voce);
   const impostazioni = () => ({ attivo: acceso(), chiave: !!chiave(), fonte: chiaveSalvata() ? 'impostazioni' : chiave() ? 'ambiente' : null,
-    limite: limite(), modello: process.env.LUMI_MODELLO || MODELLO, voce: !!process.env.DEEPGRAM_API_KEY });
+    limite: limite(), modello: process.env.LUMI_MODELLO || MODELLO, voce: !!process.env.DEEPGRAM_API_KEY, voceLocale: voce.motore });
 
   r('GET', '/api/lumi/impostazioni', ({ ctx }) => (titolare(ctx), impostazioni()));
   r('PUT', '/api/lumi/impostazioni', ({ ctx, corpo }) => {
@@ -58,7 +71,13 @@ export default function registra({ r, db, S, D, P, A, meta, serve, ErroreHttp })
   r('POST', '/api/lumi', async ({ ctx, corpo, res }) => {
     serve(ctx);
     const az = corpo.azione, k = chiave();
-    if (az === 'stato') return { claude: acceso() && !!k, voce: acceso() && !!k && !!process.env.DEEPGRAM_API_KEY, modello: process.env.LUMI_MODELLO || MODELLO, attivo: acceso(), chiave: !!k };
+    if (az === 'stato') {
+      // voceLocale: si può usare adesso (il modello è in memoria); voceMotore: c'è su questo computer. Chi chiede lo stato
+      // la fa preparare in sottofondo: alla prima frase il modello è già pronto
+      if (acceso() && voce.disponibile() && !voce.pronta()) voce.prepara();
+      return { claude: acceso() && !!k, voce: acceso() && !!k && !!process.env.DEEPGRAM_API_KEY, modello: process.env.LUMI_MODELLO || MODELLO, attivo: acceso(), chiave: !!k,
+        voceLocale: acceso() && voce.pronta(), voceMotore: acceso() ? voce.motore : null };
+    }
     if (az === 'elimina-file' && !k) return { ok: true };
     if (!acceso()) throw new ErroreHttp(400, 'Lumi è spento: il titolare lo riaccende in Gestione → Lumi.');
     if (!k) throw new ErroreHttp(400, SENZA_CHIAVE);
@@ -78,6 +97,27 @@ export default function registra({ r, db, S, D, P, A, meta, serve, ErroreHttp })
     if (!rr.ok) throw new ErroreHttp(rr.status, j.errore || 'Lumi non ha risposto');
     return j;
   });
+
+  // ---------- la voce locale: l'audio resta su questo computer ----------
+  // stessa autenticazione di POST /api/lumi (sessione o token, X-Kubo), Lumi acceso, un limite al minuto per persona
+  // (lo stesso numero delle domande, contato a parte). Una trascrizione alla volta: le altre aspettano in fila.
+  const contiVoce = new Map();
+  r('POST', '/api/lumi/voce/trascrivi', async ({ ctx, grezzo }) => {
+    serve(ctx);
+    if (!acceso()) throw new ErroreHttp(400, 'Lumi è spento: il titolare lo riaccende in Gestione → Lumi.');
+    if (!voce.disponibile()) throw new ErroreHttp(503, 'La voce locale non c\'è su questo server');
+    const b = grezzo || Buffer.alloc(0);
+    if (b.length > MAX_BYTE) throw new ErroreHttp(413, 'Audio troppo lungo: al massimo 60 secondi');
+    if (!b.length || b.length % 4) throw new ErroreHttp(400, 'Audio non valido: serve float32 mono a 16 kHz');
+    const ora = Date.now(), c = contiVoce.get(ctx.utente.id);
+    if (!c || ora - c.da > 6e4) contiVoce.set(ctx.utente.id, { da: ora, n: 1 }); else if (++c.n > limite()) throw new ErroreHttp(429, 'Troppe domande in poco tempo: riprova fra un minuto.');
+    try { return { testo: await voce.trascrivi(daByte(b)), motore: voce.motore }; }
+    catch (e) {
+      if (e.codice === 'occupata') throw new ErroreHttp(503, 'La voce locale è occupata: riprova fra poco');
+      console.error('voce locale:', e.message);
+      throw new ErroreHttp(502, 'La voce locale non ha risposto: riprova');
+    }
+  }, { grezzo: true });
 
   // ---------- «Da vedere»: dallo schema, con i permessi di chi guarda ----------
   // ogni browser lo rilegge ogni minuto e i calcolati costano: per 20 secondi vale la stessa risposta (per persona)

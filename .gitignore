@@ -4,3 +4,8 @@ node_modules/
 *.db
 *.db-wal
 *.db-shm
+# la voce sul Mac (desktop/voce-mac/compila.sh): cache di Swift e il binario compilato
+desktop/voce-mac/.build/
+desktop/voce-mac/.pm/
+desktop/voce-mac/.swiftpm/
+desktop/bin/
