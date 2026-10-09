@@ -51,3 +51,34 @@ test('Satispay: attivazione con il codice (RSA), link firmato, callback riletto 
     assert.ok(firmeOk >= 3);
   } finally { await K.chiudi(); await S.chiudi(); }
 });
+
+test('PayPal: token client credentials, ordine con custom_id, webhook verificato da PayPal, ordine approvato → catturato → vendita pagata', async () => {
+  const K = await kubo(); let ordine = null, catturato = 0, token = 0;
+  const S = await finto({
+    'POST /v1/oauth2/token': (p, c, { intestazioni }) => { token++; assert.equal(intestazioni.authorization, 'Basic ' + Buffer.from('cid:sec').toString('base64')); assert.equal(c.grant_type, 'client_credentials'); return { access_token: 'A21', expires_in: 32400 }; },
+    'POST /v2/checkout/orders': (p, c, { intestazioni }) => { assert.equal(intestazioni.authorization, 'Bearer A21'); assert.ok(intestazioni['paypal-request-id']); ordine = c; return { id: '5O190127TN364715T', status: 'PAYER_ACTION_REQUIRED', links: [{ rel: 'payer-action', href: 'https://www.sandbox.paypal.com/checkoutnow?token=5O190127TN364715T' }] }; },
+    'POST /v1/notifications/verify-webhook-signature': (p, c) => ({ verification_status: c.transmission_sig === 'firma-buona' && c.webhook_id === 'WH-1' && c.webhook_event?.id ? 'SUCCESS' : 'FAILURE' }),
+    'GET /v2/checkout/orders/:id': p => ({ id: p.id, status: 'APPROVED', purchase_units: [{ custom_id: ordine.purchase_units[0].custom_id }] }),
+    'POST /v2/checkout/orders/:id/capture': (p, c, { intestazioni }) => { catturato++; assert.equal(intestazioni['paypal-request-id'], `kubo-cattura-${p.id}`);
+      return { id: p.id, status: 'COMPLETED', purchase_units: [{ custom_id: ordine.purchase_units[0].custom_id, payments: { captures: [{ id: 'CAP1', status: 'COMPLETED', amount: { value: ordine.purchase_units[0].amount.value, currency_code: 'EUR' }, create_time: '2026-10-09T09:00:00Z' }] } }] }; },
+  });
+  try {
+    const v = await vendita(K, 12.5, 2);
+    await accendi(K, 'paypal', { base: S.url, segreti: { client_id: 'cid', segreto: 'sec' }, impostazioni: { webhook_id: 'WH-1' } });
+    assert.equal((await K.chiama('POST', '/api/connettori/paypal/prova')).json.ok, true);
+    const l = await K.chiama('POST', '/api/connettori/paypal/azioni/link_vendita', { args: { vendita: v.id } });
+    assert.equal(l.stato, 200, JSON.stringify(l.json)); assert.match(l.json.url, /checkoutnow\?token=5O190127TN364715T/);
+    assert.deepEqual(ordine.purchase_units[0].amount, { currency_code: 'EUR', value: '25.00' }); assert.equal(ordine.purchase_units[0].custom_id, `kubo-v-${v.id}`);
+    assert.equal(token, 1);   // il token resta in memoria finché vale: la prova e il link ne chiedono uno solo
+    const ev = JSON.stringify({ id: 'WH-EV-1', event_type: 'CHECKOUT.ORDER.APPROVED', resource: { id: '5O190127TN364715T', status: 'APPROVED' } });
+    const h = sig => ({ 'PAYPAL-AUTH-ALGO': 'SHA256withRSA', 'PAYPAL-CERT-URL': 'https://api.sandbox.paypal.com/v1/notifications/certs/CERT-1', 'PAYPAL-TRANSMISSION-ID': 't1', 'PAYPAL-TRANSMISSION-SIG': sig, 'PAYPAL-TRANSMISSION-TIME': new Date().toISOString() });
+    assert.equal((await manda(K, '/api/connettori/paypal/in', ev, h('falsa'))).stato, 401);
+    const r = await manda(K, '/api/connettori/paypal/in', ev, h('firma-buona'));
+    assert.equal(r.stato, 200, JSON.stringify(r.json)); assert.equal(r.json.esito, 'pagata'); assert.equal(catturato, 1);
+    assert.equal(await stato(K, v.id), 'pagata');
+    assert.equal((await manda(K, '/api/connettori/paypal/in', ev, h('firma-buona'))).json.doppione, true);
+    // la cattura completata che arriva dopo non cambia niente
+    const ev2 = JSON.stringify({ id: 'WH-EV-2', event_type: 'PAYMENT.CAPTURE.COMPLETED', resource: { id: 'CAP1', status: 'COMPLETED', custom_id: `kubo-v-${v.id}`, amount: { value: '25.00', currency_code: 'EUR' } } });
+    assert.match((await manda(K, '/api/connettori/paypal/in', ev2, h('firma-buona'))).json.esito, /già pagata/);
+  } finally { await K.chiudi(); await S.chiudi(); }
+});
