@@ -102,7 +102,7 @@ export default {
       'Premi «Prova la connessione», poi «Sincronizza ora»: passano solo i clienti con il consenso; chi si disiscrive in Mailchimp perde il consenso in Kubo ogni ora.',
     ],
     difficolta: 'facile', zone: ['mondo'],
-    fonti: ['https://mailchimp.com/developer/marketing/api/list-members/add-or-update-list-member/', 'https://mailchimp.com/developer/marketing/api/list-member-tags/add-or-remove-member-tags/', 'https://mailchimp.com/developer/marketing/api/list-members/list-members-info/', 'https://mailchimp.com/developer/marketing/docs/fundamentals/', 'https://mailchimp.com/developer/marketing/guides/sync-audience-data-webhooks/', 'https://mailchimp.com/pricing/marketing/'],
+    fonti: ['https://mailchimp.com/developer/marketing/api/list-members/add-or-update-list-member/', 'https://mailchimp.com/developer/marketing/api/list-member-tags/add-or-remove-member-tags/', 'https://mailchimp.com/developer/marketing/api/list-members/list-members-info/', 'https://mailchimp.com/developer/marketing/docs/fundamentals/', 'https://mailchimp.com/pricing/marketing/'],
     prova: 'finto', parole: ['mailchimp', 'newsletter', 'email marketing', 'lista', 'audience', 'iscritti', 'subscribers', 'tag', 'campagne', 'campaigns'],
   },
   testi: {

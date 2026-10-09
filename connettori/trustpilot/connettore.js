@@ -12,8 +12,13 @@ const breve = r => ({ id: r.id, autore: r.consumer?.displayName || 'Anonimo', st
 async function unita(k) {
   const dom = String(k.imp.dominio || '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
   const s = k.stato.leggi('unita'); if (s?.dominio === dom && s.id) return s.id;
-  const r = await k.http.get(`${tbase(k)}/v1/business-units/find?${new URLSearchParams({ name: dom })}`, pub(k)); if (!r.ok || !r.json?.id) throw no(r, `la ricerca di ${dom}`);
-  k.stato.scrivi('unita', { dominio: dom, id: r.json.id, nome: r.json.displayName || dom }); return r.json.id;
+  if (/^[0-9a-f]{24}$/.test(dom)) { k.stato.scrivi('unita', { dominio: dom, id: dom, nome: dom }); return dom; }   // già l'id della business unit
+  // «find» per nome di dominio; se non risponde, la ricerca documentata (/search?query=) prendendo il risultato con quel dominio
+  let r = await k.http.get(`${tbase(k)}/v1/business-units/find?${new URLSearchParams({ name: dom })}`, pub(k)), u = r.ok && r.json?.id ? r.json : null;
+  if (!u) { r = await k.http.get(`${tbase(k)}/v1/business-units/search?${new URLSearchParams({ query: dom })}`, pub(k)); const l = r.json?.businessUnits || [];
+    u = l.find(x => [x.name?.identifying, x.identifyingName, ...(x.name?.referring || [])].includes(dom)) || l[0] || null; }
+  if (!u?.id) throw no(r, `la ricerca di ${dom}`);
+  k.stato.scrivi('unita', { dominio: dom, id: u.id, nome: u.displayName || dom }); return u.id;
 }
 async function leggi(k) {
   const r = await k.http.get(`${tbase(k)}/v1/business-units/${await unita(k)}/reviews?perPage=100&orderBy=createdat.desc`, pub(k));
@@ -32,7 +37,7 @@ export default {
   descrizione: 'Recensioni Trustpilot come avviso, risposte da Kubo e inviti a recensire mandati ai clienti.',
   impostazioni: [
     { id: 'chiave', nome: 'API key', segreto: true }, { id: 'segreto', nome: 'API secret', segreto: true },
-    { id: 'dominio', nome: 'Dominio dell\'azienda su Trustpilot (es. bottega.it)' },
+    { id: 'dominio', nome: 'Dominio dell\'azienda su Trustpilot (es. bottega.it) o id della business unit' },
     { id: 'utente', nome: 'Id dell\'utente business (per inviti e risposte)' },
     { id: 'modello', nome: 'Id del modello di invito (vuoto = quello predefinito)' },
     { id: 'mittente', nome: 'Nome del mittente degli inviti (es. Bottega Rossi)' },
@@ -93,7 +98,7 @@ export default {
     prova: 'finto', parole: ['trustpilot', 'recensioni', 'reviews', 'reputazione', 'inviti', 'invitations', 'stelle', 'feedback'],
   },
   testi: {
-    en: { nome: 'Trustpilot', descrizione: 'Trustpilot reviews as alerts, replies from Kubo and review invitations sent to customers.', 'imp.chiave': 'API key', 'imp.segreto': 'API secret', 'imp.dominio': 'Company domain on Trustpilot (e.g. shop.com)', 'imp.utente': 'Business user id (for invitations and replies)', 'imp.modello': 'Invitation template id (empty = the default)', 'imp.mittente': 'Invitation sender name (e.g. Rossi Shop)', 'imp.rispondi_a': 'Reply-to email for invitations', 'az.recensioni': 'Latest Trustpilot reviews', 'az.rispondi_recensione': 'Reply on Trustpilot', 'az.chiedi_recensione': 'Ask for a review', 'giro.recensioni': 'New reviews',
+    en: { nome: 'Trustpilot', descrizione: 'Trustpilot reviews as alerts, replies from Kubo and review invitations sent to customers.', 'imp.chiave': 'API key', 'imp.segreto': 'API secret', 'imp.dominio': 'Company domain on Trustpilot (e.g. shop.com) or business unit id', 'imp.utente': 'Business user id (for invitations and replies)', 'imp.modello': 'Invitation template id (empty = the default)', 'imp.mittente': 'Invitation sender name (e.g. Rossi Shop)', 'imp.rispondi_a': 'Reply-to email for invitations', 'az.recensioni': 'Latest Trustpilot reviews', 'az.rispondi_recensione': 'Reply on Trustpilot', 'az.chiedi_recensione': 'Ask for a review', 'giro.recensioni': 'New reviews',
       'cat.costoNota': 'The Free plan lets you collect and reply to reviews on the website, but API keys (reading, replies, invitations) come only with the higher paid plans; prices on business.trustpilot.com/plans, from a few hundred euros a month.',
       'cat.serve': [{ cosa: 'The application API key and API secret', dove: 'Trustpilot Business → Integrations → Developers → API → Create application' }, { cosa: 'The company domain as shown on Trustpilot', dove: 'It is the public page address: trustpilot.com/review/<domain>' }, { cosa: 'The business user id (for invitations and replies with application credentials)', dove: 'Trustpilot Business → Settings → Users: the user who signs replies; or ask API support' }],
       'cat.passi': ['Check that your Trustpilot plan includes API access (otherwise there is no Developers section).', 'In Trustpilot Business → Integrations → Developers create an application and copy API key and secret.', 'Paste key, secret and the company domain; press «Test connection»: Kubo finds your page.', 'For replies and invitations enter the business user id, the sender name and the reply-to email.', 'From then on new reviews arrive as alerts every hour; from a customer card you can «Ask for a review», also through Lumi.'] },

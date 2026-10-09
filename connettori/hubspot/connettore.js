@@ -112,7 +112,7 @@ export default {
       'Facoltativo, se Kubo ha un indirizzo pubblico: nella Private App aggiungi il webhook verso <indirizzo>/api/connettori/hubspot/in con gli eventi dei contatti, e incolla qui il client secret.',
     ],
     difficolta: 'media', zone: ['mondo'],
-    fonti: ['https://developers.hubspot.com/docs/api-reference/crm-contacts-v3/batch/post-crm-v3-objects-contacts-batch-upsert', 'https://developers.hubspot.com/docs/guides/api/crm/search', 'https://developers.hubspot.com/docs/guides/apps/private-apps/overview', 'https://developers.hubspot.com/docs/api/webhooks/validating-requests', 'https://www.hubspot.com/pricing/crm'],
+    fonti: ['https://developers.hubspot.com/docs/guides/api/crm/objects/contacts', 'https://developers.hubspot.com/docs/guides/api/crm/search', 'https://developers.hubspot.com/docs/guides/apps/private-apps/overview', 'https://developers.hubspot.com/docs/api/webhooks/validating-requests', 'https://www.hubspot.com/pricing/crm'],
     prova: 'finto', parole: ['hubspot', 'crm', 'contatti', 'contacts', 'aziende', 'companies', 'lead', 'marketing', 'vendite', 'sales'],
   },
   testi: {
