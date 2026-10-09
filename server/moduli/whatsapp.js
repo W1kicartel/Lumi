@@ -198,7 +198,7 @@ export default function registra({ r, prima, db, S, D, P, A, meta, serve, Errore
       valori = x.valori; let mancano = x.mancano;
       if (Array.isArray(rich.variabili)) { rich.variabili.forEach((v, n) => { if (v != null && v !== '') valori[n] = String(v); }); mancano = mancano.filter(n => !valori[n - 1]); }
       if (mancano.length) return { numero, cliente: cli?.id || null, modello: mod, no: { motivo: 'variabili', p: { n: mancano.join(', ') } } };
-      testo = R.riempi(mod.corpo, valori);
+      valori = valori.map(R.pulisciValore); testo = R.riempi(mod.corpo, valori);
     } else if (!testo) return { numero, no: { motivo: 'vuoto', p: {} } };
     const mese = new Date(adesso); mese.setUTCDate(1); mese.setUTCHours(0, 0, 0, 0);
     const servizi = db.prepare("SELECT COUNT(*) n FROM _whatsapp_messaggi WHERE verso = 'out' AND categoria = 'servizio' AND quando >= ?").get(mese.toISOString()).n;

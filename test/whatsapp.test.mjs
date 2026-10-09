@@ -407,3 +407,13 @@ test('verifica: STOP non si scavalca con un «sì» a mano, un PDF fallito non f
     assert.equal((await K.chiama('POST', '/api/whatsapp/invia', { numero: '+393331234567', testo: 'ciao' })).stato, 403);
   } finally { await K.chiudi(); await S.chiudi(); }
 });
+
+test('verifica: numeri fuori dall\'Italia senza lo «0» nazionale, variabili dei modelli senza a capo (Meta le rifiuta)', () => {
+  assert.equal(R.e164('07911 123456', '+44'), '+447911123456');
+  assert.equal(R.e164('06 12 34 56 78', '+33'), '+33612345678');
+  assert.equal(R.e164('0151 12345678', '+49'), '+4915112345678');
+  assert.equal(R.e164('06 1234 5678', '+39'), '+390612345678');   // in Italia lo zero resta
+  assert.equal(R.e164('0549 123456', '+378'), '+3780549123456');   // e a San Marino
+  assert.equal(R.e164('0044 7911 123456', '+33'), '+447911123456');
+  assert.equal(R.pulisciValore('Via Roma 1\nScala B\t  interno     3'), 'Via Roma 1 Scala B interno 3');
+});
