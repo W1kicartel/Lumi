@@ -1,3 +1,4 @@
+import { pathToFileURL } from 'node:url';
 // Prova di carico (non fa parte di npm test): 50.000 articoli, 50.000 vendite con 200.000 righe, 10 persone collegate.
 //   node test/carico.mjs                       questo ramo
 //   node test/carico.mjs --radice ../altro     un'altra copia di Lumi (per esempio main, per il «prima»)
@@ -10,9 +11,9 @@ import { performance } from 'node:perf_hooks';
 
 const arg = process.argv.slice(2), radice = resolve(arg.includes('--radice') ? arg[arg.indexOf('--radice') + 1] : join(import.meta.dirname, '..'));
 const ARTICOLI = Number(process.env.ARTICOLI || 50000), VENDITE = Number(process.env.VENDITE || 50000), RIGHE_PER = 4, PERSONE = 10;
-const { apri, nuovoId } = await import(join(radice, 'server/db.js'));
-const { creaServer } = await import(join(radice, 'server/api.js'));
-const { attiva } = await import(join(radice, 'server/automazioni.js'));
+const { apri, nuovoId } = await import(pathToFileURL(join(radice, 'server/db.js')).href);
+const { creaServer } = await import(pathToFileURL(join(radice, 'server/api.js')).href);
+const { attiva } = await import(pathToFileURL(join(radice, 'server/automazioni.js')).href);
 attiva();
 
 const cartella = mkdtempSync(join(tmpdir(), 'lumi-carico-')), db = apri(join(cartella, 'lumi.db'));

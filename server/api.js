@@ -5,7 +5,7 @@ import './ambiente.js';   // le variabili KUBO_* deprecate valgono come LUMI_*
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { join, dirname, extname, normalize, sep } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import * as S from './schema.js';
 import * as D from './dati.js';
 import * as P from './permessi.js';
@@ -25,7 +25,8 @@ import { registroLumi } from './moduli/lumi/registro.js';
 // server/moduli/sicurezza.js: sessioni scadute per inattività, password da cambiare, tentativi di accesso).
 const CARTELLA_MODULI = join(dirname(fileURLToPath(import.meta.url)), 'moduli');
 const MODULI_SERVER = await Promise.all(readdirSync(CARTELLA_MODULI).filter(f => f.endsWith('.js')).sort()
-  .map(f => import(join(CARTELLA_MODULI, f)).then(m => ({ nome: f.replace(/\.js$/, ''), registra: m.default }))));
+  // con un indirizzo file://: su Windows un percorso «C:\…» non si importa
+  .map(f => import(pathToFileURL(join(CARTELLA_MODULI, f)).href).then(m => ({ nome: f.replace(/\.js$/, ''), registra: m.default }))));
 export const moduliWeb = () => readdirSync(join(WEB, 'moduli')).filter(f => f.endsWith('.js')).sort().map(f => `/moduli/${f}`);
 
 const WEB = join(dirname(fileURLToPath(import.meta.url)), '..', 'web');

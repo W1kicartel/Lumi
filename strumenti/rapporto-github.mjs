@@ -14,7 +14,8 @@ export default async function* rapporto(eventi) {
   const uscite = new Map();   // file → ultime righe scritte (stderr e stdout)
   for await (const { type, data } of eventi) {
     if (type === 'test:stderr' || type === 'test:stdout') {
-      const r = uscite.get(data.file) || []; r.push(...String(data.message).split(/\r?\n/).filter(Boolean)); uscite.set(data.file, r.slice(-40));
+      const chiave = String(data.file || '').toLowerCase(), r = uscite.get(chiave) || [];   // su Windows il disco può cambiare maiuscola
+      r.push(...String(data.message).split(/\r?\n/).filter(Boolean)); uscite.set(chiave, r.slice(-40));
       continue;
     }
     if (data?.details?.type === 'suite') continue;
@@ -24,7 +25,8 @@ export default async function* rapporto(eventi) {
     const e = data.details?.error, causa = e?.cause ?? e;
     let testo = `${causa?.message ?? causa ?? 'fallita'}${causa?.stack ? '\n' + String(causa.stack).split('\n').slice(1, 4).join('\n') : ''}`;
     const tutto = data.file && (data.name === data.file || /\.test\.mjs$/.test(String(data.name)));
-    if (tutto && uscite.get(data.file)?.length) testo += '\n--- ultime righe del file ---\n' + uscite.get(data.file).join('\n');
+    const righe = uscite.get(String(data.file || '').toLowerCase()) || uscite.get('');
+    if (tutto && righe?.length) testo += '\n--- ultime righe del file ---\n' + righe.join('\n');
     const file = data.file ? relative(process.cwd(), data.file).replace(/\\/g, '/') : '';
     yield `::error file=${proprieta(file)},line=${data.line || 1},title=${proprieta(String(data.name).slice(0, 120))}::${valore(testo.slice(-3500))}\n`;
   }
