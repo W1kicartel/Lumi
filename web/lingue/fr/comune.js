@@ -1,5 +1,5 @@
 export default {
-  'comune.benvenuto': 'Bienvenue dans Kubo',
+  'comune.benvenuto': 'Bienvenue dans Lumi',
   'comune.benvenuto-sotto': 'Le logiciel de gestion que vous montez à votre façon. Partez d\'un modèle, puis changez tout ce que vous voulez.',
   'comune.nome-azienda': 'Nom de l\'entreprise',
   'comune.tuo-nome': 'Votre nom',
@@ -8,7 +8,7 @@ export default {
   'comune.password-nuova': 'Mot de passe (8 caractères minimum)',
   'comune.valuta': 'Devise',
   'comune.da-dove': 'Par où commencer ? (vous pourrez en ajouter d\'autres ensuite)',
-  'comune.codice-avvio': "Code de démarrage (affiché dans le terminal ou le journal où tourne Kubo)",
+  'comune.codice-avvio': "Code de démarrage (affiché dans le terminal ou le journal où tourne Lumi)",
   'comune.codice-avvio-es': "ex. 3FA9C2D1",
   'comune.inizia': 'Commencer',
   'comune.lingua': 'Langue',

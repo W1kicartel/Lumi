@@ -1,6 +1,6 @@
 // Testi comuni: primo avvio, accesso, barra laterale, formati (web/app.js, web/ui.js) e parole usate da più file.
 export default {
-  'comune.benvenuto': 'Benvenuto in Kubo',
+  'comune.benvenuto': 'Benvenuto in Lumi',
   'comune.benvenuto-sotto': 'Il gestionale che si monta come vuoi tu. Parti da un modello, poi cambia tutto quello che vuoi.',
   'comune.nome-azienda': 'Nome dell\'azienda',
   'comune.tuo-nome': 'Il tuo nome',
@@ -9,7 +9,7 @@ export default {
   'comune.password-nuova': 'Password (almeno 8 caratteri)',
   'comune.valuta': 'Valuta',
   'comune.da-dove': 'Da dove partiamo? (se ne possono aggiungere altri dopo)',
-  'comune.codice-avvio': "Codice di avvio (è scritto nel terminale o nel log dove gira Kubo)",
+  'comune.codice-avvio': "Codice di avvio (è scritto nel terminale o nel log dove gira Lumi)",
   'comune.codice-avvio-es': "es. 3FA9C2D1",
   'comune.inizia': 'Inizia',
   'comune.lingua': 'Lingua',

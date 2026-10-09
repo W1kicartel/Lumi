@@ -2,7 +2,7 @@
 export default {
   'ricorrenti.titolo': "Contratos recurrentes",
   'ricorrenti.serve-fatture': "Para los contratos recurrentes hace falta la plantilla «Facturas y factura electrónica».",
-  'ricorrenti.nota': "Cuotas, mantenimientos, suscripciones: escribe el contrato una vez (cliente, importe, cada cuánto) y Kubo prepara las facturas al vencimiento, en borrador para revisar o ya emitidas.",
+  'ricorrenti.nota': "Cuotas, mantenimientos, suscripciones: escribe el contrato una vez (cliente, importe, cada cuánto) y Lumi prepara las facturas al vencimiento, en borrador para revisar o ya emitidas.",
   'ricorrenti.prepara': "Añadir los contratos recurrentes",
   'ricorrenti.chiedi-titolare': "Pídeselo a quien puede personalizar el sistema.",
   'ricorrenti.dovute': {"one": "{n} factura por hacer ahora", "other": "{n} facturas por hacer ahora"},

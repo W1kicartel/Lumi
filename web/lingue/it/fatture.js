@@ -1,6 +1,6 @@
 // Fatture elettroniche (web/moduli/fatture.js): fatture ricevute, bollo virtuale, numerazione.
 export default {
-  'fatture.aggiorna-chiedi': "Le fatture di Kubo sono cresciute: prezzi fino a 8 decimali, cassa previdenziale, Pubblica Amministrazione, fatture ricevute. Aggiungo i campi nuovi adesso? Nessun dato si perde.",
+  'fatture.aggiorna-chiedi': "Le fatture di Lumi sono cresciute: prezzi fino a 8 decimali, cassa previdenziale, Pubblica Amministrazione, fatture ricevute. Aggiungo i campi nuovi adesso? Nessun dato si perde.",
   'fatture.aggiornato': "Fatture aggiornate",
   'fatture.bloccata': "Emessa · bloccata",
   'fatture.bloccata-nota': "Una fattura emessa non si modifica più: si corregge con una nota di credito o di debito. Puoi cambiare lo stato del pagamento e le note interne.",
@@ -33,7 +33,7 @@ export default {
   'fatture.numerazione': "Numerazione",
   'fatture.numerazione-nota': "I numeri vanno in fila per serie e anno, senza buchi. Un buco di solito viene da una fattura riportata a mano: controlla prima di emettere la prossima.",
   'fatture.ricevute': "Ricevute",
-  'fatture.ricevute-nota': "Scarica le fatture dal cassetto fiscale o dalla PEC e trascinale qui: anche le .p7m firmate e i file con più fatture. Kubo crea il fornitore, registra il costo e la scadenza.",
+  'fatture.ricevute-nota': "Scarica le fatture dal cassetto fiscale o dalla PEC e trascinale qui: anche le .p7m firmate e i file con più fatture. Lumi crea il fornitore, registra il costo e la scadenza.",
   'fatture.serie': "Serie",
   'fatture.serie-principale': "principale",
   'fatture.solo-xml': "Solo file .xml o .p7m",

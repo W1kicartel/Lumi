@@ -1,5 +1,5 @@
 export default {
-  'comune.benvenuto': 'Willkommen bei Kubo',
+  'comune.benvenuto': 'Willkommen bei Lumi',
   'comune.benvenuto-sotto': 'Die Unternehmenssoftware, die du dir selbst zusammenstellst. Starte mit einer Vorlage und ändere dann alles, was du willst.',
   'comune.nome-azienda': 'Name des Unternehmens',
   'comune.tuo-nome': 'Dein Name',
@@ -8,7 +8,7 @@ export default {
   'comune.password-nuova': 'Passwort (mindestens 8 Zeichen)',
   'comune.valuta': 'Währung',
   'comune.da-dove': 'Womit fangen wir an? (Weitere kannst du später hinzufügen)',
-  'comune.codice-avvio': "Startcode (steht im Terminal oder im Log, in dem Kubo läuft)",
+  'comune.codice-avvio': "Startcode (steht im Terminal oder im Log, in dem Lumi läuft)",
   'comune.codice-avvio-es': "z. B. 3FA9C2D1",
   'comune.inizia': 'Loslegen',
   'comune.lingua': 'Sprache',

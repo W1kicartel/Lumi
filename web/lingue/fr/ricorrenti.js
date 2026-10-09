@@ -2,7 +2,7 @@
 export default {
   'ricorrenti.titolo': "Contrats récurrents",
   'ricorrenti.serve-fatture': "Les contrats récurrents ont besoin du modèle « Factures et facture électronique ».",
-  'ricorrenti.nota': "Redevances, maintenances, abonnements : saisissez le contrat une fois (client, montant, fréquence) et Kubo prépare les factures à l'échéance, en brouillon à vérifier ou déjà émises.",
+  'ricorrenti.nota': "Redevances, maintenances, abonnements : saisissez le contrat une fois (client, montant, fréquence) et Lumi prépare les factures à l'échéance, en brouillon à vérifier ou déjà émises.",
   'ricorrenti.prepara': "Ajouter les contrats récurrents",
   'ricorrenti.chiedi-titolare': "Demandez à quelqu'un qui peut personnaliser le logiciel.",
   'ricorrenti.dovute': {"one": "{n} facture à faire maintenant", "other": "{n} factures à faire maintenant"},

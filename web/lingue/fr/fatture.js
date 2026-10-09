@@ -1,6 +1,6 @@
 // E-invoices (web/moduli/fatture.js): received invoices, virtual stamp duty, numbering.
 export default {
-  'fatture.aggiorna-chiedi': "Les factures de Kubo se sont enrichies : prix jusqu'à 8 décimales, caisse de prévoyance, Administration publique, factures reçues. Ajouter les nouveaux champs maintenant ? Aucune donnée n'est perdue.",
+  'fatture.aggiorna-chiedi': "Les factures de Lumi se sont enrichies : prix jusqu'à 8 décimales, caisse de prévoyance, Administration publique, factures reçues. Ajouter les nouveaux champs maintenant ? Aucune donnée n'est perdue.",
   'fatture.aggiornato': "Factures mises à jour",
   'fatture.bloccata': "Émise · verrouillée",
   'fatture.bloccata-nota': "Une facture émise ne se modifie plus : on la corrige avec un avoir ou une note de débit. Vous pouvez changer le statut du paiement et les notes internes.",
@@ -33,7 +33,7 @@ export default {
   'fatture.numerazione': "Numérotation",
   'fatture.numerazione-nota': "Les numéros se suivent par série et par année, sans trou. Un trou vient souvent d'une facture saisie à la main : vérifiez avant d'émettre la suivante.",
   'fatture.ricevute': "Reçues",
-  'fatture.ricevute-nota': "Téléchargez les factures depuis le tiroir fiscal ou la PEC et déposez-les ici : aussi les .p7m signés et les fichiers à plusieurs factures. Kubo crée le fournisseur, enregistre la charge et l'échéance.",
+  'fatture.ricevute-nota': "Téléchargez les factures depuis le tiroir fiscal ou la PEC et déposez-les ici : aussi les .p7m signés et les fichiers à plusieurs factures. Lumi crée le fournisseur, enregistre la charge et l'échéance.",
   'fatture.serie': "Série",
   'fatture.serie-principale': "principale",
   'fatture.solo-xml': "Fichiers .xml ou .p7m uniquement",

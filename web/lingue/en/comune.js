@@ -1,5 +1,5 @@
 export default {
-  'comune.benvenuto': 'Welcome to Kubo',
+  'comune.benvenuto': 'Welcome to Lumi',
   'comune.benvenuto-sotto': 'The business software you put together your way. Start from a template, then change whatever you like.',
   'comune.nome-azienda': 'Company name',
   'comune.tuo-nome': 'Your name',
@@ -8,7 +8,7 @@ export default {
   'comune.password-nuova': 'Password (at least 8 characters)',
   'comune.valuta': 'Currency',
   'comune.da-dove': 'Where do we start? (you can add more later)',
-  'comune.codice-avvio': "Setup code (shown in the terminal or log where Kubo runs)",
+  'comune.codice-avvio': "Setup code (shown in the terminal or log where Lumi runs)",
   'comune.codice-avvio-es': "e.g. 3FA9C2D1",
   'comune.inizia': 'Get started',
   'comune.lingua': 'Language',

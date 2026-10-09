@@ -1,6 +1,6 @@
 // E-invoices (web/moduli/fatture.js): received invoices, virtual stamp duty, numbering.
 export default {
-  'fatture.aggiorna-chiedi': "Kubos Rechnungen sind gewachsen: Preise mit bis zu 8 Nachkommastellen, Vorsorgekasse, öffentliche Verwaltung, erhaltene Rechnungen. Jetzt die neuen Felder hinzufügen? Es gehen keine Daten verloren.",
+  'fatture.aggiorna-chiedi': "Lumis Rechnungen sind gewachsen: Preise mit bis zu 8 Nachkommastellen, Vorsorgekasse, öffentliche Verwaltung, erhaltene Rechnungen. Jetzt die neuen Felder hinzufügen? Es gehen keine Daten verloren.",
   'fatture.aggiornato': "Rechnungen aktualisiert",
   'fatture.bloccata': "Ausgestellt · gesperrt",
   'fatture.bloccata-nota': "Eine ausgestellte Rechnung lässt sich nicht mehr ändern: Korrigiere sie mit einer Gut- oder Lastschrift. Zahlungsstatus und interne Notizen kannst du ändern.",
@@ -33,7 +33,7 @@ export default {
   'fatture.numerazione': "Nummerierung",
   'fatture.numerazione-nota': "Die Nummern laufen je Serie und Jahr ohne Lücken. Eine Lücke kommt meist von einer von Hand eingetragenen Rechnung: Prüfe das, bevor du die nächste ausstellst.",
   'fatture.ricevute': "Erhalten",
-  'fatture.ricevute-nota': "Lade die Rechnungen aus dem Steuerpostfach oder der PEC herunter und zieh sie hierher: auch signierte .p7m und Dateien mit mehreren Rechnungen. Kubo legt den Lieferanten an und erfasst Kosten und Fälligkeit.",
+  'fatture.ricevute-nota': "Lade die Rechnungen aus dem Steuerpostfach oder der PEC herunter und zieh sie hierher: auch signierte .p7m und Dateien mit mehreren Rechnungen. Lumi legt den Lieferanten an und erfasst Kosten und Fälligkeit.",
   'fatture.serie': "Serie",
   'fatture.serie-principale': "Hauptserie",
   'fatture.solo-xml': "Nur .xml- oder .p7m-Dateien",

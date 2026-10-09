@@ -1,6 +1,6 @@
 // E-invoices (web/moduli/fatture.js): received invoices, virtual stamp duty, numbering.
 export default {
-  'fatture.aggiorna-chiedi': "Kubo's invoices have grown: prices up to 8 decimals, pension fund, Public Administration, received invoices. Add the new fields now? No data is lost.",
+  'fatture.aggiorna-chiedi': "Lumi's invoices have grown: prices up to 8 decimals, pension fund, Public Administration, received invoices. Add the new fields now? No data is lost.",
   'fatture.aggiornato': "Invoices updated",
   'fatture.bloccata': "Issued · locked",
   'fatture.bloccata-nota': "An issued invoice can no longer be changed: correct it with a credit or debit note. You can change the payment status and the internal notes.",
@@ -33,7 +33,7 @@ export default {
   'fatture.numerazione': "Numbering",
   'fatture.numerazione-nota': "Numbers run in order by series and year, with no gaps. A gap usually comes from an invoice entered by hand: check before issuing the next one.",
   'fatture.ricevute': "Received",
-  'fatture.ricevute-nota': "Download invoices from the tax drawer or your PEC and drop them here: signed .p7m files and files with several invoices too. Kubo creates the supplier and records the cost and due date.",
+  'fatture.ricevute-nota': "Download invoices from the tax drawer or your PEC and drop them here: signed .p7m files and files with several invoices too. Lumi creates the supplier and records the cost and due date.",
   'fatture.serie': "Series",
   'fatture.serie-principale': "main",
   'fatture.solo-xml': "Only .xml or .p7m files",

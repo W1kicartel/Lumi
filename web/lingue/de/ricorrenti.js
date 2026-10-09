@@ -2,7 +2,7 @@
 export default {
   'ricorrenti.titolo': "Wiederkehrende Verträge",
   'ricorrenti.serve-fatture': "Wiederkehrende Verträge brauchen die Vorlage „Rechnungen und E-Rechnung“.",
-  'ricorrenti.nota': "Gebühren, Wartung, Abos: Lege den Vertrag einmal an (Kunde, Betrag, wie oft), und Kubo bereitet die Rechnungen bei Fälligkeit vor, als Entwurf zum Prüfen oder schon ausgestellt.",
+  'ricorrenti.nota': "Gebühren, Wartung, Abos: Lege den Vertrag einmal an (Kunde, Betrag, wie oft), und Lumi bereitet die Rechnungen bei Fälligkeit vor, als Entwurf zum Prüfen oder schon ausgestellt.",
   'ricorrenti.prepara': "Wiederkehrende Verträge hinzufügen",
   'ricorrenti.chiedi-titolare': "Frag jemanden, der das System anpassen darf.",
   'ricorrenti.dovute': {"one": "{n} Rechnung jetzt fällig", "other": "{n} Rechnungen jetzt fällig"},

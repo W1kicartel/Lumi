@@ -2,7 +2,7 @@
 export default {
   'ricorrenti.titolo': "Recurring contracts",
   'ricorrenti.serve-fatture': "Recurring contracts need the «Invoices and e-invoicing» template.",
-  'ricorrenti.nota': "Fees, maintenance, subscriptions: enter the contract once (customer, amount, how often) and Kubo prepares the invoices when they're due, as drafts to check or already issued.",
+  'ricorrenti.nota': "Fees, maintenance, subscriptions: enter the contract once (customer, amount, how often) and Lumi prepares the invoices when they're due, as drafts to check or already issued.",
   'ricorrenti.prepara': "Add recurring contracts",
   'ricorrenti.chiedi-titolare': "Ask someone who can customise the system.",
   'ricorrenti.dovute': {"one": "{n} invoice due now", "other": "{n} invoices due now"},

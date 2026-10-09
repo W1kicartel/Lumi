@@ -1,6 +1,6 @@
 // E-invoices (web/moduli/fatture.js): received invoices, virtual stamp duty, numbering.
 export default {
-  'fatture.aggiorna-chiedi': "Las facturas de Kubo han crecido: precios con hasta 8 decimales, caja de previsión, Administración Pública, facturas recibidas. ¿Añado ahora los campos nuevos? No se pierde ningún dato.",
+  'fatture.aggiorna-chiedi': "Las facturas de Lumi han crecido: precios con hasta 8 decimales, caja de previsión, Administración Pública, facturas recibidas. ¿Añado ahora los campos nuevos? No se pierde ningún dato.",
   'fatture.aggiornato': "Facturas actualizadas",
   'fatture.bloccata': "Emitida · bloqueada",
   'fatture.bloccata-nota': "Una factura emitida ya no se modifica: se corrige con una nota de crédito o de débito. Puedes cambiar el estado del pago y las notas internas.",
@@ -33,7 +33,7 @@ export default {
   'fatture.numerazione': "Numeración",
   'fatture.numerazione-nota': "Los números van seguidos por serie y año, sin huecos. Un hueco suele venir de una factura introducida a mano: revísalo antes de emitir la siguiente.",
   'fatture.ricevute': "Recibidas",
-  'fatture.ricevute-nota': "Descarga las facturas del buzón fiscal o de la PEC y arrástralas aquí: también las .p7m firmadas y los archivos con varias facturas. Kubo crea el proveedor y registra el gasto y el vencimiento.",
+  'fatture.ricevute-nota': "Descarga las facturas del buzón fiscal o de la PEC y arrástralas aquí: también las .p7m firmadas y los archivos con varias facturas. Lumi crea el proveedor y registra el gasto y el vencimiento.",
   'fatture.serie': "Serie",
   'fatture.serie-principale': "principal",
   'fatture.solo-xml': "Solo archivos .xml o .p7m",

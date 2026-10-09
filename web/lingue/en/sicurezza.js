@@ -5,7 +5,7 @@ export default {
   'sicurezza.dispositivi-collegati': 'Signed-in devices',
   'sicurezza.dispositivo': '{browser} on {sistema}',
   'sicurezza.dispositivo-sconosciuto': 'Unknown device',
-  'sicurezza.app-kubo': 'Kubo app',
+  'sicurezza.app-lumi': 'Lumi app',
   'sicurezza.iphone-ipad': 'iPhone or iPad',
   'sicurezza.password-diverse': "The two new passwords don't match",
   'sicurezza.password-cambiata': 'Password changed. Your other devices have been signed out.',

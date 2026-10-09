@@ -5,7 +5,7 @@ export default {
   'sicurezza.dispositivi-collegati': 'Angemeldete Geräte',
   'sicurezza.dispositivo': '{browser} auf {sistema}',
   'sicurezza.dispositivo-sconosciuto': 'Unbekanntes Gerät',
-  'sicurezza.app-kubo': 'Kubo-App',
+  'sicurezza.app-lumi': 'Lumi-App',
   'sicurezza.iphone-ipad': 'iPhone oder iPad',
   'sicurezza.password-diverse': 'Die beiden neuen Passwörter stimmen nicht überein',
   'sicurezza.password-cambiata': 'Passwort geändert. Die anderen Geräte wurden abgemeldet.',

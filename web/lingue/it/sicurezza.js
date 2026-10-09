@@ -5,7 +5,7 @@ export default {
   'sicurezza.dispositivi-collegati': 'Dispositivi collegati',
   'sicurezza.dispositivo': '{browser} su {sistema}',
   'sicurezza.dispositivo-sconosciuto': 'Dispositivo sconosciuto',
-  'sicurezza.app-kubo': 'App Kubo',
+  'sicurezza.app-lumi': 'App Lumi',
   'sicurezza.iphone-ipad': 'iPhone o iPad',
   'sicurezza.password-diverse': 'Le due password nuove non sono uguali',
   'sicurezza.password-cambiata': 'Password cambiata. Gli altri dispositivi sono stati scollegati.',
