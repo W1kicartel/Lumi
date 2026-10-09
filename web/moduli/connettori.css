@@ -45,7 +45,7 @@
 .conn-tue h2 { margin-bottom: 10px; }
 .conn-griglia-tue .conn-carta { background: var(--sopra); }
 .conn-vuoto { display: grid; gap: 12px; justify-items: center; } .conn-vuoto p { margin: 0; }
-[hidden] { display: none !important; }
+.conn [hidden] { display: none !important; }
 .conn-mono { --t: 0; flex: none; display: inline-grid; place-items: center; width: 38px; height: 38px; border-radius: 9px; font-weight: 650; font-size: 14px; letter-spacing: -.02em;
   background: hsl(var(--t) 55% 92%); color: hsl(var(--t) 50% 28%); }
 .conn-mono.grande { width: 48px; height: 48px; font-size: 17px; border-radius: 12px; }

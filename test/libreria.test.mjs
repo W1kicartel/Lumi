@@ -196,3 +196,34 @@ test('ponti: Zapier riceve gli eventi della sezione e scrive in Kubo; il webhook
     assert.equal(w.intestazioni['x-kubo-firma'], 'sha256=' + createHmac('sha256', 'whsec_prova').update(`${w.intestazioni['x-kubo-tempo']}.{"chi":"Gianni"}`).digest('hex'));
   } finally { await K.chiudi(); await Z.chiudi(); }
 });
+
+test('OpenAPI 3.1 dallo schema: tipi con null, webhooks, permessi di chi chiede, token, ricette in entrata', async () => {
+  const K = await kubo();
+  try {
+    await accendi(K, 'make', { impostazioni: { ricette: [{ id: 'damake', tipo: 'entrata', sezione: 'clienti', modo: 'crea' }] } });
+    const tok = (await K.chiama('POST', '/api/token', { nome: 'n8n' })).json.token;
+    const r = await fetch(K.base + '/api/openapi-3.1.json', { headers: { Authorization: `Bearer ${tok}` } }), oa = await r.json();
+    assert.equal(r.status, 200); assert.equal(oa.openapi, '3.1.0'); assert.equal(oa.info.license.identifier, 'MIT');
+    assert.ok(oa.paths['/api/dati/clienti'].post && oa.paths['/api/dati/clienti/{id}'].patch && oa.paths['/api/dati/clienti/{id}/storia'].get);
+    assert.deepEqual(oa.components.schemas.clienti.properties.email.type, ['string', 'null']);
+    assert.equal(oa.components.schemas.clienti.properties.email.format, 'email');
+    assert.deepEqual(oa.components.schemas.clienti.required, ['nome']);
+    assert.equal(oa.components.schemas.vendite.properties.totale.readOnly, true);
+    assert.equal(oa.webhooks['kubo.clienti'].post.requestBody.content['application/json'].schema.properties.entita.const, 'clienti');
+    assert.match(oa.paths['/api/connettori/make/in/{codice}'].post.description, /damake → clienti/);
+    assert.deepEqual(oa.paths['/api/connettori/make/in/{codice}'].post.security, []);
+    // ogni $ref porta a uno schema che c'è; gli operationId sono unici
+    const refs = [...JSON.stringify(oa).matchAll(/"\$ref":"#\/components\/schemas\/([^"]+)"/g)].map(m => m[1]);
+    assert.ok(refs.length > 10 && refs.every(x => oa.components.schemas[x]), refs.find(x => !oa.components.schemas[x]));
+    const ids = Object.values(oa.paths).flatMap(p => Object.values(p).filter(o => o?.operationId).map(o => o.operationId));
+    assert.equal(new Set(ids).size, ids.length);
+    // chi è in sola lettura vede solo le letture, e niente indirizzi dei connettori
+    await K.chiama('POST', '/api/utenti', { nome: 'Lia', email: 'lia@esempio.it', password: 'password-lunga', ruolo: 'lettura' });
+    await K.chiama('POST', '/api/esci'); await K.chiama('POST', '/api/accedi', { email: 'lia@esempio.it', password: 'password-lunga' });
+    const ol = (await K.chiama('GET', '/api/openapi-3.1.json')).json;
+    assert.ok(ol.paths['/api/dati/clienti'].get && !ol.paths['/api/dati/clienti'].post && !ol.paths['/api/dati/clienti/{id}'].patch);
+    assert.ok(!Object.keys(ol.paths).some(p => p.startsWith('/api/connettori')));
+    await K.chiama('POST', '/api/esci');
+    assert.equal((await K.chiama('GET', '/api/openapi-3.1.json')).stato, 401);
+  } finally { await K.chiudi(); }
+});
