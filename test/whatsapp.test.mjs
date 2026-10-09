@@ -34,7 +34,9 @@ const fintoMeta = (modelli = MODELLI) => finto({
 });
 async function conMeta(modelli = ['studio']) {
   const K = await kubo(modelli), S = await fintoMeta();
-  await accendi(K, 'whatsapp', { base: S.url, segreti: { token: 'EAAtoken', segreto_app: 'app-segreta' }, impostazioni: { numero_id: '1065403522', waba_id: '1022901293' } });
+  // se l'accensione fallisce, i due server si chiudono lo stesso (altrimenti il processo della prova resta acceso)
+  try { await accendi(K, 'whatsapp', { base: S.url, segreti: { token: 'EAAtoken', segreto_app: 'app-segreta' }, impostazioni: { numero_id: '1065403522', waba_id: '1022901293' } }); }
+  catch (e) { await K.chiudi(); await S.chiudi(); throw e; }
   return { K, S, W: istanzeWa.get(K.db), chiudi: async () => { await K.chiudi(); await S.chiudi(); } };
 }
 const cliente = async (K, nome, telefono) => (await K.chiama('POST', '/api/dati/clienti', { nome, telefono })).json;
