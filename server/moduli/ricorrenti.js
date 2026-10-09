@@ -38,11 +38,21 @@ export function prepara(k, { utente = null } = {}) {
 }
 export function impostazioni(db, meta) { let s = {}; try { s = JSON.parse(meta.leggi(db, 'ricorrenti.impostazioni') || '{}'); } catch { s = {}; } return { automatico: false, ...s }; }
 
+// il giorno del contratto resta quello: 31 gennaio → 28 febbraio → 31 marzo (non 28 marzo, e poi 28 per sempre).
+// Quando la data si accorcia a fine mese, il giorno vero si ricorda in meta («ricorrenti.giorno.<id>»); vale finché la
+// prossima data resta un fine mese più corto (se la si cambia a mano, conta la data nuova).
+const ultimoDi = d => piuGiorni(piuMesi(d.slice(0, 8) + '01', 1), -1);
+export const avanti = (d, n, g = null) => { const x = piuMesi(d, n), gg = g || Number(d.slice(8)); return x.slice(0, 8) + String(Math.min(gg, Number(ultimoDi(x).slice(8)))).padStart(2, '0'); };
+export const giornoDi = (k, c) => {
+  const d = Number(String(c.prossima || '').slice(8)) || 1; let g = 0; try { g = Number(k?.meta?.leggi?.(k.db, `ricorrenti.giorno.${c.id}`)) || 0; } catch { g = 0; }
+  return g > d && c.prossima === ultimoDi(c.prossima) ? g : d;
+};
 // i periodi dovuti di un contratto fino a oggi (al massimo 24: un contratto dimenticato per anni non sommerge di fatture)
-export function periodi(c, oggi = oggiIso()) {
+export function periodi(c, oggi = oggiIso(), giorno = null) {
   const n = MESI[c.periodicita] || 1, out = [];
   if (c.stato !== 'attivo' || !c.prossima) return out;
-  for (let d = c.prossima; d <= oggi && (!c.fino_al || d <= c.fino_al) && out.length < 24; d = piuMesi(d, n)) out.push({ data: d, da: d, a: piuGiorni(piuMesi(d, n), -1) });
+  const g = giorno || Number(c.prossima.slice(8));
+  for (let d = c.prossima; d <= oggi && (!c.fino_al || d <= c.fino_al) && out.length < 24; d = avanti(d, n, g)) out.push({ data: d, da: d, a: piuGiorni(avanti(d, n, g), -1) });
   return out;
 }
 const tutte = (D, db, ctx) => { const out = []; for (let p = 1; p < 400; p++) { const r = D.elenca(db, CONTRATTI, { perPagina: 500, pagina: p }, ctx); out.push(...r.righe); if (r.righe.length < 500) break; } return out; };
@@ -50,7 +60,7 @@ export function dovuti(k, ctx, { oggi = oggiIso(), contratto = null } = {}) {
   const { db, S, D } = k;
   if (!esiste(S, db, CONTRATTI)) return [];
   return tutte(D, db, ctx).filter(c => !contratto || c.id === String(contratto)).map(c => ({ id: c.id, numero: c.numero, cliente: { id: idDi(c.cliente), nome: c.cliente?.titolo ?? '' }, descrizione: c.descrizione,
-    importo: Number(c.importo) || 0, aliquota: c.aliquota ?? 22, emetti: c.emetti || 'bozza', periodi: periodi(c, oggi) })).filter(c => c.periodi.length && c.importo > 0 && c.cliente.id);
+    importo: Number(c.importo) || 0, aliquota: c.aliquota ?? 22, emetti: c.emetti || 'bozza', giorno: giornoDi(k, c), periodi: periodi(c, oggi, giornoDi(k, c)) })).filter(c => c.periodi.length && c.importo > 0 && c.cliente.id);
 }
 export function genera(k, ctx, { oggi = oggiIso(), contratto = null } = {}) {
   const { db, D } = k, fatte = [];
@@ -63,7 +73,8 @@ export function genera(k, ctx, { oggi = oggiIso(), contratto = null } = {}) {
           ...(c.numero ? { riferimento: `Contratto ${c.numero}` } : {}) }, ctx);
         ultima = f.id; fatte.push({ contratto: c.id, cliente: c.cliente.nome, fattura: f.id, numero: f.numero || null, data: p.data, importo: c.importo });
       }
-      const dopo = piuMesi(c.periodi.at(-1).data, MESI[D.leggi(db, CONTRATTI, c.id, ctx, { conRighe: false }).periodicita] || 1);
+      const dopo = avanti(c.periodi.at(-1).data, MESI[D.leggi(db, CONTRATTI, c.id, ctx, { conRighe: false }).periodicita] || 1, c.giorno);
+      if (Number(dopo.slice(8)) < c.giorno) k.meta?.scrivi?.(db, `ricorrenti.giorno.${c.id}`, String(c.giorno));
       const riga = D.leggi(db, CONTRATTI, c.id, ctx, { conRighe: false });
       D.modifica(db, CONTRATTI, c.id, { prossima: dopo, ultima_fattura: ultima, ...(riga.fino_al && dopo > riga.fino_al ? { stato: 'chiuso' } : {}) }, ctx);
     });
@@ -78,7 +89,8 @@ export function future(k, ctx, { da, a }) {
   for (const c of tutte(D, db, ctx)) {
     if (c.stato !== 'attivo' || !c.prossima || !(Number(c.importo) > 0)) continue;
     const n = MESI[c.periodicita] || 1, lordo = Math.round(Number(c.importo) * (100 + Number(c.aliquota ?? 22))) / 100;
-    for (let d = c.prossima, i = 0; d <= a && (!c.fino_al || d <= c.fino_al) && i < 120; d = piuMesi(d, n), i++) if (d >= da) out.push({ data: d, importo: lordo, descrizione: `${c.descrizione} · ${c.cliente?.titolo ?? ''}` });
+    const g = giornoDi(k, c);
+    for (let d = c.prossima, i = 0; d <= a && (!c.fino_al || d <= c.fino_al) && i < 120; d = avanti(d, n, g), i++) if (d >= da) out.push({ data: d, importo: lordo, descrizione: `${c.descrizione} · ${c.cliente?.titolo ?? ''}` });
   }
   return out;
 }
