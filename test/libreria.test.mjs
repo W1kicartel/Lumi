@@ -4,15 +4,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
-import { finto, kubo, accendi, manda, firmaHmacDi } from './connettori-finto.mjs';
+import { finto, gestionale, accendi, manda, firmaHmacDi } from './connettori-finto.mjs';
 import { filtra, conta, iniziali, tinta, statoVoce, normalizza } from '../web/libreria.js';
 import { corpoDi, riempi, controllaRicette, permessiRicette } from '../server/moduli/connettori-ricette.js';
-import { firma as firmaKubo } from '../server/moduli/import-api.js';
+import { firma as firmaWebhook } from '../server/moduli/import-api.js';
 
 const aspetta = async (f, ms = 3000) => { const t0 = Date.now(); for (;;) { const x = await f(); if (x) return x; if (Date.now() - t0 > ms) return x; await new Promise(r => setTimeout(r, 25)); } };
 
 test('libreria: catalogo con ricerca, filtri e conti per categoria; solo il titolare; viste con il blocco catalogo', async () => {
-  const K = await kubo();
+  const K = await gestionale();
   try {
     const tutto = (await K.chiama('GET', '/api/connettori/catalogo')).json;
     assert.ok(tutto.totale >= 13, JSON.stringify(tutto).slice(0, 200));
@@ -88,7 +88,7 @@ test('ricette: segnaposto nel percorso e nel corpo, tipi conservati, controllo d
 });
 
 test('HTTP / API REST: ricette in uscita (coda), azione con anteprima, entrata con codice e HMAC, permessi dalle ricette', async () => {
-  const K = await kubo();
+  const K = await gestionale();
   const S = await finto({ 'GET /v1/me': () => ({ ok: true }), 'POST /v1/contatti': (p, c) => ({ id: 'ext-' + c.email }), 'PUT /v1/contatti/:id': () => ({ ok: true }),
     'POST /v1/link': (p, c) => ({ url: `https://pay.esempio.it/${c.rif}` }) });
   try {
@@ -163,7 +163,7 @@ test('HTTP / API REST: ricette in uscita (coda), azione con anteprima, entrata c
 });
 
 test('HTTP / API REST: OAuth2 client credentials, chiave nella query, Basic', async () => {
-  const K = await kubo(); let n = 0;
+  const K = await gestionale(); let n = 0;
   const S = await finto({ 'POST /token': (p, c) => { n++; return { access_token: `tok-${c.client_id}-${c.scope}`, expires_in: 3600 }; }, 'GET /me': () => ({ ok: 1 }) });
   try {
     await accendi(K, 'http', { segreti: { client_id: 'cid', client_secret: 'csec' }, impostazioni: { base: S.url, accesso: 'oauth2', token_url: S.url + '/token', scope: 'leggi', prova_percorso: '/me' } });
@@ -185,8 +185,8 @@ test('HTTP / API REST: OAuth2 client credentials, chiave nella query, Basic', as
   } finally { await K.chiudi(); await S.chiudi(); }
 });
 
-test('ponti: Zapier riceve gli eventi della sezione e scrive in Kubo; il webhook generico firma come i webhook di Kubo', async () => {
-  const K = await kubo();
+test('ponti: Zapier riceve gli eventi della sezione e scrive in Lumi; il webhook generico firma come i webhook di Lumi', async () => {
+  const K = await gestionale();
   const Z = await finto({ 'POST /hooks/catch/1/abc': () => ({ status: 'success' }), 'POST /ricevi': () => ({ ok: true }) });
   try {
     // un ponte vuole l'indirizzo completo della piattaforma
@@ -211,18 +211,18 @@ test('ponti: Zapier riceve gli eventi della sezione e scrive in Kubo; il webhook
     const strano = await manda(K, `/api/connettori/zapier/in/${codice}`, JSON.stringify({ codice: { x: 1 }, nome: 'Strano' }));
     assert.equal(strano.stato, 422, JSON.stringify(strano.json)); assert.match(strano.json.errore, /codice/);
     assert.equal((await K.chiama('GET', '/api/dati/articoli?q=Strano')).json.righe.length, 0);
-    // webhook generico: X-Kubo-Firma come i webhook di Kubo (sha256 su «tempo.corpo»)
+    // webhook generico: X-Lumi-Firma come i webhook di Lumi (sha256 su «tempo.corpo»)
     await accendi(K, 'webhook', { segreti: { firma_uscita: 'whsec_prova' }, impostazioni: { ricette: [{ id: 'cli', tipo: 'uscita', sezione: 'clienti', eventi: ['crea'], percorso: Z.url + '/ricevi', corpo: '{"chi":"{nome}"}' }] } });
     await K.chiama('POST', '/api/dati/clienti', { nome: 'Gianni' });
     const w = await aspetta(() => Z.chiamate.find(x => x.percorso === '/ricevi'));
     assert.deepEqual(w.corpo, { chi: 'Gianni' });
-    assert.equal(w.intestazioni['x-kubo-firma'], firmaKubo('whsec_prova', w.intestazioni['x-kubo-tempo'], JSON.stringify({ chi: 'Gianni' })));
-    assert.equal(w.intestazioni['x-kubo-firma'], 'sha256=' + createHmac('sha256', 'whsec_prova').update(`${w.intestazioni['x-kubo-tempo']}.{"chi":"Gianni"}`).digest('hex'));
+    assert.equal(w.intestazioni['x-lumi-firma'], firmaWebhook('whsec_prova', w.intestazioni['x-lumi-tempo'], JSON.stringify({ chi: 'Gianni' })));
+    assert.equal(w.intestazioni['x-lumi-firma'], 'sha256=' + createHmac('sha256', 'whsec_prova').update(`${w.intestazioni['x-lumi-tempo']}.{"chi":"Gianni"}`).digest('hex'));
   } finally { await K.chiudi(); await Z.chiudi(); }
 });
 
 test('OpenAPI 3.1 dallo schema: tipi con null, webhooks, permessi di chi chiede, token, ricette in entrata', async () => {
-  const K = await kubo();
+  const K = await gestionale();
   try {
     await accendi(K, 'make', { impostazioni: { ricette: [{ id: 'damake', tipo: 'entrata', sezione: 'clienti', modo: 'crea' }] } });
     const tok = (await K.chiama('POST', '/api/token', { nome: 'n8n' })).json.token;
@@ -233,7 +233,7 @@ test('OpenAPI 3.1 dallo schema: tipi con null, webhooks, permessi di chi chiede,
     assert.equal(oa.components.schemas.clienti.properties.email.format, 'email');
     assert.deepEqual(oa.components.schemas.clienti.required, ['nome']);
     assert.equal(oa.components.schemas.vendite.properties.totale.readOnly, true);
-    assert.equal(oa.webhooks['kubo.clienti'].post.requestBody.content['application/json'].schema.properties.entita.const, 'clienti');
+    assert.equal(oa.webhooks['lumi.clienti'].post.requestBody.content['application/json'].schema.properties.entita.const, 'clienti');
     assert.match(oa.paths['/api/connettori/make/in/{codice}'].post.description, /damake → clienti/);
     assert.deepEqual(oa.paths['/api/connettori/make/in/{codice}'].post.security, []);
     // ogni $ref porta a uno schema che c'è; gli operationId sono unici
@@ -253,7 +253,7 @@ test('OpenAPI 3.1 dallo schema: tipi con null, webhooks, permessi di chi chiede,
 });
 
 test('copie del connettore HTTP: due servizi REST con indirizzo, accesso e ricette propri; si toglie solo spenta', async () => {
-  const K = await kubo();
+  const K = await gestionale();
   const A = await finto({ 'GET /me': () => ({ ok: 1 }) }), B = await finto({ 'GET /stato': () => ({ ok: 1 }) });
   try {
     assert.equal((await K.chiama('POST', '/api/connettori/stripe/copie', { nome: 'Altro' })).stato, 400);

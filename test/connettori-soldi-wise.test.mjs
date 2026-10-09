@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createVerify, randomBytes } from 'node:crypto';
-import { finto, kubo, accendi } from './connettori-finto.mjs';
+import { finto, gestionale, accendi } from './connettori-finto.mjs';
 
 const AZ = { ragione_sociale: 'Bottega Prova srl', piva: '12345678903', codice_fiscale: '12345678903', regime: 'RF01', via: 'Via dei Mille 10', cap: '20121', comune: 'Milano', provincia: 'MI', email: 'info@bottega.example', iban: 'IT60X0542811101000000123456', aliquota: 22 };
 async function fattura(K, prezzo = 100) {
@@ -14,8 +14,8 @@ async function fattura(K, prezzo = 100) {
   return (await K.chiama('PATCH', `/api/dati/fatture/${f.id}`, { stato: 'emessa' })).json;
 }
 
-test('Wise: SCA firmata con la chiave creata da Kubo, estratto in euro → movimenti della tesoreria → abbinamento → fattura pagata', async () => {
-  const K = await kubo(['fatture']); let pubblica = null, ott = null, firmate = 0, numero = '';
+test('Wise: SCA firmata con la chiave creata da Lumi, estratto in euro → movimenti della tesoreria → abbinamento → fattura pagata', async () => {
+  const K = await gestionale(['fatture']); let pubblica = null, ott = null, firmate = 0, numero = '';
   const S = await finto({
     'GET /v2/profiles': (p, c, { intestazioni }) => { assert.equal(intestazioni.authorization, 'Bearer wise-tok'); return [{ id: 101, type: 'PERSONAL' }, { id: 202, type: 'BUSINESS' }]; },
     'GET /v4/profiles/202/balances': () => [{ id: 9001, currency: 'EUR', amount: { value: 1500, currency: 'EUR' } }, { id: 9002, currency: 'USD', amount: { value: 10, currency: 'USD' } }],

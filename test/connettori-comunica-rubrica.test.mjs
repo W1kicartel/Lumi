@@ -2,19 +2,19 @@
 // Google Contatti (People API: crea, aggiorna con l'etag, rilegge se il contatto è cambiato sul telefono).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { finto, kubo, accendi } from './connettori-finto.mjs';
+import { finto, gestionale, accendi } from './connettori-finto.mjs';
 import { vcard } from '../connettori/_comunica/rubrica.js';
 import { coda } from './connettori-comunica-coda.mjs';
 
 const xml = corpo => ({ stato: 207, intestazioni: { 'Content-Type': 'application/xml; charset=utf-8' }, corpo: `<?xml version="1.0"?><d:multistatus xmlns:d="DAV:" xmlns:card="urn:ietf:params:xml:ns:carddav">${corpo}</d:multistatus>` });
 
 test('vCard 3.0: nome, cellulare internazionale, email, caratteri speciali', () => {
-  assert.equal(vcard({ id: 'X1', nome: 'Rossi, Anna; srl', n: 'Rossi,', cg: 'Anna; srl', tel: '+393331234567', email: 'a@b.it', azienda: 'Clienti Kubo' }),
-    'BEGIN:VCARD\r\nVERSION:3.0\r\nPRODID:-//Kubo//Rubrica//IT\r\nUID:kubo-X1\r\nFN:Rossi\\, Anna\\; srl\r\nN:Anna\\; srl;Rossi\\,;;;\r\nTEL;TYPE=CELL:+393331234567\r\nEMAIL;TYPE=INTERNET:a@b.it\r\nCATEGORIES:Clienti Kubo\r\nEND:VCARD\r\n');
+  assert.equal(vcard({ id: 'X1', nome: 'Rossi, Anna; srl', n: 'Rossi,', cg: 'Anna; srl', tel: '+393331234567', email: 'a@b.it', azienda: 'Clienti Lumi' }),
+    'BEGIN:VCARD\r\nVERSION:3.0\r\nPRODID:-//Lumi//Rubrica//IT\r\nUID:lumi-X1\r\nFN:Rossi\\, Anna\\; srl\r\nN:Anna\\; srl;Rossi\\,;;;\r\nTEL;TYPE=CELL:+393331234567\r\nEMAIL;TYPE=INTERNET:a@b.it\r\nCATEGORIES:Clienti Lumi\r\nEND:VCARD\r\n');
 });
 
 test('CardDAV: trova la rubrica (principal → home → addressbook), scrive i clienti nuovi e cambiati, giro di tutti', async () => {
-  const K = await kubo(['negozio']), schede = {};
+  const K = await gestionale(['negozio']), schede = {};
   const S = await finto({
     'PROPFIND /': () => xml('<d:response><d:href>/</d:href><d:propstat><d:prop><d:current-user-principal><d:href>/123/principal/</d:href></d:current-user-principal></d:prop></d:propstat></d:response>'),
     'PROPFIND /123/principal/': () => xml('<d:response><d:href>/123/principal/</d:href><d:propstat><d:prop><card:addressbook-home-set><d:href>/123/carddavhome/</d:href></card:addressbook-home-set></d:prop></d:propstat></d:response>'),
@@ -27,9 +27,9 @@ test('CardDAV: trova la rubrica (principal → home → addressbook), scrive i c
     assert.deepEqual((await K.chiama('POST', '/api/connettori/carddav/prova')).json, { ok: true, messaggio: `${S.url}/123/carddavhome/card/` });
     assert.deepEqual((await K.chiama('POST', '/api/connettori/carddav/azioni/rubriche', { args: {} })).json.rubriche, [{ url: `${S.url}/123/carddavhome/card/`, nome: 'Contatti' }]);
     const cl = (await K.chiama('POST', '/api/dati/clienti', { nome: 'Luca Ferri', telefono: '347 000 1111' })).json; await coda(K);
-    assert.match(schede[`kubo-${cl.id}.vcf`], /\r\nFN:Luca Ferri\r\nN:Ferri;Luca;;;\r\nTEL;TYPE=CELL:\+393470001111\r\n/);
+    assert.match(schede[`lumi-${cl.id}.vcf`], /\r\nFN:Luca Ferri\r\nN:Ferri;Luca;;;\r\nTEL;TYPE=CELL:\+393470001111\r\n/);
     await K.chiama('PATCH', `/api/dati/clienti/${cl.id}`, { email: 'luca@esempio.it' }); await coda(K);
-    assert.match(schede[`kubo-${cl.id}.vcf`], /EMAIL;TYPE=INTERNET:luca@esempio\.it/);
+    assert.match(schede[`lumi-${cl.id}.vcf`], /EMAIL;TYPE=INTERNET:luca@esempio\.it/);
     await K.chiama('POST', '/api/dati/clienti', { nome: 'Senza recapiti' });
     const g = await K.chiama('POST', '/api/connettori/carddav/giri/tutti'); assert.deepEqual(g.json.risultato, { scritti: 1, saltati: 1 }, JSON.stringify(g.json));
     assert.deepEqual((await K.chiama('POST', '/api/connettori/carddav/giri/tutti')).json.risultato, { scritti: 0, saltati: 0 });
@@ -41,7 +41,7 @@ test('CardDAV: trova la rubrica (principal → home → addressbook), scrive i c
 });
 
 test('Google Contatti: crea il contatto, aggiorna con l\'etag, rilegge se è cambiato sul telefono', async () => {
-  const K = await kubo(['negozio']), contatti = {}; let n = 0;
+  const K = await gestionale(['negozio']), contatti = {}; let n = 0;
   const S = await finto({
     'POST /v1/:azione': (p, c, { intestazioni }) => {
       if (p.azione !== 'people:createContact' || intestazioni.authorization !== 'Bearer tok-g') return { stato: 400, corpo: {} };

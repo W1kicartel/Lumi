@@ -2,17 +2,17 @@
 // niente rete vera, dati inventati.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { finto, kubo, accendi } from './connettori-finto.mjs';
+import { finto, gestionale, accendi } from './connettori-finto.mjs';
 import { coda } from './connettori-comunica-coda.mjs';
 
 const clienti = async K => (await K.chiama('GET', '/api/dati/clienti?perPagina=100')).json.righe;
 
 test('MailUp: token «password» (Basic) una volta sola, solo i clienti con il consenso nella lista, i disiscritti perdono il consenso, consenso tolto → Unsubscribe', async () => {
-  const K = await kubo(['studio']); let n = 76;
+  const K = await gestionale(['studio']); let n = 76;
   const C = '/API/v1.1/Rest/ConsoleService.svc/Console';
   const S = await finto({
     'POST /Authorization/OAuth/Token': () => ({ access_token: 'tok-mailup', expires_in: 3600, refresh_token: 'r' }),
-    [`GET ${C}/User/Lists`]: () => ({ IsPaginated: false, Items: [{ idList: 1, Name: 'Clienti Kubo' }], TotalElementsCount: 1 }),
+    [`GET ${C}/User/Lists`]: () => ({ IsPaginated: false, Items: [{ idList: 1, Name: 'Clienti Lumi' }], TotalElementsCount: 1 }),
     [`POST ${C}/List/:lista/Recipient`]: () => ++n,
     [`GET ${C}/List/:lista/Recipients/Unsubscribed`]: () => ({ IsPaginated: true, Items: [{ idRecipient: 77, Email: 'Anna@Esempio.it', Name: 'Anna Maria Bianchi' }], PageNumber: 0, PageSize: 100, TotalElementsCount: 1 }),
     [`DELETE ${C}/List/:lista/Unsubscribe/:id`]: () => ({}),
@@ -21,7 +21,7 @@ test('MailUp: token «password» (Basic) una volta sola, solo i clienti con il c
     await K.chiama('POST', '/api/dati/clienti', { nome: 'Anna Maria Bianchi', email: 'Anna@Esempio.it', telefono: '+39 333 1111111', consenso: true });
     await K.chiama('POST', '/api/dati/clienti', { nome: 'Luca Verdi', email: 'luca@esempio.it', consenso: false });
     await accendi(K, 'mailup', { base: S.url, segreti: { password: 'parola-finta', client_secret: 'segreto-finto' }, impostazioni: { utente: 'm12345', client_id: 'cid-0000-1111', lista: '1' } });
-    assert.equal((await K.chiama('POST', '/api/connettori/mailup/prova')).json.messaggio, 'Lista «Clienti Kubo»');
+    assert.equal((await K.chiama('POST', '/api/connettori/mailup/prova')).json.messaggio, 'Lista «Clienti Lumi»');
     const t = S.chiamate.find(c => c.percorso === '/Authorization/OAuth/Token');
     assert.equal(t.intestazioni.authorization, 'Basic ' + Buffer.from('cid-0000-1111:segreto-finto').toString('base64'));
     assert.deepEqual(t.corpo, { grant_type: 'password', username: 'm12345', password: 'parola-finta' });
@@ -34,7 +34,7 @@ test('MailUp: token «password» (Basic) una volta sola, solo i clienti con il c
     assert.equal(iscr[0].intestazioni.authorization, 'Bearer tok-mailup');
     assert.equal((await clienti(K)).find(r => r.nome === 'Anna Maria Bianchi').consenso, false);
     await coda(K); assert.equal(S.chiamate.filter(c => c.metodo !== 'GET' && c.percorso.startsWith(C)).length, 1);   // il consenso tolto da MailUp non torna indietro
-    // in Kubo: un cliente nuovo con il consenso va subito; poi il consenso tolto lo disiscrive dalla lista
+    // in Lumi: un cliente nuovo con il consenso va subito; poi il consenso tolto lo disiscrive dalla lista
     const carla = (await K.chiama('POST', '/api/dati/clienti', { nome: 'Carla Neri', email: 'carla@esempio.it', consenso: true })).json; await coda(K);
     assert.equal(S.chiamate.filter(c => c.metodo === 'POST' && c.percorso.endsWith('/Recipient')).at(-1).corpo.Email, 'carla@esempio.it');
     await K.chiama('PATCH', `/api/dati/clienti/${carla.id}`, { consenso: false }); await coda(K);
@@ -48,9 +48,9 @@ test('MailUp: token «password» (Basic) una volta sola, solo i clienti con il c
 });
 
 test('ActiveCampaign: contact/sync con Api-Token, lista (status 1) e tag la prima volta; disiscritti (status 2) → consenso no; consenso tolto → status 2', async () => {
-  const K = await kubo(['studio']); let n = 0;
+  const K = await gestionale(['studio']); let n = 0;
   const S = await finto({
-    'GET /api/3/lists/:id': p => (p.id === '3' ? { list: { id: '3', name: 'Clienti Kubo' } } : { stato: 404, corpo: { message: 'No Result found' } }),
+    'GET /api/3/lists/:id': p => (p.id === '3' ? { list: { id: '3', name: 'Clienti Lumi' } } : { stato: 404, corpo: { message: 'No Result found' } }),
     'POST /api/3/contact/sync': (p, c) => ({ stato: 201, corpo: { contact: { id: String(++n), email: c.contact.email } } }),
     'POST /api/3/contactLists': (p, c) => ({ contactList: { ...c.contactList, id: '9' } }),
     'POST /api/3/contactTags': (p, c) => ({ stato: 201, corpo: { contactTag: { ...c.contactTag, id: '5' } } }),
@@ -62,7 +62,7 @@ test('ActiveCampaign: contact/sync con Api-Token, lista (status 1) e tag la prim
     const chiave = 'a1b2c3d4e5f6a7b8c9d0a1b2c3d4e5f6a7b8c9d0a1b2c3d4e5f6a7b8c9d0a1b2c3d4e5f6';
     await accendi(K, 'activecampaign', { base: S.url, segreti: { token: chiave }, impostazioni: { url: 'https://bottega.api-us1.com', lista: '3', tag: '12' } });
     const p = (await K.chiama('POST', '/api/connettori/activecampaign/prova')).json;
-    assert.equal(p.messaggio, 'Lista «Clienti Kubo»'); assert.equal(S.chiamate[0].intestazioni['api-token'], chiave);
+    assert.equal(p.messaggio, 'Lista «Clienti Lumi»'); assert.equal(S.chiamate[0].intestazioni['api-token'], chiave);
     const g = (await K.chiama('POST', '/api/connettori/activecampaign/giri/sincronizza')).json;
     assert.equal(g.esito, 'ok', JSON.stringify(g)); assert.deepEqual(g.risultato, { iscritti: 1, saltati: 1, disiscritti: 1 });
     const post = pr => S.chiamate.filter(c => c.metodo === 'POST' && c.percorso === `/api/3/${pr}`).map(c => c.corpo);
@@ -71,7 +71,7 @@ test('ActiveCampaign: contact/sync con Api-Token, lista (status 1) e tag la prim
     assert.deepEqual(post('contactTags'), [{ contactTag: { contact: '1', tag: '12' } }]);
     assert.equal((await clienti(K)).find(r => r.nome === 'Anna Maria Bianchi').consenso, false);
     await coda(K); assert.equal(post('contactLists').length, 1);   // il consenso tolto da ActiveCampaign non torna indietro
-    // in Kubo: Carla nuova con il consenso (sync, lista, tag); cambia il telefono (niente secondo tag); poi il consenso tolto → status 2
+    // in Lumi: Carla nuova con il consenso (sync, lista, tag); cambia il telefono (niente secondo tag); poi il consenso tolto → status 2
     const carla = (await K.chiama('POST', '/api/dati/clienti', { nome: 'Carla Neri', email: 'carla@esempio.it', consenso: true })).json; await coda(K);
     assert.equal(post('contact/sync').at(-1).contact.email, 'carla@esempio.it'); assert.deepEqual(post('contactLists').at(-1), { contactList: { list: 3, contact: 2, status: 1 } });
     await K.chiama('PATCH', `/api/dati/clienti/${carla.id}`, { telefono: '+39 333 2222222' }); await coda(K);
@@ -99,7 +99,7 @@ test('Zoho CRM: data center, token rinnovato, cliente → Contact (upsert per Em
   assert.equal(zbase(conX({ api_domain: 'https://www.zohoapis.in' })), 'https://www.zohoapis.in/crm/v8');
   assert.equal(zbase(conX({ api_domain: 'https://evil.example/www.zohoapis.in' })), 'https://www.zohoapis.com/crm/v8');
   assert.equal(zbase(conX({})), 'https://www.zohoapis.com/crm/v8');
-  const K = await kubo(['negozio']); let n = 0; const upsert = [], aziende = [];
+  const K = await gestionale(['negozio']); let n = 0; const upsert = [], aziende = [];
   const contatti = [{ id: '7001', Email: 'Giulia@Esempio.it', First_Name: 'Giulia', Last_Name: 'Rossi', Phone: '+39 347 2222222', Modified_Time: '2026-10-08T10:00:00+02:00' }];
   const S = await finto({
     'POST /oauth/v2/token': () => ({ access_token: 'tok-zoho', expires_in: 3600, api_domain: 'https://www.zohoapis.eu', token_type: 'Bearer' }),
@@ -135,7 +135,7 @@ test('Zoho CRM: data center, token rinnovato, cliente → Contact (upsert per Em
     // un cliente con un nome solo: va in Last_Name (obbligatorio in Zoho)
     await K.chiama('POST', '/api/dati/clienti', { nome: 'Mario', email: 'mario@esempio.it' }); await coda(K);
     assert.deepEqual(upsert.at(-1).data, [{ Email: 'mario@esempio.it', Last_Name: 'Mario' }]);
-    // Zoho → Kubo: il contatto cambiato diventa un cliente; il giro dopo manda If-Modified-Since e non riscrive niente
+    // Zoho → Lumi: il contatto cambiato diventa un cliente; il giro dopo manda If-Modified-Since e non riscrive niente
     const g = (await K.chiama('POST', '/api/connettori/zoho-crm/giri/contatti')).json;
     assert.equal(g.esito, 'ok', JSON.stringify(g)); assert.deepEqual(g.risultato, { creati: 1, aggiornati: 0, uguali: 0 });
     const giulia = (await clienti(K)).find(r => r.email === 'giulia@esempio.it');

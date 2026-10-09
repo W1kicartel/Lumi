@@ -2,13 +2,13 @@
 // webhook con il secret_token), Slack, Teams, Discord (avvisi degli eventi, una volta sola). Solo finti server locali.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { finto, kubo, accendi, manda } from './connettori-finto.mjs';
+import { finto, gestionale, accendi, manda } from './connettori-finto.mjs';
 import { coda } from './connettori-comunica-coda.mjs';
 
 const TOKEN = '123456789:AAH' + 'x'.repeat(32);
 
 test('Telegram: il titolare si collega con il codice, il cliente con il suo link, webhook con secret_token, avvisi delle vendite', async () => {
-  const K = await kubo(['negozio']), inviati = [], code = [];
+  const K = await gestionale(['negozio']), inviati = [], code = [];
   const S = await finto({
     'POST /:bot/getMe': () => ({ ok: true, result: { id: 1, is_bot: true, username: 'bottega_bot' } }),
     'POST /:bot/deleteWebhook': () => ({ ok: true, result: true }),
@@ -36,15 +36,15 @@ test('Telegram: il titolare si collega con il codice, il cliente con il suo link
     const cl = (await K.chiama('POST', '/api/dati/clienti', { nome: 'Anna Bianchi', telefono: '333 1234567' })).json;
     const link = (await K.chiama('POST', '/api/connettori/telegram/azioni/link_cliente', { args: { cliente: cl.id } })).json;
     assert.match(link.url, new RegExp(`^https://t\\.me/bottega_bot\\?start=${cl.id}-[\\w-]{12}$`)); assert.equal(link.collegato, false);
-    assert.equal((await K.chiama('PUT', '/api/connettori/telegram', { impostazioni: { ricezione: 'webhook', pubblico: 'https://kubo.bottega.example' }, attivo: true })).stato, 200);
+    assert.equal((await K.chiama('PUT', '/api/connettori/telegram', { impostazioni: { ricezione: 'webhook', pubblico: 'https://lumi.bottega.example' }, attivo: true })).stato, 200);
     assert.ok(S.chiamate.some(c => c.percorso.endsWith('/setWebhook') && c.corpo.secret_token === sw));
-    // senza il suo indirizzo: quello di Kubo nella Libreria; senza nessuno dei due, un avviso chiaro
-    await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: 'https://kubo.libreria.it' });
+    // senza il suo indirizzo: quello di Lumi nella Libreria; senza nessuno dei due, un avviso chiaro
+    await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: 'https://lumi.libreria.it' });
     await K.chiama('PUT', '/api/connettori/telegram', { impostazioni: { pubblico: null }, attivo: true });
-    assert.equal(S.chiamate.filter(c => c.percorso.endsWith('/setWebhook')).at(-1).corpo.url, 'https://kubo.libreria.it/api/connettori/telegram/in');
+    assert.equal(S.chiamate.filter(c => c.percorso.endsWith('/setWebhook')).at(-1).corpo.url, 'https://lumi.libreria.it/api/connettori/telegram/in');
     await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: '' }); await K.chiama('PUT', '/api/connettori/telegram', { attivo: true });
-    assert.ok((await K.chiama('GET', '/api/connettori/telegram')).json.registro.some(x => /manca l'indirizzo pubblico di Kubo/.test(x.titolo)));
-    await K.chiama('PUT', '/api/connettori/telegram', { impostazioni: { pubblico: 'https://kubo.bottega.example' }, attivo: true });
+    assert.ok((await K.chiama('GET', '/api/connettori/telegram')).json.registro.some(x => /manca l'indirizzo pubblico di Lumi/.test(x.titolo)));
+    await K.chiama('PUT', '/api/connettori/telegram', { impostazioni: { pubblico: 'https://lumi.bottega.example' }, attivo: true });
     const start = JSON.stringify({ update_id: 20, message: { chat: { id: 222 }, from: { first_name: 'Anna' }, text: `/start ${link.url.split('start=')[1]}` } });
     assert.equal((await manda(K, '/api/connettori/telegram/in', start, { 'X-Telegram-Bot-Api-Secret-Token': 'sbagliato' })).stato, 401);
     assert.equal((await manda(K, '/api/connettori/telegram/in', start)).stato, 401);
@@ -79,7 +79,7 @@ test('Telegram: il titolare si collega con il codice, il cliente con il suo link
 });
 
 test('Slack, Teams e Discord: prova, scorte basse una volta (e di nuovo dopo il riordino), appuntamenti, formato giusto per ognuno', async () => {
-  const K = await kubo(['negozio', 'studio']), arrivi = { slack: [], teams: [], discord: [] };
+  const K = await gestionale(['negozio', 'studio']), arrivi = { slack: [], teams: [], discord: [] };
   const S = await finto({
     'POST /slack/T1/B1/x': (p, c) => { arrivi.slack.push(c); return { stato: 200, corpo: 'ok' }; },
     'POST /teams/workflows/1': (p, c) => { arrivi.teams.push(c); return { stato: 202, corpo: '' }; },
@@ -90,8 +90,8 @@ test('Slack, Teams e Discord: prova, scorte basse una volta (e di nuovo dopo il 
     await accendi(K, 'teams', { segreti: { url: `${S.url}/teams/workflows/1` }, impostazioni: { su_articoli: false } });
     await accendi(K, 'discord', { segreti: { url: `${S.url}/discord/api/webhooks/1/tok` } });
     for (const id of ['slack', 'teams', 'discord']) assert.equal((await K.chiama('POST', `/api/connettori/${id}/prova`)).json.ok, true, id);
-    assert.equal(arrivi.slack[0].text, 'Kubo è collegato a questo canale.');
-    assert.equal(arrivi.teams[0].attachments[0].contentType, 'application/vnd.microsoft.card.adaptive'); assert.equal(arrivi.teams[0].attachments[0].content.body[0].text, 'Kubo è collegato a questo canale.');
+    assert.equal(arrivi.slack[0].text, 'Lumi è collegato a questo canale.');
+    assert.equal(arrivi.teams[0].attachments[0].contentType, 'application/vnd.microsoft.card.adaptive'); assert.equal(arrivi.teams[0].attachments[0].content.body[0].text, 'Lumi è collegato a questo canale.');
     assert.deepEqual(arrivi.discord[0].allowed_mentions, { parse: [] });
     const giro = async () => { await coda(K); };
     const a = (await K.chiama('POST', '/api/dati/articoli', { nome: 'Piatto blu', codice: 'P1', prezzo: 12, giacenza: 5, soglia: 3 })).json; await giro();
@@ -123,9 +123,9 @@ test('Slack, Teams e Discord: prova, scorte basse una volta (e di nuovo dopo il 
   } finally { await K.chiudi(); await S.chiudi(); }
 });
 
-test('WhatsApp con Twilio: TwiML vuoto in text/xml ai messaggi in arrivo, l\'indirizzo pubblico di Kubo al posto del suo', async () => {
+test('WhatsApp con Twilio: TwiML vuoto in text/xml ai messaggi in arrivo, l\'indirizzo pubblico di Lumi al posto del suo', async () => {
   const { firmaTwilio } = await import('../connettori/twilio-whatsapp/connettore.js');
-  const K = await kubo(['professionista']);
+  const K = await gestionale(['professionista']);
   const S = await finto({ 'POST /2010-04-01/Accounts/:sid/Messages.json': () => ({ sid: 'SM1', status: 'queued' }) });
   try {
     await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: K.base });
@@ -140,13 +140,13 @@ test('WhatsApp con Twilio: TwiML vuoto in text/xml ai messaggi in arrivo, l\'ind
   } finally { await K.chiudi(); await S.chiudi(); }
 });
 
-test('WhatsApp con 360dialog: il webhook si registra con l\'indirizzo pubblico di Kubo se il suo è vuoto', async () => {
-  const K = await kubo(['studio']);
+test('WhatsApp con 360dialog: il webhook si registra con l\'indirizzo pubblico di Lumi se il suo è vuoto', async () => {
+  const K = await gestionale(['studio']);
   const S = await finto({ 'POST /v1/configs/webhook': () => ({ url: 'ok' }) });
   try {
-    await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: 'https://kubo.esempio.it' });
+    await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: 'https://lumi.esempio.it' });
     await accendi(K, 'dialog360', { base: S.url, segreti: { chiave: 'chiave-360' } });
     const reg = S.chiamate.find(x => x.percorso === '/v1/configs/webhook');
-    assert.equal(reg?.corpo.url, `https://kubo.esempio.it/api/connettori/dialog360/in/${K.nucleo.segreto('dialog360', 'codice')}`);
+    assert.equal(reg?.corpo.url, `https://lumi.esempio.it/api/connettori/dialog360/in/${K.nucleo.segreto('dialog360', 'codice')}`);
   } finally { await K.chiudi(); await S.chiudi(); }
 });

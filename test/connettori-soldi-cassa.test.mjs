@@ -2,12 +2,12 @@
 // sconto, pagamento), niente doppio scontrino, emissione automatica quando la vendita diventa pagata, chiusura giornaliera.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { finto, kubo, accendi } from './connettori-finto.mjs';
+import { finto, gestionale, accendi } from './connettori-finto.mjs';
 
 const risposta = (n, extra = '') => ({ stato: 200, intestazioni: { 'Content-Type': 'text/xml' }, corpo: `<?xml version="1.0" encoding="utf-8"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><response success="true" code="" status="2"><addInfo><elementList>fiscalReceiptNumber,zRepNumber</elementList><lastCommand>74</lastCommand><printerStatus>20110</printerStatus><fiscalReceiptNumber>${n}</fiscalReceiptNumber><fiscalReceiptAmount>60,00</fiscalReceiptAmount><zRepNumber>0042</zRepNumber>${extra}</addInfo></response></soapenv:Body></soapenv:Envelope>` });
 
 test('Epson RT: scontrino della vendita (reparto da aliquota, sconto, carta), una volta sola, automatico al «pagata», chiusura', async () => {
-  const K = await kubo(); const ricevuti = []; let n = 0;
+  const K = await gestionale(); const ricevuti = []; let n = 0;
   const S = await finto({ 'POST /cgi-bin/fpmate.cgi': (p, corpo, { q }) => { assert.equal(q.get('devid'), 'local_printer'); ricevuti.push(String(corpo)); return risposta(String(++n).padStart(4, '0')); } });
   try {
     const a1 = (await K.chiama('POST', '/api/dati/articoli', { nome: 'Vaso <grande> & bello', codice: 'V1', prezzo: 30, giacenza: 5, iva: 22 })).json;
@@ -27,7 +27,7 @@ test('Epson RT: scontrino della vendita (reparto da aliquota, sconto, carta), un
     assert.equal((await K.chiama('GET', `/api/dati/vendite/${v.id}`)).json.stato, 'pagata');
     assert.equal((await K.chiama('POST', '/api/connettori/epson-rt/azioni/scontrino', { args: { vendita: v.id } })).stato, 502);   // mai due volte
     assert.equal(ricevuti.length, 2);
-    // automatico: la vendita segnata pagata in Kubo va in coda e si stampa una volta
+    // automatico: la vendita segnata pagata in Lumi va in coda e si stampa una volta
     await K.chiama('PUT', '/api/connettori/epson-rt', { impostazioni: { automatico: true } });
     const v2 = (await K.chiama('POST', '/api/dati/vendite', { righe: [{ articolo: a2.id, quantita: 1, prezzo: 10 }] })).json;
     await K.chiama('PATCH', `/api/dati/vendite/${v2.id}`, { stato: 'pagata', pagamento: 'contanti' });
@@ -40,7 +40,7 @@ test('Epson RT: scontrino della vendita (reparto da aliquota, sconto, carta), un
 });
 
 test('Epson RT: il registratore risponde con un errore → nessun collegamento, si può riprovare', async () => {
-  const K = await kubo(); let fallisci = true;
+  const K = await gestionale(); let fallisci = true;
   const S = await finto({ 'POST /cgi-bin/fpmate.cgi': () => (fallisci ? { stato: 200, intestazioni: { 'Content-Type': 'text/xml' }, corpo: '<response success="false" code="EPTR_REC_EMPTY" status="2"><addInfo><printerStatus>20080</printerStatus></addInfo></response>' } : risposta('0007')) });
   try {
     const a = (await K.chiama('POST', '/api/dati/articoli', { nome: 'Vaso', codice: 'V1', prezzo: 30, giacenza: 5 })).json;
@@ -55,7 +55,7 @@ test('Epson RT: il registratore risponde con un errore → nessun collegamento, 
 });
 
 test('Stripe Terminal: PaymentIntent card_present con la vendita → lettore; lettore occupato annulla l\'intent; il giro rilegge → pagata', async () => {
-  const K = await kubo(); let stato = 'requires_payment_method', occupato = true, intent = null, annullati = 0;
+  const K = await gestionale(); let stato = 'requires_payment_method', occupato = true, intent = null, annullati = 0;
   const S = await finto({
     'GET /v1/terminal/readers/:id': p => ({ id: p.id, status: 'online', label: 'Cassa 1' }),
     'POST /v1/payment_intents': (p, c, { intestazioni }) => { assert.equal(intestazioni.authorization, 'Bearer sk_test_term'); intent = c; return { id: 'pi_t1', status: 'requires_payment_method' }; },

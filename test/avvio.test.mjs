@@ -191,7 +191,7 @@ async function avvia() {
   const db = apri(), srv = creaServer(db); await new Promise(r => srv.listen(0, '127.0.0.1', r));
   const base = `http://127.0.0.1:${srv.address().port}`; let biscotto = '';
   const chiama = async (metodo, percorso, corpo) => {
-    const r = await fetch(base + percorso, { method: metodo, headers: { 'Content-Type': 'application/json', 'X-Kubo': '1', ...(biscotto ? { Cookie: biscotto } : {}) }, body: corpo ? JSON.stringify(corpo) : undefined });
+    const r = await fetch(base + percorso, { method: metodo, headers: { 'Content-Type': 'application/json', 'X-Lumi': '1', ...(biscotto ? { Cookie: biscotto } : {}) }, body: corpo ? JSON.stringify(corpo) : undefined });
     const c = r.headers.get('set-cookie'); if (c) biscotto = c.split(';')[0];
     return { stato: r.status, json: await r.json().catch(() => null) };
   };
@@ -208,7 +208,7 @@ test('API: avvio guidato completo, persone con il ruolo, Lumi spento, cruscotto,
     assert.equal(U.quanti(db), 0);   // niente a metà
     const c = await chiama('POST', '/api/avvio/configura', { azienda: 'Bottega Prova', nome: 'Titolare', email: 't@prova.it', password: 'password-lunga', risposte });
     assert.equal(c.stato, 200, JSON.stringify(c.json)); assert.ok(c.json.esempi > 10);
-    assert.equal(c.json.persone[0].ruolo, 'banco'); assert.match(c.json.persone[0].password, /^kubo-/);
+    assert.equal(c.json.persone[0].ruolo, 'banco'); assert.match(c.json.persone[0].password, /^lumi-/);
     assert.equal((await chiama('POST', '/api/avvio/configura', { azienda: 'x' })).stato, 409);
     const schema = (await chiama('GET', '/api/schema')).json;
     assert.ok(!schema.find(e => e.id === 'articoli').campi.some(k => k.id === 'giacenza'));

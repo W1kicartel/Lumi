@@ -1,6 +1,6 @@
 // App desktop, rete, backup e aggiornamenti: QR (riletto da un lettore scritto qui, indipendente), codici di rete,
 // rotazione, backup e ripristino che non perde dati, caricamento di un backup, aggiornamenti con un finto server,
-// e Kubo acceso «come nell'app desktop» senza finestre.
+// e Lumi acceso «come nell'app desktop» senza finestre.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
@@ -16,11 +16,11 @@ import * as Q from '../server/moduli/desktop-qr.js';
 import * as R from '../server/moduli/desktop-rete.js';
 import * as B from '../server/moduli/desktop-backup.js';
 import { confronta, controlla } from '../server/moduli/desktop-aggiorna.js';
-import { accendi } from '../desktop/kubo.mjs';
+import { accendi } from '../desktop/server.mjs';
 
 attiva();
 const RADICE = join(dirname(fileURLToPath(import.meta.url)), '..');
-const temp = () => realpathSync(mkdtempSync(join(tmpdir(), 'kubo-desktop-')));
+const temp = () => realpathSync(mkdtempSync(join(tmpdir(), 'lumi-desktop-')));
 
 // ---------- un lettore di QR minimo, scritto da capo: formato, maschera, ordine a serpente, blocchi, Reed-Solomon ----------
 const BLOCCHI = { 1: [10, [[1, 16]]], 2: [16, [[1, 28]]], 3: [26, [[1, 44]]], 4: [18, [[2, 32]]], 5: [24, [[2, 43]]], 6: [16, [[4, 27]]], 7: [18, [[4, 31]]],
@@ -69,7 +69,7 @@ test('QR: valori noti della norma (Reed-Solomon, formato, versione) e testi rile
   // i 18 bit di versione 7 (0x07C94) nell'angolo in basso a sinistra: riga n-11+i%3, colonna i/3
   const letti = [...Array(18).keys()].map(i => v7.m[v7.n - 11 + (i % 3)][Math.floor(i / 3)]).reverse().join('');
   assert.equal(parseInt(letti, 2), 0x07c94);
-  for (const t of ['http://192.168.1.20:4380/', 'https://kubo.esempio.it/', 'x', 'Città: perché sì ✓', 'http://10.0.0.5:4380/#/accedi?da=telefono&x=' + 'a'.repeat(120), 'z'.repeat(213)]) {
+  for (const t of ['http://192.168.1.20:4380/', 'https://lumi.esempio.it/', 'x', 'Città: perché sì ✓', 'http://10.0.0.5:4380/#/accedi?da=telefono&x=' + 'a'.repeat(120), 'z'.repeat(213)]) {
     const q = Q.codiceQR(t); assert.equal(q.righe.length, 17 + 4 * q.versione);
     assert.deepEqual(leggiQR(q.righe), { versione: q.versione, testo: t });
     for (let k = 0; k < 8; k++) assert.equal(leggiQR(Q.codiceQR(t, { maschera: k }).righe).testo, t, `maschera ${k}`);
@@ -83,7 +83,7 @@ test('rete: codice da dettare avanti e indietro, indirizzi scritti come capita',
   assert.deepEqual(R.daCodice(c), { ip: '192.168.1.20', porta: 4380 }); assert.deepEqual(R.daCodice(c.toLowerCase().replace(/-/g, ' ')), { ip: '192.168.1.20', porta: 4380 });
   assert.deepEqual(R.daCodice(R.codiceDa('255.255.255.255', 65535)), { ip: '255.255.255.255', porta: 65535 }); assert.equal(R.daCodice('ciao'), null);
   assert.equal(R.indirizzoDa(c), 'http://192.168.1.20:4380'); assert.equal(R.indirizzoDa('192.168.1.7'), 'http://192.168.1.7:4380');
-  assert.equal(R.indirizzoDa('ufficio.local:5000'), 'http://ufficio.local:5000'); assert.equal(R.indirizzoDa('https://kubo.esempio.it/x'), 'https://kubo.esempio.it');
+  assert.equal(R.indirizzoDa('ufficio.local:5000'), 'http://ufficio.local:5000'); assert.equal(R.indirizzoDa('https://lumi.esempio.it/x'), 'https://lumi.esempio.it');
   assert.throws(() => R.indirizzoDa('')); assert.throws(() => R.indirizzoDa('ftp://x')); assert.throws(() => R.indirizzoDa('http://a:b@c'));
   assert.deepEqual(R.indirizziLocali({ en0: [{ family: 'IPv4', address: '8.8.4.4', internal: false }, { family: 'IPv4', address: '192.168.1.9', internal: false }], lo0: [{ family: 'IPv4', address: '127.0.0.1', internal: true }],
     x: [{ family: 'IPv6', address: 'fe80::1', internal: false }, { family: 'IPv4', address: '169.254.3.3', internal: false }] }), ['192.168.1.9', '8.8.4.4']);
@@ -105,7 +105,7 @@ test('rotazione: 7 giornalieri, 4 settimanali, 12 mensili; manuali sempre; altri
   // sui file veri: la rotazione cancella e la seconda volta non toglie altro
   const c = temp(); for (const b of l.slice(0, 40)) writeFileSync(join(c, b.nome), 'x');
   writeFileSync(join(c, 'altro-file.db'), 'non mio');
-  const tolti = B.ruota(c); assert.ok(tolti.length > 0); assert.deepEqual(B.ruota(c), []); assert.ok(existsSync(join(c, 'altro-file.db')), 'i file non di Kubo non si toccano');
+  const tolti = B.ruota(c); assert.ok(tolti.length > 0); assert.deepEqual(B.ruota(c), []); assert.ok(existsSync(join(c, 'altro-file.db')), 'i file non di Lumi non si toccano');
 });
 
 test('allegati incrementali: si copia solo il nuovo o il cambiato, niente si cancella', () => {
@@ -120,11 +120,11 @@ test('allegati incrementali: si copia solo il nuovo o il cambiato, niente si can
 
 // ---------- il server con un database su file ----------
 async function avvia() {
-  const cartella = temp(), db = apri(join(cartella, 'kubo.db')), srv = creaServer(db);
+  const cartella = temp(), db = apri(join(cartella, 'lumi.db')), srv = creaServer(db);
   await new Promise(r => srv.listen(0, '127.0.0.1', r));
   const base = `http://127.0.0.1:${srv.address().port}`; let biscotto = '';
   const chiama = async (metodo, percorso, corpo, { grezzo = false } = {}) => {
-    const r = await fetch(base + percorso, { method: metodo, body: corpo ? JSON.stringify(corpo) : undefined, headers: { 'Content-Type': 'application/json', 'X-Kubo': '1', ...(biscotto ? { Cookie: biscotto } : {}) } });
+    const r = await fetch(base + percorso, { method: metodo, body: corpo ? JSON.stringify(corpo) : undefined, headers: { 'Content-Type': 'application/json', 'X-Lumi': '1', ...(biscotto ? { Cookie: biscotto } : {}) } });
     const c = r.headers.get('set-cookie'); if (c) biscotto = c.split(';')[0];
     return { stato: r.status, intestazioni: r.headers, json: grezzo ? null : await r.json().catch(() => null), dati: grezzo ? Buffer.from(await r.arrayBuffer()) : null };
   };
@@ -149,7 +149,7 @@ test('backup e ripristino: copia coerente, ripristino con copia di sicurezza, ne
     // si scarica
     const giu = await k.chiama('GET', `/api/backup/file/${nome}`, null, { grezzo: true });
     assert.equal(giu.stato, 200); assert.equal(giu.dati.subarray(0, 15).toString(), 'SQLite format 3');
-    assert.equal((await k.chiama('GET', '/api/backup/file/..%2Fkubo.db')).stato, 404);
+    assert.equal((await k.chiama('GET', '/api/backup/file/..%2Flumi.db')).stato, 404);
     // senza conferma non parte
     assert.equal((await k.chiama('POST', '/api/backup/ripristina', { nome })).stato, 400);
     const rip = await k.chiama('POST', '/api/backup/ripristina', { nome, conferma: true }); assert.equal(rip.stato, 200, JSON.stringify(rip.json));
@@ -162,7 +162,7 @@ test('backup e ripristino: copia coerente, ripristino con copia di sicurezza, ne
     const rip2 = await k.chiama('POST', '/api/backup/ripristina', { nome: rip.json.sicurezza, conferma: true }); assert.equal(rip2.stato, 200, JSON.stringify(rip2.json));
     assert.deepEqual(await nomi(k), ['Dopo Spa', 'Prima Srl']);
     // tutto sul file vero: un'altra connessione vede lo stesso
-    const altra = new DatabaseSync(join(k.cartella, 'kubo.db'), { readOnly: true });
+    const altra = new DatabaseSync(join(k.cartella, 'lumi.db'), { readOnly: true });
     assert.equal(altra.prepare('SELECT COUNT(*) n FROM d_clienti').get().n, 2); altra.close();
     const el = (await k.chiama('GET', '/api/backup')).json.elenco; assert.equal(el.filter(b => b.tipo === 'sicurezza').length, 2);
     const via = await k.chiama('DELETE', `/api/backup/file/${nome}`); assert.equal(via.stato, 200); assert.ok(!via.json.elenco.some(b => b.nome === nome));
@@ -184,13 +184,13 @@ test('backup: solo il titolare; cartella esterna validata; prima di cambiare lo 
     k.usa(tit);
     assert.equal((await k.chiama('PUT', '/api/backup/cartella', { cartella: 'relativa/x' })).stato, 400);
     assert.equal((await k.chiama('PUT', '/api/backup/cartella', { cartella: join(k.cartella, 'file') })).stato, 400, 'non dentro i dati');
-    const fuori = temp(), su = await k.chiama('PUT', '/api/backup/cartella', { cartella: join(fuori, 'sotto', '..', 'Kubo') });
-    assert.equal(su.stato, 200, JSON.stringify(su.json)); assert.equal(su.json.cartella, join(fuori, 'Kubo')); assert.equal(su.json.elenco.length, 1, 'una prima copia subito');
+    const fuori = temp(), su = await k.chiama('PUT', '/api/backup/cartella', { cartella: join(fuori, 'sotto', '..', 'Lumi') });
+    assert.equal(su.stato, 200, JSON.stringify(su.json)); assert.equal(su.json.cartella, join(fuori, 'Lumi')); assert.equal(su.json.elenco.length, 1, 'una prima copia subito');
     // prima di una modifica allo schema: una copia «modifica»
     const def = (await k.chiama('GET', '/api/schema')).json.find(e => e.id === 'clienti');
     const ok = await k.chiama('PUT', '/api/schema/clienti', { ...def, campi: [...def.campi, { id: 'nota_prova', nome: 'Nota', tipo: 'testo' }] }); assert.equal(ok.stato, 200, JSON.stringify(ok.json));
     const el = (await k.chiama('GET', '/api/backup')).json.elenco; assert.equal(el.filter(b => b.tipo === 'modifica').length, 1);
-    const prima = new DatabaseSync(join(fuori, 'Kubo', el.find(b => b.tipo === 'modifica').nome), { readOnly: true });
+    const prima = new DatabaseSync(join(fuori, 'Lumi', el.find(b => b.tipo === 'modifica').nome), { readOnly: true });
     assert.ok(!JSON.parse(prima.prepare("SELECT def FROM _entita WHERE id = 'clienti'").get().def).campi.some(c => c.id === 'nota_prova'), 'la copia è di prima della modifica'); prima.close();
     // con la cartella esterna si vedono anche le copie rimaste accanto ai dati, e si scaricano
     const vecchio = B.copia(k.db, join(k.cartella, 'backup'), 'manuale', new Date(2020, 0, 1));
@@ -232,8 +232,8 @@ test('carica un backup da fuori: a pezzi, controllato, poi ripristinabile; un fi
 test('aggiornamenti: confronto delle versioni e controllo con un finto server, senza mai installare', async () => {
   assert.equal(confronta('v0.2.0', '0.1.9'), 1); assert.equal(confronta('0.10.0', '0.9.9'), 1); assert.equal(confronta('1.0.0', '1.0.0'), 0);
   assert.equal(confronta('1.0.0-beta.1', '1.0.0'), -1); assert.equal(confronta('0.1.0', '0.1.1'), -1);
-  let risposta = { tag_name: 'v0.3.0', name: 'Kubo 0.3', html_url: 'https://github.com/W1kicartel/Lumi/releases/tag/v0.3.0', body: 'Novità', draft: false, prerelease: false }, stato = 200, chieste = 0;
-  const finto = createServer((req, res) => { chieste++; assert.match(req.headers['user-agent'], /^Kubo\//); res.writeHead(stato, { 'Content-Type': 'application/json' }).end(JSON.stringify(risposta)); });
+  let risposta = { tag_name: 'v0.3.0', name: 'Lumi 0.3', html_url: 'https://github.com/W1kicartel/Lumi/releases/tag/v0.3.0', body: 'Novità', draft: false, prerelease: false }, stato = 200, chieste = 0;
+  const finto = createServer((req, res) => { chieste++; assert.match(req.headers['user-agent'], /^Lumi\//); res.writeHead(stato, { 'Content-Type': 'application/json' }).end(JSON.stringify(risposta)); });
   await new Promise(r => finto.listen(0, '127.0.0.1', r)); const url = `http://127.0.0.1:${finto.address().port}/latest`;
   try {
     const x = await controlla('0.1.0', { url }); assert.equal(x.nuova, true); assert.equal(x.ultima.versione, '0.3.0'); assert.equal(x.ultima.url, risposta.html_url);
@@ -241,24 +241,24 @@ test('aggiornamenti: confronto delle versioni e controllo con un finto server, s
     risposta = { ...risposta, html_url: 'javascript:alert(1)' }; assert.equal((await controlla('0.1.0', { url })).ultima.url, 'https://github.com/W1kicartel/Lumi/releases');
     stato = 500; await assert.rejects(controlla('0.1.0', { url }), /500/);
     // dal server: il titolare lo accende, il controllo passa dal finto server, l'esito resta salvato
-    stato = 200; process.env.KUBO_AGGIORNAMENTI_URL = url;
+    stato = 200; process.env.LUMI_AGGIORNAMENTI_URL = url;
     const k = await avvia();
     try {
       const su = await k.chiama('PUT', '/api/aggiornamenti', { attivo: true }); assert.equal(su.stato, 200, JSON.stringify(su.json));
       assert.equal(su.json.attivo, true); assert.equal(su.json.esito.nuova, true); assert.ok(chieste >= 5);
       stato = 404; const giu = await k.chiama('POST', '/api/aggiornamenti/controlla'); assert.match(giu.json.esito.errore, /404/);
-    } finally { await k.chiudi(); k.db.close(); delete process.env.KUBO_AGGIORNAMENTI_URL; }
+    } finally { await k.chiudi(); k.db.close(); delete process.env.LUMI_AGGIORNAMENTI_URL; }
   } finally { finto.close(); }
 });
 
-test('modalità desktop: Kubo si accende come nell\'app (senza finestre), porta occupata → la successiva, si spegne pulito', async () => {
+test('modalità desktop: Lumi si accende come nell\'app (senza finestre), porta occupata → la successiva, si spegne pulito', async () => {
   const cartella = temp(), occupa = createServer(); await new Promise(r => occupa.listen(0, '127.0.0.1', r)); const porta = occupa.address().port;
   const k = await accendi({ radice: RADICE, cartella, porta, rete: false });
   try {
-    assert.ok(k.porta > porta && k.porta <= porta + 10); assert.ok(existsSync(join(cartella, 'kubo.db')));
+    assert.ok(k.porta > porta && k.porta <= porta + 10); assert.ok(existsSync(join(cartella, 'lumi.db')));
     const s = await (await fetch(k.url + 'api/stato')).json(); assert.equal(s.configurato, false);
     const pagina = await (await fetch(k.url)).text(); assert.match(pagina, /<div id="app">/);
-    const ok = await fetch(k.url + 'api/configura', { method: 'POST', headers: { 'X-Kubo': '1', 'Content-Type': 'application/json' }, body: JSON.stringify({ azienda: 'Desktop', nome: 'T', email: 'd@prova.it', password: 'password-lunga', modelli: [] }) });
+    const ok = await fetch(k.url + 'api/configura', { method: 'POST', headers: { 'X-Lumi': '1', 'Content-Type': 'application/json' }, body: JSON.stringify({ azienda: 'Desktop', nome: 'T', email: 'd@prova.it', password: 'password-lunga', modelli: [] }) });
     assert.equal(ok.status, 200);
     const rete = await (await fetch(k.url + 'api/desktop/rete', { headers: { Cookie: ok.headers.get('set-cookie').split(';')[0] } })).json();
     assert.equal(rete.inRete, false); assert.equal(rete.porta, k.porta);

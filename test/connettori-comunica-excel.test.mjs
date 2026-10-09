@@ -2,7 +2,7 @@
 // riscrive dalla cella A1, con le colonne in lettere giuste. Solo un finto Graph locale.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { finto, kubo, accendi } from './connettori-finto.mjs';
+import { finto, gestionale, accendi } from './connettori-finto.mjs';
 import { colonna } from '../connettori/excel-online/connettore.js';
 
 test('Excel: lettere delle colonne', () => {
@@ -10,20 +10,20 @@ test('Excel: lettere delle colonne', () => {
 });
 
 test('Excel: crea il foglio, scrive intestazioni e righe, al giro dopo svuota l\'area usata e riscrive', async () => {
-  const K = await kubo(['negozio']), fogli = {};
+  const K = await gestionale(['negozio']), fogli = {};
   const nome = p => decodeURIComponent(/worksheets\('([^']*)'\)/.exec(p)?.[1] || '');
   // il finto registra la chiamata prima di rispondere: S.chiamate.at(-1) dice di quale foglio si parla
   const S = await finto({
-    'GET /v1.0/me/drive/root:/Kubo/Kubo.xlsx:/workbook/worksheets.*/usedRange': () => { const f = fogli[nome(S.chiamate.at(-1).percorso)]; return f ? { address: `'${f.nome}'!${f.area}` } : { stato: 404, corpo: { error: { code: 'ItemNotFound', message: 'The requested resource doesn\'t exist.' } } }; },
-    'POST /v1.0/me/drive/root:/Kubo/Kubo.xlsx:/workbook/worksheets/add': (p, c) => { fogli[c.name] = { nome: c.name, area: 'A1' }; return { name: c.name }; },
-    'POST /v1.0/me/drive/root:/Kubo/Kubo.xlsx:/workbook/worksheets.*/clear': () => ({ stato: 204, corpo: '' }),
-    'PATCH /v1.0/me/drive/root:/Kubo/Kubo.xlsx:/workbook/worksheets.*': (p, c) => ({ address: 'ok', values: c.values }),
-    'GET /v1.0/me/drive/root:/Kubo/Kubo.xlsx': () => ({ name: 'Kubo.xlsx', webUrl: 'https://onedrive.example/Kubo.xlsx' }),
+    'GET /v1.0/me/drive/root:/Lumi/Lumi.xlsx:/workbook/worksheets.*/usedRange': () => { const f = fogli[nome(S.chiamate.at(-1).percorso)]; return f ? { address: `'${f.nome}'!${f.area}` } : { stato: 404, corpo: { error: { code: 'ItemNotFound', message: 'The requested resource doesn\'t exist.' } } }; },
+    'POST /v1.0/me/drive/root:/Lumi/Lumi.xlsx:/workbook/worksheets/add': (p, c) => { fogli[c.name] = { nome: c.name, area: 'A1' }; return { name: c.name }; },
+    'POST /v1.0/me/drive/root:/Lumi/Lumi.xlsx:/workbook/worksheets.*/clear': () => ({ stato: 204, corpo: '' }),
+    'PATCH /v1.0/me/drive/root:/Lumi/Lumi.xlsx:/workbook/worksheets.*': (p, c) => ({ address: 'ok', values: c.values }),
+    'GET /v1.0/me/drive/root:/Lumi/Lumi.xlsx': () => ({ name: 'Lumi.xlsx', webUrl: 'https://onedrive.example/Lumi.xlsx' }),
   });
   try {
     await accendi(K, 'excel-online', { base: S.url, segreti: { client_id: 'app-1234' }, impostazioni: { sezione: 'clienti', tenant: 'consumers' } });
     K.nucleo.k('excel-online').salvaSegreto('_oauth', JSON.stringify({ access_token: 'tok-ms', refresh_token: 'r', scade: Date.now() + 36e5 }));
-    assert.deepEqual((await K.chiama('POST', '/api/connettori/excel-online/prova')).json, { ok: true, messaggio: 'Kubo.xlsx' });
+    assert.deepEqual((await K.chiama('POST', '/api/connettori/excel-online/prova')).json, { ok: true, messaggio: 'Lumi.xlsx' });
     await K.chiama('POST', '/api/dati/clienti', { nome: 'Anna Bianchi', telefono: '3331234567' });
     await K.chiama('POST', '/api/dati/clienti', { nome: 'Marco Verdi', email: 'marco@esempio.it' });
     const ant = (await K.chiama('POST', '/api/connettori/excel-online/azioni/esporta_ora', { args: {}, anteprima: true })).json;

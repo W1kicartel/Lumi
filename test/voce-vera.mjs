@@ -1,8 +1,8 @@
-// La prova VERA della voce locale, su un Mac con chip Apple e kubo-voce compilato (desktop/voce-mac/compila.sh):
+// La prova VERA della voce locale, su un Mac con chip Apple e lumi-voce compilato (desktop/voce-mac/compila.sh):
 //   node test/voce-vera.mjs
 // Genera tre frasi con la sintesi del Mac («say» scrive in un file: dagli altoparlanti non esce niente, il microfono non
 // si usa), in russo (Milena), tedesco (Anna) e italiano (Alice); le converte in float32 mono 16 kHz con afconvert; accende
-// un Kubo vero in una cartella temporanea, fa il primo avvio, e le manda a POST /api/lumi/voce/trascrivi. Controlla che
+// Lumi vero in una cartella temporanea, fa il primo avvio, e le manda a POST /api/lumi/voce/trascrivi. Controlla che
 // il testo contenga le parole attese. L'audio generato resta nella cartella temporanea, che alla fine si cancella.
 // Non è in «npm test»: serve il Mac, il programma compilato e il modello (~460 MB, scaricato da FluidAudio al primo uso).
 import { spawn, execFileSync } from 'node:child_process';
@@ -18,7 +18,7 @@ const FRASI = [
   { lingua: 'italiano', voce: 'Alice', testo: 'Aggiungi la taglia agli articoli del magazzino.', attese: ['taglia', 'articoli', 'magazzino'] },
 ];
 const PORTA = 4380 + 100 + Math.floor(Math.random() * 400);
-const dir = mkdtempSync(join(tmpdir(), 'kubo-voce-vera-'));
+const dir = mkdtempSync(join(tmpdir(), 'lumi-voce-vera-'));
 let server = null;
 const fine = codice => { try { server?.kill(); } catch { /* niente */ } rmSync(dir, { recursive: true, force: true }); process.exit(codice); };
 setTimeout(() => { console.error('PROVA SCADUTA (5 minuti)'); fine(2); }, 5 * 6e4).unref();
@@ -44,9 +44,9 @@ try {
   server = spawn(process.execPath, [join(RADICE, 'server', 'avvia.js'), '--porta', String(PORTA), '--dati', join(dir, 'dati')], { stdio: ['ignore', 'pipe', 'inherit'], env: { ...process.env, NODE_ENV: 'test', NODE_TEST_CONTEXT: '' } });
   await new Promise((ok, ko) => { server.stdout.on('data', b => { if (/acceso/.test(String(b))) ok(); }); server.on('exit', c => ko(new Error('server chiuso ' + c))); });
   const base = `http://127.0.0.1:${PORTA}`;
-  const r = await fetch(base + '/api/configura', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Kubo': '1' }, body: JSON.stringify({ azienda: 'Prova voce', nome: 'Titolare', email: 'titolare@prova.test', password: 'prova-voce-locale', modelli: [] }) });
+  const r = await fetch(base + '/api/configura', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Lumi': '1' }, body: JSON.stringify({ azienda: 'Prova voce', nome: 'Titolare', email: 'titolare@prova.test', password: 'prova-voce-locale', modelli: [] }) });
   const cookie = String(r.headers.get('set-cookie')).split(';')[0];
-  const h = { 'X-Kubo': '1', Cookie: cookie };
+  const h = { 'X-Lumi': '1', Cookie: cookie };
   // lo stato accende la voce in sottofondo: si aspetta che sia pronta (al massimo 3 minuti, se il modello va scaricato)
   const t0 = Date.now(); let s;
   for (;;) {

@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
-import { finto, kubo, accendi, manda } from './connettori-finto.mjs';
+import { finto, gestionale, accendi, manda } from './connettori-finto.mjs';
 import * as R from '../server/moduli/whatsapp-regole.js';
 import { TESTI } from '../server/moduli/whatsapp-lingue.js';
 import { istanzeWa } from '../server/moduli/whatsapp.js';
@@ -33,7 +33,7 @@ const fintoMeta = (modelli = MODELLI) => finto({
   'POST /v24.0/1022901293/subscribed_apps': () => ({ success: true }),
 });
 async function conMeta(modelli = ['studio']) {
-  const K = await kubo(modelli), S = await fintoMeta();
+  const K = await gestionale(modelli), S = await fintoMeta();
   // se l'accensione fallisce, i due server si chiudono lo stesso (altrimenti il processo della prova resta acceso)
   try { await accendi(K, 'whatsapp', { base: S.url, segreti: { token: 'EAAtoken', segreto_app: 'app-segreta' }, impostazioni: { numero_id: '1065403522', waba_id: '1022901293' } }); }
   catch (e) { await K.chiudi(); await S.chiudi(); throw e; }
@@ -156,18 +156,18 @@ test('Meta: consensi, modelli fuori dalla finestra, marketing, silenzio e limiti
     assert.equal(W.controlla({ numero: '+393470001111', categoria: 'utility', tipo: 'modello' }).motivo, 'limite-giorno');
     // costi del mese: solo quello partito
     const st = (await K.chiama('GET', '/api/whatsapp/stato')).json; assert.equal(st.provider, 'whatsapp'); assert.ok(st.costi.some(z => z.categoria === 'utility' && z.n === 1));
-    // nuovo modello da Kubo: Meta lo riceve con gli esempi; poi la mappa delle variabili
-    const nuovo = await K.chiama('POST', '/api/whatsapp/modelli', { nome: 'promemoria_kubo', categoria: 'utility', corpo: 'Ciao {{1}}, ci vediamo {{2}}.', esempi: ['Anna', 'domani alle 10'] });
+    // nuovo modello da Lumi: Meta lo riceve con gli esempi; poi la mappa delle variabili
+    const nuovo = await K.chiama('POST', '/api/whatsapp/modelli', { nome: 'promemoria_lumi', categoria: 'utility', corpo: 'Ciao {{1}}, ci vediamo {{2}}.', esempi: ['Anna', 'domani alle 10'] });
     assert.equal(nuovo.stato, 200, JSON.stringify(nuovo.json)); assert.equal(nuovo.json.stato, 'in_attesa');
     const inviato = S.chiamate.find(y => y.metodo === 'POST' && y.percorso === '/v24.0/1022901293/message_templates').corpo;
-    assert.deepEqual(inviato, { name: 'promemoria_kubo', language: 'it', category: 'UTILITY', components: [{ type: 'BODY', text: 'Ciao {{1}}, ci vediamo {{2}}.', example: { body_text: [['Anna', 'domani alle 10']] } }] });
+    assert.deepEqual(inviato, { name: 'promemoria_lumi', language: 'it', category: 'UTILITY', components: [{ type: 'BODY', text: 'Ciao {{1}}, ci vediamo {{2}}.', example: { body_text: [['Anna', 'domani alle 10']] } }] });
     assert.equal((await K.chiama('POST', '/api/whatsapp/modelli', { nome: 'Nome Sbagliato', corpo: 'x' })).json.motivo, 'modello-nome');
     const mp = await K.chiama('PUT', '/api/whatsapp/modelli/promemoria_appuntamento/it/mappa', { mappa: { 1: 'cliente.nome', 2: 'riga.quando', 3: 'azienda.nome' } });
     assert.deepEqual(mp.json.mappa, { 1: 'cliente.nome', 2: 'riga.quando', 3: 'azienda.nome' });
     // un webhook del modello approvato aggiorna lo stato
-    const ap = JSON.stringify({ object: 'whatsapp_business_account', entry: [{ id: '222', time: 1, changes: [{ field: 'message_template_status_update', value: { event: 'APPROVED', message_template_name: 'promemoria_kubo', message_template_language: 'it', reason: 'NONE' } }] }] });
+    const ap = JSON.stringify({ object: 'whatsapp_business_account', entry: [{ id: '222', time: 1, changes: [{ field: 'message_template_status_update', value: { event: 'APPROVED', message_template_name: 'promemoria_lumi', message_template_language: 'it', reason: 'NONE' } }] }] });
     await manda(K, '/api/connettori/whatsapp/in', ap, { 'X-Hub-Signature-256': firmaMeta('app-segreta', ap) });
-    assert.equal((await K.chiama('GET', '/api/whatsapp/modelli')).json.find(m => m.nome === 'promemoria_kubo').stato, 'approvato');
+    assert.equal((await K.chiama('GET', '/api/whatsapp/modelli')).json.find(m => m.nome === 'promemoria_lumi').stato, 'approvato');
   } finally { await chiudi(); }
 });
 
@@ -240,7 +240,7 @@ test('automazioni: promemoria 24 h dal giro, conferma dal motore, azione «whats
 });
 
 test('Twilio: firma X-Twilio-Signature, messaggio in arrivo (form), testo, modello con ContentSid, PDF con link pubblico, Content API', async () => {
-  const K = await kubo(['professionista']);
+  const K = await gestionale(['professionista']);
   const S = await finto({
     'POST /2010-04-01/Accounts/:sid/Messages.json': () => ({ sid: `SM${Math.random().toString(16).slice(2, 10)}`, status: 'queued' }),
     'GET /v1/ContentAndApprovals': () => ({ contents: [{ sid: 'HX111', friendly_name: 'preventivo_pronto', language: 'it', types: { 'twilio/text': { body: 'Ciao {{1}}, ecco il preventivo.' } }, approval_requests: { name: 'preventivo_pronto', category: 'UTILITY', status: 'approved' } }], meta: { next_page_url: null } }),
@@ -287,7 +287,7 @@ test('Twilio: firma X-Twilio-Signature, messaggio in arrivo (form), testo, model
 });
 
 test('360dialog: webhook registrato all\'accensione con il codice segreto, eventi della Cloud API, D360-API-KEY, modelli', async () => {
-  const K = await kubo(['studio']);
+  const K = await gestionale(['studio']);
   const S = await finto({
     'POST /v1/configs/webhook': () => ({ url: 'ok' }),
     'POST /messages': () => ({ messages: [{ id: 'wamid.360' }] }),
@@ -329,7 +329,7 @@ test('cataloghi: messaggi del modulo nelle sei lingue, contratto del catalogo de
 });
 
 test('preventivo con PDF: la ricetta sul motore manda il modello con il documento nell\'intestazione; sconosciuti come contatti; permessi', async () => {
-  const K = await kubo(['professionista']);
+  const K = await gestionale(['professionista']);
   const S = await fintoMeta([...MODELLI, { id: '5', name: 'preventivo_pdf', language: 'it', status: 'APPROVED', category: 'UTILITY', components: [{ type: 'HEADER', format: 'DOCUMENT' }, { type: 'BODY', text: 'Ciao {{1}}, ti mandiamo il preventivo {{2}}.' }] }]);
   try {
     await accendi(K, 'whatsapp', { base: S.url, segreti: { token: 'EAAtoken', segreto_app: 'app-segreta' }, impostazioni: { numero_id: '1065403522', waba_id: '1022901293' } });
@@ -371,7 +371,7 @@ test('verifica: STOP non si scavalca con un «sì» a mano, un PDF fallito non f
     'GET /v24.0/1022901293/message_templates': () => ({ data: MODELLI }),
     'POST /v24.0/1022901293/subscribed_apps': () => ({ success: true }),
   });
-  const K = await kubo(['professionista']);
+  const K = await gestionale(['professionista']);
   try {
     await accendi(K, 'whatsapp', { base: S.url, segreti: { token: 'EAAtoken', segreto_app: 'app-segreta' }, impostazioni: { numero_id: '1065403522', waba_id: '1022901293' } });
     const W = istanzeWa.get(K.db), a = await cliente(K, 'Anna Bianchi', '3470001111'), m = await cliente(K, 'Mario Rossi', '3331234567');

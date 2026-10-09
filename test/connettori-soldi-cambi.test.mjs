@@ -1,13 +1,13 @@
 // I cambi BCE contro un finto sito della BCE: ultimo fixing, data passata dal file dei 90 giorni, valute non pubblicate.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { finto, kubo, accendi } from './connettori-finto.mjs';
+import { finto, gestionale, accendi } from './connettori-finto.mjs';
 
 const cubo = (data, tassi) => `<Cube time='${data}'>${Object.entries(tassi).map(([v, t]) => `<Cube currency='${v}' rate='${t}'/>`).join('')}</Cube>`;
 const xml = giorni => ({ stato: 200, intestazioni: { 'Content-Type': 'text/xml' }, corpo: `<?xml version="1.0" encoding="UTF-8"?><gesmes:Envelope xmlns:gesmes="http://www.gesmes.org/xml/2002-08-01" xmlns="http://www.ecb.int/vocabulary/2002-08-01/eurofxref"><gesmes:subject>Reference rates</gesmes:subject><Cube>${giorni.join('')}</Cube></gesmes:Envelope>` });
 
 test('Cambi BCE: converti con l\'ultimo cambio, una data passata (giorno festivo → il lavorativo prima), valuta sconosciuta', async () => {
-  const K = await kubo(); let giornalieri = 0;
+  const K = await gestionale(); let giornalieri = 0;
   const S = await finto({
     'GET /stats/eurofxref/eurofxref-daily.xml': () => { giornalieri++; return xml([cubo('2026-10-08', { USD: '1.1000', GBP: '0.8500', CHF: '0.9400' })]); },
     'GET /stats/eurofxref/eurofxref-hist-90d.xml': () => xml([cubo('2026-10-08', { USD: '1.1000' }), cubo('2026-09-04', { USD: '1.2500', GBP: '0.8000' }), cubo('2026-09-03', { USD: '1.2400' })]),

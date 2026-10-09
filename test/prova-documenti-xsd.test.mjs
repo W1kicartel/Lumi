@@ -1,4 +1,4 @@
-// Il file FatturaPA di Kubo contro lo schema XSD UFFICIALE 1.2.2
+// Il file FatturaPA di Lumi contro lo schema XSD UFFICIALE 1.2.2
 // (scaricato da www.fatturapa.gov.it, import di xmldsig reso locale) e contro i controlli di coerenza che lo SDI fa
 // dopo lo schema (codici 00411, 00417, 00419, 00421, 00422, 00423, 00427, 00429, 00430 delle specifiche tecniche).
 // Le lacune trovate dalla verifica (docs/ricerca/VERIFICA-DOCUMENTI.md) sono chiuse dal giro «fatture»: i test erano «todo», ora passano.
@@ -13,8 +13,8 @@ import { xml, controlla, contiFattura } from '../server/moduli/documenti-xml.js'
 
 const QUI = dirname(fileURLToPath(import.meta.url));
 const XSD = join(QUI, 'documenti', 'xsd', 'fatturapa-locale.xsd');
-const CARTELLA = mkdtempSync(join(tmpdir(), 'kubo-xsd-'));
-export const USCITA = process.env.KUBO_PROVA_XML || CARTELLA;   // dove restano i file generati, per guardarli
+const CARTELLA = mkdtempSync(join(tmpdir(), 'lumi-xsd-'));
+export const USCITA = process.env.LUMI_PROVA_XML || CARTELLA;   // dove restano i file generati, per guardarli
 
 function valida(nome, testo) {
   const f = join(USCITA, nome); writeFileSync(f, testo);
@@ -22,7 +22,7 @@ function valida(nome, testo) {
   catch (e) { return { ok: false, f, errore: String(e.stderr || e.message) }; }
 }
 
-// ---------- i controlli dello SDI dopo lo schema (versione ridotta, sugli elementi che Kubo scrive) ----------
+// ---------- i controlli dello SDI dopo lo schema (versione ridotta, sugli elementi che Lumi scrive) ----------
 const blocchi = (x, tag) => [...x.matchAll(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`, 'g'))].map(m => m[1]);
 const val = (x, tag) => x.match(new RegExp(`<${tag}>([^<]*)</${tag}>`))?.[1];
 const n = s => Number(s);
@@ -78,7 +78,7 @@ function prova(nome, az, f, cliente) {
   return { errori, x: out.xml, v, sdi: controlliSdi(out.xml), conti: contiFattura(f) };
 }
 
-test('lo schema ufficiale c\'è e il file atteso dei test di Kubo lo rispetta', () => {
+test('lo schema ufficiale c\'è e il file atteso dei test di Lumi lo rispetta', () => {
   assert.match(readFileSync(XSD, 'utf8'), /version="1\.2\.2"/);
   const v = valida('fattura-attesa.xml', readFileSync(join(QUI, 'documenti', 'fattura-attesa.xml'), 'utf8'));
   assert.ok(v.ok, v.errore);
@@ -156,7 +156,7 @@ test('3. nota di credito (TD04) collegata alla fattura stornata', () => {
 
 test('4. clienti esteri: UE con partita IVA (N3.2) ed extra UE senza (N3.1), codice XXXXXXX', () => {
   const ue = prova('4a-estero-ue', AZ, { ...base, righe: [{ descrizione: 'Anelli in argento', quantita: 10, prezzo: 45, aliquota: 0, natura: 'N3.2' }] }, MULLER);
-  const senzaBollo = e => e.filter(x => !/Bollo/.test(x));   // vedi 4c: Kubo chiede il bollo anche dove non è dovuto
+  const senzaBollo = e => e.filter(x => !/Bollo/.test(x));   // vedi 4c: Lumi chiede il bollo anche dove non è dovuto
   assert.deepEqual(senzaBollo(ue.errori), []); assert.ok(ue.v.ok, ue.v.errore); assert.deepEqual(ue.sdi, []);
   assert.match(ue.x, /<CodiceDestinatario>XXXXXXX<\/CodiceDestinatario>/);
   assert.match(ue.x, /<IdPaese>DE<\/IdPaese>\s*<IdCodice>123456789<\/IdCodice>/);

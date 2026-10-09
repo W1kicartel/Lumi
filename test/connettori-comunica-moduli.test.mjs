@@ -2,7 +2,7 @@
 // Tutti contro finti servizi locali (o senza servizio), con firme giuste e sbagliate. Nessuna chiamata vera.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { finto, kubo, accendi, manda, firmaHmacDi } from './connettori-finto.mjs';
+import { finto, gestionale, accendi, manda, firmaHmacDi } from './connettori-finto.mjs';
 import { isoLocale, leggiRisposte } from '../connettori/_comunica/moduli.js';
 import { risposteGrezze } from '../connettori/jotform/connettore.js';
 import { leggiMultipart } from '../server/moduli/connettori-rete.js';
@@ -22,11 +22,11 @@ test('moduli.js: ora locale → UTC (legale e solare), risposte → contatto, da
 });
 
 test('Typeform: firma sha256= base64 giusta e sbagliata; risposta → cliente + appuntamento; doppione; stesso cliente, note in coda', async () => {
-  const K = await kubo(['studio']);
+  const K = await gestionale(['studio']);
   try {
-    await accendi(K, 'typeform', { impostazioni: { indirizzo: 'https://kubo.studiobianchi.it' } });
-    const s = K.nucleo.segreto('typeform', 'segreto'); assert.ok(s?.length >= 20);   // lo genera Kubo
-    assert.equal((await K.chiama('POST', '/api/connettori/typeform/azioni/indirizzo_webhook', {})).json.indirizzo, 'https://kubo.studiobianchi.it/api/connettori/typeform/in');
+    await accendi(K, 'typeform', { impostazioni: { indirizzo: 'https://lumi.studiobianchi.it' } });
+    const s = K.nucleo.segreto('typeform', 'segreto'); assert.ok(s?.length >= 20);   // lo genera Lumi
+    assert.equal((await K.chiama('POST', '/api/connettori/typeform/azioni/indirizzo_webhook', {})).json.indirizzo, 'https://lumi.studiobianchi.it/api/connettori/typeform/in');
     const risposta = (evento, token, email, extra = []) => JSON.stringify({ event_id: evento, event_type: 'form_response', form_response: { form_id: 'lT4Z3j', token, submitted_at: '2026-10-09T10:00:00Z',
       definition: { id: 'lT4Z3j', title: 'Prenota una visita', fields: [{ id: 'f1', title: 'Come ti chiami?', type: 'short_text' }, { id: 'f2', title: 'Email', type: 'email' }, { id: 'f3', title: 'Telefono', type: 'phone_number' },
         { id: 'f4', title: 'Giorno preferito', type: 'date' }, { id: 'f5', title: 'Ora preferita', type: 'short_text' }, { id: 'f6', title: 'Di cosa hai bisogno?', type: 'multiple_choice' }, { id: 'f7', title: 'Messaggio', type: 'long_text' }] },
@@ -54,7 +54,7 @@ test('Typeform: firma sha256= base64 giusta e sbagliata; risposta → cliente + 
 });
 
 test('Typeform senza webhook: giro con token (Bearer, since), titoli dai gruppi di domande, cursore', async () => {
-  const K = await kubo(['studio']);
+  const K = await gestionale(['studio']);
   const S = await finto({
     'GET /me': () => ({ alias: 'Studio Bianchi', email: 'studio@esempio.it' }),
     'GET /forms/:id': () => ({ id: 'lT4Z3j', title: 'Contattaci', fields: [{ id: 'g1', title: 'I tuoi dati', type: 'group', properties: { fields: [{ id: 'f1', title: 'Nome', type: 'short_text' }, { id: 'f2', title: 'Email', type: 'email' }] } }, { id: 'f3', title: 'Richiesta', type: 'long_text' }] }),
@@ -74,7 +74,7 @@ test('Typeform senza webhook: giro con token (Bearer, since), titoli dai gruppi 
 });
 
 test('Tally: Tally-Signature base64 giusta e sbagliata; scelte dagli id ai testi; provenienza «sito»; trovato per telefono', async () => {
-  const K = await kubo(['professionista']);
+  const K = await gestionale(['professionista']);
   try {
     await accendi(K, 'tally');
     const s = K.nucleo.segreto('tally', 'segreto');
@@ -99,7 +99,7 @@ test('Tally: Tally-Signature base64 giusta e sbagliata; scelte dagli id ai testi
 });
 
 test('Tally senza webhook: giro con la chiave API (Bearer, startDate), domande per id, data e ora → appuntamento', async () => {
-  const K = await kubo(['studio']);
+  const K = await gestionale(['studio']);
   const S = await finto({
     'GET /forms/:id/submissions': (p, c, { q }) => ({ page: 1, limit: 500, hasMore: false, questions: [{ id: 'q1', type: 'INPUT_TEXT', title: 'Nome' }, { id: 'q2', type: 'INPUT_EMAIL', title: 'Email' },
       { id: 'q3', type: 'INPUT_DATE', title: 'Giorno' }, { id: 'q4', type: 'INPUT_TIME', title: 'Ora' }, { id: 'q5', type: 'MULTIPLE_CHOICE', title: 'Trattamento' }],
@@ -118,7 +118,7 @@ test('Tally senza webhook: giro con la chiave API (Bearer, startDate), domande p
 });
 
 test('Jotform: codice in fondo all\'indirizzo; multipart con rawRequest → cliente + appuntamento; con la chiave API si rilegge; giro con filter created_at', async () => {
-  const K = await kubo(['studio']);
+  const K = await gestionale(['studio']);
   const risposta = (id, email, creato, tel = '(333) 444-5555') => ({ id, form_id: '242761234567890', created_at: creato, status: 'ACTIVE', answers: {
     1: { name: 'titolo', order: '1', text: 'Prenota', type: 'control_head' },
     3: { name: 'nome', order: '2', text: 'Nome', type: 'control_fullname', answer: { first: 'Luca', last: 'Moretti' }, prettyFormat: 'Luca Moretti' },
@@ -134,9 +134,9 @@ test('Jotform: codice in fondo all\'indirizzo; multipart con rawRequest → clie
     'GET /user': () => ({ responseCode: 200, content: { username: 'studiobianchi', name: 'Studio Bianchi', account_type: 'https://api.jotform.com/system/plan/FREE' } }),
   });
   try {
-    await accendi(K, 'jotform', { base: S.url, impostazioni: { indirizzo: 'https://kubo.studiobianchi.it', moduli: '242761234567890' } });
+    await accendi(K, 'jotform', { base: S.url, impostazioni: { indirizzo: 'https://lumi.studiobianchi.it', moduli: '242761234567890' } });
     const codice = K.nucleo.segreto('jotform', 'codice'); assert.ok(codice?.length >= 20);
-    assert.equal((await K.chiama('POST', '/api/connettori/jotform/azioni/indirizzo_webhook', {})).json.indirizzo, `https://kubo.studiobianchi.it/api/connettori/jotform/in/${codice}`);
+    assert.equal((await K.chiama('POST', '/api/connettori/jotform/azioni/indirizzo_webhook', {})).json.indirizzo, `https://lumi.studiobianchi.it/api/connettori/jotform/in/${codice}`);
     const raw = { slug: 'submit/242761234567890', q3_nome: { first: 'Luca', last: 'Moretti' }, q4_email: 'luca.moretti@esempio.it', q5_telefono: { full: '(333) 444-5555' },
       q6_quandoVuoi: { month: '11', day: '03', year: '2026', hour: '09', min: '00', ampm: 'AM' }, q7_motivo: 'Controllo annuale', event_id: '1728460000000_242761234567890_abc' };
     const b = '------JotformConfine7MA4YWxkTrZu0gW', parti = { formID: '242761234567890', submissionID: '5900000000000000001', formTitle: 'Prenotazioni dal sito', pretty: 'Nome:Luca Moretti', rawRequest: JSON.stringify(raw) };
@@ -152,7 +152,7 @@ test('Jotform: codice in fondo all\'indirizzo; multipart con rawRequest → clie
     const [a] = await righe(K, 'appuntamenti'); assert.equal(a.quando, '2026-11-03T08:00:00.000Z');
     assert.equal(S.chiamate.length, 0);   // senza chiave API nessuna chiamata
     // con la chiave API: il webhook rilegge la risposta (etichette vere), il giro legge le nuove
-    await accendi(K, 'jotform', { base: S.url, segreti: { chiave: 'jf-chiave-prova' }, impostazioni: { indirizzo: 'https://kubo.studiobianchi.it', moduli: '242761234567890' } });
+    await accendi(K, 'jotform', { base: S.url, segreti: { chiave: 'jf-chiave-prova' }, impostazioni: { indirizzo: 'https://lumi.studiobianchi.it', moduli: '242761234567890' } });
     assert.equal(K.nucleo.segreto('jotform', 'codice'), codice);
     assert.equal((await K.chiama('POST', '/api/connettori/jotform/prova')).json.messaggio, 'Studio Bianchi (FREE)');
     const corpo2 = corpo.replace('5900000000000000001', '5900000000000000004');
@@ -169,12 +169,12 @@ test('Jotform: codice in fondo all\'indirizzo; multipart con rawRequest → clie
 });
 
 test('Google Ads: google_key a tempo costante (giusta, sbagliata, assente); is_test solo avviso; lead → cliente; lead_id doppione', async () => {
-  const K = await kubo(['negozio']);
+  const K = await gestionale(['negozio']);
   try {
-    await accendi(K, 'google-ads-lead', { impostazioni: { indirizzo: 'https://kubo.bottega.it' } });
+    await accendi(K, 'google-ads-lead', { impostazioni: { indirizzo: 'https://lumi.bottega.it' } });
     const chiave = K.nucleo.segreto('google-ads-lead', 'chiave');
     const dati = (await K.chiama('POST', '/api/connettori/google-ads-lead/azioni/indirizzo_webhook', {})).json;
-    assert.equal(dati.indirizzo, 'https://kubo.bottega.it/api/connettori/google-ads-lead/in'); assert.equal(dati.chiave, chiave);
+    assert.equal(dati.indirizzo, 'https://lumi.bottega.it/api/connettori/google-ads-lead/in'); assert.equal(dati.chiave, chiave);
     const lead = (id, key, extra = {}) => JSON.stringify({ lead_id: id, api_version: '1.0', form_id: 40000000001, campaign_id: 21000000002, google_key: key, gcl_id: 'EAIaIQobChMI-finto', lead_submit_time: '2026-10-09T10:30:00Z',
       user_column_data: [{ column_id: 'FULL_NAME', column_name: 'Full Name', string_value: 'Paolo Russo' }, { column_id: 'EMAIL', string_value: 'paolo.russo@esempio.it' }, { column_id: 'PHONE_NUMBER', string_value: '+393479998877' },
         { column_id: 'PHONE_NUMBER_VERIFIED', string_value: 'true' }, { column_id: 'CITY', string_value: 'Torino' }, { column_id: 'quale_prodotto_ti_interessa', column_name: 'Quale prodotto ti interessa?', string_value: 'Anelli' }], ...extra });
@@ -195,7 +195,7 @@ test('Google Ads: google_key a tempo costante (giusta, sbagliata, assente); is_t
 });
 
 test('Acuity: X-Acuity-Signature giusta e sbagliata; scheduled → appuntamento (rilettura Basic), rescheduled sposta, canceled annulla; giro e webhook registrati', async () => {
-  const K = await kubo(['studio']); const app = { id: 1001, firstName: 'Chiara', lastName: 'Fontana', email: 'chiara.fontana@esempio.it', phone: '3471112233', datetime: '2026-10-21T10:00:00+0200',
+  const K = await gestionale(['studio']); const app = { id: 1001, firstName: 'Chiara', lastName: 'Fontana', email: 'chiara.fontana@esempio.it', phone: '3471112233', datetime: '2026-10-21T10:00:00+0200',
     type: 'Prima visita', calendar: 'Dott.ssa Bianchi', notes: 'Prima volta', canceled: false, forms: [{ id: 1, name: 'Anamnesi', values: [{ fieldID: 1, name: 'Allergie', value: 'Penicillina' }, { fieldID: 2, name: 'Vuoto', value: '' }] }] };
   const iscritti = [];
   const S = await finto({
@@ -205,7 +205,7 @@ test('Acuity: X-Acuity-Signature giusta e sbagliata; scheduled → appuntamento 
     'POST /api/v1/webhooks': (p, c) => { iscritti.push(c); return { id: iscritti.length, ...c, status: 'active' }; },
   });
   try {
-    await accendi(K, 'acuity', { base: S.url, segreti: { chiave: 'acuity-chiave-api' }, impostazioni: { utente: '123456', indirizzo: 'https://kubo.studiobianchi.it' } });
+    await accendi(K, 'acuity', { base: S.url, segreti: { chiave: 'acuity-chiave-api' }, impostazioni: { utente: '123456', indirizzo: 'https://lumi.studiobianchi.it' } });
     assert.equal((await K.chiama('POST', '/api/connettori/acuity/prova')).json.messaggio, 'Studio Bianchi (Europe/Rome)');
     assert.equal(S.chiamate[0].intestazioni.authorization, 'Basic ' + Buffer.from('123456:acuity-chiave-api').toString('base64'));
     const avvisa = async azione => { const corpo = `action=${azione}&id=1001&calendarID=7&appointmentTypeID=9`;
@@ -226,12 +226,12 @@ test('Acuity: X-Acuity-Signature giusta e sbagliata; scheduled → appuntamento 
     assert.equal((await righe(K, 'appuntamenti')).length, 2); assert.equal((await righe(K, 'clienti')).length, 2);
     const w = (await K.chiama('POST', '/api/connettori/acuity/azioni/registra_webhook', { args: {} })).json;
     assert.deepEqual(w.webhook, [1, 2, 3]); assert.deepEqual(iscritti.map(x => x.event), ['appointment.scheduled', 'appointment.rescheduled', 'appointment.canceled']);
-    assert.equal(iscritti[0].target, 'https://kubo.studiobianchi.it/api/connettori/acuity/in');
+    assert.equal(iscritti[0].target, 'https://lumi.studiobianchi.it/api/connettori/acuity/in');
   } finally { await K.chiudi(); await S.chiudi(); }
 });
 
 test('Jitsi: stanza lunga e casuale; crea_riunione con anteprima scrive il link nelle note (una volta sola); «automatico» per gli appuntamenti nuovi; server proprio', async () => {
-  const K = await kubo(['studio']);
+  const K = await gestionale(['studio']);
   try {
     const x = stanza('Studio Rossi!'), y = stanza(); assert.match(x, /^studiorossi-[a-z2-9]{24}$/); assert.notEqual(stanza(), y);
     await accendi(K, 'jitsi', { impostazioni: { prefisso: 'studiobianchi' } });
@@ -270,26 +270,26 @@ test('moduli e prenotazioni: il contratto del catalogo e le traduzioni nelle sei
   }
 });
 
-test('indirizzo pubblico di Kubo (Libreria) al posto di quello del connettore: moduli, prenotazioni, compiti; senza nessuno dei due, un errore chiaro', async () => {
+test('indirizzo pubblico di Lumi (Libreria) al posto di quello del connettore: moduli, prenotazioni, compiti; senza nessuno dei due, un errore chiaro', async () => {
   const { webhookDi } = await import('../connettori/_comunica/agenda.js'), { linkDi } = await import('../connettori/_comunica/compiti.js');
   const fk = (imp, pubblico = '') => ({ imp, pubblico, entita: s => s });
-  assert.equal(webhookDi(fk({ indirizzo: 'https://mio.example/' }, 'https://kubo.esempio.it'), 'tally'), 'https://mio.example/api/connettori/tally/in');   // il suo vince
-  assert.equal(webhookDi(fk({}, 'https://kubo.esempio.it'), 'tally'), 'https://kubo.esempio.it/api/connettori/tally/in');
+  assert.equal(webhookDi(fk({ indirizzo: 'https://mio.example/' }, 'https://lumi.esempio.it'), 'tally'), 'https://mio.example/api/connettori/tally/in');   // il suo vince
+  assert.equal(webhookDi(fk({}, 'https://lumi.esempio.it'), 'tally'), 'https://lumi.esempio.it/api/connettori/tally/in');
   assert.throws(() => webhookDi(fk({}), 'tally', true), /Libreria/);
-  assert.equal(linkDi(fk({}, 'https://kubo.esempio.it'), 'attivita', { id: 7 }), 'https://kubo.esempio.it/#/e/attivita/7'); assert.equal(linkDi(fk({}), 'attivita', { id: 7 }), null);
-  const K = await kubo(['studio']);
+  assert.equal(linkDi(fk({}, 'https://lumi.esempio.it'), 'attivita', { id: 7 }), 'https://lumi.esempio.it/#/e/attivita/7'); assert.equal(linkDi(fk({}), 'attivita', { id: 7 }), null);
+  const K = await gestionale(['studio']);
   try {
     await accendi(K, 'typeform', {});
     const no = await K.chiama('POST', '/api/connettori/typeform/azioni/indirizzo_webhook', { args: {} }); assert.equal(no.stato, 502); assert.match(no.json.errore, /Libreria/);
-    await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: 'https://kubo.esempio.it' });
+    await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: 'https://lumi.esempio.it' });
     for (const id of ['typeform', 'tally', 'google-ads-lead', 'cal-com']) {
       await accendi(K, id, {}); const r = await K.chiama('POST', `/api/connettori/${id}/azioni/indirizzo_webhook`, { args: {} });
-      assert.equal(r.json.indirizzo, `https://kubo.esempio.it/api/connettori/${id}/in`, `${id}: ${JSON.stringify(r.json)}`);
+      assert.equal(r.json.indirizzo, `https://lumi.esempio.it/api/connettori/${id}/in`, `${id}: ${JSON.stringify(r.json)}`);
     }
     await accendi(K, 'jotform', {});
-    assert.equal((await K.chiama('POST', '/api/connettori/jotform/azioni/indirizzo_webhook', { args: {} })).json.indirizzo, `https://kubo.esempio.it/api/connettori/jotform/in/${K.nucleo.segreto('jotform', 'codice')}`);
+    assert.equal((await K.chiama('POST', '/api/connettori/jotform/azioni/indirizzo_webhook', { args: {} })).json.indirizzo, `https://lumi.esempio.it/api/connettori/jotform/in/${K.nucleo.segreto('jotform', 'codice')}`);
     await accendi(K, 'simplybook', { impostazioni: { azienda: 'centrobelle', utente: 'admin' } });
-    assert.equal((await K.chiama('POST', '/api/connettori/simplybook/azioni/indirizzo_callback', { args: {} })).json.indirizzo, `https://kubo.esempio.it/api/connettori/simplybook/in/${K.nucleo.segreto('simplybook', 'codice')}`);
+    assert.equal((await K.chiama('POST', '/api/connettori/simplybook/azioni/indirizzo_callback', { args: {} })).json.indirizzo, `https://lumi.esempio.it/api/connettori/simplybook/in/${K.nucleo.segreto('simplybook', 'codice')}`);
     await accendi(K, 'calendly', { segreti: { token: 'pat_prova' } });
     assert.deepEqual((await K.chiama('POST', '/api/connettori/calendly/azioni/registra_webhook', { args: {}, anteprima: true })).json.avvisi, []);
   } finally { await K.chiudi(); }

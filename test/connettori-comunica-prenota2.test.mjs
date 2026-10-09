@@ -2,7 +2,7 @@
 // Tutti contro finti servizi locali, con il modello «studio» (clienti, servizi, appuntamenti). Nessuna chiamata vera.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { finto, kubo, accendi, manda } from './connettori-finto.mjs';
+import { finto, gestionale, accendi, manda } from './connettori-finto.mjs';
 import { varianti } from '../connettori/aircall/connettore.js';
 import { coda } from './connettori-comunica-coda.mjs';
 
@@ -11,7 +11,7 @@ const clienti = async K => (await K.chiama('GET', '/api/dati/clienti?perPagina=1
 const avvisi = (K, id) => K.db.prepare("SELECT titolo FROM _connettori_registro WHERE connettore = ? AND esito = 'avviso' ORDER BY rowid").all(id).map(r => r.titolo);
 
 test('SimplyBook: callback con codice segreto, prenotazione riletta dall\'API → cliente + appuntamento; spostamento, annullamento, giro', async () => {
-  const K = await kubo(['studio']), pren = {
+  const K = await gestionale(['studio']), pren = {
     101: { id: '101', code: 'AB12', start_date_time: '2026-10-20 10:00:00', end_date_time: '2026-10-20 10:45:00', event_name: 'Pulizia viso', unit_name: 'Sara', client_name: 'Giulia Verdi', client_email: 'Giulia.Verdi@esempio.it', client_phone: '+393331112222', is_confirm: '1',
       additional_fields: [{ field_title: 'Allergie', value: 'Nichel' }] },
     102: { id: '102', start_date: '2026-10-21 15:30:00', event: 'Manicure', client: 'Laura Gialli', client_email: 'laura.gialli@esempio.it', is_confirm: '1' },
@@ -27,11 +27,11 @@ test('SimplyBook: callback con codice segreto, prenotazione riletta dall\'API �
   });
   try {
     await K.chiama('POST', '/api/dati/servizi', { nome: 'Pulizia viso', durata: 45, prezzo: 6000, attivo: true });
-    await accendi(K, 'simplybook', { base: S.url, segreti: { chiave: 'api_user_key_prova' }, impostazioni: { azienda: 'centrobelle', utente: 'admin', indirizzo: 'https://kubo.centrobelle.it/' } });
+    await accendi(K, 'simplybook', { base: S.url, segreti: { chiave: 'api_user_key_prova' }, impostazioni: { azienda: 'centrobelle', utente: 'admin', indirizzo: 'https://lumi.centrobelle.it/' } });
     assert.equal((await K.chiama('POST', '/api/connettori/simplybook/prova')).json.ok, true);
     assert.deepEqual(S.chiamate[0].corpo.params, ['centrobelle', 'admin', 'api_user_key_prova']); assert.equal(S.chiamate[0].intestazioni['x-company-login'], 'centrobelle');
-    const codice = K.nucleo.segreto('simplybook', 'codice'); assert.ok(codice?.length >= 20);   // lo genera Kubo
-    assert.equal((await K.chiama('POST', '/api/connettori/simplybook/azioni/indirizzo_callback', {})).json.indirizzo, `https://kubo.centrobelle.it/api/connettori/simplybook/in/${codice}`);
+    const codice = K.nucleo.segreto('simplybook', 'codice'); assert.ok(codice?.length >= 20);   // lo genera Lumi
+    assert.equal((await K.chiama('POST', '/api/connettori/simplybook/azioni/indirizzo_callback', {})).json.indirizzo, `https://lumi.centrobelle.it/api/connettori/simplybook/in/${codice}`);
     const cb = (id, tipo, company = 'centrobelle') => JSON.stringify({ booking_id: String(id), booking_hash: 'f3a9c1', company, notification_type: tipo });
     // codice sbagliato o mancante → 401
     assert.equal((await manda(K, '/api/connettori/simplybook/in/codice-sbagliato', cb(101, 'create'))).stato, 401);
@@ -62,7 +62,7 @@ test('SimplyBook: callback con codice segreto, prenotazione riletta dall\'API �
 
 test('Aircall: token del webhook, cliente dal numero, avviso di chiamata, chiamata persa, riga nelle note, «Chiama»', async () => {
   assert.ok(varianti('+39 333 123 4567').includes('333 123 4567')); assert.ok(varianti('+39 333 123 4567').includes('+393331234567'));
-  const K = await kubo(['studio']);
+  const K = await gestionale(['studio']);
   const S = await finto({
     'GET /v1/ping': () => ({ ping: 'pong' }),
     'POST /v1/users/:id/calls': p => (p.id === '42' ? { stato: 204, corpo: '' } : { stato: 405, corpo: { message: 'User not available' } }),
@@ -102,7 +102,7 @@ test('Aircall: token del webhook, cliente dal numero, avviso di chiamata, chiama
 });
 
 test('Whereby: stanza con prefisso e link di chi ospita nelle note; spostamento → stanza nuova; annullamento → cancellata; automatico', async () => {
-  const K = await kubo(['studio']), stanze = new Map(); let n = 0;
+  const K = await gestionale(['studio']), stanze = new Map(); let n = 0;
   const S = await finto({
     'GET /v1/meetings': () => ({ results: [] }),
     'POST /v1/meetings': (p, c) => { const id = String(++n), u = `https://studio.whereby.com/${c.roomNamePrefix || ''}${id}abc`; stanze.set(id, c);
@@ -139,7 +139,7 @@ test('Whereby: stanza con prefisso e link di chi ospita nelle note; spostamento 
 });
 
 test('Teams (riunioni): codice del dispositivo, riunione online con il link nelle note, spostata con PATCH, annullata con DELETE', async () => {
-  const K = await kubo(['studio']), riunioni = new Map(); let n = 0;
+  const K = await gestionale(['studio']), riunioni = new Map(); let n = 0;
   const S = await finto({
     'POST /:tenant/oauth2/v2.0/devicecode': () => ({ device_code: 'dc-1', user_code: 'TEAM-1234', verification_uri: 'https://microsoft.com/devicelogin', interval: 5, expires_in: 900 }),
     'POST /:tenant/oauth2/v2.0/token': (p, c) => (c.device_code === 'dc-1' ? { access_token: 'tok-ms', refresh_token: 'rt-ms', expires_in: 3600 } : { stato: 400, corpo: { error: 'invalid_grant' } }),

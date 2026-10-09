@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
-import { finto, kubo, accendi, manda, firmaHmacDi } from './connettori-finto.mjs';
+import { finto, gestionale, accendi, manda, firmaHmacDi } from './connettori-finto.mjs';
 
 let codici = 0;
 const vendita = async (K, prezzo = 30, q = 2) => {
@@ -20,14 +20,14 @@ const generato = async (K, id, imp) => (await K.chiama('GET', `/api/connettori/$
 const form = { 'Content-Type': 'application/x-www-form-urlencoded' };
 
 test('Mollie: link → webhook con il codice segreto → si rilegge il pagamento → vendita pagata; codice sbagliato 401, doppione', async () => {
-  const K = await kubo(), pagamenti = {};
+  const K = await gestionale(), pagamenti = {};
   const S = await finto({
     'POST /v2/payments': (p, c) => { const id = `tr_${Object.keys(pagamenti).length + 1}x`; pagamenti[id] = { ...c, id, status: 'open', _links: { checkout: { href: `https://www.mollie.com/checkout/${id}` } } }; return { stato: 201, corpo: pagamenti[id] }; },
     'GET /v2/payments/:id': p => pagamenti[p.id] || { stato: 404, corpo: { status: 404, detail: 'not found' } },
   });
   try {
     const v = await vendita(K);
-    assert.equal((await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: 'https://kubo.esempio.it/' })).stato, 200);   // l'indirizzo pubblico della Libreria: il connettore non ha il suo
+    assert.equal((await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: 'https://lumi.esempio.it/' })).stato, 200);   // l'indirizzo pubblico della Libreria: il connettore non ha il suo
     await accendi(K, 'mollie', { base: S.url, segreti: { chiave: 'test_' + 'dHar4XY7LxsDOtmnkVtjNVWXLSlXsM' } });
     const codice = await generato(K, 'mollie', 'webhook'); assert.ok(codice?.length > 20);
     const ant = await K.chiama('POST', '/api/connettori/mollie/azioni/link_vendita', { args: { vendita: v.id }, anteprima: true });
@@ -35,8 +35,8 @@ test('Mollie: link → webhook con il codice segreto → si rilegge il pagamento
     const l = await K.chiama('POST', '/api/connettori/mollie/azioni/link_vendita', { args: { vendita: v.id } });
     assert.equal(l.stato, 200, JSON.stringify(l.json)); assert.equal(l.json.url, 'https://www.mollie.com/checkout/tr_1x');
     const c = S.chiamate.find(x => x.metodo === 'POST').corpo;
-    assert.deepEqual(c.amount, { currency: 'EUR', value: '60.00' }); assert.equal(c.metadata.kubo, `kubo-v-${v.id}`);
-    assert.equal(c.webhookUrl, `https://kubo.esempio.it/api/connettori/mollie/in/${codice}`);
+    assert.deepEqual(c.amount, { currency: 'EUR', value: '60.00' }); assert.equal(c.metadata.lumi, `lumi-v-${v.id}`);
+    assert.equal(c.webhookUrl, `https://lumi.esempio.it/api/connettori/mollie/in/${codice}`);
     assert.equal(S.chiamate[0].intestazioni.authorization, 'Bearer test_' + 'dHar4XY7LxsDOtmnkVtjNVWXLSlXsM');
     // senza codice o con il codice sbagliato: 401, e Mollie non viene nemmeno chiamato
     const n = S.chiamate.length;
@@ -57,7 +57,7 @@ test('Mollie: link → webhook con il codice segreto → si rilegge il pagamento
 });
 
 test('Mollie: fattura con link, importo diverso avvisa, giro «controlla» senza webhook, POS al terminale', async () => {
-  const K = await kubo(['negozio', 'fatture']), pagamenti = {};
+  const K = await gestionale(['negozio', 'fatture']), pagamenti = {};
   const S = await finto({
     'POST /v2/payments': (p, c) => { const id = `tr_${Object.keys(pagamenti).length + 1}y`; pagamenti[id] = { ...c, id, status: 'open', _links: { checkout: { href: `https://pay.example/${id}` } } }; return { stato: 201, corpo: pagamenti[id] }; },
     'GET /v2/payments/:id': p => pagamenti[p.id],
@@ -67,7 +67,7 @@ test('Mollie: fattura con link, importo diverso avvisa, giro «controlla» senza
     await accendi(K, 'mollie', { base: S.url, segreti: { chiave: 'test_' + 'dHar4XY7LxsDOtmnkVtjNVWXLSlXsM' }, impostazioni: { terminale: 'term_7MgL4wea46qkRcoTZjWEH' } });
     const l = await K.chiama('POST', '/api/connettori/mollie/azioni/link_fattura', { args: { fattura: f.id } });
     assert.equal(l.stato, 200, JSON.stringify(l.json));
-    const c = pagamenti[l.json.id]; assert.equal(c.metadata.kubo, `kubo-f-${f.id}`); assert.equal(c.amount.value, '122.00'); assert.equal(c.webhookUrl, undefined);
+    const c = pagamenti[l.json.id]; assert.equal(c.metadata.lumi, `lumi-f-${f.id}`); assert.equal(c.amount.value, '122.00'); assert.equal(c.webhookUrl, undefined);
     // il POS: method pointofsale con il terminale
     const t = await K.chiama('POST', '/api/connettori/mollie/azioni/terminale', { args: { vendita: v.id } });
     assert.equal(t.stato, 200, JSON.stringify(t.json));
@@ -89,18 +89,18 @@ test('Mollie: fattura con link, importo diverso avvisa, giro «controlla» senza
 });
 
 test('GoCardless: mandato SEPA dal cliente → webhook firmato collega il mandato → addebito della fattura → confermato dall\'API → pagata', async () => {
-  const K = await kubo(['negozio', 'fatture']); let statoPag = 'pending_submission', cliente = null;
+  const K = await gestionale(['negozio', 'fatture']); let statoPag = 'pending_submission', cliente = null;
   const S = await finto({
     'POST /billing_requests': () => ({ stato: 201, corpo: { billing_requests: { id: 'BRQ0001', status: 'pending' } } }),
     'POST /billing_request_flows': () => ({ stato: 201, corpo: { billing_request_flows: { id: 'BRF0001', authorisation_url: 'https://pay-sandbox.gocardless.com/billing/static/flow?id=BRF0001' } } }),
     'GET /billing_requests/:id': p => ({ billing_requests: { id: p.id, status: 'fulfilled', metadata: { cliente }, links: { mandate_request_mandate: 'MD0001' } } }),
     'POST /payments': (p, c) => ({ stato: 201, corpo: { payments: { id: 'PM0001', status: 'pending_submission', charge_date: '2026-10-14', ...c.payments } } }),
     'GET /mandates/:id': p => ({ mandates: { id: p.id, status: 'active', metadata: { cliente: K.altro } } }),
-    'GET /payments/:id': p => p.id === 'PM0001' ? { payments: { id: 'PM0001', status: statoPag, amount: 12200, currency: 'EUR', charge_date: '2026-10-14', metadata: { kubo: K.rif } } } : { stato: 404, corpo: { error: { message: 'not found' } } },
+    'GET /payments/:id': p => p.id === 'PM0001' ? { payments: { id: 'PM0001', status: statoPag, amount: 12200, currency: 'EUR', charge_date: '2026-10-14', metadata: { lumi: K.rif } } } : { stato: 404, corpo: { error: { message: 'not found' } } },
   });
   const firmato = (corpo, s = 'segreto-endpoint-gc') => manda(K, '/api/connettori/gocardless/in', corpo, { 'Webhook-Signature': firmaHmacDi(s, corpo, 'hex') });
   try {
-    const { cl, f } = await fattura(K); cliente = cl.id; K.rif = `kubo-f-${f.id}`;
+    const { cl, f } = await fattura(K); cliente = cl.id; K.rif = `lumi-f-${f.id}`;
     await accendi(K, 'gocardless', { base: S.url, segreti: { token: 'sandbox_Vj3kLmN0pQrStUvW', webhook: 'segreto-endpoint-gc' } });
     // senza mandato non si addebita
     const ant0 = await K.chiama('POST', '/api/connettori/gocardless/azioni/addebita', { args: { fattura: f.id }, anteprima: true });
@@ -123,7 +123,7 @@ test('GoCardless: mandato SEPA dal cliente → webhook firmato collega il mandat
     const a = await K.chiama('POST', '/api/connettori/gocardless/azioni/addebita', { args: { fattura: f.id } });
     assert.equal(a.stato, 200, JSON.stringify(a.json)); assert.equal(a.json.id, 'PM0001');
     const pay = S.chiamate.filter(x => x.percorso === '/payments').at(-1).corpo.payments;
-    assert.equal(pay.amount, 12200); assert.equal(pay.currency, 'EUR'); assert.equal(pay.links.mandate, 'MD0001'); assert.equal(pay.metadata.kubo, K.rif);
+    assert.equal(pay.amount, 12200); assert.equal(pay.currency, 'EUR'); assert.equal(pay.links.mandate, 'MD0001'); assert.equal(pay.metadata.lumi, K.rif);
     // «confirmed» nel webhook ma l'API dice ancora pending: si crede all'API
     const conf = id => JSON.stringify({ events: [{ id, resource_type: 'payments', action: 'confirmed', links: { payment: 'PM0001' } }] });
     assert.equal((await firmato(conf('EV002'))).json.esito, 'ignorato: pending_submission');
@@ -146,7 +146,7 @@ test('GoCardless: mandato SEPA dal cliente → webhook firmato collega il mandat
 });
 
 test('Square: link con l\'ordine → webhook firmato (indirizzo + corpo) → pagamento e ordine riletti → vendita pagata; firma sbagliata 401, doppione; Terminal', async () => {
-  const K = await kubo(); const pagamenti = {}, ordini = {}, checkout = {};
+  const K = await gestionale(); const pagamenti = {}, ordini = {}, checkout = {};
   const S = await finto({
     'POST /v2/online-checkout/payment-links': (p, c) => { ordini.ORD1 = { id: 'ORD1', ...c.order }; return { payment_link: { id: 'PL1', order_id: 'ORD1', url: 'https://square.link/u/PROVA1' } }; },
     'GET /v2/orders/:id': p => ordini[p.id] ? { order: ordini[p.id] } : { stato: 404, corpo: { errors: [{ detail: 'not found' }] } },
@@ -154,18 +154,18 @@ test('Square: link con l\'ordine → webhook firmato (indirizzo + corpo) → pag
     'POST /v2/terminals/checkouts': (p, c) => { checkout.TC1 = { id: 'TC1', status: 'PENDING', ...c.checkout }; return { checkout: checkout.TC1 }; },
     'GET /v2/terminals/checkouts/:id': p => ({ checkout: checkout[p.id] }),
   });
-  const url = 'https://kubo.esempio.es/api/connettori/square/in', chiave = 'firma-square-prova-123';
+  const url = 'https://lumi.esempio.es/api/connettori/square/in', chiave = 'firma-square-prova-123';
   const firma = (corpo, u = url, s = chiave) => createHmac('sha256', s).update(u + corpo).digest('base64');
   const firmato = (corpo, f = firma(corpo)) => manda(K, '/api/connettori/square/in', corpo, { 'X-Square-HmacSha256-Signature': f });
   try {
     const v = await vendita(K), v2 = await vendita(K, 15, 1);
-    assert.equal((await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: 'https://kubo.esempio.es/' })).stato, 200);   // la firma usa l'indirizzo della Libreria: il connettore non ha il suo
+    assert.equal((await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: 'https://lumi.esempio.es/' })).stato, 200);   // la firma usa l'indirizzo della Libreria: il connettore non ha il suo
     await accendi(K, 'square', { base: S.url, segreti: { token: 'EAAAl_prova_token_sandbox_1234', firma: chiave }, impostazioni: { luogo: 'L8XYZ', terminale: 'device:995CS397A6475287' } });
     const l = await K.chiama('POST', '/api/connettori/square/azioni/link_vendita', { args: { vendita: v.id } });
     assert.equal(l.stato, 200, JSON.stringify(l.json)); assert.equal(l.json.url, 'https://square.link/u/PROVA1');
     const c = S.chiamate[0];
     assert.equal(c.intestazioni['square-version'], '2026-09-16'); assert.equal(c.intestazioni.authorization, 'Bearer EAAAl_prova_token_sandbox_1234');
-    assert.ok(c.corpo.idempotency_key); assert.equal(c.corpo.order.location_id, 'L8XYZ'); assert.equal(c.corpo.order.reference_id, `kubo-v-${v.id}`);
+    assert.ok(c.corpo.idempotency_key); assert.equal(c.corpo.order.location_id, 'L8XYZ'); assert.equal(c.corpo.order.reference_id, `lumi-v-${v.id}`);
     assert.deepEqual(c.corpo.order.line_items[0].base_price_money, { amount: 6000, currency: 'EUR' }); assert.equal(c.corpo.order.line_items[0].quantity, '1');
     // il pagamento arriva: prima APPROVED (ignorato), poi COMPLETED
     pagamenti.PAY1 = { id: 'PAY1', status: 'APPROVED', order_id: 'ORD1', amount_money: { amount: 6000, currency: 'EUR' }, source_type: 'CARD', updated_at: '2026-10-09T09:00:00Z' };
@@ -185,7 +185,7 @@ test('Square: link con l\'ordine → webhook firmato (indirizzo + corpo) → pag
     // lo Square Terminal: checkout con il riferimento, poi terminal.checkout.updated riletto
     const t = await K.chiama('POST', '/api/connettori/square/azioni/terminale', { args: { vendita: v2.id } });
     assert.equal(t.stato, 200, JSON.stringify(t.json)); assert.equal(t.json.id, 'TC1');
-    assert.deepEqual(checkout.TC1.device_options, { device_id: 'device:995CS397A6475287' }); assert.equal(checkout.TC1.amount_money.amount, 1500); assert.equal(checkout.TC1.reference_id, `kubo-v-${v2.id}`);
+    assert.deepEqual(checkout.TC1.device_options, { device_id: 'device:995CS397A6475287' }); assert.equal(checkout.TC1.amount_money.amount, 1500); assert.equal(checkout.TC1.reference_id, `lumi-v-${v2.id}`);
     Object.assign(checkout.TC1, { status: 'COMPLETED', updated_at: '2026-10-09T10:00:00Z' });
     const tc = await firmato(ev('ev-4', 'terminal.checkout.updated', { checkout: { id: 'TC1', status: 'COMPLETED' } }));
     assert.equal(tc.json.esito, 'pagata'); assert.equal((await leggi(K, 'vendite', v2.id)).stato, 'pagata');

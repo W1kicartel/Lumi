@@ -114,7 +114,7 @@ test('LIPE: XML nell\'ordine delle specifiche IVP18, importi con la virgola, qua
   const q4 = lipe({ cf: AZ.codice_fiscale, piva: AZ.piva, anno: 2026, periodicita: 'trimestrale', trimestre: 4, periodi: [{ ...l.periodi[0], acconto: 200 }] }).xml;
   assert.ok(q4.includes('<iv:Trimestre>5<') && !q4.includes('ImportoDaVersare') && !q4.includes('InteressiDovuti') && q4.includes('<iv:Metodo>1<'));
   // se c'è xmllint, l'XML è ben formato
-  try { const f = join(mkdtempSync(join(tmpdir(), 'kubo-lipe-')), 'l.xml'); writeFileSync(f, xml); execFileSync('xmllint', ['--noout', f], { stdio: 'pipe' }); } catch (e) { if (e.code !== 'ENOENT') throw e; }
+  try { const f = join(mkdtempSync(join(tmpdir(), 'lumi-lipe-')), 'l.xml'); writeFileSync(f, xml); execFileSync('xmllint', ['--noout', f], { stdio: 'pipe' }); } catch (e) { if (e.code !== 'ENOENT') throw e; }
 });
 
 test('PDF di testo: intestazione, pagine e caratteri accentati', () => {
@@ -155,7 +155,7 @@ test('forfettario dal gestionale: incassato per cassa, bollo, versamenti di giug
   assert.deepEqual(v.voci.filter(x => x.chiave === 'forf-acconto').map(x => [x.codice, x.importo, x.anno]), [['1790', 600, 2026], ['1791', 600, 2026]]);
   assert.ok(v.voci.some(x => x.codice === '2522' && x.importo === 4));   // due bolli nel secondo trimestre
   assert.throws(() => F.fileLipe(k, null, 2026, 1), /forfettario/);
-  // l'imposta «dell'anno scorso» delle impostazioni vale solo per il 2026: per il 2027 Kubo riparte dai dati
+  // l'imposta «dell'anno scorso» delle impostazioni vale solo per il 2026: per il 2027 Lumi riparte dai dati
   assert.equal(F.cruscottoForfettario(k, null, 2027).fonteImpostaPrecedente, 'calcolo');
   const f = F.f24(k, null, 2026, '2026-07-20');
   assert.ok(f.html.includes('1790') && f.html.includes('home banking') && !f.html.includes('<script'));
@@ -202,11 +202,11 @@ test('strumenti di Lumi: si registrano con k.lumi e rispettano i permessi', asyn
 });
 
 test('API: impostazioni, prepara, permessi, LIPE da scaricare e pacchetto', async () => {
-  const cartella = mkdtempSync(join(tmpdir(), 'kubo-fisco-')), db = apri(join(cartella, 'kubo.db'));
+  const cartella = mkdtempSync(join(tmpdir(), 'lumi-fisco-')), db = apri(join(cartella, 'lumi.db'));
   const srv = creaServer(db); await new Promise(r => srv.listen(0, '127.0.0.1', r));
   const base = `http://127.0.0.1:${srv.address().port}`; let biscotto = '';
   const chiama = async (metodo, percorso, corpo, testo = false) => {
-    const r = await fetch(base + percorso, { method: metodo, headers: { 'Content-Type': 'application/json', 'X-Kubo': '1', ...(biscotto ? { Cookie: biscotto } : {}) }, body: corpo ? JSON.stringify(corpo) : undefined });
+    const r = await fetch(base + percorso, { method: metodo, headers: { 'Content-Type': 'application/json', 'X-Lumi': '1', ...(biscotto ? { Cookie: biscotto } : {}) }, body: corpo ? JSON.stringify(corpo) : undefined });
     const c = r.headers.get('set-cookie'); if (c) biscotto = c.split(';')[0];
     return { stato: r.status, tipo: r.headers.get('content-type'), json: testo ? null : await r.clone().json().catch(() => null), buf: Buffer.from(await r.arrayBuffer()) };
   };

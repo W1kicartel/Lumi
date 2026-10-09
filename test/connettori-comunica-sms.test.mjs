@@ -3,7 +3,7 @@
 // e il promemoria degli appuntamenti del giorno dopo. Solo finti server locali.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { finto, kubo, accendi, manda } from './connettori-finto.mjs';
+import { finto, gestionale, accendi, manda } from './connettori-finto.mjs';
 import { FUSO } from '../server/moduli/agenda-aggregati.js';
 import { firmaTwilio } from '../connettori/twilio/connettore.js';
 import { e164 } from '../connettori/_comunica/telefono.js';
@@ -21,7 +21,7 @@ test('numeri E.164 e lunghezza degli SMS', () => {
 });
 
 test('Brevo: email e SMS al cliente, lista dei contatti solo con il consenso (e solo i cambiati), promemoria, disiscrizione dal webhook', async () => {
-  const K = await kubo(['studio']), CH = 'xkeysib-' + 'a1'.repeat(30) + '-AbCdEfGh12345678';
+  const K = await gestionale(['studio']), CH = 'xkeysib-' + 'a1'.repeat(30) + '-AbCdEfGh12345678';
   const S = await finto({
     'GET /account': () => ({ email: 'titolare@bottega.example', plan: [{ type: 'free' }] }),
     'POST /smtp/email': () => ({ stato: 201, corpo: { messageId: '<m1@smtp-relay.mailin.fr>' } }),
@@ -44,7 +44,7 @@ test('Brevo: email e SMS al cliente, lista dei contatti solo con il consenso (e 
     // «manda un SMS ad Anna per dire che l'ordine è pronto»
     const s = await K.chiama('POST', '/api/connettori/brevo/azioni/manda_sms', { args: { cliente: anna.id, testo: 'Il tuo ordine è pronto' } });
     assert.equal(s.json.a, '+393331234567');
-    assert.deepEqual(S.chiamate.find(c => c.percorso === '/transactionalSMS/send').corpo, { sender: 'Bottega', recipient: '393331234567', content: 'Il tuo ordine è pronto', type: 'transactional', tag: 'kubo', unicodeEnabled: false });
+    assert.deepEqual(S.chiamate.find(c => c.percorso === '/transactionalSMS/send').corpo, { sender: 'Bottega', recipient: '393331234567', content: 'Il tuo ordine è pronto', type: 'transactional', tag: 'lumi', unicodeEnabled: false });
     // la lista: solo Anna (Luca non ha il consenso); il secondo giro non rimanda niente
     const g = await K.chiama('POST', '/api/connettori/brevo/giri/contatti'); assert.deepEqual(g.json.risultato, { mandati: 1 }, JSON.stringify(g.json));
     const imp = S.chiamate.find(c => c.percorso === '/contacts/import').corpo;
@@ -67,7 +67,7 @@ test('Brevo: email e SMS al cliente, lista dei contatti solo con il consenso (e 
 test('Twilio: vettore ufficiale della firma, SMS con lo StatusCallback, stato della consegna firmato, SMS in arrivo', async () => {
   // https://www.twilio.com/docs/usage/security#validating-requests
   assert.equal(firmaTwilio('12345', 'https://mycompany.com/myapp.php?foo=1&bar=2', { CallSid: 'CA1234567890ABCDE', Caller: '+12349013030', Digits: '1234', From: '+12349013030', To: '+18005551212' }), '0/KCTR6DLpKmkAf8muzZqo1nDgQ=');
-  const K = await kubo(['studio']), SID = 'AC' + '0a'.repeat(16), TOK = 'f0'.repeat(16), PUB = 'https://kubo.bottega.example';
+  const K = await gestionale(['studio']), SID = 'AC' + '0a'.repeat(16), TOK = 'f0'.repeat(16), PUB = 'https://lumi.bottega.example';
   const S = await finto({
     'POST /2010-04-01/Accounts/:sid/Messages.json': (p, c) => ({ stato: 201, corpo: { sid: 'SM' + '1'.repeat(32), status: 'queued', to: c.To } }),
     'GET /2010-04-01/Accounts/:sid.json': p => ({ sid: p.sid, friendly_name: 'Bottega', status: 'active' }),
@@ -98,7 +98,7 @@ test('Twilio: vettore ufficiale della firma, SMS con lo StatusCallback, stato de
     // senza indirizzo pubblico la firma non si può verificare: 401
     await K.chiama('PUT', '/api/connettori/twilio', { impostazioni: { pubblico: null } });
     assert.equal((await manda(K, '/api/connettori/twilio/in', cq, { ...H, 'X-Twilio-Signature': firmaTwilio(TOK, `${PUB}/api/connettori/twilio/in`, q) })).stato, 401);
-    // l'indirizzo pubblico di Kubo nella Libreria basta: firma verificata e StatusCallback di nuovo negli SMS
+    // l'indirizzo pubblico di Lumi nella Libreria basta: firma verificata e StatusCallback di nuovo negli SMS
     await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: PUB });
     const q2 = { ...q, MessageSid: 'SM' + '3'.repeat(32) }, cq2 = new URLSearchParams(q2).toString();
     assert.equal((await twiml(cq2, { ...H, 'X-Twilio-Signature': firmaTwilio(TOK, `${PUB}/api/connettori/twilio/in`, q2) })).stato, 200);
@@ -108,7 +108,7 @@ test('Twilio: vettore ufficiale della firma, SMS con lo StatusCallback, stato de
 });
 
 test('Skebby: token con le credenziali (una volta), SMS di alta qualità con il mittente, crediti nella prova, cliente senza numero', async () => {
-  const K = await kubo(['negozio']); let token = 0;
+  const K = await gestionale(['negozio']); let token = 0;
   const S = await finto({
     'GET /API/v1.0/REST/token': (p, c, { intestazioni }) => (intestazioni.authorization === 'Basic ' + Buffer.from('titolare@bottega.example:pw-skebby').toString('base64') ? { stato: 200, corpo: `UK${++token};AT${token}` } : { stato: 401, corpo: '' }),
     'POST /API/v1.0/REST/sms': (p, c, { intestazioni }) => (intestazioni.access_token === 'AT1' ? { stato: 201, corpo: { result: 'OK', order_id: 'ORD-1', total_sent: 1, remaining_credits: 99 } } : { stato: 401, corpo: {} }),
@@ -131,7 +131,7 @@ test('Skebby: token con le credenziali (una volta), SMS di alta qualità con il 
 });
 
 test('Brevo: la fattura emessa al cliente con la stampa e l\'XML FatturaPA in allegato (base64)', async () => {
-  const K = await kubo(['negozio', 'fatture']), CH = 'xkeysib-' + 'b2'.repeat(30) + '-AbCdEfGh12345678';
+  const K = await gestionale(['negozio', 'fatture']), CH = 'xkeysib-' + 'b2'.repeat(30) + '-AbCdEfGh12345678';
   const S = await finto({ 'POST /smtp/email': () => ({ stato: 201, corpo: { messageId: '<m2@smtp-relay.mailin.fr>' } }) });
   try {
     assert.equal((await K.chiama('PUT', '/api/documenti/azienda', { ragione_sociale: 'Bottega Prova srl', piva: '12345678903', codice_fiscale: '12345678903', regime: 'RF01', via: 'Via dei Mille 10', cap: '20121', comune: 'Milano', provincia: 'MI', email: 'info@bottega.example', iban: 'IT60X0542811101000000123456', aliquota: 22 })).stato, 200);

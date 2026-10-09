@@ -162,11 +162,11 @@ test('lettura della fattura ricevuta: prefissi, entità, latin-1, più fatture n
 });
 
 test('API: import XML e .p7m, fornitore creato e poi abbinato, doppioni saltati, vista, integrazione TD17 valida per lo schema', async () => {
-  const cartella = mkdtempSync(join(tmpdir(), 'kubo-fatture-')), db = apri(join(cartella, 'kubo.db'));
+  const cartella = mkdtempSync(join(tmpdir(), 'lumi-fatture-')), db = apri(join(cartella, 'lumi.db'));
   const srv = creaServer(db); await new Promise(r => srv.listen(0, '127.0.0.1', r));
   const base = `http://127.0.0.1:${srv.address().port}`; let biscotto = '';
   const chiama = async (metodo, percorso, corpo) => {
-    const r = await fetch(base + percorso, { method: metodo, headers: { 'Content-Type': 'application/json', 'X-Kubo': '1', ...(biscotto ? { Cookie: biscotto } : {}) }, body: corpo ? JSON.stringify(corpo) : undefined });
+    const r = await fetch(base + percorso, { method: metodo, headers: { 'Content-Type': 'application/json', 'X-Lumi': '1', ...(biscotto ? { Cookie: biscotto } : {}) }, body: corpo ? JSON.stringify(corpo) : undefined });
     const c = r.headers.get('set-cookie'); if (c) biscotto = c.split(';')[0];
     return { stato: r.status, json: await r.json().catch(() => null) };
   };

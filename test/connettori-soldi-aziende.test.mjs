@@ -1,7 +1,7 @@
 // VIES e Openapi imprese contro finti servizi: controllo della partita IVA, «compila» che riempie solo i campi vuoti.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { finto, kubo, accendi } from './connettori-finto.mjs';
+import { finto, gestionale, accendi } from './connettori-finto.mjs';
 import { pivaValida, divisa } from '../connettori/_soldi/aziende.js';
 
 test('partita IVA: cifra di controllo e prefisso del Paese', () => {
@@ -10,7 +10,7 @@ test('partita IVA: cifra di controllo e prefisso del Paese', () => {
 });
 
 test('VIES: controlla (anche la cifra di controllo, senza chiamare), compila il cliente solo nei campi vuoti, servizio del Paese giù', async () => {
-  const K = await kubo(['fatture']); let giu = false, chiamate = 0;
+  const K = await gestionale(['fatture']); let giu = false, chiamate = 0;
   const S = await finto({
     'GET /rest-api/check-status': () => ({ vow: { available: true } }),
     'GET /rest-api/ms/:paese/vat/:numero': p => { chiamate++; if (giu) return { isValid: false, userError: 'MS_UNAVAILABLE' };
@@ -38,7 +38,7 @@ test('VIES: controlla (anche la cifra di controllo, senza chiamare), compila il 
 });
 
 test('Openapi imprese: IT-advanced con il token → PEC, codice destinatario e sede nel fornitore', async () => {
-  const K = await kubo(['fatture']);
+  const K = await gestionale(['fatture']);
   const S = await finto({
     'GET /IT-advanced/:piva': (p, c, { intestazioni }) => {
       if (intestazioni.authorization !== 'Bearer tok-imprese') return { stato: 401, corpo: { message: 'no' } };

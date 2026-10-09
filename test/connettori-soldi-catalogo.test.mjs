@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync, existsSync } from 'node:fs';
-import { kubo } from './connettori-finto.mjs';
+import { gestionale } from './connettori-finto.mjs';
 
 const CARTELLA = new URL('../connettori/', import.meta.url);
 const CATEGORIE = ['pagamenti', 'cassa', 'fatturazione', 'contabilita', 'banche', 'dati-aziende', 'firma'];
@@ -56,7 +56,7 @@ for (const [n, man] of tutti) test(`catalogo e testi: ${n}`, () => {
 });
 
 test('il nucleo li carica tutti, senza manifesti rotti, con le traduzioni nella pagina', async () => {
-  const K = await kubo(['negozio', 'fatture']);
+  const K = await gestionale(['negozio', 'fatture']);
   try {
     const l = (await K.chiama('GET', '/api/connettori')).json;
     for (const [n] of tutti) { const x = l.find(c => c.id === n); assert.ok(x && !x.rotto, `${n}: ${x?.rotto}`); }

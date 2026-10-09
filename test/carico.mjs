@@ -1,7 +1,7 @@
 // Prova di carico (non fa parte di npm test): 50.000 articoli, 50.000 vendite con 200.000 righe, 10 persone collegate.
 //   node test/carico.mjs                       questo ramo
-//   node test/carico.mjs --radice ../altro     un'altra copia di Kubo (per esempio main, per il «prima»)
-//   KUBO_SENZA_SQL=1 node test/carico.mjs      questo ramo senza il percorso SQL dei calcolati e senza indici
+//   node test/carico.mjs --radice ../altro     un'altra copia di Lumi (per esempio main, per il «prima»)
+//   LUMI_SENZA_SQL=1 node test/carico.mjs      questo ramo senza il percorso SQL dei calcolati e senza indici
 // Stampa per ogni prova il tempo di una richiesta da sola (mediana di 5) e con 10 persone insieme (la più lenta di 10).
 import { mkdtempSync, rmSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -15,11 +15,11 @@ const { creaServer } = await import(join(radice, 'server/api.js'));
 const { attiva } = await import(join(radice, 'server/automazioni.js'));
 attiva();
 
-const cartella = mkdtempSync(join(tmpdir(), 'kubo-carico-')), db = apri(join(cartella, 'kubo.db'));
+const cartella = mkdtempSync(join(tmpdir(), 'lumi-carico-')), db = apri(join(cartella, 'lumi.db'));
 const srv = creaServer(db); await new Promise(r => srv.listen(0, '127.0.0.1', r));
 const base = `http://127.0.0.1:${srv.address().port}`;
 async function chiama(metodo, percorso, corpo, biscotto) {
-  const r = await fetch(base + percorso, { method: metodo, body: corpo ? JSON.stringify(corpo) : undefined, headers: { 'Content-Type': 'application/json', 'X-Kubo': '1', ...(biscotto ? { Cookie: biscotto } : {}) } });
+  const r = await fetch(base + percorso, { method: metodo, body: corpo ? JSON.stringify(corpo) : undefined, headers: { 'Content-Type': 'application/json', 'X-Lumi': '1', ...(biscotto ? { Cookie: biscotto } : {}) } });
   const j = await r.json().catch(() => null); if (!r.ok) throw new Error(`${percorso}: ${r.status} ${JSON.stringify(j)}`);
   return { j, biscotto: r.headers.get('set-cookie')?.split(';')[0] };
 }

@@ -22,7 +22,7 @@ import { cfValido } from '../server/moduli/documenti-italia.js';
 import { strumenti, istruzioni } from '../web/moduli/lumi/strumenti.js';
 
 attiva();
-delete process.env.ANTHROPIC_API_KEY; delete process.env.DEEPGRAM_API_KEY; delete process.env.KUBO_LUMI_LIMITE;
+delete process.env.ANTHROPIC_API_KEY; delete process.env.DEEPGRAM_API_KEY; delete process.env.LUMI_LUMI_LIMITE;
 const CHIAVE = 'sk-ant-prova-0123456789abcdef';
 const QUI = dirname(fileURLToPath(import.meta.url)), XSD = join(QUI, 'documenti', 'xsd', 'fatturapa-locale.xsd');
 
@@ -94,7 +94,7 @@ after(() => finto.close());
 async function avvia() {
   const srv = creaServer(apri()); await new Promise(r => srv.listen(0, '127.0.0.1', r));
   const base = `http://127.0.0.1:${srv.address().port}`; let biscotto = '';
-  const grezza = (metodo, percorso, corpo) => fetch(base + percorso, { method: metodo, headers: { 'Content-Type': 'application/json', 'X-Kubo': '1', ...(biscotto ? { Cookie: biscotto } : {}) }, body: corpo ? JSON.stringify(corpo) : undefined })
+  const grezza = (metodo, percorso, corpo) => fetch(base + percorso, { method: metodo, headers: { 'Content-Type': 'application/json', 'X-Lumi': '1', ...(biscotto ? { Cookie: biscotto } : {}) }, body: corpo ? JSON.stringify(corpo) : undefined })
     .then(r => { const c = r.headers.get('set-cookie'); if (c) biscotto = c.split(';')[0]; return r; });
   const chiama = async (metodo, percorso, corpo) => { const r = await grezza(metodo, percorso, corpo); return { stato: r.status, json: await r.json().catch(() => null) }; };
   const api = async (metodo, percorso, corpo) => { const r = await chiama(metodo, '/api' + percorso, corpo); if (r.stato >= 400) { const e = new Error(r.json?.errore || `Errore ${r.stato}`); e.corpo = r.json || {}; throw e; } return r.json; };
@@ -147,7 +147,7 @@ const AZIENDA = { ragione_sociale: 'Studio Prova srl', piva: '12345678903', codi
 let k, rossi;
 before(async () => {
   k = await avvia();
-  assert.equal((await k.chiama('POST', '/api/configura', { azienda: 'Studio Prova srl', nome: 'Titolare', email: 'titolare@esempio.it', password: 'prova-kubo-1', modelli: ['professionista', 'fatture'] })).stato, 200);
+  assert.equal((await k.chiama('POST', '/api/configura', { azienda: 'Studio Prova srl', nome: 'Titolare', email: 'titolare@esempio.it', password: 'prova-lumi-1', modelli: ['professionista', 'fatture'] })).stato, 200);
   assert.equal((await k.chiama('PUT', '/api/lumi/impostazioni', { chiave: CHIAVE })).stato, 200);
   await k.api('PUT', '/documenti/azienda', AZIENDA);
   await k.api('POST', '/documenti/prepara');
@@ -184,7 +184,7 @@ test('«fai una fattura a Rossi Srl per 3 ore di consulenza a 80 euro più IVA»
   assert.match(r.testo, /292.8/);
   // il system prompt arrivato a «Claude» contiene le istruzioni dei documenti
   assert.match(richieste[0].system[0].text, /fattura_nuova/); assert.match(richieste[0].system[0].text, /commercialista o un CAF/);
-  // emetterla: la scheda dice che non si torna indietro, il numero lo mette Kubo
+  // emetterla: la scheda dice che non si torna indietro, il numero lo mette Lumi
   copione = [usa('fattura_emetti', { fattura: f.id }), c => dice(`Emessa: numero ${ultimo(c).risultato.numero}.`)];
   const e = await conversa(k, 'emettila');
   assert.match(e.schede[0].nota, /nota di credito/); assert.match(e.testo, /numero 1\./);
@@ -284,7 +284,7 @@ test('«esporta l\'XML della fattura 15»: il file arriva al browser (valido per
   assert.equal(file.length, 1); assert.equal(file[0].tipo, 'application/xml'); assert.match(file[0].nome, /^IT12345678903_\w{5}\.xml$/);
   assert.equal(r.traccia[0].esito.scaricato, file[0].nome);
   assert.ok(!JSON.stringify(richieste.at(-1).messages).includes('<?xml'), 'il contenuto del file non va al modello');
-  const p = join(mkdtempSync(join(tmpdir(), 'kubo-lumidoc-')), file[0].nome); writeFileSync(p, file[0].contenuto);
+  const p = join(mkdtempSync(join(tmpdir(), 'modulo-lumidoc-')), file[0].nome); writeFileSync(p, file[0].contenuto);
   execFileSync('xmllint', ['--noout', '--nonet', '--schema', XSD, p], { stdio: 'pipe' });
   // una bozza non si esporta: il modello legge cosa fare
   const { lista } = await genera(k);
@@ -320,7 +320,7 @@ test('permessi: chi ha solo la lettura vede gli strumenti che leggono, e il serv
     assert.ok(!nomi.includes('fattura_nuova') && !nomi.includes('fattura_emetti') && !nomi.includes('fattura_nota_di_credito'));
     const r = await k.chiama('POST', '/api/lumi/strumenti/fattura_nuova/anteprima', { args: { cliente: 'Rossi Srl', righe: [{ descrizione: 'X', prezzo: 1 }] } });
     assert.equal(r.stato, 403);
-  } finally { await k.accedi('titolare@esempio.it', 'prova-kubo-1'); }
+  } finally { await k.accedi('titolare@esempio.it', 'prova-lumi-1'); }
 });
 
 test('forfettario: la cassa dedotta da una fattura fatta in ordinario (IVA 22% sul contributo) qui è senza IVA', async () => {

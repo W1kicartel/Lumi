@@ -1,4 +1,4 @@
-// La Comunicazione liquidazioni periodiche IVA generata da Kubo contro gli schemi UFFICIALI dell'Agenzia delle Entrate
+// La Comunicazione liquidazioni periodiche IVA generata da Lumi contro gli schemi UFFICIALI dell'Agenzia delle Entrate
 // (test/fisco/lipe, fonte in test/fisco/lipe/FONTE.md) e la nomenclatura del file del documento «Modalità di trasmissione
 // dati» (provv. 27/3/2017): IT + identificativo fiscale del trasmittente (11-16 caratteri) + _LI_ + progressivo [A-Za-z0-9]{1,5}.
 import { test } from 'node:test';
@@ -12,7 +12,7 @@ import { lipe } from '../server/moduli/fisco-file.js';
 
 const SCHEMA = join(dirname(fileURLToPath(import.meta.url)), 'fisco', 'lipe', 'sco', 'ivp', 'fornituraIvp_2018_v1.xsd');
 let xmllint = true; try { execFileSync('xmllint', ['--version'], { stdio: 'ignore' }); } catch { xmllint = false; }
-const cartella = mkdtempSync(join(tmpdir(), 'kubo-lipe-'));
+const cartella = mkdtempSync(join(tmpdir(), 'lumi-lipe-'));
 const valida = (nome, xml) => { const f = join(cartella, nome); writeFileSync(f, xml); execFileSync('xmllint', ['--noout', '--schema', SCHEMA, f], { stdio: 'pipe' }); };
 const base = { cf: 'RSSMRA80A01H501U', piva: '12345678903', anno: 2026 };
 const p = { attive: 10000, passive: 4000, ivaEsigibile: 2200, ivaDetratta: 880, ivaDovuta: 1320, interessi: 13.2, importoDaVersare: 1333.2 };

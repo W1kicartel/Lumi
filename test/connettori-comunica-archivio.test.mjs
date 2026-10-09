@@ -3,7 +3,7 @@
 // la firma AWS SigV4 controllata con i vettori ufficiali e dal finto S3.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { finto, kubo, accendi } from './connettori-finto.mjs';
+import { finto, gestionale, accendi } from './connettori-finto.mjs';
 import { firmaV4 } from '../connettori/_comunica/sigv4.js';
 import { coda } from './connettori-comunica-coda.mjs';
 
@@ -28,8 +28,8 @@ test('SigV4: i vettori ufficiali AWS (get-vanilla e GET Object di S3)', () => {
   assert.equal(b['x-amz-content-sha256'], 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855');
 });
 
-test('Google Drive: la fattura in Kubo/Fatture/2026 (cartelle create una volta, multipart, un secondo salvataggio aggiorna)', async () => {
-  const K = await kubo(['negozio', 'fatture']), voci = [];   // il Drive finto: { id, name, parent, cartella, corpo }
+test('Google Drive: la fattura in Lumi/Fatture/2026 (cartelle create una volta, multipart, un secondo salvataggio aggiorna)', async () => {
+  const K = await gestionale(['negozio', 'fatture']), voci = [];   // il Drive finto: { id, name, parent, cartella, corpo }
   const nome = q => /name = '((?:[^'\\]|\\.)*)'/.exec(q)?.[1]?.replace(/\\'/g, "'"), padre = q => /'([^']+)' in parents/.exec(q)?.[1];
   const S = await finto({
     'GET /drive/v3/files': (p, c, { q }) => { const x = q.get('q'), n = nome(x), pa = padre(x), solo = /mimeType = 'application\/vnd.google-apps.folder'/.test(x);
@@ -45,11 +45,11 @@ test('Google Drive: la fattura in Kubo/Fatture/2026 (cartelle create una volta, 
     assert.match((await K.chiama('POST', '/api/connettori/google-drive/azioni/salva_documento', { args: { fattura: f.id }, anteprima: true })).json.avvisi[0], /non è ancora collegato/);
     collega(K, 'google-drive');
     const ant = (await K.chiama('POST', '/api/connettori/google-drive/azioni/salva_documento', { args: { fattura: f.id }, anteprima: true })).json;
-    assert.deepEqual(ant.avvisi, []); assert.deepEqual(ant.righe[1], ['Cartella', 'Kubo/Fatture/2026']); assert.match(ant.righe[2][1], /\.html, .*\.xml$/);
+    assert.deepEqual(ant.avvisi, []); assert.deepEqual(ant.righe[1], ['Cartella', 'Lumi/Fatture/2026']); assert.match(ant.righe[2][1], /\.html, .*\.xml$/);
     assert.equal(S.chiamate.length, 0);   // l'anteprima non tocca Drive
     const r = await K.chiama('POST', '/api/connettori/google-drive/azioni/salva_documento', { args: { fattura: f.id } });
-    assert.equal(r.stato, 200, JSON.stringify(r.json)); assert.equal(r.json.cartella, 'Kubo/Fatture/2026'); assert.equal(r.json.file.length, 2);
-    assert.deepEqual(voci.filter(v => v.cartella).map(v => v.name), ['Kubo', 'Fatture', '2026']);
+    assert.equal(r.stato, 200, JSON.stringify(r.json)); assert.equal(r.json.cartella, 'Lumi/Fatture/2026'); assert.equal(r.json.file.length, 2);
+    assert.deepEqual(voci.filter(v => v.cartella).map(v => v.name), ['Lumi', 'Fatture', '2026']);
     const file = voci.filter(v => !v.cartella); assert.equal(file.length, 2); assert.ok(file.every(v => v.parent === 'c3'));
     const up = S.chiamate.find(c => c.percorso === '/upload/drive/v3/files');
     assert.equal(up.q.uploadType, 'multipart'); assert.match(up.intestazioni['content-type'], /^multipart\/related; boundary=/); assert.equal(up.intestazioni.authorization, 'Bearer tok');
@@ -61,12 +61,12 @@ test('Google Drive: la fattura in Kubo/Fatture/2026 (cartelle create una volta, 
 });
 
 test('Dropbox: fattura con Dropbox-API-Arg, backup notturno che tiene gli ultimi N', async () => {
-  const K = await kubo(['negozio', 'fatture']), caricati = [], tolti = [];
-  const vecchi = ['kubo-2026-01-01-02-30-00.db', 'kubo-2026-01-02-02-30-00.db', 'kubo-2026-01-03-02-30-00.db', 'appunti.txt'];
+  const K = await gestionale(['negozio', 'fatture']), caricati = [], tolti = [];
+  const vecchi = ['lumi-2026-01-01-02-30-00.db', 'lumi-2026-01-02-02-30-00.db', 'lumi-2026-01-03-02-30-00.db', 'appunti.txt'];
   const S = await finto({
     'POST /2/files/upload': (p, c, { intestazioni }) => { const a = JSON.parse(intestazioni['dropbox-api-arg']); caricati.push({ ...a, corpo: c, tipo: intestazioni['content-type'] }); return { id: `id:${caricati.length}`, name: a.path.split('/').pop() }; },
-    'POST /2/files/list_folder': (p, c) => (c.path === '/Kubo/Backup' ? { entries: [{ '.tag': 'folder', name: 'vecchi', path_lower: '/kubo/backup/vecchi' }, ...vecchi.map(n => ({ '.tag': 'file', name: n, path_lower: `/kubo/backup/${n}` }))], has_more: true, cursor: 'c1' } : { stato: 409, corpo: { error_summary: 'path/not_found/' } }),
-    'POST /2/files/list_folder/continue': () => ({ entries: caricati.filter(x => x.path.startsWith('/Kubo/Backup/')).map(x => ({ '.tag': 'file', name: x.path.split('/').pop(), path_lower: x.path.toLowerCase() })), has_more: false }),
+    'POST /2/files/list_folder': (p, c) => (c.path === '/Lumi/Backup' ? { entries: [{ '.tag': 'folder', name: 'vecchi', path_lower: '/lumi/backup/vecchi' }, ...vecchi.map(n => ({ '.tag': 'file', name: n, path_lower: `/lumi/backup/${n}` }))], has_more: true, cursor: 'c1' } : { stato: 409, corpo: { error_summary: 'path/not_found/' } }),
+    'POST /2/files/list_folder/continue': () => ({ entries: caricati.filter(x => x.path.startsWith('/Lumi/Backup/')).map(x => ({ '.tag': 'file', name: x.path.split('/').pop(), path_lower: x.path.toLowerCase() })), has_more: false }),
     'POST /2/files/delete_v2': (p, c) => { tolti.push(c.path); return { metadata: {} }; },
   });
   try {
@@ -75,13 +75,13 @@ test('Dropbox: fattura con Dropbox-API-Arg, backup notturno che tiene gli ultimi
     const f = await fattura(K);
     const r = await K.chiama('POST', '/api/connettori/dropbox/azioni/salva_documento', { args: { fattura: f.id } });
     assert.equal(r.stato, 200, JSON.stringify(r.json));
-    assert.equal(caricati.length, 2); assert.match(caricati[0].path, /^\/Kubo\/Fatture\/2026\/.+\.html$/); assert.equal(caricati[0].mode, 'overwrite'); assert.equal(caricati[0].tipo, 'application/octet-stream');
+    assert.equal(caricati.length, 2); assert.match(caricati[0].path, /^\/Lumi\/Fatture\/2026\/.+\.html$/); assert.equal(caricati[0].mode, 'overwrite'); assert.equal(caricati[0].tipo, 'application/octet-stream');
     assert.match(caricati[1].path, /\.xml$/);
     // il backup: una copia vera del database, poi restano i 2 più recenti (quello appena caricato e il 3 gennaio)
     const g = (await K.chiama('POST', '/api/connettori/dropbox/giri/backup')).json;
-    assert.equal(g.esito, 'ok', JSON.stringify(g)); assert.match(g.risultato.caricato, /^kubo-\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}\.db$/); assert.ok(g.risultato.byte > 1000);
-    const b = caricati.at(-1); assert.equal(b.path, `/Kubo/Backup/${g.risultato.caricato}`); assert.ok(b.corpo.startsWith('SQLite format 3'));
-    assert.deepEqual(tolti.sort(), ['/kubo/backup/kubo-2026-01-01-02-30-00.db', '/kubo/backup/kubo-2026-01-02-02-30-00.db']); assert.equal(g.risultato.tolti, 2);
+    assert.equal(g.esito, 'ok', JSON.stringify(g)); assert.match(g.risultato.caricato, /^lumi-\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}\.db$/); assert.ok(g.risultato.byte > 1000);
+    const b = caricati.at(-1); assert.equal(b.path, `/Lumi/Backup/${g.risultato.caricato}`); assert.ok(b.corpo.startsWith('SQLite format 3'));
+    assert.deepEqual(tolti.sort(), ['/lumi/backup/lumi-2026-01-01-02-30-00.db', '/lumi/backup/lumi-2026-01-02-02-30-00.db']); assert.equal(g.risultato.tolti, 2);
     // backup spento: niente
     await K.chiama('PUT', '/api/connettori/dropbox', { impostazioni: { backup: false } });
     assert.equal((await K.chiama('POST', '/api/connettori/dropbox/giri/backup')).json.risultato.saltato, 'backup spento');
@@ -89,7 +89,7 @@ test('Dropbox: fattura con Dropbox-API-Arg, backup notturno che tiene gli ultimi
 });
 
 test('OneDrive: device code verso il tenant, la fattura emessa si salva da sola (uscita), la bozza no', async () => {
-  const K = await kubo(['negozio', 'fatture']), messi = [];
+  const K = await gestionale(['negozio', 'fatture']), messi = [];
   const S = await finto({
     'POST /devicecode': (p, c) => ({ device_code: 'dc', user_code: 'ABCD-1234', verification_uri: 'https://microsoft.com/devicelogin', interval: 5, expires_in: 900, _scope: c.scope }),
     'POST /token': (p, c) => (c.grant_type === 'urn:ietf:params:oauth:grant-type:device_code' && c.device_code === 'dc' && !c.client_secret ? { access_token: 'tok', refresh_token: 'r', expires_in: 3600 } : { stato: 400, corpo: { error: 'invalid_grant' } }),
@@ -104,45 +104,45 @@ test('OneDrive: device code verso il tenant, la fattura emessa si salva da sola 
     assert.equal(messi.length, 0);   // la bozza non parte
     assert.equal((await K.chiama('PATCH', `/api/dati/fatture/${b.id}`, { stato: 'emessa' })).stato, 200); await coda(K);
     assert.equal(messi.length, 2, JSON.stringify(S.chiamate.map(c => c.percorso)));
-    assert.match(messi[0].via, /^Kubo\/Fatture\/2026\/.+\.html:\/content$/); assert.equal(messi[0].auth, 'Bearer tok'); assert.match(messi[0].tipo, /^text\/html/);
+    assert.match(messi[0].via, /^Lumi\/Fatture\/2026\/.+\.html:\/content$/); assert.equal(messi[0].auth, 'Bearer tok'); assert.match(messi[0].tipo, /^text\/html/);
     assert.match(messi[1].via, /\.xml:\/content$/); assert.match(messi[1].corpo, /FatturaElettronica/);
   } finally { await K.chiudi(); await S.chiudi(); }
 });
 
 test('S3: PUT path-style con firma SigV4 verificata dal finto, backup con ListObjectsV2 e DeleteObject', async () => {
-  const K = await kubo(['negozio', 'fatture']), oggetti = new Map(), firme = [];
+  const K = await gestionale(['negozio', 'fatture']), oggetti = new Map(), firme = [];
   const verifica = (metodo, percorso, q, h, corpo) => {
     const url = `${S.url}${percorso}${Object.keys(q).length ? '?' + new URLSearchParams(q) : ''}`, d = h['x-amz-date'];
     const ora = new Date(`${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}T${d.slice(9, 11)}:${d.slice(11, 13)}:${d.slice(13, 15)}Z`);
-    const atteso = firmaV4({ metodo, url, intestazioni: h['content-type'] ? { 'Content-Type': h['content-type'] } : {}, hashCorpo: h['x-amz-content-sha256'], regione: 'eu-south-1', servizio: 's3', chiave: 'AKIAKUBO', segreto: 'segretissimo', ora });
+    const atteso = firmaV4({ metodo, url, intestazioni: h['content-type'] ? { 'Content-Type': h['content-type'] } : {}, hashCorpo: h['x-amz-content-sha256'], regione: 'eu-south-1', servizio: 's3', chiave: 'AKIALUMI', segreto: 'segretissimo', ora });
     firme.push(h.authorization === atteso.Authorization && (corpo === null || h['x-amz-content-sha256'] === firmaV4({ url, corpo, regione: 'x', servizio: 's3', chiave: 'a', segreto: 'b' })['x-amz-content-sha256']));
   };
   const S = await finto({
     'PUT /archivio/:a/:b/:c/:d': (p, c, { intestazioni: h }) => { const k = [p.a, p.b, p.c, decodeURIComponent(p.d)].join('/'); verifica('PUT', `/archivio/${p.a}/${p.b}/${p.c}/${p.d}`, {}, h, k.endsWith('.db') ? null : c); oggetti.set(k, c); return { stato: 200, corpo: '' }; },
     'PUT /archivio/:a/:b/:d': (p, c, { intestazioni: h }) => { verifica('PUT', `/archivio/${p.a}/${p.b}/${p.d}`, {}, h, null); oggetti.set([p.a, p.b, decodeURIComponent(p.d)].join('/'), c); return { stato: 200, corpo: '' }; },
     'GET /archivio': (p, c, { q, intestazioni: h }) => { verifica('GET', '/archivio', Object.fromEntries(q), h, ''); const pre = q.get('prefix') || '';
-      return { stato: 200, intestazioni: { 'Content-Type': 'application/xml' }, corpo: `<?xml version="1.0"?><ListBucketResult><IsTruncated>false</IsTruncated>${[...oggetti.keys(), 'Kubo/Backup/kubo-2025-12-31-02-30-00.db', 'Kubo/Backup/vecchi/kubo-2020-01-01-02-30-00.db'].filter(x => x.startsWith(pre)).map(x => `<Contents><Key>${x}</Key></Contents>`).join('')}</ListBucketResult>` }; },
+      return { stato: 200, intestazioni: { 'Content-Type': 'application/xml' }, corpo: `<?xml version="1.0"?><ListBucketResult><IsTruncated>false</IsTruncated>${[...oggetti.keys(), 'Lumi/Backup/lumi-2025-12-31-02-30-00.db', 'Lumi/Backup/vecchi/lumi-2020-01-01-02-30-00.db'].filter(x => x.startsWith(pre)).map(x => `<Contents><Key>${x}</Key></Contents>`).join('')}</ListBucketResult>` }; },
     'DELETE /archivio/:a/:b/:c': (p, c, { intestazioni: h }) => { verifica('DELETE', `/archivio/${p.a}/${p.b}/${p.c}`, {}, h, ''); oggetti.delete([p.a, p.b, p.c].join('/')); return { stato: 204, corpo: '' }; },
   });
   try {
-    await accendi(K, 's3', { base: S.url, segreti: { chiave: 'AKIAKUBO', segreto: 'segretissimo' }, impostazioni: { bucket: 'archivio', regione: 'eu-south-1', tieni: 1 } });
+    await accendi(K, 's3', { base: S.url, segreti: { chiave: 'AKIALUMI', segreto: 'segretissimo' }, impostazioni: { bucket: 'archivio', regione: 'eu-south-1', tieni: 1 } });
     assert.equal((await K.chiama('POST', '/api/connettori/s3/prova')).json.ok, true);
     const f = await fattura(K);
     const r = await K.chiama('POST', '/api/connettori/s3/azioni/salva_documento', { args: { fattura: f.id } });
     assert.equal(r.stato, 200, JSON.stringify(r.json));
-    const chiavi = [...oggetti.keys()]; assert.equal(chiavi.length, 2); assert.ok(chiavi.every(c => c.startsWith('Kubo/Fatture/2026/')));
-    const put = S.chiamate.find(c => c.metodo === 'PUT'); assert.match(put.intestazioni.authorization, /^AWS4-HMAC-SHA256 Credential=AKIAKUBO\/\d{8}\/eu-south-1\/s3\/aws4_request, SignedHeaders=content-type;host;x-amz-content-sha256;x-amz-date, Signature=[0-9a-f]{64}$/);
+    const chiavi = [...oggetti.keys()]; assert.equal(chiavi.length, 2); assert.ok(chiavi.every(c => c.startsWith('Lumi/Fatture/2026/')));
+    const put = S.chiamate.find(c => c.metodo === 'PUT'); assert.match(put.intestazioni.authorization, /^AWS4-HMAC-SHA256 Credential=AKIALUMI\/\d{8}\/eu-south-1\/s3\/aws4_request, SignedHeaders=content-type;host;x-amz-content-sha256;x-amz-date, Signature=[0-9a-f]{64}$/);
     const g = (await K.chiama('POST', '/api/connettori/s3/giri/backup')).json; assert.equal(g.esito, 'ok', JSON.stringify(g));
-    assert.ok(oggetti.has(`Kubo/Backup/${g.risultato.caricato}`)); assert.equal(g.risultato.tolti, 1);   // il 2025 se ne va, la sottocartella non si tocca
-    assert.ok(S.chiamate.some(c => c.metodo === 'DELETE' && c.percorso === '/archivio/Kubo/Backup/kubo-2025-12-31-02-30-00.db'));
+    assert.ok(oggetti.has(`Lumi/Backup/${g.risultato.caricato}`)); assert.equal(g.risultato.tolti, 1);   // il 2025 se ne va, la sottocartella non si tocca
+    assert.ok(S.chiamate.some(c => c.metodo === 'DELETE' && c.percorso === '/archivio/Lumi/Backup/lumi-2025-12-31-02-30-00.db'));
     assert.ok(firme.length >= 5); assert.ok(firme.every(Boolean), JSON.stringify(firme));
     // una firma sbagliata (altro segreto) non coincide
-    assert.notEqual(firmaV4({ url: `${S.url}/archivio`, regione: 'eu-south-1', servizio: 's3', chiave: 'AKIAKUBO', segreto: 'altro' }).Authorization, put.intestazioni.authorization);
+    assert.notEqual(firmaV4({ url: `${S.url}/archivio`, regione: 'eu-south-1', servizio: 's3', chiave: 'AKIALUMI', segreto: 'altro' }).Authorization, put.intestazioni.authorization);
   } finally { await K.chiudi(); await S.chiudi(); }
 });
 
 test('WebDAV: Basic, MKCOL delle cartelle mancanti dopo un 409, PROPFIND per la rotazione dei backup', async () => {
-  const K = await kubo(['negozio', 'fatture']), cartelle = new Set(['/dav']), file = new Map(), tolti = [];
+  const K = await gestionale(['negozio', 'fatture']), cartelle = new Set(['/dav']), file = new Map(), tolti = [];
   const su = p => p.replace(/\/+$/, '').split('/').slice(0, -1).join('/');
   const S = await finto({
     'MKCOL /dav/:a/': p => { cartelle.add(`/dav/${p.a}`); return { stato: 201, corpo: '' }; },
@@ -153,7 +153,7 @@ test('WebDAV: Basic, MKCOL delle cartelle mancanti dopo un 409, PROPFIND per la 
     'PUT /dav/:a/:b/:c': (p, c) => { const x = `/dav/${p.a}/${p.b}/${p.c}`; if (!cartelle.has(su(x))) return { stato: 409, corpo: '' }; file.set(decodeURIComponent(x), c); return { stato: 201, corpo: '' }; },
     'PROPFIND /dav/:a/:b/': (p, c, { intestazioni }) => { assert.equal(intestazioni.depth, '1');
       const r = (h, cart) => `<d:response><d:href>${h}</d:href><d:propstat><d:prop><d:resourcetype>${cart ? '<d:collection/>' : ''}</d:resourcetype></d:prop></d:propstat></d:response>`;
-      const dentro = [...file.keys(), '/dav/Kubo/Backup/kubo-2026-01-01-02-30-00.db'].filter(x => su(x) === `/dav/${p.a}/${p.b}`);
+      const dentro = [...file.keys(), '/dav/Lumi/Backup/lumi-2026-01-01-02-30-00.db'].filter(x => su(x) === `/dav/${p.a}/${p.b}`);
       return { stato: 207, intestazioni: { 'Content-Type': 'application/xml' }, corpo: `<?xml version="1.0"?><d:multistatus xmlns:d="DAV:">${r(`/dav/${p.a}/${p.b}/`, true)}${r(`/dav/${p.a}/${p.b}/vecchi/`, true)}${dentro.map(x => r(x.split('/').map(encodeURIComponent).join('/'))).join('')}</d:multistatus>` }; },
     'DELETE /dav/:a/:b/:c': p => { tolti.push(`/dav/${p.a}/${p.b}/${decodeURIComponent(p.c)}`); return { stato: 204, corpo: '' }; },
   });
@@ -162,12 +162,12 @@ test('WebDAV: Basic, MKCOL delle cartelle mancanti dopo un 409, PROPFIND per la 
     const f = await fattura(K);
     const r = await K.chiama('POST', '/api/connettori/webdav/azioni/salva_documento', { args: { fattura: f.id } });
     assert.equal(r.stato, 200, JSON.stringify(r.json));
-    assert.ok(cartelle.has('/dav/Kubo/Fatture/2026'));
-    assert.deepEqual(S.chiamate.filter(c => c.metodo === 'MKCOL').map(c => c.percorso), ['/dav/Kubo/', '/dav/Kubo/Fatture/', '/dav/Kubo/Fatture/2026/']);
-    assert.equal([...file.keys()].filter(x => x.startsWith('/dav/Kubo/Fatture/2026/')).length, 2);
+    assert.ok(cartelle.has('/dav/Lumi/Fatture/2026'));
+    assert.deepEqual(S.chiamate.filter(c => c.metodo === 'MKCOL').map(c => c.percorso), ['/dav/Lumi/', '/dav/Lumi/Fatture/', '/dav/Lumi/Fatture/2026/']);
+    assert.equal([...file.keys()].filter(x => x.startsWith('/dav/Lumi/Fatture/2026/')).length, 2);
     const g = (await K.chiama('POST', '/api/connettori/webdav/giri/backup')).json; assert.equal(g.esito, 'ok', JSON.stringify(g));
-    assert.ok(file.has(`/dav/Kubo/Backup/${g.risultato.caricato}`)); assert.ok(file.get(`/dav/Kubo/Backup/${g.risultato.caricato}`).startsWith('SQLite format 3'));
-    assert.deepEqual(tolti, ['/dav/Kubo/Backup/kubo-2026-01-01-02-30-00.db']);
+    assert.ok(file.has(`/dav/Lumi/Backup/${g.risultato.caricato}`)); assert.ok(file.get(`/dav/Lumi/Backup/${g.risultato.caricato}`).startsWith('SQLite format 3'));
+    assert.deepEqual(tolti, ['/dav/Lumi/Backup/lumi-2026-01-01-02-30-00.db']);
     // password sbagliata: un messaggio chiaro
     await K.chiama('PUT', '/api/connettori/webdav', { segreti: { password: 'no' } });
     const e = await K.chiama('POST', '/api/connettori/webdav/azioni/salva_documento', { args: { fattura: f.id } });
@@ -175,8 +175,8 @@ test('WebDAV: Basic, MKCOL delle cartelle mancanti dopo un 409, PROPFIND per la 
   } finally { await K.chiudi(); await S.chiudi(); }
 });
 
-test('Un\'altra sezione con righe (preventivi abbinati a «documenti»): solo la stampa in Kubo/Preventivi/<anno>', async () => {
-  const K = await kubo(['professionista']), caricati = [];
+test('Un\'altra sezione con righe (preventivi abbinati a «documenti»): solo la stampa in Lumi/Preventivi/<anno>', async () => {
+  const K = await gestionale(['professionista']), caricati = [];
   const S = await finto({ 'POST /2/files/upload': (p, c, { intestazioni }) => { caricati.push({ ...JSON.parse(intestazioni['dropbox-api-arg']), corpo: c }); return { id: 'id:1' }; } });
   try {
     await accendi(K, 'dropbox', { base: S.url, segreti: { client_id: 'app' } });
@@ -186,16 +186,16 @@ test('Un\'altra sezione con righe (preventivi abbinati a «documenti»): solo la
     const pv = (await K.chiama('POST', '/api/dati/preventivi', { cliente: cl.id, data: '2025-11-20', oggetto: 'Sito nuovo', voci: [{ descrizione: 'Progetto', quantita: 1, prezzo: 800 }] })).json;
     assert.ok(pv.id, JSON.stringify(pv));
     const ant = (await K.chiama('POST', '/api/connettori/dropbox/azioni/salva_altro', { args: { documento: pv.id }, anteprima: true })).json;
-    assert.deepEqual(ant.righe[1], ['Cartella', 'Kubo/Preventivi/2025']);
+    assert.deepEqual(ant.righe[1], ['Cartella', 'Lumi/Preventivi/2025']);
     const r = await K.chiama('POST', '/api/connettori/dropbox/azioni/salva_altro', { args: { documento: pv.id } });
     assert.equal(r.stato, 200, JSON.stringify(r.json)); assert.equal(caricati.length, 1);
-    assert.match(caricati[0].path, /^\/Kubo\/Preventivi\/2025\/.+\.html$/); assert.match(caricati[0].corpo, /Sito nuovo|Progetto/);
+    assert.match(caricati[0].path, /^\/Lumi\/Preventivi\/2025\/.+\.html$/); assert.match(caricati[0].corpo, /Sito nuovo|Progetto/);
   } finally { await K.chiudi(); await S.chiudi(); }
 });
 
 test('Google Drive: un backup oltre 5 MB passa dal caricamento resumable (Location + PUT), poi la rotazione', async () => {
-  const K = await kubo(['negozio']), voci = [{ id: 'c1', name: 'Kubo', parent: 'root', cartella: true }, { id: 'c2', name: 'Backup', parent: 'c1', cartella: true },
-    { id: 'v1', name: 'kubo-2026-01-01-02-30-00.db', parent: 'c2' }, { id: 'v2', name: 'kubo-2026-01-02-02-30-00.db', parent: 'c2' }], tolti = [];
+  const K = await gestionale(['negozio']), voci = [{ id: 'c1', name: 'Lumi', parent: 'root', cartella: true }, { id: 'c2', name: 'Backup', parent: 'c1', cartella: true },
+    { id: 'v1', name: 'lumi-2026-01-01-02-30-00.db', parent: 'c2' }, { id: 'v2', name: 'lumi-2026-01-02-02-30-00.db', parent: 'c2' }], tolti = [];
   const S = await finto({
     'GET /drive/v3/files': (p, c, { q }) => { const x = q.get('q'), n = /name = '([^']*)'/.exec(x)?.[1], pa = /'([^']+)' in parents/.exec(x)?.[1];
       return { files: voci.filter(v => v.parent === pa && (!n || v.name === n) && (!/mimeType = 'application\/vnd.google-apps.folder'/.test(x) || v.cartella) && (!/mimeType != /.test(x) || !v.cartella)).map(v => ({ id: v.id, name: v.name })) }; },

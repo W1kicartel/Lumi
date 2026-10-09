@@ -12,18 +12,18 @@ import { creaServer } from '../server/api.js';
 import { istanze } from '../server/moduli/connettori.js';
 import { finto } from './connettori-finto.mjs';
 
-// Kubo su file (servono le cartelle dei dati) con i connettori locali { id: sorgente }, accesi e approvati
-async function kuboCon(connettori = {}, modelli = ['negozio']) {
-  const dir = mkdtempSync(join(tmpdir(), 'kubo-kit-'));
+// Lumi su file (servono le cartelle dei dati) con i connettori locali { id: sorgente }, accesi e approvati
+async function gestionaleCon(connettori = {}, modelli = ['negozio']) {
+  const dir = mkdtempSync(join(tmpdir(), 'lumi-kit-'));
   for (const [id, src] of Object.entries(connettori)) { mkdirSync(join(dir, 'connettori', id), { recursive: true }); writeFileSync(join(dir, 'connettori', id, 'connettore.js'), src); }
-  const db = apri(join(dir, 'kubo.db')), srv = creaServer(db); await new Promise(r => srv.listen(0, '127.0.0.1', r));
+  const db = apri(join(dir, 'lumi.db')), srv = creaServer(db); await new Promise(r => srv.listen(0, '127.0.0.1', r));
   const base = `http://127.0.0.1:${srv.address().port}`; let biscotto = '';
   const chiama = async (m, p, c, h = {}) => {
-    const r = await fetch(base + p, { method: m, redirect: 'manual', headers: { 'Content-Type': 'application/json', 'X-Kubo': '1', ...(biscotto ? { Cookie: biscotto } : {}), ...h }, body: c ? JSON.stringify(c) : undefined });
+    const r = await fetch(base + p, { method: m, redirect: 'manual', headers: { 'Content-Type': 'application/json', 'X-Lumi': '1', ...(biscotto ? { Cookie: biscotto } : {}), ...h }, body: c ? JSON.stringify(c) : undefined });
     const s = r.headers.get('set-cookie'); if (s) biscotto = s.split(';')[0];
     const t = await r.text(); let json = null; try { json = JSON.parse(t); } catch { } return { stato: r.status, json, testo: t, intestazioni: r.headers };
   };
-  await chiama('POST', '/api/configura', { azienda: 'B', nome: 'T', email: 't@esempio.it', password: 'prova-kubo-1', modelli });
+  await chiama('POST', '/api/configura', { azienda: 'B', nome: 'T', email: 't@esempio.it', password: 'prova-lumi-1', modelli });
   const n = istanze.get(db); await n.pronti;
   for (const id of Object.keys(connettori)) {
     const c = (await chiama('GET', `/api/connettori/${id}`)).json;
@@ -31,11 +31,11 @@ async function kuboCon(connettori = {}, modelli = ['negozio']) {
   }
   return { base, chiama, db, n, dir, esci: () => { biscotto = ''; }, chiudi: () => new Promise(r => { srv.closeAllConnections?.(); srv.close(r); }) };
 }
-// una richiesta «da fuori»: niente sessione né X-Kubo
+// una richiesta «da fuori»: niente sessione né X-Lumi
 const fuori = (K, m, p, corpo, h = {}) => fetch(K.base + p, { method: m, headers: h, body: corpo }).then(async r => ({ stato: r.status, testo: await r.text(), tipo: r.headers.get('content-type') }));
 
 test('webhook: verifica GET, risposta su misura, stato su misura per la firma sbagliata, multipart con file', async () => {
-  const K = await kuboCon({ prova: `export default { id: 'prova', nome: 'Prova', permessi: {},
+  const K = await gestionaleCon({ prova: `export default { id: 'prova', nome: 'Prova', permessi: {},
     impostazioni: [{ id: 'codice', nome: 'Codice', segreto: true, generato: true }],
     entrata: { firma: { tipo: 'token', segreto: 'codice' },
       verificaGet: (q, k) => (q.get('sfida') ? { testo: q.get('sfida') } : { stato: 400, testo: 'manca la sfida' }),
@@ -80,7 +80,7 @@ test('OAuth: client_secret_basic, corpo JSON, senza PKCE, valori del ritorno e d
     },
     'POST /device': (p, c) => { chiamate.push({ c, device: true }); return { data: { device_code: 'dc-1', user_code: 'ABCD-1234', verification_uri: 'https://servizio.example/device', interval: 1, expires_in: 300 } }; },
   });
-  const K = await kuboCon({ conto: `export default { id: 'conto', nome: 'Conto', permessi: {},
+  const K = await gestionaleCon({ conto: `export default { id: 'conto', nome: 'Conto', permessi: {},
     impostazioni: [{ id: 'client_id', nome: 'Id', segreto: true }, { id: 'client_secret', nome: 'Segreto', segreto: true }, { id: 'runame', nome: 'RuName' }],
     oauth: { autorizza: k => k.base + '/auth', token: k => k.base + '/token', dispositivo: k => k.base + '/device', scope: 'contabilita', basic: true, corpo: 'json', pkce: false,
       conserva: ['realmId', 'api_domain'], redirect: k => k.imp.runame || null },
@@ -98,10 +98,10 @@ test('OAuth: client_secret_basic, corpo JSON, senza PKCE, valori del ritorno e d
     const x = (await K.chiama('POST', '/api/connettori/conto/azioni/extra', { args: {} })).json;
     assert.deepEqual(x.extra, { realmId: '9130', api_domain: 'https://www.zohoapis.eu' }); assert.equal(x.token, 'at-1');
     // il redirect_uri su misura (il RuName di eBay) vale per l'autorizzazione e per lo scambio del codice
-    await K.chiama('PUT', '/api/connettori/conto', { impostazioni: { runame: 'Bottega-Kubo-PRD-abc' } });
-    const u2 = new URL((await K.chiama('POST', '/api/connettori/conto/oauth/inizio', { base: K.base })).json.url); assert.equal(u2.searchParams.get('redirect_uri'), 'Bottega-Kubo-PRD-abc');
+    await K.chiama('PUT', '/api/connettori/conto', { impostazioni: { runame: 'Bottega-Lumi-PRD-abc' } });
+    const u2 = new URL((await K.chiama('POST', '/api/connettori/conto/oauth/inizio', { base: K.base })).json.url); assert.equal(u2.searchParams.get('redirect_uri'), 'Bottega-Lumi-PRD-abc');
     await fetch(`${K.base}/api/connettori/conto/oauth/ritorno?state=${u2.searchParams.get('state')}&code=cod-2`, { redirect: 'manual' });
-    assert.equal(chiamate.at(-1).c.redirect_uri, 'Bottega-Kubo-PRD-abc');
+    assert.equal(chiamate.at(-1).c.redirect_uri, 'Bottega-Lumi-PRD-abc');
     assert.equal((await K.chiama('POST', '/api/connettori/conto/azioni/extra', { args: {} })).json.extra.realmId, '9130');   // resta dopo un nuovo collegamento
     // device code: la risposta dentro «data» (Fatture in Cloud), il client_id nel corpo JSON, poi l'attesa e il collegamento
     const d = (await K.chiama('POST', '/api/connettori/conto/oauth/dispositivo')).json;
@@ -113,19 +113,19 @@ test('OAuth: client_secret_basic, corpo JSON, senza PKCE, valori del ritorno e d
 });
 
 test('indirizzo pubblico unico (k.pubblico), input facoltativi negli strumenti di Lumi, k.sincro.scollega', async () => {
-  const K = await kuboCon({ pub: `export default { id: 'pub', nome: 'Pub', permessi: { clienti: { leggi: true } },
+  const K = await gestionaleCon({ pub: `export default { id: 'pub', nome: 'Pub', permessi: { clienti: { leggi: true } },
     impostazioni: [{ id: 'codice', nome: 'Codice', segreto: true, generato: true }],
     entrata: { firma: { tipo: 'token', segreto: 'codice' }, gestisci: () => 'ok' },
     azioni: { nota: { nome: 'Nota', su: 'clienti', lumi: true, input: { riga: { tipo: 'relazione', entita: 'clienti', nome: 'Il cliente' }, testo: { tipo: 'testo', nome: 'Il testo', facoltativo: true } },
       esegui: async ({ riga, testo }, k) => ({ cliente: riga.id, testo: testo ?? null, pubblico: k.pubblico }) } } };` });
   try {
     assert.equal((await K.chiama('GET', '/api/connettori/impostazioni')).json.pubblico, '');
-    assert.equal((await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: 'ftp://kubo.bottega.it' })).stato, 400);
-    assert.equal((await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: 'https://kubo.bottega.it/' })).json.pubblico, 'https://kubo.bottega.it');
-    const pag = (await K.chiama('GET', '/api/connettori/pub')).json; assert.equal(pag.webhook.url, 'https://kubo.bottega.it/api/connettori/pub/in'); assert.equal(pag.pubblico, 'https://kubo.bottega.it');
+    assert.equal((await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: 'ftp://lumi.bottega.it' })).stato, 400);
+    assert.equal((await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: 'https://lumi.bottega.it/' })).json.pubblico, 'https://lumi.bottega.it');
+    const pag = (await K.chiama('GET', '/api/connettori/pub')).json; assert.equal(pag.webhook.url, 'https://lumi.bottega.it/api/connettori/pub/in'); assert.equal(pag.pubblico, 'https://lumi.bottega.it');
     const cl = (await K.chiama('POST', '/api/dati/clienti', { nome: 'Rossi' })).json;
     const x = (await K.chiama('POST', '/api/connettori/pub/azioni/nota', { args: { riga: cl.id } })).json;
-    assert.deepEqual(x, { cliente: cl.id, testo: null, pubblico: 'https://kubo.bottega.it' });
+    assert.deepEqual(x, { cliente: cl.id, testo: null, pubblico: 'https://lumi.bottega.it' });
     const s = (await K.chiama('GET', '/api/lumi/strumenti')).json.strumenti.find(t => t.nome === 'connettore_pub_nota');
     assert.ok(s, 'strumento'); if (s.schema) assert.deepEqual(s.schema.required, ['riga']);
     // scollega: per remoto, per riga, tutta la sezione
@@ -142,7 +142,7 @@ test('indirizzo pubblico unico (k.pubblico), input facoltativi negli strumenti d
 
 test('sicurezza: nomi degli strumenti senza collisioni, URL dei ponti mascherati, accesso solo sul sito base, codici corti, CR/LF, pulizia', async () => {
   const S = await finto({ 'POST /v1/link': () => ({ ok: 1 }), 'POST /altro/hook': () => ({ ok: 1 }), 'POST /hooks/catch/123/abc': () => ({ ok: 1 }) });
-  const K = await kuboCon({}, ['negozio']);
+  const K = await gestionaleCon({}, ['negozio']);
   const accendiQui = async (id, imp, segreti = {}) => { K.n.perProva(id, {}); const r = await K.chiama('PUT', `/api/connettori/${id}`, { interni: true, impostazioni: imp, segreti, attivo: true }); assert.equal(r.stato, 200, JSON.stringify(r.json)); return r.json; };
   try {
     const cl = (await K.chiama('POST', '/api/dati/clienti', { nome: 'Rossi' })).json;
@@ -191,7 +191,7 @@ test('sicurezza: nomi degli strumenti senza collisioni, URL dei ponti mascherati
 });
 
 test('pagina: i permessi «*» sono «tutte le sezioni»', async () => {
-  const K = await kuboCon({ tutto: `export default { id: 'tutto', nome: 'Tutto', permessi: { '*': { leggi: true } } };` });
+  const K = await gestionaleCon({ tutto: `export default { id: 'tutto', nome: 'Tutto', permessi: { '*': { leggi: true } } };` });
   try {
     const p = (await K.chiama('GET', '/api/connettori/tutto')).json.permessi;
     assert.deepEqual(p, [{ entita: '*', tutte: true, leggi: true }]);

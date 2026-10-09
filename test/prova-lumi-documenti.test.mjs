@@ -1,6 +1,6 @@
 // PROVA (ramo prova-documenti, non per main): Lumi riesce a fare i documenti «a parole»?
 // Un finto Claude locale risponde con le chiamate agli strumenti che il modello farebbe (registrate qui sotto, come
-// in test/lumi.test.mjs); la richiesta passa dal vero /api/lumi di Kubo, gli strumenti sono quelli VERI generati dallo
+// in test/lumi.test.mjs); la richiesta passa dal vero /api/lumi di Lumi, gli strumenti sono quelli VERI generati dallo
 // schema (web/moduli/lumi/strumenti.js) e si eseguono come fa il motore del browser: proponi → conferma → esegui.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -17,7 +17,7 @@ import { strumentiAnthropic } from '../server/moduli/lumi/nucleo.js';
 import { strumenti, istruzioni } from '../web/moduli/lumi/strumenti.js';
 
 attiva();
-delete process.env.ANTHROPIC_API_KEY; delete process.env.DEEPGRAM_API_KEY; delete process.env.KUBO_LUMI_LIMITE;
+delete process.env.ANTHROPIC_API_KEY; delete process.env.DEEPGRAM_API_KEY; delete process.env.LUMI_LUMI_LIMITE;
 const CHIAVE = 'sk-ant-prova-0123456789abcdef';
 const QUI = dirname(fileURLToPath(import.meta.url)), XSD = join(QUI, 'documenti', 'xsd', 'fatturapa-locale.xsd');
 
@@ -51,7 +51,7 @@ after(() => finto.close());
 async function avvia() {
   const srv = creaServer(apri()); await new Promise(r => srv.listen(0, '127.0.0.1', r));
   const base = `http://127.0.0.1:${srv.address().port}`; let biscotto = '';
-  const grezza = (metodo, percorso, corpo) => fetch(base + percorso, { method: metodo, headers: { 'Content-Type': 'application/json', 'X-Kubo': '1', ...(biscotto ? { Cookie: biscotto } : {}) }, body: corpo ? JSON.stringify(corpo) : undefined })
+  const grezza = (metodo, percorso, corpo) => fetch(base + percorso, { method: metodo, headers: { 'Content-Type': 'application/json', 'X-Lumi': '1', ...(biscotto ? { Cookie: biscotto } : {}) }, body: corpo ? JSON.stringify(corpo) : undefined })
     .then(r => { const c = r.headers.get('set-cookie'); if (c) biscotto = c.split(';')[0]; return r; });
   const chiama = async (metodo, percorso, corpo) => { const r = await grezza(metodo, percorso, corpo); return { stato: r.status, json: await r.json().catch(() => null) }; };
   const api = async (metodo, percorso, corpo) => { const r = await chiama(metodo, '/api' + percorso, corpo); if (r.stato >= 400) { const e = new Error(r.json?.errore || `Errore ${r.stato}`); e.corpo = r.json || {}; throw e; } return r.json; };
@@ -134,7 +134,7 @@ test('«fai una fattura a Rossi Srl per 3 ore di consulenza a 80 euro più IVA»
   // il richiesto dal modello passa davvero dal proxy: gli strumenti dichiarati arrivano al «Claude»
   assert.ok(richieste.at(-1).tools.some(t => t.name === 'crea_fatture'));
 
-  // emetterla: c'è solo modifica_fatture { stato: emessa }; il numero lo mette Kubo
+  // emetterla: c'è solo modifica_fatture { stato: emessa }; il numero lo mette Lumi
   copione = [usa('modifica_fatture', { id: f.id, valori: { stato: 'emessa' } }), dice('Emessa.')];
   await conversa(k, lista, 'emettila');
   const emessa = await k.api('GET', `/dati/fatture/${f.id}`); assert.equal(emessa.numero, '1');
@@ -145,7 +145,7 @@ test('«fai una fattura a Rossi Srl per 3 ore di consulenza a 80 euro più IVA»
   assert.equal(x.traccia.length, 0);
   // ma i dati che Lumi ha scritto bastano: dal bottone esce un file valido per lo schema ufficiale
   const file = await k.api('POST', `/documenti/fatturapa/${f.id}`);
-  const p = join(mkdtempSync(join(tmpdir(), 'kubo-lumi-xml-')), file.nome); writeFileSync(p, file.xml);
+  const p = join(mkdtempSync(join(tmpdir(), 'modulo-lumi-xml-')), file.nome); writeFileSync(p, file.xml);
   execFileSync('xmllint', ['--noout', '--nonet', '--schema', XSD, p], { stdio: 'pipe' });
 });
 

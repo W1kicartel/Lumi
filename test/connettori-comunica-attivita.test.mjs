@@ -2,19 +2,19 @@
 // servizi locali: niente rete vera, dati inventati.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { finto, kubo, accendi } from './connettori-finto.mjs';
+import { finto, gestionale, accendi } from './connettori-finto.mjs';
 import { coda } from './connettori-comunica-coda.mjs';
 
 const pausa = ms => new Promise(r => setTimeout(r, ms));
 
 test('Todoist: Lumi crea il compito con la scadenza a parole nel progetto chiesto; un\'attività nuova diventa un compito una volta sola', async () => {
-  const K = await kubo(['professionista']); let n = 0;
+  const K = await gestionale(['professionista']); let n = 0;
   const S = await finto({
     'GET /api/v1/projects': () => ({ results: [{ id: '6Jf8VQXxpwv56VQ7', name: 'Lavoro' }, { id: '6Jf8VQXxpwv56VQ8', name: 'Casa' }], next_cursor: null }),
     'POST /api/v1/tasks': (p, c) => ({ id: `t${++n}`, content: c.content, due: c.due_date ? { date: c.due_date } : { date: '2026-10-16', string: c.due_string }, url: `https://app.todoist.com/app/task/t${n}` }),
   });
   try {
-    await accendi(K, 'todoist', { base: S.url, segreti: { token: '0123456789abcdef0123456789abcdef01234567' }, impostazioni: { da_attivita: true, pubblico: 'https://kubo.bottega.it' } });
+    await accendi(K, 'todoist', { base: S.url, segreti: { token: '0123456789abcdef0123456789abcdef01234567' }, impostazioni: { da_attivita: true, pubblico: 'https://lumi.bottega.it' } });
     assert.equal((await K.chiama('POST', '/api/connettori/todoist/prova')).json.messaggio, '2 progetti');
     const args = { contenuto: 'Chiamare Rossi', scadenza: 'venerdì', progetto: 'lavoro' };
     const ant = (await K.chiama('POST', '/api/connettori/todoist/azioni/crea_compito', { args, anteprima: true })).json;
@@ -32,7 +32,7 @@ test('Todoist: Lumi crea il compito con la scadenza a parole nel progetto chiest
     await coda(K);
     const u = S.chiamate.filter(c => c.metodo === 'POST' && c.percorso === '/api/v1/tasks').at(-1).corpo;
     assert.equal(u.content, 'Preparare l\'offerta'); assert.equal(u.due_date, '2026-10-20'); assert.equal(u.due_string, undefined);
-    assert.match(u.description, /Per lo studio Bianchi/); assert.ok(u.description.includes(`https://kubo.bottega.it/#/e/attivita/${riga.id}`));
+    assert.match(u.description, /Per lo studio Bianchi/); assert.ok(u.description.includes(`https://lumi.bottega.it/#/e/attivita/${riga.id}`));
     assert.equal(K.nucleo.k('todoist').sincro.remoto('attivita', riga.id), 't2');
     await K.chiama('PATCH', `/api/dati/attivita/${riga.id}`, { note: 'cambiata' }); await coda(K);
     assert.equal(S.chiamate.filter(c => c.percorso === '/api/v1/tasks').length, 2);
@@ -40,14 +40,14 @@ test('Todoist: Lumi crea il compito con la scadenza a parole nel progetto chiest
 });
 
 test('Trello: un intervento nuovo dell\'officina diventa una scheda con il link alla riga; Lumi crea una scheda con la scadenza', async () => {
-  const K = await kubo(['officina']); let n = 0;
+  const K = await gestionale(['officina']); let n = 0;
   const S = await finto({
     'GET /1/lists/:id': p => ({ id: p.id, name: 'Officina' }),
     'POST /1/cards': () => ({ id: `card${++n}`, shortUrl: `https://trello.com/c/abc${n}` }),
   });
   try {
     const chiave = '0123456789abcdef0123456789abcdef', token = 'ATTA' + 'a1b2c3d4'.repeat(9), lista = '5f1e2d3c4b5a69788796a5b4';
-    await accendi(K, 'trello', { base: S.url, segreti: { chiave, token }, impostazioni: { lista, da_interventi: true, pubblico: 'https://kubo.officina.it/' } });
+    await accendi(K, 'trello', { base: S.url, segreti: { chiave, token }, impostazioni: { lista, da_interventi: true, pubblico: 'https://lumi.officina.it/' } });
     assert.equal((await K.chiama('POST', '/api/connettori/trello/prova')).json.messaggio, 'Lista «Officina»');
     const auth = S.chiamate[0].intestazioni.authorization;
     assert.equal(auth, `OAuth oauth_consumer_key="${chiave}", oauth_token="${token}"`); assert.deepEqual(S.chiamate[0].q, { fields: 'name' });   // i segreti non stanno nell'indirizzo
@@ -59,7 +59,7 @@ test('Trello: un intervento nuovo dell\'officina diventa una scheda con il link 
     const c = S.chiamate.find(x => x.metodo === 'POST').corpo;
     assert.equal(c.idList, lista); assert.match(c.name, /^Intervento .*AB123CD/); assert.equal(c.due, '2026-10-15');
     assert.match(c.desc, /Cliente: Mario Rossi/); assert.match(c.desc, /Rumore ai freni/);
-    assert.equal(c.urlSource, `https://kubo.officina.it/#/e/interventi/${int.id}`);
+    assert.equal(c.urlSource, `https://lumi.officina.it/#/e/interventi/${int.id}`);
     await K.chiama('PATCH', `/api/dati/interventi/${int.id}`, { lavoro_fatto: 'Pastiglie cambiate' }); await coda(K);
     assert.equal(S.chiamate.filter(x => x.metodo === 'POST').length, 1);
     const ant = (await K.chiama('POST', '/api/connettori/trello/azioni/crea_compito', { args: { nome: 'Ordinare le pastiglie', scadenza: '15/10/2026' }, anteprima: true })).json;
@@ -71,7 +71,7 @@ test('Trello: un intervento nuovo dell\'officina diventa una scheda con il link 
 });
 
 test('Asana: compito nel progetto con due_on; con la sezione spenta le attività non partono', async () => {
-  const K = await kubo(['professionista']);
+  const K = await gestionale(['professionista']);
   const S = await finto({
     'GET /api/1.0/users/me': () => ({ data: { gid: '1', name: 'Titolare' } }),
     'POST /api/1.0/tasks': (p, c) => ({ data: { gid: '1209000000000001', name: c.data.name, permalink_url: 'https://app.asana.com/0/1209876543210/1209000000000001' } }),
@@ -89,8 +89,8 @@ test('Asana: compito nel progetto con due_on; con la sezione spenta le attività
   } finally { await K.chiudi(); await S.chiudi(); }
 });
 
-test('Pipedrive: cliente con P.IVA → organizzazione + persona, poi PATCH; giro delle persone in Kubo senza eco; preventivo → trattativa', async () => {
-  const K = await kubo(['professionista']); let np = 100;
+test('Pipedrive: cliente con P.IVA → organizzazione + persona, poi PATCH; giro delle persone in Lumi senza eco; preventivo → trattativa', async () => {
+  const K = await gestionale(['professionista']); let np = 100;
   const S = await finto({
     'GET /api/v1/users/me': () => ({ data: { name: 'Titolare', company_name: 'Bottega' } }),
     'GET /api/v2/persons/search': () => ({ success: true, data: { items: [] } }),
@@ -114,7 +114,7 @@ test('Pipedrive: cliente con P.IVA → organizzazione + persona, poi PATCH; giro
     await K.chiama('PATCH', `/api/dati/clienti/${cli.id}`, { telefono: '+39 02 1234567' }); await coda(K);
     const patch = S.chiamate.find(c => c.metodo === 'PATCH' && c.percorso === '/api/v2/persons/101');
     assert.deepEqual(patch.corpo.phones, [{ value: '+39 02 1234567', primary: true, label: 'work' }]);
-    // Pipedrive → Kubo
+    // Pipedrive → Lumi
     const g = (await K.chiama('POST', '/api/connettori/pipedrive/giri/persone')).json;
     assert.equal(g.esito, 'ok', JSON.stringify(g)); assert.deepEqual(g.risultato, { creati: 1, aggiornati: 0, uguali: 0 });
     const marta = (await K.chiama('GET', '/api/dati/clienti?perPagina=50')).json.righe.find(r => r.email === 'marta@esempio.it');
@@ -135,10 +135,10 @@ test('Pipedrive: cliente con P.IVA → organizzazione + persona, poi PATCH; giro
   } finally { await K.chiudi(); await S.chiudi(); }
 });
 
-test('MailerLite: solo i clienti con il consenso, nel gruppo; i disiscritti perdono il consenso; consenso tolto in Kubo → unsubscribed', async () => {
-  const K = await kubo(['studio']); let n = 0;
+test('MailerLite: solo i clienti con il consenso, nel gruppo; i disiscritti perdono il consenso; consenso tolto in Lumi → unsubscribed', async () => {
+  const K = await gestionale(['studio']); let n = 0;
   const S = await finto({
-    'GET /api/groups': () => ({ data: [{ id: '123456789', name: 'Clienti Kubo' }] }),
+    'GET /api/groups': () => ({ data: [{ id: '123456789', name: 'Clienti Lumi' }] }),
     'POST /api/subscribers': (p, c) => ({ data: { id: `s${++n}`, email: c.email, status: c.status || 'active' } }),
     'GET /api/subscribers': (p, c, { q }) => (q.get('filter[status]') === 'unsubscribed' ? { data: [{ id: 's1', email: 'anna@esempio.it', status: 'unsubscribed', unsubscribed_at: '2026-10-08 10:00:00' }], meta: { next_cursor: null } } : { data: [] }),
   });
@@ -146,7 +146,7 @@ test('MailerLite: solo i clienti con il consenso, nel gruppo; i disiscritti perd
     await K.chiama('POST', '/api/dati/clienti', { nome: 'Anna Maria Bianchi', email: 'Anna@Esempio.it', telefono: '+39 333 1111111', consenso: true });
     await K.chiama('POST', '/api/dati/clienti', { nome: 'Luca Verdi', email: 'luca@esempio.it', consenso: false });
     await accendi(K, 'mailerlite', { base: S.url, segreti: { token: 'eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.finto.0123456789abcdef' }, impostazioni: { gruppo: '123456789' } });
-    assert.equal((await K.chiama('POST', '/api/connettori/mailerlite/prova')).json.messaggio, 'Gruppo «Clienti Kubo»');
+    assert.equal((await K.chiama('POST', '/api/connettori/mailerlite/prova')).json.messaggio, 'Gruppo «Clienti Lumi»');
     const g = (await K.chiama('POST', '/api/connettori/mailerlite/giri/sincronizza')).json;
     assert.equal(g.esito, 'ok', JSON.stringify(g)); assert.deepEqual(g.risultato, { iscritti: 1, saltati: 1, disiscritti: 1 });
     const iscr = S.chiamate.filter(c => c.metodo === 'POST');
@@ -156,7 +156,7 @@ test('MailerLite: solo i clienti con il consenso, nel gruppo; i disiscritti perd
     const anna = (await K.chiama('GET', '/api/dati/clienti?perPagina=50')).json.righe.find(r => r.nome === 'Anna Maria Bianchi');
     assert.equal(anna.consenso, false);
     await coda(K); assert.equal(S.chiamate.filter(c => c.metodo === 'POST').length, 1);   // il consenso tolto da MailerLite non torna indietro
-    // in Kubo: un cliente nuovo con il consenso va subito; poi il consenso tolto lo disiscrive
+    // in Lumi: un cliente nuovo con il consenso va subito; poi il consenso tolto lo disiscrive
     const carla = (await K.chiama('POST', '/api/dati/clienti', { nome: 'Carla Neri', email: 'carla@esempio.it', consenso: true })).json; await coda(K);
     assert.equal(S.chiamate.filter(c => c.metodo === 'POST').at(-1).corpo.email, 'carla@esempio.it');
     await K.chiama('PATCH', `/api/dati/clienti/${carla.id}`, { consenso: false }); await coda(K);
@@ -167,9 +167,9 @@ test('MailerLite: solo i clienti con il consenso, nel gruppo; i disiscritti perd
 });
 
 test('Baserow: righe nuove a lotti con user_field_names, solo le colonne scrivibili con lo stesso nome; poi PATCH delle cambiate', async () => {
-  const K = await kubo(['studio']); let n = 0; const lotti = [];
+  const K = await gestionale(['studio']); let n = 0; const lotti = [];
   const S = await finto({
-    'GET /api/database/fields/table/:id/': () => [{ id: 1, name: 'Nome', type: 'text', primary: true }, { id: 2, name: 'Email', type: 'email' }, { id: 3, name: 'Data di nascita', type: 'date' }, { id: 4, name: 'Consenso al trattamento', type: 'boolean' }, { id: 5, name: 'Kubo ID', type: 'text' }, { id: 6, name: 'Telefono', type: 'formula', read_only: true }],
+    'GET /api/database/fields/table/:id/': () => [{ id: 1, name: 'Nome', type: 'text', primary: true }, { id: 2, name: 'Email', type: 'email' }, { id: 3, name: 'Data di nascita', type: 'date' }, { id: 4, name: 'Consenso al trattamento', type: 'boolean' }, { id: 5, name: 'Lumi ID', type: 'text' }, { id: 6, name: 'Telefono', type: 'formula', read_only: true }],
     'POST /api/database/rows/table/:id/batch/': (p, c) => { lotti.push(['POST', c]); return { items: c.items.map(x => ({ id: ++n, ...x })) }; },
     'PATCH /api/database/rows/table/:id/batch/': (p, c) => { lotti.push(['PATCH', c]); return { items: c.items }; },
   });
@@ -184,7 +184,7 @@ test('Baserow: righe nuove a lotti con user_field_names, solo le colonne scrivib
     const post = S.chiamate.find(c => c.metodo === 'POST');
     assert.equal(post.percorso, '/api/database/rows/table/42/batch/'); assert.equal(post.q.user_field_names, 'true');
     const anna = post.corpo.items.find(x => x.Nome === 'Anna Bianchi');
-    assert.deepEqual(Object.keys(anna).sort(), ['Consenso al trattamento', 'Data di nascita', 'Email', 'Kubo ID', 'Nome']);   // «Telefono» è una formula: non si scrive
+    assert.deepEqual(Object.keys(anna).sort(), ['Consenso al trattamento', 'Data di nascita', 'Email', 'Lumi ID', 'Nome']);   // «Telefono» è una formula: non si scrive
     assert.equal(anna['Data di nascita'], '1990-05-04'); assert.equal(anna['Consenso al trattamento'], true);
     assert.equal(post.corpo.items.find(x => x.Nome === 'Luca Verdi').Email, null);
     assert.equal((await K.chiama('POST', '/api/connettori/baserow/giri/sincronizza')).json.risultato.creati, 0);   // niente di nuovo

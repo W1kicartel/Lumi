@@ -2,7 +2,7 @@
 // Tutti contro finti servizi locali, con il modello «studio» (clienti, servizi, appuntamenti). Nessuna chiamata vera.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { finto, kubo, accendi, manda, firmaHmacDi } from './connettori-finto.mjs';
+import { finto, gestionale, accendi, manda, firmaHmacDi } from './connettori-finto.mjs';
 import { leggiIcs, vevento, sposta, spiega, dataIcs } from '../connettori/_comunica/caldav.js';
 import { firmaCalendly, firmaCalendlyDi } from '../connettori/calendly/connettore.js';
 import { coda } from './connettori-comunica-coda.mjs';
@@ -23,8 +23,8 @@ test('ICS: righe piegate, TZID, UTC, tutto il giorno, caratteri protetti, invita
   assert.deepEqual(a.partecipanti, [{ email: 'anna@esempio.it', nome: 'Rossi: Anna' }]);
   assert.equal(b.inizio, '2026-12-25T09:00:00.000Z'); assert.equal(c.tutto, true);
   assert.equal(dataIcs('20261210T100000', { TZID: 'Europe/Rome' }).iso, '2026-12-10T09:00:00.000Z');   // ora solare: +1
-  assert.equal(dataIcs('20261210T100000', { TZID: 'W. Europe Standard Time' }, 'Europe/Rome').iso, '2026-12-10T09:00:00.000Z');   // fuso di Windows → quello di Kubo
-  const v = vevento({ uid: 'kubo-1@kubo', inizio: '2026-10-10T08:00:00Z', fine: '2026-10-10T09:00:00Z', titolo: 'Àèìòù '.repeat(30), descrizione: 'a;b,c\nd' });
+  assert.equal(dataIcs('20261210T100000', { TZID: 'W. Europe Standard Time' }, 'Europe/Rome').iso, '2026-12-10T09:00:00.000Z');   // fuso di Windows → quello di Lumi
+  const v = vevento({ uid: 'lumi-1@lumi', inizio: '2026-10-10T08:00:00Z', fine: '2026-10-10T09:00:00Z', titolo: 'Àèìòù '.repeat(30), descrizione: 'a;b,c\nd' });
   assert.ok(v.split('\r\n').every(l => Buffer.byteLength(l) <= 75)); assert.ok(v.endsWith('END:VCALENDAR\r\n'));
   const [x] = leggiIcs(v); assert.equal(x.titolo, 'Àèìòù '.repeat(30)); assert.equal(x.descrizione, 'a;b,c\nd'); assert.equal(x.inizio, '2026-10-10T08:00:00.000Z');
   const s = sposta(ics, '2026-10-11T07:00:00Z', '2026-10-11T08:00:00Z'), [y, z] = leggiIcs(s);
@@ -33,15 +33,15 @@ test('ICS: righe piegate, TZID, UTC, tutto il giorno, caratteri protetti, invita
 });
 
 test('Calendly: firma giusta, sbagliata, scaduta; prenotazione → cliente + appuntamento con servizio; spostamento; annullamento; registra il webhook', async () => {
-  const K = await kubo(['studio']); let iscritto = null;
+  const K = await gestionale(['studio']); let iscritto = null;
   const S = await finto({
     'GET /users/me': () => ({ resource: { uri: 'https://api.calendly.com/users/U1', name: 'Studio Bianchi', current_organization: 'https://api.calendly.com/organizations/O1' } }),
     'POST /webhook_subscriptions': (p, c) => { iscritto = c; return { stato: 201, corpo: { resource: { uri: 'https://api.calendly.com/webhook_subscriptions/W1' } } }; },
   });
   try {
     await K.chiama('POST', '/api/dati/servizi', { nome: 'Pulizia dei denti', durata: 45, prezzo: 8000, attivo: true });
-    await accendi(K, 'calendly', { base: S.url, segreti: { token: 'pat_prova' }, impostazioni: { indirizzo: 'https://kubo.studiobianchi.it' } });
-    const chiave = K.nucleo.segreto('calendly', 'firma'); assert.ok(chiave?.length >= 20);   // la genera Kubo
+    await accendi(K, 'calendly', { base: S.url, segreti: { token: 'pat_prova' }, impostazioni: { indirizzo: 'https://lumi.studiobianchi.it' } });
+    const chiave = K.nucleo.segreto('calendly', 'firma'); assert.ok(chiave?.length >= 20);   // la genera Lumi
     const ev = (evento, p) => JSON.stringify({ event: evento, created_at: '2026-10-09T10:00:00.000000Z', payload: p });
     const prenota = ev('invitee.created', { uri: 'https://api.calendly.com/scheduled_events/E1/invitees/I1', email: 'Giulia.Verdi@esempio.it', name: 'Giulia Verdi', status: 'active',
       scheduled_event: { uri: 'https://api.calendly.com/scheduled_events/E1', name: 'Pulizia dei denti', start_time: '2026-10-20T08:00:00.000000Z', end_time: '2026-10-20T08:45:00.000000Z' },
@@ -69,9 +69,9 @@ test('Calendly: firma giusta, sbagliata, scaduta; prenotazione → cliente + app
     const annulla = ev('invitee.canceled', { uri: 'https://api.calendly.com/scheduled_events/E2/invitees/I2', rescheduled: false, cancellation: { reason: 'impegno' } });
     assert.equal((await manda(K, '/api/connettori/calendly/in', annulla, { 'Calendly-Webhook-Signature': firmaCalendlyDi(chiave, annulla) })).json.esito, 'annullato');
     assert.equal((await appuntamenti(K))[0].stato, 'annullato');
-    // registra il webhook: anteprima, poi la sottoscrizione con la chiave di firma di Kubo
+    // registra il webhook: anteprima, poi la sottoscrizione con la chiave di firma di Lumi
     const ant = await K.chiama('POST', '/api/connettori/calendly/azioni/registra_webhook', { args: {}, anteprima: true });
-    assert.equal(ant.json.righe[0][1], 'https://kubo.studiobianchi.it/api/connettori/calendly/in');
+    assert.equal(ant.json.righe[0][1], 'https://lumi.studiobianchi.it/api/connettori/calendly/in');
     const reg = await K.chiama('POST', '/api/connettori/calendly/azioni/registra_webhook', { args: {} }); assert.equal(reg.stato, 200, JSON.stringify(reg.json));
     assert.deepEqual(iscritto.events, ['invitee.created', 'invitee.canceled']); assert.equal(iscritto.signing_key, chiave); assert.equal(iscritto.scope, 'user');
     assert.equal(iscritto.organization, 'https://api.calendly.com/organizations/O1'); assert.equal(S.chiamate[0].intestazioni.authorization, 'Bearer pat_prova');
@@ -79,7 +79,7 @@ test('Calendly: firma giusta, sbagliata, scaduta; prenotazione → cliente + app
 });
 
 test('Cal.com: firma esadecimale, cliente già presente trovato per email, spostamento con rescheduleUid, annullamento', async () => {
-  const K = await kubo(['studio']);
+  const K = await gestionale(['studio']);
   try {
     const cl = (await K.chiama('POST', '/api/dati/clienti', { nome: 'Marco Neri', email: 'marco.neri@esempio.it' })).json;
     await accendi(K, 'cal-com', {});
@@ -104,7 +104,7 @@ test('Cal.com: firma esadecimale, cliente già presente trovato per email, spost
 });
 
 test('Outlook: codice del dispositivo sul tenant scelto, appuntamenti → eventi (crea, sposta, annulla), delta → appuntamenti senza eco', async () => {
-  const K = await kubo(['studio']), eventi = new Map(); let n = 0, giro = 0;
+  const K = await gestionale(['studio']), eventi = new Map(); let n = 0, giro = 0;
   const S = await finto({
     'POST /:tenant/oauth2/v2.0/devicecode': (p, c) => ({ device_code: 'dc-1', user_code: 'ABCD-EFGH', verification_uri: 'https://microsoft.com/devicelogin', interval: 5, expires_in: 900 }),
     'POST /:tenant/oauth2/v2.0/token': (p, c) => (c.device_code === 'dc-1' ? { access_token: 'tok-ms', refresh_token: 'rt-ms', expires_in: 3600 } : { stato: 400, corpo: { error: 'invalid_grant' } }),
@@ -133,7 +133,7 @@ test('Outlook: codice del dispositivo sul tenant scelto, appuntamenti → eventi
     assert.equal(S.chiamate[0].percorso, '/consumers/oauth2/v2.0/devicecode'); assert.equal(S.chiamate[0].corpo.client_id, 'app-1234'); assert.match(S.chiamate[0].corpo.scope, /Calendars\.ReadWrite/);
     assert.equal((await K.chiama('POST', '/api/connettori/outlook/oauth/dispositivo/controlla')).json.collegato, true);
     assert.equal((await K.chiama('POST', '/api/connettori/outlook/prova')).json.ok, true);
-    // Kubo → Outlook
+    // Lumi → Outlook
     const sv = (await K.chiama('POST', '/api/dati/servizi', { nome: 'Igiene', durata: 30 })).json;
     const cl = (await K.chiama('POST', '/api/dati/clienti', { nome: 'Paolo Blu', email: 'paolo.blu@esempio.it' })).json;
     const a = (await K.chiama('POST', '/api/dati/appuntamenti', { quando: '2026-10-22T08:00:00.000Z', cliente: cl.id, servizio: sv.id, note: 'Portare referto' })).json;
@@ -143,7 +143,7 @@ test('Outlook: codice del dispositivo sul tenant scelto, appuntamenti → eventi
     assert.equal(e1.body.content, 'Portare referto'); assert.equal(S.chiamate.at(-1).intestazioni.authorization, 'Bearer tok-ms'); assert.ok(!e1.attendees);   // nessun invito parte al cliente
     await K.chiama('PATCH', `/api/dati/appuntamenti/${a.id}`, { quando: '2026-10-22T09:00:00.000Z' }); await coda(K);
     assert.equal(eventi.get('AAMk-1').start.dateTime, '2026-10-22T09:00:00'); assert.equal(eventi.size, 1);
-    // Outlook → Kubo: il primo giro (due pagine) porta l'evento esterno con il cliente; il nostro torna ma non si duplica
+    // Outlook → Lumi: il primo giro (due pagine) porta l'evento esterno con il cliente; il nostro torna ma non si duplica
     const g = await K.chiama('POST', '/api/connettori/outlook/giri/sincronizza'); assert.equal(g.json.esito, 'ok', JSON.stringify(g.json));
     assert.equal(g.json.risultato.creati, 1); assert.equal(g.json.risultato.uguali, 1);
     assert.equal(g.json.risultato.saltati, 1);   // senza invitati: nel modello «studio» il cliente è obbligatorio, l'evento resta solo in Outlook
@@ -152,12 +152,12 @@ test('Outlook: codice del dispositivo sul tenant scelto, appuntamenti → eventi
     const est = tutti.find(x => x.id !== a.id); assert.equal(est.quando, '2026-10-23T14:00:00.000Z'); assert.match(est.note, /Visita Laura/);
     assert.equal((await clienti(K)).find(c => c.email === 'laura.gialli@esempio.it')?.nome, 'Laura Gialli');
     await coda(K); assert.equal(eventi.size, 1);   // l'appuntamento arrivato da Outlook non ci torna (anti-eco)
-    // il secondo giro riparte dal deltaLink: l'esterno spostato, il nostro cancellato in Outlook → annullato in Kubo
+    // il secondo giro riparte dal deltaLink: l'esterno spostato, il nostro cancellato in Outlook → annullato in Lumi
     const g2 = await K.chiama('POST', '/api/connettori/outlook/giri/sincronizza'); assert.deepEqual(g2.json.risultato, { creati: 0, spostati: 1, annullati: 1, uguali: 0, saltati: 0 });
     assert.equal(S.chiamate.filter(c => c.percorso.endsWith('/delta')).at(-1).q.$deltatoken, 'd1');
     tutti = await appuntamenti(K); assert.equal(tutti.find(x => x.id === est.id).quando, '2026-10-24T10:00:00.000Z'); assert.equal(tutti.find(x => x.id === a.id).stato, 'annullato');
     await coda(K); assert.equal(eventi.size, 0);   // l'annullamento arrivato da Outlook non riparte
-    // riaperto in Kubo: l'evento tolto da Outlook si ricrea; annullato in Kubo: si toglie
+    // riaperto in Lumi: l'evento tolto da Outlook si ricrea; annullato in Lumi: si toglie
     await K.chiama('PATCH', `/api/dati/appuntamenti/${a.id}`, { stato: 'confermato' }); await coda(K);
     assert.ok(eventi.has('AAMk-2'), JSON.stringify([...eventi.keys()]));
     assert.equal(K.db.prepare("SELECT COUNT(*) n FROM _connettori_mappa WHERE connettore = 'outlook' AND riga = ?").get(String(a.id)).n, 1);   // il legame vecchio è sciolto (k.sincro.scollega)
@@ -168,7 +168,7 @@ test('Outlook: codice del dispositivo sul tenant scelto, appuntamenti → eventi
 });
 
 test('CalDAV: scoperta del calendario (principal → home → calendari), PUT con If-None-Match/If-Match, REPORT con ETag senza eco, spostamenti e cancellazioni nei due sensi', async () => {
-  const K = await kubo(['studio']), cal = new Map(); let v = 0;
+  const K = await gestionale(['studio']), cal = new Map(); let v = 0;
   const ms = x => ({ stato: 207, intestazioni: { 'Content-Type': 'application/xml; charset=utf-8' }, corpo: `<?xml version="1.0"?><d:multistatus xmlns:d="DAV:" xmlns:cal="urn:ietf:params:xml:ns:caldav">${x}</d:multistatus>` });
   const metti = (nome, ics) => cal.set(nome, { ics, etag: `"e${++v}"` });
   metti('esterno.ics', ['BEGIN:VCALENDAR', 'VERSION:2.0', 'BEGIN:VEVENT', 'UID:ext-1@icloud', 'DTSTART;TZID=Europe/Rome:20261020T100000', 'DTEND;TZID=Europe/Rome:20261020T110000', 'SUMMARY:Controllo Sara',
@@ -195,27 +195,27 @@ test('CalDAV: scoperta del calendario (principal → home → calendari), PUT co
     const p = await K.chiama('POST', '/api/connettori/caldav/prova'); assert.equal(p.json.ok, true, JSON.stringify(p.json)); assert.equal(p.json.messaggio, 'Studio & casa');
     assert.equal(S.chiamate[0].intestazioni.authorization, 'Basic ' + Buffer.from('anna@esempio.it:abcd-efgh-ijkl-mnop').toString('base64'));
     assert.equal(S.chiamate[0].intestazioni.depth, '0'); assert.match(S.chiamate[0].corpo, /current-user-principal/);
-    // calendario → Kubo: l'evento esterno diventa un appuntamento con il cliente dall'invitato
+    // calendario → Lumi: l'evento esterno diventa un appuntamento con il cliente dall'invitato
     const g = await K.chiama('POST', '/api/connettori/caldav/giri/sincronizza'); assert.equal(g.json.esito, 'ok', JSON.stringify(g.json));
     assert.deepEqual(g.json.risultato, { creati: 1, spostati: 0, annullati: 0, uguali: 0, saltati: 0 });   // Pilates si ripete ogni settimana: non è un appuntamento
     const rep = S.chiamate.find(c => c.metodo === 'REPORT'); assert.equal(rep.intestazioni.depth, '1'); assert.match(rep.corpo, /<c:time-range start="\d{8}T\d{6}Z" end="\d{8}T\d{6}Z"\/>/);
     let [est] = await appuntamenti(K); assert.equal(est.quando, '2026-10-20T08:00:00.000Z'); assert.match(est.note, /Controllo Sara/);
     assert.equal((await clienti(K)).find(c => c.nome === 'Sara Viola')?.email, 'sara.viola@esempio.it');
     assert.deepEqual((await K.chiama('POST', '/api/connettori/caldav/giri/sincronizza')).json.risultato, { creati: 0, spostati: 0, annullati: 0, uguali: 2, saltati: 0 });
-    // Kubo → calendario: un appuntamento nuovo è un PUT con If-None-Match: *; il giro dopo lo rivede con lo stesso ETag (niente eco)
+    // Lumi → calendario: un appuntamento nuovo è un PUT con If-None-Match: *; il giro dopo lo rivede con lo stesso ETag (niente eco)
     const ugo = (await K.chiama('POST', '/api/dati/clienti', { nome: 'Ugo Rosa' })).json;
     const a = (await K.chiama('POST', '/api/dati/appuntamenti', { quando: '2026-10-21T07:30:00.000Z', cliente: ugo.id, note: 'Prima visita' })).json; await coda(K);
-    const put = S.chiamate.filter(c => c.metodo === 'PUT').at(-1); assert.ok(put, JSON.stringify((await K.chiama('GET', '/api/connettori/caldav')).json.registro.slice(0, 3))); assert.equal(put.percorso, `/123/calendars/casa/kubo-${a.id}.ics`); assert.equal(put.intestazioni['if-none-match'], '*');
+    const put = S.chiamate.filter(c => c.metodo === 'PUT').at(-1); assert.ok(put, JSON.stringify((await K.chiama('GET', '/api/connettori/caldav')).json.registro.slice(0, 3))); assert.equal(put.percorso, `/123/calendars/casa/lumi-${a.id}.ics`); assert.equal(put.intestazioni['if-none-match'], '*');
     assert.match(put.intestazioni['content-type'], /text\/calendar/); const [mio] = leggiIcs(put.corpo);
-    assert.equal(mio.uid, `kubo-${a.id}@kubo`); assert.equal(mio.inizio, '2026-10-21T07:30:00.000Z'); assert.equal(mio.fine, '2026-10-21T08:30:00.000Z'); assert.equal(mio.descrizione, 'Prima visita'); assert.equal(mio.titolo, 'Ugo Rosa');
+    assert.equal(mio.uid, `lumi-${a.id}@lumi`); assert.equal(mio.inizio, '2026-10-21T07:30:00.000Z'); assert.equal(mio.fine, '2026-10-21T08:30:00.000Z'); assert.equal(mio.descrizione, 'Prima visita'); assert.equal(mio.titolo, 'Ugo Rosa');
     assert.deepEqual((await K.chiama('POST', '/api/connettori/caldav/giri/sincronizza')).json.risultato, { creati: 0, spostati: 0, annullati: 0, uguali: 3, saltati: 0 });
     assert.equal((await appuntamenti(K)).length, 2);
-    // spostato in Kubo un evento nato nel calendario: cambia solo DTSTART/DTEND, con If-Match; invitato e promemoria restano
+    // spostato in Lumi un evento nato nel calendario: cambia solo DTSTART/DTEND, con If-Match; invitato e promemoria restano
     const etagPrima = cal.get('esterno.ics').etag;
     await K.chiama('PATCH', `/api/dati/appuntamenti/${est.id}`, { quando: '2026-10-20T09:00:00.000Z' }); await coda(K);
     const put2 = S.chiamate.filter(c => c.metodo === 'PUT').at(-1); assert.equal(put2.percorso, '/123/calendars/casa/esterno.ics'); assert.equal(put2.intestazioni['if-match'], etagPrima);
     const [sp] = leggiIcs(cal.get('esterno.ics').ics); assert.equal(sp.inizio, '2026-10-20T09:00:00.000Z'); assert.equal(sp.partecipanti[0].email, 'sara.viola@esempio.it'); assert.match(cal.get('esterno.ics').ics, /TRIGGER:-PT30M/);
-    // spostato nel calendario (nuovo ETag) → spostato in Kubo; cancellato nel calendario (404) → annullato
+    // spostato nel calendario (nuovo ETag) → spostato in Lumi; cancellato nel calendario (404) → annullato
     metti('esterno.ics', cal.get('esterno.ics').ics.replace('DTSTART:20261020T090000Z', 'DTSTART:20261027T090000Z'));
     assert.deepEqual((await K.chiama('POST', '/api/connettori/caldav/giri/sincronizza')).json.risultato, { creati: 0, spostati: 1, annullati: 0, uguali: 2, saltati: 0 });
     assert.equal((await K.chiama('GET', `/api/dati/appuntamenti/${est.id}`)).json.quando, '2026-10-27T09:00:00.000Z');
@@ -223,15 +223,15 @@ test('CalDAV: scoperta del calendario (principal → home → calendari), PUT co
     cal.delete('esterno.ics');
     assert.deepEqual((await K.chiama('POST', '/api/connettori/caldav/giri/sincronizza')).json.risultato, { creati: 0, spostati: 0, annullati: 1, uguali: 2, saltati: 0 });
     assert.equal((await K.chiama('GET', `/api/dati/appuntamenti/${est.id}`)).json.stato, 'annullato');
-    // annullato in Kubo → DELETE con If-Match
+    // annullato in Lumi → DELETE con If-Match
     await K.chiama('PATCH', `/api/dati/appuntamenti/${a.id}`, { stato: 'annullato' }); await coda(K);
-    const del = S.chiamate.filter(c => c.metodo === 'DELETE').at(-1); assert.equal(del.percorso, `/123/calendars/casa/kubo-${a.id}.ics`); assert.ok(del.intestazioni['if-match']); assert.deepEqual([...cal.keys()], ['pilates.ics']);
+    const del = S.chiamate.filter(c => c.metodo === 'DELETE').at(-1); assert.equal(del.percorso, `/123/calendars/casa/lumi-${a.id}.ics`); assert.ok(del.intestazioni['if-match']); assert.deepEqual([...cal.keys()], ['pilates.ics']);
     const l = await K.chiama('POST', '/api/connettori/caldav/azioni/calendari', { args: {} }); assert.deepEqual(l.json.calendari.map(c => c.nome), ['Studio & casa']);
   } finally { await K.chiudi(); await S.chiudi(); }
 });
 
 test('Zoom: token Server-to-Server (account_credentials, Basic), riunione dall\'azione con anteprima e link nelle note, spostata e cancellata con l\'appuntamento', async () => {
-  const K = await kubo(['studio']), riunioni = new Map();
+  const K = await gestionale(['studio']), riunioni = new Map();
   const S = await finto({
     'POST /oauth/token': (p, c, { intestazioni: h }) => (h.authorization === 'Basic ' + Buffer.from('cid:csec').toString('base64') && c.grant_type === 'account_credentials' && c.account_id === 'acc-1'
       ? { access_token: 'tok-zoom', token_type: 'bearer', expires_in: 3599 } : { stato: 401, corpo: { reason: 'Invalid client_id or client_secret' } }),

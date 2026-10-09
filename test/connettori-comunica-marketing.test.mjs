@@ -2,14 +2,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHmac, createHash } from 'node:crypto';
-import { finto, kubo, accendi, manda, firmaHmacDi } from './connettori-finto.mjs';
+import { finto, gestionale, accendi, manda, firmaHmacDi } from './connettori-finto.mjs';
 import { coda } from './connettori-comunica-coda.mjs';
 
 const pausa = ms => new Promise(r => setTimeout(r, ms));
 const oauthFinto = (K, id) => K.nucleo.k(id).salvaSegreto('_oauth', JSON.stringify({ access_token: 'tok', refresh_token: 'r', scade: Date.now() + 36e5 }));
 
 test('Fogli Google: la sezione scelta nella scheda (intestazioni = nomi dei campi), la scheda mancante si crea, giro e azione', async () => {
-  const K = await kubo(['studio']); const schede = new Set(); let scritto = null;
+  const K = await gestionale(['studio']); const schede = new Set(); let scritto = null;
   const S = await finto({
     'GET /v4/spreadsheets/:id': p => ({ properties: { title: 'Clienti Bottega' } }),
     'POST /v4/spreadsheets/:id/values/:range': p => (schede.has(decodeURIComponent(p.range).replace(/:clear$/, '')) ? {} : { stato: 400, corpo: { error: { message: 'Unable to parse range' } } }),
@@ -36,10 +36,10 @@ test('Fogli Google: la sezione scelta nella scheda (intestazioni = nomi dei camp
   } finally { await K.chiudi(); await S.chiudi(); }
 });
 
-test('Airtable: upsert a lotti da 10 su «Kubo ID», solo i campi con lo stesso nome, poi solo le righe cambiate', async () => {
-  const K = await kubo(['studio']); const lotti = [];
+test('Airtable: upsert a lotti da 10 su «Lumi ID», solo i campi con lo stesso nome, poi solo le righe cambiate', async () => {
+  const K = await gestionale(['studio']); const lotti = [];
   const S = await finto({
-    'GET /v0/meta/bases/:base/tables': () => ({ tables: [{ id: 'tblClienti', name: 'Clienti', fields: [{ name: 'Kubo ID' }, { name: 'Nome' }, { name: 'Email' }, { name: 'Consenso al trattamento' }] }] }),
+    'GET /v0/meta/bases/:base/tables': () => ({ tables: [{ id: 'tblClienti', name: 'Clienti', fields: [{ name: 'Lumi ID' }, { name: 'Nome' }, { name: 'Email' }, { name: 'Consenso al trattamento' }] }] }),
     'PATCH /v0/:base/:tabella': (p, c) => { lotti.push(c); return { records: c.records.map((r, i) => ({ id: `rec${lotti.length}_${i}`, fields: r.fields })), createdRecords: c.records.map((r, i) => `rec${lotti.length}_${i}`), updatedRecords: [] }; },
   });
   try {
@@ -49,20 +49,20 @@ test('Airtable: upsert a lotti da 10 su «Kubo ID», solo i campi con lo stesso 
     const g = (await K.chiama('POST', '/api/connettori/airtable/giri/sincronizza')).json;
     assert.equal(g.esito, 'ok', JSON.stringify(g)); assert.deepEqual(g.risultato, { tabella: 'Clienti', creati: 12, aggiornati: 0, campi: 3 });
     assert.deepEqual(lotti.map(l => l.records.length), [10, 2]);
-    assert.deepEqual(lotti[0].performUpsert, { fieldsToMergeOn: ['Kubo ID'] }); assert.equal(lotti[0].typecast, true);
-    assert.deepEqual(Object.keys(lotti[0].records[0].fields).sort(), ['Consenso al trattamento', 'Email', 'Kubo ID', 'Nome']);   // «Telefono» non c'è in Airtable: non passa
+    assert.deepEqual(lotti[0].performUpsert, { fieldsToMergeOn: ['Lumi ID'] }); assert.equal(lotti[0].typecast, true);
+    assert.deepEqual(Object.keys(lotti[0].records[0].fields).sort(), ['Consenso al trattamento', 'Email', 'Lumi ID', 'Nome']);   // «Telefono» non c'è in Airtable: non passa
     assert.equal(S.chiamate.find(c => c.metodo === 'PATCH').intestazioni.authorization, 'Bearer patFINTO.0123456789abcdef');
     assert.equal((await K.chiama('POST', '/api/connettori/airtable/giri/sincronizza')).json.risultato.creati, 0);   // niente di nuovo
     const uno = (await K.chiama('GET', '/api/dati/clienti?perPagina=1')).json.righe[0];
     await pausa(5); await K.chiama('PATCH', `/api/dati/clienti/${uno.id}`, { note: 'cambiato' });
     await K.chiama('POST', '/api/connettori/airtable/giri/sincronizza');
-    assert.equal(lotti.at(-1).records.length, 1); assert.equal(lotti.at(-1).records[0].fields['Kubo ID'], uno.id);
+    assert.equal(lotti.at(-1).records.length, 1); assert.equal(lotti.at(-1).records[0].fields['Lumi ID'], uno.id);
     assert.equal(K.nucleo.k('airtable').sincro.remoto('clienti', uno.id) != null, true);
   } finally { await K.chiudi(); await S.chiudi(); }
 });
 
 test('Notion: una pagina per riga con le proprietà del database, la seconda volta PATCH della stessa pagina', async () => {
-  const K = await kubo(['studio']); let n = 0;
+  const K = await gestionale(['studio']); let n = 0;
   const S = await finto({
     'GET /v1/databases/:id': () => ({ title: [{ plain_text: 'Clienti' }], properties: { Nome: { id: 'title', name: 'Nome', type: 'title' }, Email: { id: 'e', name: 'Email', type: 'email' }, Telefono: { id: 't', name: 'Telefono', type: 'phone_number' }, 'Data di nascita': { id: 'd', name: 'Data di nascita', type: 'date' }, Consenso: { id: 'c', name: 'consenso', type: 'checkbox' }, Totale: { id: 'f', name: 'Totale', type: 'formula' } } }),
     'POST /v1/pages': (p, c) => ({ id: `pag-${++n}`, properties: c.properties }),
@@ -87,7 +87,7 @@ test('Notion: una pagina per riga con le proprietà del database, la seconda vol
 });
 
 test('Mailchimp: solo i clienti con il consenso (PUT per hash md5, tag), uscita immediata, i disiscritti perdono il consenso', async () => {
-  const K = await kubo(['studio']); const membri = new Map(), tag = [];
+  const K = await gestionale(['studio']); const membri = new Map(), tag = [];
   const S = await finto({
     'GET /3.0/lists/:lista': () => ({ name: 'Newsletter Bottega', stats: { member_count: 3 } }),
     'PUT /3.0/lists/:lista/members/:h': (p, c) => { membri.set(p.h, c); return { id: p.h, email_address: c.email_address, status: c.status_if_new }; },
@@ -105,10 +105,10 @@ test('Mailchimp: solo i clienti con il consenso (PUT per hash md5, tag), uscita 
     assert.equal(g.esito, 'ok', JSON.stringify(g)); assert.deepEqual(g.risultato, { iscritti: 1, saltati: 2, disiscritti: 1 });
     const h = md5('anna@esempio.it'); assert.deepEqual([...membri.keys()], [h]);
     assert.deepEqual(membri.get(h), { email_address: 'anna@esempio.it', status_if_new: 'subscribed', merge_fields: { FNAME: 'Anna', LNAME: 'Maria Bianchi', PHONE: '+39 333 1111111' } });
-    assert.deepEqual(tag[0], [h, [{ name: 'Kubo', status: 'active' }]]);
-    const put = S.chiamate.find(c => c.metodo === 'PUT'); assert.equal(put.intestazioni.authorization, 'Basic ' + Buffer.from('kubo:' + '0123456789abcdef'.repeat(2) + '-us21').toString('base64'));
+    assert.deepEqual(tag[0], [h, [{ name: 'Lumi', status: 'active' }]]);
+    const put = S.chiamate.find(c => c.metodo === 'PUT'); assert.equal(put.intestazioni.authorization, 'Basic ' + Buffer.from('lumi:' + '0123456789abcdef'.repeat(2) + '-us21').toString('base64'));
     const dis = S.chiamate.find(c => c.q.status === 'unsubscribed'); assert.ok(dis.q.since_last_changed);
-    // Anna si è disiscritta in Mailchimp: in Kubo il consenso è «no» (e la modifica non riparte verso Mailchimp)
+    // Anna si è disiscritta in Mailchimp: in Lumi il consenso è «no» (e la modifica non riparte verso Mailchimp)
     const cliente = async n => (await K.chiama('GET', '/api/dati/clienti?perPagina=100')).json.righe.find(r => r.nome.startsWith(n));
     assert.equal((await cliente('Anna')).consenso, false);
     await coda(K); assert.equal(S.chiamate.filter(c => c.metodo === 'PUT').length, 1);
@@ -116,7 +116,7 @@ test('Mailchimp: solo i clienti con il consenso (PUT per hash md5, tag), uscita 
     await K.chiama('PUT', '/api/connettori/mailchimp', { impostazioni: { tag_campo: 'note' } });
     await K.chiama('POST', '/api/dati/clienti', { nome: 'Sara Blu', email: 'sara@esempio.it', consenso: true, note: 'VIP' });
     await coda(K);
-    assert.ok(membri.has(md5('sara@esempio.it'))); assert.deepEqual(tag.at(-1)[1].map(t => t.name).sort(), ['Kubo', 'VIP']);
+    assert.ok(membri.has(md5('sara@esempio.it'))); assert.deepEqual(tag.at(-1)[1].map(t => t.name).sort(), ['Lumi', 'VIP']);
     // l'azione per Lumi: un cliente senza consenso non si iscrive
     const luca = await cliente('Luca');
     const ant = (await K.chiama('POST', '/api/connettori/mailchimp/azioni/iscrivi', { args: { cliente: luca.id }, anteprima: true })).json;
@@ -137,7 +137,7 @@ test('Mailchimp: solo i clienti con il consenso (PUT per hash md5, tag), uscita 
 
 test('HubSpot: cliente → contatto (batch/upsert per email) e azienda con P.IVA, contatti cambiati → clienti, webhook v3 firmato', async () => {
   const { firmaV3 } = await import('../connettori/hubspot/connettore.js');
-  const K = await kubo(['negozio']); const upsert = [], aziende = [];
+  const K = await gestionale(['negozio']); const upsert = [], aziende = [];
   const contatti = [{ id: '501', properties: { email: 'giulia@esempio.it', firstname: 'Giulia', lastname: 'Rossi', phone: '+39 347 2222222', lastmodifieddate: '2026-10-01T09:00:00.000Z' } }];
   const S = await finto({
     'GET /crm/v3/objects/contacts': () => ({ results: [] }),
@@ -148,7 +148,7 @@ test('HubSpot: cliente → contatto (batch/upsert per email) e azienda con P.IVA
     'POST /crm/v3/objects/contacts/batch/read': (p, c) => ({ results: c.inputs.map(x => ({ id: x.id, properties: { email: 'piero@esempio.it', firstname: 'Piero', lastname: 'Gialli' } })) }),
   });
   try {
-    await accendi(K, 'hubspot', { base: S.url, segreti: { token: 'pat-eu1-' + '00000000-1111-2222-3333-444444444444', firma: 'segreto-app' }, impostazioni: { pubblico: 'https://kubo.esempio.it' } });
+    await accendi(K, 'hubspot', { base: S.url, segreti: { token: 'pat-eu1-' + '00000000-1111-2222-3333-444444444444', firma: 'segreto-app' }, impostazioni: { pubblico: 'https://lumi.esempio.it' } });
     assert.equal((await K.chiama('POST', '/api/connettori/hubspot/prova')).json.ok, true);
     // un cliente con la P.IVA: contatto (upsert per email) e azienda
     const c = (await K.chiama('POST', '/api/dati/clienti', { nome: 'Ferramenta Bassi', email: 'Info@Bassi.it', telefono: '+39 02 123456', tipo: 'azienda', piva: '01234567890' })).json;
@@ -159,7 +159,7 @@ test('HubSpot: cliente → contatto (batch/upsert per email) e azienda con P.IVA
     assert.equal(K.nucleo.k('hubspot').sincro.remoto('clienti', c.id), '9010');
     await K.chiama('PATCH', `/api/dati/clienti/${c.id}`, { telefono: '+39 02 654321' }); await coda(K);
     assert.equal(aziende.at(-1).id, 'co1');   // la seconda volta si aggiorna la stessa azienda
-    // HubSpot → Kubo: il contatto cambiato diventa un cliente, e il giro dopo non riscrive niente
+    // HubSpot → Lumi: il contatto cambiato diventa un cliente, e il giro dopo non riscrive niente
     const g = (await K.chiama('POST', '/api/connettori/hubspot/giri/contatti')).json;
     assert.equal(g.esito, 'ok', JSON.stringify(g)); assert.deepEqual(g.risultato, { creati: 1, aggiornati: 0, uguali: 0 });
     const giulia = (await K.chiama('GET', '/api/dati/clienti?perPagina=100')).json.righe.find(r => r.email === 'giulia@esempio.it');
@@ -168,21 +168,21 @@ test('HubSpot: cliente → contatto (batch/upsert per email) e azienda con P.IVA
     await coda(K); assert.equal(upsert.length, 2);   // quello che arriva da HubSpot non torna indietro
     // webhook v3: firma giusta → il contatto si rilegge; firma sbagliata o vecchia → 401
     const corpo = JSON.stringify([{ eventId: 77, subscriptionType: 'contact.creation', objectId: 601, occurredAt: Date.now() }]), ts = String(Date.now());
-    const firma = firmaV3('segreto-app', 'POST', 'https://kubo.esempio.it/api/connettori/hubspot/in', corpo, ts);
+    const firma = firmaV3('segreto-app', 'POST', 'https://lumi.esempio.it/api/connettori/hubspot/in', corpo, ts);
     const ok = await manda(K, '/api/connettori/hubspot/in', corpo, { 'X-HubSpot-Signature-v3': firma, 'X-HubSpot-Request-Timestamp': ts });
     assert.equal(ok.stato, 200, JSON.stringify(ok.json)); assert.match(ok.json.esito, /1 creati/);
     assert.equal((await manda(K, '/api/connettori/hubspot/in', corpo, { 'X-HubSpot-Signature-v3': (firma[0] === 'A' ? 'B' : 'A') + firma.slice(1), 'X-HubSpot-Request-Timestamp': ts })).stato, 401);
     const vecchio = String(Date.now() - 6 * 6e4);
-    assert.equal((await manda(K, '/api/connettori/hubspot/in', corpo, { 'X-HubSpot-Signature-v3': firmaV3('segreto-app', 'POST', 'https://kubo.esempio.it/api/connettori/hubspot/in', corpo, vecchio), 'X-HubSpot-Request-Timestamp': vecchio })).stato, 401);
-    // senza il suo indirizzo vale quello di Kubo nella Libreria (la firma comprende l'URL)
-    await K.chiama('PUT', '/api/connettori/hubspot', { impostazioni: { pubblico: null } }); await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: 'https://kubo.libreria.it' });
+    assert.equal((await manda(K, '/api/connettori/hubspot/in', corpo, { 'X-HubSpot-Signature-v3': firmaV3('segreto-app', 'POST', 'https://lumi.esempio.it/api/connettori/hubspot/in', corpo, vecchio), 'X-HubSpot-Request-Timestamp': vecchio })).stato, 401);
+    // senza il suo indirizzo vale quello di Lumi nella Libreria (la firma comprende l'URL)
+    await K.chiama('PUT', '/api/connettori/hubspot', { impostazioni: { pubblico: null } }); await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: 'https://lumi.libreria.it' });
     const corpo2 = JSON.stringify([{ eventId: 78, subscriptionType: 'contact.creation', objectId: 601, occurredAt: Date.now() }]), ts2 = String(Date.now());
-    assert.equal((await manda(K, '/api/connettori/hubspot/in', corpo2, { 'X-HubSpot-Signature-v3': firmaV3('segreto-app', 'POST', 'https://kubo.libreria.it/api/connettori/hubspot/in', corpo2, ts2), 'X-HubSpot-Request-Timestamp': ts2 })).stato, 200);
+    assert.equal((await manda(K, '/api/connettori/hubspot/in', corpo2, { 'X-HubSpot-Signature-v3': firmaV3('segreto-app', 'POST', 'https://lumi.libreria.it/api/connettori/hubspot/in', corpo2, ts2), 'X-HubSpot-Request-Timestamp': ts2 })).stato, 200);
   } finally { await K.chiudi(); await S.chiudi(); }
 });
 
 test('Meta Lead Ads: il giro legge i lead nuovi dei moduli e crea i clienti (provenienza, nota), niente doppioni, webhook firmato', async () => {
-  const K = await kubo(['professionista']);
+  const K = await gestionale(['professionista']);
   const lead = (id, nome, email, extra = {}) => ({ id, created_time: '2026-10-08T10:00:00+0000', form_id: '1234567890', campaign_name: 'Autunno 2026', ad_name: 'Video 1', platform: 'ig',
     field_data: [{ name: 'full_name', values: [nome] }, { name: 'email', values: [email] }, { name: 'phone_number', values: ['+39333000000' + id.slice(-1)] }, ...Object.entries(extra).map(([n, v]) => ({ name: n, values: [v] }))] });
   const S = await finto({
@@ -203,7 +203,7 @@ test('Meta Lead Ads: il giro legge i lead nuovi dei moduli e crea i clienti (pro
     assert.deepEqual((await K.chiama('POST', '/api/connettori/meta-lead/azioni/leggi_lead', { args: {} })).json, { creati: 0, presenti: 2 });   // gli stessi lead: niente doppioni
     // con l'App Secret c'è il webhook: il giro pianificato diventa un ripasso ogni 6 ore
     assert.match((await K.chiama('POST', '/api/connettori/meta-lead/giri/lead')).json.risultato.saltato, /webhook/);
-    // la verifica GET di Meta: il token generato da Kubo → hub.challenge; un token sbagliato → 403
+    // la verifica GET di Meta: il token generato da Lumi → hub.challenge; un token sbagliato → 403
     const tok = K.nucleo.segreto('meta-lead', 'verifica'); assert.ok(tok);
     const sfida = await fetch(`${K.base}/api/connettori/meta-lead/in?hub.mode=subscribe&hub.verify_token=${tok}&hub.challenge=1158201444`);
     assert.equal(sfida.status, 200); assert.equal(await sfida.text(), '1158201444');
@@ -218,7 +218,7 @@ test('Meta Lead Ads: il giro legge i lead nuovi dei moduli e crea i clienti (pro
 });
 
 test('Recensioni Google: il primo giro segna il punto, poi le nuove diventano avvisi; la risposta con anteprima e PUT …/reply', async () => {
-  const K = await kubo(['studio']); let risposta = null;
+  const K = await gestionale(['studio']); let risposta = null;
   const rec = (id, nome, stelle, testo, quando, rr) => ({ name: `accounts/111111/locations/222222/reviews/${id}`, reviewId: id, reviewer: { displayName: nome }, starRating: stelle, comment: testo, createTime: quando, updateTime: quando, ...(rr ? { reviewReply: { comment: rr } } : {}) });
   const tutte = [rec('rev-vecchia1', 'Carla', 'FOUR', 'Bene', '2026-09-01T10:00:00Z', 'Grazie Carla!')];
   const S = await finto({
@@ -251,7 +251,7 @@ test('Recensioni Google: il primo giro segna il punto, poi le nuove diventano av
 });
 
 test('Trustpilot: recensioni nuove come avviso (apikey), risposta e invito con il token client_credentials', async () => {
-  const K = await kubo(['studio']); const tok = [], inviti = [], risposte = [];
+  const K = await gestionale(['studio']); const tok = [], inviti = [], risposte = [];
   const rv = (id, nome, stelle, titolo, quando) => ({ id, consumer: { displayName: nome }, stars: stelle, title: titolo, text: titolo, createdAt: quando });
   const tutte = [rv('5f0000000000000000000001', 'Carla', 5, 'Ottimo', '2026-09-01T10:00:00Z')];
   const S = await finto({

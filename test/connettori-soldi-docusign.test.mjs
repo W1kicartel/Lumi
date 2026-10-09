@@ -3,13 +3,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { generateKeyPairSync, createVerify } from 'node:crypto';
-import { finto, kubo, accendi, manda, firmaHmacDi } from './connettori-finto.mjs';
+import { finto, gestionale, accendi, manda, firmaHmacDi } from './connettori-finto.mjs';
 
 const IK = '0f6a2b6e-1111-4c2d-9e3f-123456789abc', UTENTE = '7d1e9a40-2222-4b5c-8d6e-abcdefabcdef', CONTO = 'a1b2c3d4-3333-4e5f-9a0b-0123456789ab';
 
 test('DocuSign: JWT Grant firmato, conto da userinfo, busta con il PDF e la firma ancorata, Connect HMAC → accettato, doppione, firma sbagliata', async () => {
   const { publicKey, privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048, publicKeyEncoding: { type: 'spki', format: 'pem' }, privateKeyEncoding: { type: 'pkcs8', format: 'pem' } });
-  const K = await kubo(['professionista']); let busta = null, token = 0, url = '';
+  const K = await gestionale(['professionista']); let busta = null, token = 0, url = '';
   const S = await finto({
     'POST /oauth/token': (p, c) => {
       assert.equal(c.grant_type, 'urn:ietf:params:oauth:grant-type:jwt-bearer');
@@ -35,7 +35,7 @@ test('DocuSign: JWT Grant firmato, conto da userinfo, busta con il PDF e la firm
     assert.equal(busta.recipients.signers[0].tabs.signHereTabs[0].anchorString, 'Firma per accettazione');
     const pdf = Buffer.from(busta.documents[0].documentBase64, 'base64').toString('latin1');
     assert.match(pdf, /^%PDF-/); assert.match(pdf, /Firma per accettazione/); assert.match(pdf, /Progetto grafico/);
-    assert.equal(busta.customFields.textCustomFields[0].value, `kubo-p-${p.id}`);
+    assert.equal(busta.customFields.textCustomFields[0].value, `lumi-p-${p.id}`);
     assert.equal((await K.chiama('GET', `/api/dati/preventivi/${p.id}`)).json.stato, 'inviato');
     const ev = JSON.stringify({ event: 'envelope-completed', apiVersion: 'v2.1', generatedDateTime: '2026-10-09T10:00:00Z', data: { accountId: CONTO, envelopeId: 'env-0001' } });
     assert.equal((await manda(K, '/api/connettori/docusign/in', ev, { 'X-DocuSign-Signature-1': firmaHmacDi('altra', ev) })).stato, 401);

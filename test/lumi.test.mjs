@@ -1,4 +1,4 @@
-// Prove di Lumi dentro Kubo, senza rete: un finto Claude locale (risposte SSE registrate) fa la parte dell'API di
+// Prove dell'assistente Lumi, senza rete: un finto Claude locale (risposte SSE registrate) fa la parte dell'API di
 // Anthropic. Si provano la chiave (mai al browser, file 600), la chat in streaming, il limite per utente, gli strumenti
 // generati dallo schema dei tre modelli, letture e proposte con i permessi, la modifica dello schema e le automazioni
 // applicate solo dopo la conferma, «Da vedere» e il riepilogo.
@@ -15,7 +15,7 @@ import { strumentiAnthropic } from '../server/moduli/lumi/nucleo.js';
 import { strumenti } from '../web/moduli/lumi/strumenti.js';
 
 attiva();
-delete process.env.ANTHROPIC_API_KEY; delete process.env.DEEPGRAM_API_KEY; delete process.env.KUBO_LUMI_LIMITE;
+delete process.env.ANTHROPIC_API_KEY; delete process.env.DEEPGRAM_API_KEY; delete process.env.LUMI_LUMI_LIMITE;
 const CHIAVE = 'sk-ant-prova-0123456789abcdef';
 
 // ---------- il finto Claude: registra le richieste e risponde con un flusso SSE come quello vero ----------
@@ -45,11 +45,11 @@ before(async () => {
 });
 after(() => finto.close());
 
-// ---------- Kubo, come in api.test.mjs ----------
+// ---------- Lumi, come in api.test.mjs ----------
 async function avvia(db = apri()) {
   const srv = creaServer(db); await new Promise(r => srv.listen(0, '127.0.0.1', r));
   const base = `http://127.0.0.1:${srv.address().port}`; let biscotto = '';
-  const grezza = (metodo, percorso, corpo) => fetch(base + percorso, { method: metodo, headers: { 'Content-Type': 'application/json', 'X-Kubo': '1', ...(biscotto ? { Cookie: biscotto } : {}) }, body: corpo ? JSON.stringify(corpo) : undefined })
+  const grezza = (metodo, percorso, corpo) => fetch(base + percorso, { method: metodo, headers: { 'Content-Type': 'application/json', 'X-Lumi': '1', ...(biscotto ? { Cookie: biscotto } : {}) }, body: corpo ? JSON.stringify(corpo) : undefined })
     .then(r => { const c = r.headers.get('set-cookie'); if (c) biscotto = c.split(';')[0]; return r; });
   const chiama = async (metodo, percorso, corpo) => { const r = await grezza(metodo, percorso, corpo); return { stato: r.status, json: await r.json().catch(() => null) }; };
   // la stessa api() del browser (web/ui.js), per gli strumenti
@@ -57,7 +57,7 @@ async function avvia(db = apri()) {
   const accedi = (email, password) => { biscotto = ''; return chiama('POST', '/api/accedi', { email, password }); };
   return { srv, db, grezza, chiama, api, accedi };
 }
-const configura = (k, modelli = ['negozio']) => k.chiama('POST', '/api/configura', { azienda: 'Bottega Prova', nome: 'Titolare', email: 'titolare@esempio.it', password: 'prova-kubo-1', modelli });
+const configura = (k, modelli = ['negozio']) => k.chiama('POST', '/api/configura', { azienda: 'Bottega Prova', nome: 'Titolare', email: 'titolare@esempio.it', password: 'prova-lumi-1', modelli });
 const eventi = testo => testo.split('\n\n').filter(Boolean).map(x => JSON.parse(x.replace(/^data: /, '')));
 const domanda = { azione: 'chat', messaggi: [{ role: 'user', content: 'Quanto ho venduto questa settimana?' }], strumenti: [{ nome: 'riepilogo', descrizione: 'conti', schema: { type: 'object', properties: {} } }] };
 const genera = async (k, extra = {}) => { const st = await k.api('GET', '/stato'); return strumenti({ schema: await k.api('GET', '/schema'), api: k.api, poteri: st.poteri, ...extra }); };
@@ -106,7 +106,7 @@ test('chiave mai al browser, chat in streaming verso il finto Claude, limite per
     assert.equal((await k.chiama('POST', '/api/lumi/verifica', { entita: [] })).stato, 403);
 
     // spento dal titolare: nessuno chiede più a Claude
-    await k.accedi('titolare@esempio.it', 'prova-kubo-1');
+    await k.accedi('titolare@esempio.it', 'prova-lumi-1');
     await k.chiama('PUT', '/api/lumi/impostazioni', { attivo: false, limite: 50 });
     assert.equal((await k.chiama('POST', '/api/lumi', { azione: 'stato' })).json.claude, false);
     assert.equal((await k.chiama('POST', '/api/lumi', domanda)).stato, 400);
@@ -116,8 +116,8 @@ test('chiave mai al browser, chat in streaming verso il finto Claude, limite per
 });
 
 test('la chiave sta in un file con permessi 600 accanto al database, non nel database', async () => {
-  const cartella = mkdtempSync(join(tmpdir(), 'kubo-lumi-'));
-  const k = await avvia(apri(join(cartella, 'kubo.db')));
+  const cartella = mkdtempSync(join(tmpdir(), 'modulo-lumi-'));
+  const k = await avvia(apri(join(cartella, 'lumi.db')));
   try {
     await configura(k);
     assert.equal((await k.chiama('PUT', '/api/lumi/impostazioni', { chiave: CHIAVE })).stato, 200);
@@ -311,7 +311,7 @@ test('archiviare a parole: solo i campi chiesti, mai quelli nascosti a chi propo
     lista = await genera(k);
     const r = await perNome(lista, 'proponi_modifica_schema').proponi({ operazioni: [{ tipo: 'aggiungi_campo', sezione: 'articoli', nome: 'Colore', tipo_campo: 'testo' }] });
     assert.match(r.errore, /articoli\.costo.*titolare/);
-    await k.accedi('titolare@esempio.it', 'prova-kubo-1');
+    await k.accedi('titolare@esempio.it', 'prova-lumi-1');
     assert.ok((await k.api('GET', '/schema')).find(e => e.id === 'articoli').campi.some(c => c.id === 'costo'));
   } finally { k.srv.close(); }
 });

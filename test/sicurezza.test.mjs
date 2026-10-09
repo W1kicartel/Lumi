@@ -23,7 +23,7 @@ async function avvia(modelli = ['negozio']) {
     let biscotto = '';
     const chiama = async (metodo, percorso, corpo) => {
       const r = await fetch(base + percorso, { method: metodo, body: corpo ? JSON.stringify(corpo) : undefined,
-        headers: { 'Content-Type': 'application/json', 'X-Kubo': '1', 'User-Agent': 'prova', ...(biscotto ? { Cookie: biscotto } : {}) } });
+        headers: { 'Content-Type': 'application/json', 'X-Lumi': '1', 'User-Agent': 'prova', ...(biscotto ? { Cookie: biscotto } : {}) } });
       const c = r.headers.get('set-cookie'); if (c) biscotto = c.split(';')[0];
       return { stato: r.status, intestazioni: r.headers, json: await r.json().catch(() => null) };
     };
@@ -38,11 +38,11 @@ async function avvia(modelli = ['negozio']) {
 test('password: robustezza, anche al primo avvio e per le persone nuove', async () => {
   for (const p of ['corta1', 'password', 'Password123', '12345678', 'aaaaaaaaaa', 'soloLettere']) assert.ok(robustezza(p), p);
   assert.ok(robustezza('giuliana', { nome: 'Giuliana Rossi' })); assert.ok(robustezza('mario.rossi', { email: 'mario.rossi@x.it' }) === null || true);
-  for (const p of ['password-lunga', 'prova-kubo-1', 'tre parole lunghe', 'Zx9!kq2#']) assert.equal(robustezza(p), null, p);
+  for (const p of ['password-lunga', 'prova-lumi-1', 'tre parole lunghe', 'Zx9!kq2#']) assert.equal(robustezza(p), null, p);
   const k = await avvia();
   try {
     const db2 = apri(), s2 = creaServer(db2); await new Promise(r => s2.listen(0, '127.0.0.1', r));
-    const r = await fetch(`http://127.0.0.1:${s2.address().port}/api/configura`, { method: 'POST', headers: { 'X-Kubo': '1' }, body: JSON.stringify({ azienda: 'X', nome: 'T', email: 'x@x.it', password: '12345678' }) });
+    const r = await fetch(`http://127.0.0.1:${s2.address().port}/api/configura`, { method: 'POST', headers: { 'X-Lumi': '1' }, body: JSON.stringify({ azienda: 'X', nome: 'T', email: 'x@x.it', password: '12345678' }) });
     assert.equal(r.status, 400); s2.close();
     assert.equal((await k.t('POST', '/api/utenti', { nome: 'Giulia', email: 'g@prova.it', password: 'qwertyuiop', ruolo: 'collaboratore' })).stato, 400);
     assert.equal((await k.t('POST', '/api/utenti', { nome: 'Giulia', email: 'g@prova.it', password: 'password-giulia', ruolo: 'collaboratore' })).stato, 200);
@@ -57,7 +57,7 @@ test('intestazioni: CSP stretta per l\'interfaccia e niente sniffing', async () 
       assert.match(csp, /script-src 'self'(;|$)/); assert.match(csp, /object-src 'none'/); assert.match(csp, /frame-ancestors 'none'/);
       assert.equal(r.headers.get('x-content-type-options'), 'nosniff'); assert.equal(r.headers.get('x-frame-options'), 'DENY');
     }
-    assert.equal((await fetch(k.base + '/api/esci', { method: 'POST' })).status, 403);   // CSRF: senza X-Kubo niente scritture
+    assert.equal((await fetch(k.base + '/api/esci', { method: 'POST' })).status, 403);   // CSRF: senza X-Lumi niente scritture
   } finally { k.chiudi(); }
 });
 
@@ -193,14 +193,14 @@ test('webhook: niente rete interna (SSRF), salvo opzione esplicita', async () =>
   for (const ip of ['8.8.8.8', '151.101.1.69', '2a00:1450:4002::1', '::ffff:808:808']) assert.equal(interno(ip), false, ip);
   for (const u of ['http://127.0.0.1/x', 'http://localhost:8080/', 'http://[::1]/', 'http://[::ffff:127.0.0.1]/', 'http://[::ffff:a9fe:a9fe]/', 'http://0x7f000001/', 'http://2130706433/', 'http://192.168.1.1/', 'http://router.lan/', 'http://intranet/', 'http://u:p@esempio.it/'])
     assert.ok(controllaUrl(u), u);
-  assert.equal(controllaUrl('https://hooks.esempio.it/kubo'), null);
+  assert.equal(controllaUrl('https://hooks.esempio.it/lumi'), null);
   assert.equal(controllaUrl('http://127.0.0.1:9/x', { interni: true }), null);
   const k = await avvia();
   try {
     assert.equal((await k.t('PUT', '/api/webhook/nuovo', { url: 'http://169.254.169.254/latest/meta-data' })).stato, 400);
-    assert.equal((await k.t('PUT', '/api/webhook/nuovo', { url: 'https://hooks.esempio.it/kubo' })).stato, 200);
+    assert.equal((await k.t('PUT', '/api/webhook/nuovo', { url: 'https://hooks.esempio.it/lumi' })).stato, 200);
     await k.t('PUT', '/api/sicurezza/impostazioni', { webhookInterni: true });
-    assert.equal((await k.t('PUT', '/api/webhook/nuovo', { url: 'http://127.0.0.1:9/kubo' })).stato, 200);
+    assert.equal((await k.t('PUT', '/api/webhook/nuovo', { url: 'http://127.0.0.1:9/lumi' })).stato, 200);
   } finally { k.chiudi(); }
 });
 
@@ -306,7 +306,7 @@ test('Lumi: i token del flusso si contano per persona e per mese', async () => {
   try {
     assert.equal((await k.t('PUT', '/api/lumi/impostazioni', { chiave: 'sk-ant-prova-0123456789abcdef' })).stato, 200);
     const domanda = { azione: 'chat', messaggi: [{ role: 'user', content: 'Ciao' }] };
-    for (let i = 0; i < 2; i++) { const r = await fetch(k.base + '/api/lumi', { method: 'POST', headers: { 'X-Kubo': '1', 'Content-Type': 'application/json', Cookie: k.biscotto() }, body: JSON.stringify(domanda) }); assert.equal(r.status, 200); await r.text(); }
+    for (let i = 0; i < 2; i++) { const r = await fetch(k.base + '/api/lumi', { method: 'POST', headers: { 'X-Lumi': '1', 'Content-Type': 'application/json', Cookie: k.biscotto() }, body: JSON.stringify(domanda) }); assert.equal(r.status, 200); await r.text(); }
     const u = (await k.t('GET', '/api/sicurezza/lumi')).json;
     assert.equal(u.usati, 2 * 912); assert.equal(u.persone[0].nome, 'Titolare');
     await k.t('PUT', '/api/sicurezza/impostazioni', { lumiBudget: 1500 });

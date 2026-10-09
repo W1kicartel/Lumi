@@ -2,7 +2,7 @@
 // (copiaXmlDi) non tocca il contatore e riusa il nome del file già inviato. Contro un finto Openapi, senza rete.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { finto, kubo, accendi } from './connettori-finto.mjs';
+import { finto, gestionale, accendi } from './connettori-finto.mjs';
 import * as X from '../server/moduli/documenti-xml.js';
 import { xmlDi, copiaXmlDi } from '../connettori/openapi-sdi/connettore.js';
 import { documentoDi } from '../connettori/_comunica/documento.js';
@@ -20,7 +20,7 @@ const contatore = K => K.db.prepare("SELECT ultimo FROM _numeratori WHERE serie 
 const progressivo = x => /<ProgressivoInvio>(\w+)<\/ProgressivoInvio>/.exec(x)?.[1];
 
 test('copia dell\'XML: mai inviata = progressivo fisso dall\'id; dopo l\'invio = stesso file dello SDI; il contatore non si muove', async () => {
-  const K = await kubo(['negozio', 'fatture']), n = { uuid: 0 };
+  const K = await gestionale(['negozio', 'fatture']), n = { uuid: 0 };
   const S = await finto({ 'POST /invoices': () => ({ data: { uuid: `o-${++n.uuid}` } }) });
   try {
     await accendi(K, 'openapi-sdi', { base: S.url, segreti: { token: 'tok-prova' } });
@@ -46,7 +46,7 @@ test('copia dell\'XML: mai inviata = progressivo fisso dall\'id; dopo l\'invio =
 });
 
 test('xmlDi (invio allo SDI) consuma un progressivo nuovo a ogni chiamata; la copia segue l\'ultimo invio', async () => {
-  const K = await kubo(['negozio', 'fatture']);
+  const K = await gestionale(['negozio', 'fatture']);
   try {
     await accendi(K, 'openapi-sdi', { segreti: { token: 'tok-prova' } });
     const f = await fattura(K), k = K.nucleo.k('openapi-sdi'), riga = k.dati.leggi('fatture', f.id), c0 = contatore(K);

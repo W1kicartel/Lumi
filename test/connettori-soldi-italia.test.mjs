@@ -1,7 +1,7 @@
 // I connettori italiani della fatturazione e della contabilità (Fattura24, Reviso) contro finti servizi locali. Nessuna chiamata vera.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { finto, kubo, accendi } from './connettori-finto.mjs';
+import { finto, gestionale, accendi } from './connettori-finto.mjs';
 
 const AZ = { ragione_sociale: 'Bottega Prova srl', piva: '12345678903', codice_fiscale: '12345678903', regime: 'RF01', via: 'Via dei Mille 10', cap: '20121', comune: 'Milano', provincia: 'MI', email: 'info@bottega.example', iban: 'IT60X0542811101000000123456', aliquota: 22 };
 async function fattura(K, righe = [{ descrizione: 'Riparazione', quantita: 1, prezzo: 100, aliquota: 22 }], extra = {}) {
@@ -16,7 +16,7 @@ const xml = corpo => ({ stato: 200, intestazioni: { 'Content-Type': 'text/xml; c
 const campo = (x, n) => new RegExp(`<${n}>([^<]*)</${n}>`).exec(x)?.[1];
 
 test('Fattura24: TestKey, SaveDocument FE form-encoded con cliente, righe, natura e pagamento; collegata, niente doppioni', async () => {
-  const K = await kubo(['fatture']); const salvati = [];
+  const K = await gestionale(['fatture']); const salvati = [];
   const S = await finto({
     'POST /api/v0.3/TestKey': (p, c) => xml(c.apiKey === 'f24-prova' ? '<root><returnCode>1</returnCode><description>Complimenti, la tua API KEY è corretta.</description></root>' : '<root><returnCode>-1</returnCode><description>API KEY non valida</description></root>'),
     // la risposta come nell'esempio ufficiale, con il tag di chiusura sbagliato di docNumber
@@ -36,7 +36,7 @@ test('Fattura24: TestKey, SaveDocument FE form-encoded con cliente, righe, natur
     assert.match(x, /<Row><Description>Riparazione &lt;urgente&gt;<\/Description><Qty>2<\/Qty><Um\/><Price>50\.00<\/Price><VatCode>22<\/VatCode><VatDescription>22%<\/VatDescription><\/Row>/);
     assert.match(x, /<Row><Description>Spese anticipate<\/Description><Qty>1<\/Qty><Um\/><Price>10\.00<\/Price><VatCode>0<\/VatCode><VatDescription>N1<\/VatDescription><FeVatNature>N1<\/FeVatNature><\/Row>/);
     assert.match(x, /<Payments><Payment><Date>2026-09-01<\/Date><Amount>132\.00<\/Amount><Paid>false<\/Paid><\/Payment><\/Payments>/);
-    // la fattura non è ancora allo SDI: lo stato in Kubo non cambia; il secondo invio si rifiuta senza chiamare
+    // la fattura non è ancora allo SDI: lo stato in Lumi non cambia; il secondo invio si rifiuta senza chiamare
     assert.equal((await K.chiama('GET', `/api/dati/fatture/${f.id}`)).json.stato, 'emessa');
     assert.equal((await K.chiama('POST', '/api/connettori/fattura24/azioni/crea', { args: { fattura: f.id } })).stato, 502); assert.equal(salvati.length, 1);
     // una chiave sbagliata: la prova lo dice
@@ -46,7 +46,7 @@ test('Fattura24: TestKey, SaveDocument FE form-encoded con cliente, righe, natur
 });
 
 test('Fattura24: un errore dell\'API (returnCode negativo) non collega la fattura; la ritenuta si rifiuta prima di chiamare', async () => {
-  const K = await kubo(['fatture']); let n = 0;
+  const K = await gestionale(['fatture']); let n = 0;
   const S = await finto({ 'POST /api/v0.3/SaveDocument': () => { n++; return xml('<root><returnCode>-12</returnCode><description>Codice destinatario non valido</description></root>'); } });
   try {
     const { f } = await fattura(K);
@@ -60,7 +60,7 @@ test('Fattura24: un errore dell\'API (returnCode negativo) non collega la fattur
 });
 
 test('Reviso: i due token, cliente cercato per partita IVA e creato, bozza con le righe, registrata a scelta; niente doppioni; il giro esporta le nuove', async () => {
-  const K = await kubo(['fatture']); const clienti = [], bozze = [], registrate = [], cercati = [];
+  const K = await gestionale(['fatture']); const clienti = [], bozze = [], registrate = [], cercati = [];
   const tok = int => { assert.equal(int['x-appsecrettoken'], 'app-prova'); assert.equal(int['x-agreementgranttoken'], 'grant-prova'); };
   const S = await finto({
     'GET /self': (p, c, { intestazioni }) => { tok(intestazioni); return { agreementNumber: 123456, company: { name: 'Bottega Prova srl' } }; },
@@ -81,7 +81,7 @@ test('Reviso: i due token, cliente cercato per partita IVA e creato, bozza con l
     assert.deepEqual(c.vatZone, { vatZoneNumber: 1 }); assert.equal(c.vatNumber, '00743110157'); assert.equal(c.city, 'Torino'); assert.equal(c.email, 'amm@rossi.example');
     const b = bozze[0];
     assert.equal(b.date, '2026-09-01'); assert.equal(b.dueDate, '2026-10-01'); assert.equal(b.currency, 'EUR'); assert.deepEqual(b.customer, { customerNumber: 100 }); assert.deepEqual(b.paymentTerms, { paymentTermsNumber: 3 });
-    assert.equal(b.recipient.name, 'Rossi & Figli srl'); assert.deepEqual(b.recipient.vatZone, { vatZoneNumber: 1 }); assert.match(b.references.other, /^Kubo /);
+    assert.equal(b.recipient.name, 'Rossi & Figli srl'); assert.deepEqual(b.recipient.vatZone, { vatZoneNumber: 1 }); assert.match(b.references.other, /^Lumi /);
     assert.deepEqual(b.lines, [{ lineNumber: 1, description: 'Riparazione', quantity: 2, unitNetPrice: 90, vatAccount: { vatCode: 'V22' } }]);
     assert.equal(registrate.length, 0);
     assert.equal((await K.chiama('POST', '/api/connettori/reviso/azioni/esporta', { args: { fattura: f.id } })).stato, 502); assert.equal(bozze.length, 1);
@@ -90,7 +90,7 @@ test('Reviso: i due token, cliente cercato per partita IVA e creato, bozza con l
     await accendi(K, 'reviso', { base: S.url, segreti: { app: 'app-prova', contratto: 'grant-prova' }, impostazioni: { registra: true, giorni: 3650 } });
     const r2 = await K.chiama('POST', '/api/connettori/reviso/azioni/esporta', { args: { fattura: g.id } });
     assert.equal(r2.stato, 200, JSON.stringify(r2.json)); assert.equal(r2.json.registrata, 5001); assert.deepEqual(registrate, [{ id: 72 }]);
-    // il secondo «Rossi» (stessa partita IVA, riga nuova in Kubo) si trova in Reviso e non si ricrea
+    // il secondo «Rossi» (stessa partita IVA, riga nuova in Lumi) si trova in Reviso e non si ricrea
     assert.equal(clienti.length, 1); assert.equal(bozze[1].customer.customerNumber, 100);
     // il giro: una fattura nuova, le due già esportate saltate
     const { f: h } = await fattura(K);

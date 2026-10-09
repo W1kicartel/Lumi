@@ -3,12 +3,12 @@
 // distingue due fatture con lo stesso importo, un'uscita paga una fattura ricevuta. Senza la sezione il giro si ferma e lo dice.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { finto, kubo, accendi } from './connettori-finto.mjs';
+import { finto, gestionale, accendi } from './connettori-finto.mjs';
 
 const AZ = { ragione_sociale: 'Bottega Prova srl', piva: '12345678903', codice_fiscale: '12345678903', regime: 'RF01', via: 'Via dei Mille 10', cap: '20121', comune: 'Milano', provincia: 'MI', email: 'info@bottega.example', iban: 'IT60X0542811101000000123456', aliquota: 22 };
 
 test('banca → tesoreria: movimenti in «Movimenti di banca» senza doppioni, abbinamento della tesoreria', async () => {
-  const K = await kubo(['fatture']); let movimenti = [];
+  const K = await gestionale(['fatture']); let movimenti = [];
   const S = await finto({
     'GET /v2/organization': () => ({ organization: { bank_accounts: [{ id: 'conto-1', slug: 'bottega-1', iban: 'IT00X0000000000000000000001', status: 'active' }] } }),
     'GET /v2/transactions': () => ({ transactions: movimenti, meta: { next_page: null } }),

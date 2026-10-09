@@ -80,7 +80,7 @@ test('FatturaPA FPR12: il file è quello atteso, ben formato, con il nome giusto
   const { nome, xml: x } = xml(AZ, FATTURA, CLIENTE, { progressivo: '0000A' });
   assert.equal(nome, 'IT12345678903_0000A.xml');
   const atteso = join(QUI, 'documenti', 'fattura-attesa.xml');
-  if (process.env.KUBO_AGGIORNA_ATTESI) writeFileSync(atteso, x);
+  if (process.env.LUMI_AGGIORNA_ATTESI) writeFileSync(atteso, x);
   assert.equal(x, readFileSync(atteso, 'utf8'));
   // l'ordine degli elementi che lo schema XSD pretende
   const ordine = (padre, figli) => { const blocco = x.slice(x.indexOf(`<${padre}>`), x.indexOf(`</${padre}>`)); const pos = figli.map(f => blocco.indexOf(`<${f}>`)); assert.ok(pos.every((p, i) => p >= 0 && (i === 0 || p > pos[i - 1])), `${padre}: ${figli}`); };
@@ -151,11 +151,11 @@ test('dati dell\'azienda, logo e stampa', () => {
 });
 
 test('API: crea fattura da una vendita, stampa, controlli e XML; permessi rispettati', async () => {
-  const cartella = mkdtempSync(join(tmpdir(), 'kubo-doc-')), db = apri(join(cartella, 'kubo.db'));
+  const cartella = mkdtempSync(join(tmpdir(), 'lumi-doc-')), db = apri(join(cartella, 'lumi.db'));
   const srv = creaServer(db); await new Promise(r => srv.listen(0, '127.0.0.1', r));
   const base = `http://127.0.0.1:${srv.address().port}`; let biscotto = '';
   const chiama = async (metodo, percorso, corpo) => {
-    const r = await fetch(base + percorso, { method: metodo, headers: { 'Content-Type': 'application/json', 'X-Kubo': '1', ...(biscotto ? { Cookie: biscotto } : {}) }, body: corpo ? JSON.stringify(corpo) : undefined });
+    const r = await fetch(base + percorso, { method: metodo, headers: { 'Content-Type': 'application/json', 'X-Lumi': '1', ...(biscotto ? { Cookie: biscotto } : {}) }, body: corpo ? JSON.stringify(corpo) : undefined });
     const c = r.headers.get('set-cookie'); if (c) biscotto = c.split(';')[0];
     return { stato: r.status, json: await r.json().catch(() => null) };
   };
@@ -241,12 +241,12 @@ test('verifica: numeri scritti a mano, logo sbagliato, cliente estero, fattura a
   const db = gestionale();
   const cl = D.crea(db, 'clienti', { nome: 'Rossi' });
   const nuova = (v) => D.crea(db, 'fatture', { cliente: cl.id, righe: [{ descrizione: 'x', prezzo: 10, aliquota: 22 }], ...v });
-  // fatture riportate a mano con i numeri 1 e 2: la prima emessa da Kubo prende il 3, non si blocca sul doppione
+  // fatture riportate a mano con i numeri 1 e 2: la prima emessa da Lumi prende il 3, non si blocca sul doppione
   nuova({ data: '2026-01-10', numero: '1', stato: 'emessa' }); nuova({ data: '2026-01-11', numero: '2', stato: 'emessa' });
   const b = nuova({ data: '2026-02-01' }); D.modifica(db, 'fatture', b.id, { stato: 'emessa' });
   assert.equal(D.leggi(db, 'fatture', b.id).numero, '3');
   // un logo sbagliato non cancella quello che c'era (anche su disco)
-  const dir = mkdtempSync(join(tmpdir(), 'kubo-logo-')), dbf = apri(join(dir, 'kubo.db'));
+  const dir = mkdtempSync(join(tmpdir(), 'lumi-logo-')), dbf = apri(join(dir, 'lumi.db'));
   const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
   salvaLogo(dbf, meta, png);
   assert.throws(() => salvaLogo(dbf, meta, 'data:image/png;base64,AAAA'), /PNG o un JPEG/);

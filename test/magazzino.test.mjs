@@ -78,11 +78,11 @@ test('strumenti di Lumi e rotte, con i permessi', async () => {
   const a = await strumenti[2].anteprima({ ctx: null, args: { inventario: id } });
   assert.ok(a.avvisi[0].includes('non contati'));
 
-  const cartella = mkdtempSync(join(tmpdir(), 'kubo-magazzino-')), db = apri(join(cartella, 'kubo.db'));
+  const cartella = mkdtempSync(join(tmpdir(), 'lumi-magazzino-')), db = apri(join(cartella, 'lumi.db'));
   const srv = creaServer(db); await new Promise(r => srv.listen(0, '127.0.0.1', r));
   const base = `http://127.0.0.1:${srv.address().port}`; let biscotto = '';
   const chiama = async (metodo, percorso, corpo) => {
-    const r = await fetch(base + percorso, { method: metodo, headers: { 'Content-Type': 'application/json', 'X-Kubo': '1', ...(biscotto ? { Cookie: biscotto } : {}) }, body: corpo ? JSON.stringify(corpo) : undefined });
+    const r = await fetch(base + percorso, { method: metodo, headers: { 'Content-Type': 'application/json', 'X-Lumi': '1', ...(biscotto ? { Cookie: biscotto } : {}) }, body: corpo ? JSON.stringify(corpo) : undefined });
     const c = r.headers.get('set-cookie'); if (c) biscotto = c.split(';')[0];
     const t = await r.text(); let json = null; try { json = JSON.parse(t); } catch { json = null; }
     return { stato: r.status, tipo: r.headers.get('content-type'), json, testo: t };

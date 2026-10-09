@@ -3,12 +3,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
-import { finto, kubo, accendi, manda } from './connettori-finto.mjs';
+import { finto, gestionale, accendi, manda } from './connettori-finto.mjs';
 import { coda } from './connettori-comunica-coda.mjs';
 
 
 test('Webhook: eventi delle sezioni scelte firmati come Stripe, creato/modificato, entrata con il codice che non duplica i clienti', async () => {
-  const K = await kubo(['negozio', 'studio']), arrivi = [];
+  const K = await gestionale(['negozio', 'studio']), arrivi = [];
   const S = await finto({ 'POST /hook/n8n': (p, c, { intestazioni }) => { arrivi.push({ c, h: intestazioni }); return { ok: true }; } });
   try {
     const pag = await accendi(K, 'webhook-semplice', { segreti: { url: `${S.url}/hook/n8n` }, impostazioni: { sezioni: 'clienti, appuntamenti' } });
@@ -19,9 +19,9 @@ test('Webhook: eventi delle sezioni scelte firmati come Stripe, creato/modificat
     await K.chiama('POST', '/api/dati/articoli', { nome: 'Vaso', codice: 'V1', prezzo: 3 }); await coda(K);   // sezione non scelta
     const ev = arrivi.slice(1);
     assert.deepEqual(ev.map(x => x.c.evento), ['clienti.creato', 'clienti.modificato']);
-    assert.equal(ev[0].c.riga.nome, 'Sara Galli'); assert.equal(ev[1].c.riga.telefono, '3331112222'); assert.equal(ev[0].h['x-kubo-evento'], 'clienti.creato');
+    assert.equal(ev[0].c.riga.nome, 'Sara Galli'); assert.equal(ev[1].c.riga.telefono, '3331112222'); assert.equal(ev[0].h['x-lumi-evento'], 'clienti.creato');
     // la firma: t=<secondi>,v1=HMAC-SHA256(segreto, "t.corpo") sul corpo esatto
-    const [, t, v1] = /^t=(\d+),v1=([0-9a-f]{64})$/.exec(ev[0].h['x-kubo-firma']);
+    const [, t, v1] = /^t=(\d+),v1=([0-9a-f]{64})$/.exec(ev[0].h['x-lumi-firma']);
     assert.equal(createHmac('sha256', firma).update(`${t}.${JSON.stringify(ev[0].c)}`).digest('hex'), v1);
     // in entrata: Make crea un appuntamento e un cliente; lo stesso cliente non si duplica; una sezione non permessa no
     assert.equal((await manda(K, '/api/connettori/webhook-semplice/in/sbagliato', '{}')).stato, 401);
@@ -38,7 +38,7 @@ test('Webhook: eventi delle sezioni scelte firmati come Stripe, creato/modificat
 });
 
 test('ntfy, Pushover e Google Chat: argomento segreto generato, priorità, chiavi nel form, avvisi delle vendite', async () => {
-  const K = await kubo(['negozio']), push = [];
+  const K = await gestionale(['negozio']), push = [];
   const S = await finto({
     'POST /:topic': (p, c, { intestazioni }) => { push.push({ topic: p.topic, c, h: intestazioni }); return { id: 'n1', event: 'message' }; },
     'POST /1/messages.json': c => ({}),
@@ -49,7 +49,7 @@ test('ntfy, Pushover e Google Chat: argomento segreto generato, priorità, chiav
     const pag = await accendi(K, 'ntfy', { base: S.url, segreti: { token: 'tk_prova' }, impostazioni: { priorita: '4' } });
     const topic = pag.impostazioni.find(i => i.id === 'argomento').valore; assert.match(topic, /^[\w-]{30,64}$/);
     assert.equal((await K.chiama('POST', '/api/connettori/ntfy/prova')).json.ok, true);
-    assert.deepEqual([push[0].topic, push[0].c, push[0].h.priority, push[0].h.title, push[0].h.authorization], [topic, 'Kubo è collegato a questo canale.', '4', 'Kubo', 'Bearer tk_prova']);
+    assert.deepEqual([push[0].topic, push[0].c, push[0].h.priority, push[0].h.title, push[0].h.authorization], [topic, 'Lumi è collegato a questo canale.', '4', 'Lumi', 'Bearer tk_prova']);
     await accendi(K, 'pushover', { base: P.url, segreti: { token: 'a'.repeat(30), utente: 'u'.repeat(30) } });
     await accendi(K, 'google-chat', { segreti: { url: `${S.url}/v1/spaces/AAA/messages?key=k&token=t` } });
     const art = (await K.chiama('POST', '/api/dati/articoli', { nome: 'Vaso', codice: 'V1', prezzo: 25, giacenza: 9 })).json;

@@ -2,13 +2,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
-import { finto, kubo, accendi, manda, firmaHmacDi } from './connettori-finto.mjs';
+import { finto, gestionale, accendi, manda, firmaHmacDi } from './connettori-finto.mjs';
 
 const aspetta = async K => { await new Promise(r => setTimeout(r, 50)); await K.nucleo.lavora(); };
 const articolo = async (K, codice) => (await K.chiama('GET', `/api/dati/articoli?q=${encodeURIComponent(codice)}`)).json.righe.find(a => a.codice === codice);
 
 test('PrestaShop: prodotti e combinazioni a pagine, giacenza in XML con l\'oggetto intero, ordini pagati → vendite con il cliente', async () => {
-  const K = await kubo(), put = [];
+  const K = await gestionale(), put = [];
   const scorte = [{ id: 1, id_product: 10, id_product_attribute: 0, quantity: '7' }, { id: 2, id_product: 11, id_product_attribute: 0, quantity: '0' }, { id: 3, id_product: 11, id_product_attribute: 5, quantity: '2' }];
   const S = await finto({
     'GET /api/': () => ({ api: {} }),
@@ -53,7 +53,7 @@ test('PrestaShop: prodotti e combinazioni a pagine, giacenza in XML con l\'ogget
 });
 
 test('Magento: searchCriteria a pagine fino a total_count, giacenze MSI nei due sensi, ordini pagati → vendite, spedizione con tracking', async () => {
-  const K = await kubo(), su = [], spedizioni = [];
+  const K = await gestionale(), su = [], spedizioni = [];
   const S = await finto({
     'GET /rest/V1/store/storeConfigs': () => [{ base_url: 'https://negozio.example/' }],
     'GET /rest/V1/inventory/source-items': () => ({ items: [{ sku: 'MG-TAZZA', source_code: 'default', quantity: 12, status: 1 }], total_count: 1 }),
@@ -92,7 +92,7 @@ test('Magento: searchCriteria a pagine fino a total_count, giacenze MSI nei due 
 });
 
 test('BigCommerce: varianti a pagine, giacenza con adjustments/absolute, webhook non firmato col codice nell\'indirizzo → ordine riletto dall\'API', async () => {
-  const K = await kubo(), aggiustamenti = [], ganci = [];
+  const K = await gestionale(), aggiustamenti = [], ganci = [];
   const S = await finto({
     'GET /stores/abc123/v2/store': () => ({ id: 'abc123', name: 'Bottega BC' }),
     'GET /stores/abc123/v3/catalog/products': (p, c, { q }) => (q.get('page') === '1'
@@ -112,13 +112,13 @@ test('BigCommerce: varianti a pagine, giacenza con adjustments/absolute, webhook
     assert.deepEqual((await K.chiama('POST', '/api/connettori/bigcommerce/giri/prodotti')).json.risultato, { creati: 3, aggiornati: 0, uguali: 0 });
     const l = await articolo(K, 'BC-M-L'); assert.equal(l.nome, 'Maglia L'); assert.equal(l.prezzo, 32); assert.equal(l.giacenza, 1);
     await K.chiama('PATCH', `/api/dati/articoli/${l.id}`, { giacenza: 5 }); await aspetta(K);
-    assert.deepEqual(aggiustamenti[0], { reason: 'Kubo', items: [{ location_id: 2, variant_id: 12, quantity: 5 }] });
+    assert.deepEqual(aggiustamenti[0], { reason: 'Lumi', items: [{ location_id: 2, variant_id: 12, quantity: 5 }] });
     // l'indirizzo è facoltativo: senza (né qui né nella Libreria) un errore chiaro; vuoto vale quello della Libreria
     const no = await K.chiama('POST', '/api/connettori/bigcommerce/azioni/webhook', { args: {} });
-    assert.notEqual(no.stato, 200); assert.match(JSON.stringify(no.json), /indirizzo pubblico https di Kubo/); assert.equal(ganci.length, 0);
-    assert.equal((await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: 'https://kubo.bottega.example' })).stato, 200);
+    assert.notEqual(no.stato, 200); assert.match(JSON.stringify(no.json), /indirizzo pubblico https di Lumi/); assert.equal(ganci.length, 0);
+    assert.equal((await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: 'https://lumi.bottega.example' })).stato, 200);
     const w = await K.chiama('POST', '/api/connettori/bigcommerce/azioni/webhook', { args: {} });
-    assert.equal(w.json.ok, true, JSON.stringify(w.json)); assert.equal(ganci[0].destination, `https://kubo.bottega.example/api/connettori/bigcommerce/in/${codice}`);
+    assert.equal(w.json.ok, true, JSON.stringify(w.json)); assert.equal(ganci[0].destination, `https://lumi.bottega.example/api/connettori/bigcommerce/in/${codice}`);
     const ev = JSON.stringify({ scope: 'store/order/statusUpdated', store_id: '1', data: { type: 'order', id: 100, status: { previous_status_id: 7, new_status_id: 11 } }, hash: 'h1' });
     assert.equal((await manda(K, '/api/connettori/bigcommerce/in/sbagliato', ev)).stato, 401);
     assert.equal((await manda(K, `/api/connettori/bigcommerce/in/${codice}`, ev)).json.esito, 'vendita creata');
@@ -129,7 +129,7 @@ test('BigCommerce: varianti a pagine, giacenza con adjustments/absolute, webhook
 });
 
 test('Ecwid: prodotti con offset/total, giacenza in uscita, webhook firmato su «eventCreated.eventId» → ordine riletto, doppione', async () => {
-  const K = await kubo(), messi = [];
+  const K = await gestionale(), messi = [];
   const S = await finto({
     'GET /api/v3/1234567/profile': () => ({ generalInfo: { storeUrl: 'https://bottega.example' } }),
     'GET /api/v3/1234567/products': (p, c, { q }) => (q.get('offset') === '0' ? { total: 101, count: 1, offset: 0, limit: 100, items: [{ id: 501, sku: 'EC-TAZZA', name: 'Tazza', price: 8, quantity: 10 }] } : { total: 101, count: 1, offset: 100, items: [{ id: 502, sku: 'EC-PIATTO', name: 'Piatto', price: 12, quantity: 2 }] }),
@@ -154,7 +154,7 @@ test('Ecwid: prodotti con offset/total, giacenza in uscita, webhook firmato su �
 });
 
 test('Squarespace: prodotti a cursore, giacenza con setFiniteOperations e Idempotency-Key, ordini a finestra → vendite', async () => {
-  const K = await kubo(), aggiust = [];
+  const K = await gestionale(), aggiust = [];
   const S = await finto({
     'GET /1.0/commerce/inventory': () => ({ inventory: [], pagination: { hasNextPage: false } }),
     'GET /1.0/commerce/products': (p, c, { q }) => (q.get('cursor') === 'c2'
@@ -168,7 +168,7 @@ test('Squarespace: prodotti a cursore, giacenza con setFiniteOperations e Idempo
   try {
     await accendi(K, 'squarespace', { base: S.url, segreti: { chiave: 'sq-chiave' } });
     assert.equal((await K.chiama('POST', '/api/connettori/squarespace/prova')).json.ok, true);
-    assert.equal(S.chiamate[0].intestazioni.authorization, 'Bearer sq-chiave'); assert.equal(S.chiamate[0].intestazioni['user-agent'], 'Kubo-connettori/1');
+    assert.equal(S.chiamate[0].intestazioni.authorization, 'Bearer sq-chiave'); assert.equal(S.chiamate[0].intestazioni['user-agent'], 'Lumi-connettori/1');
     assert.deepEqual((await K.chiama('POST', '/api/connettori/squarespace/giri/prodotti')).json.risultato, { creati: 2, aggiornati: 0, uguali: 0 });
     const d = await articolo(K, 'SQ-DIFF'); assert.equal(d.nome, 'Diffusore Agrumi'); assert.equal(d.prezzo, 25);
     await K.chiama('PATCH', `/api/dati/articoli/${d.id}`, { giacenza: 1 }); await aspetta(K);
@@ -179,7 +179,7 @@ test('Squarespace: prodotti a cursore, giacenza con setFiniteOperations e Idempo
 });
 
 test('Wix: chiave API e wix-site-id, ordini pagati a cursore → vendite con il cliente', async () => {
-  const K = await kubo(), cercati = [];
+  const K = await gestionale(), cercati = [];
   const SITO = '0e1d2c3b-4a59-6877-8695-a4b3c2d1e0f9';
   const S = await finto({
     'POST /ecom/v1/orders/search': (p, c, { intestazioni }) => {

@@ -2,7 +2,7 @@
 // Per ognuno: prova, email al cliente, fattura con la stampa HTML e l'XML FatturaPA in allegato; mai una bozza.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { finto, kubo, accendi } from './connettori-finto.mjs';
+import { finto, gestionale, accendi } from './connettori-finto.mjs';
 import { firmaV4 } from '../connettori/_comunica/sigv4.js';
 
 const AZ = { ragione_sociale: 'Bottega Prova srl', piva: '12345678903', codice_fiscale: '12345678903', regime: 'RF01', via: 'Via dei Mille 10', cap: '20121', comune: 'Milano', provincia: 'MI', email: 'info@bottega.example', iban: 'IT60X0542811101000000123456', aliquota: 22 };
@@ -18,7 +18,7 @@ async function fattura(K) {
 const MITT = { mittente_email: 'fatture@bottega.example', mittente_nome: 'Bottega Prova' };
 
 test('email transazionali: cinque servizi, email al cliente e fattura con stampa e XML in allegato, la bozza no', async () => {
-  const K = await kubo(['negozio', 'fatture']), arrivi = {};
+  const K = await gestionale(['negozio', 'fatture']), arrivi = {};
   const segna = (id, x) => { (arrivi[id] ||= []).push(x); };
   const SES = { chiave: 'AKIA' + 'A'.repeat(16), segreto: 'segreto-ses', regione: 'eu-south-1' };
   const S = await finto({
@@ -89,7 +89,7 @@ test('email transazionali: cinque servizi, email al cliente e fattura con stampa
 });
 
 test('Gmail e Outlook (OAuth), Mailjet e MailerSend: email al cliente e fattura con gli allegati', async () => {
-  const K = await kubo(['negozio', 'fatture']), arrivi = {};
+  const K = await gestionale(['negozio', 'fatture']), arrivi = {};
   const segna = (id, x) => { (arrivi[id] ||= []).push(x); };
   const S = await finto({
     'POST /gmail/v1/users/me/messages/send': (p, c, { intestazioni }) => { segna('gmail', { c, h: intestazioni }); return { id: 'gm-1', threadId: 't1' }; },

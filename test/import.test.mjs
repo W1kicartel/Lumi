@@ -14,14 +14,14 @@ import { nomeSicuro } from '../server/moduli/import-file.js';
 
 attiva();
 ATTESE.splice(0, ATTESE.length, 0.05, 0.05);   // nei test i nuovi tentativi dei webhook non aspettano minuti
-process.env.KUBO_WEBHOOK_INTERNI = '1';   // il finto server dei webhook è su 127.0.0.1: rete interna permessa apposta
+process.env.LUMI_WEBHOOK_INTERNI = '1';   // il finto server dei webhook è su 127.0.0.1: rete interna permessa apposta
 
 async function avvia() {
   const srv = creaServer(apri()); await new Promise(r => srv.listen(0, '127.0.0.1', r));
   const base = `http://127.0.0.1:${srv.address().port}`; let biscotto = '';
   const chiama = async (metodo, percorso, corpo, { token, grezzo = false, senzaIntestazione = false } = {}) => {
     const r = await fetch(base + percorso, { method: metodo, body: corpo ? JSON.stringify(corpo) : undefined,
-      headers: { 'Content-Type': 'application/json', ...(senzaIntestazione || token ? {} : { 'X-Kubo': '1' }), ...(token ? { Authorization: `Bearer ${token}` } : biscotto ? { Cookie: biscotto } : {}) } });
+      headers: { 'Content-Type': 'application/json', ...(senzaIntestazione || token ? {} : { 'X-Lumi': '1' }), ...(token ? { Authorization: `Bearer ${token}` } : biscotto ? { Cookie: biscotto } : {}) } });
     const c = r.headers.get('set-cookie'); if (c) biscotto = c.split(';')[0];
     return { stato: r.status, intestazioni: r.headers, json: grezzo ? null : await r.json().catch(() => null), dati: grezzo ? Buffer.from(await r.arrayBuffer()) : null };
   };
@@ -156,7 +156,7 @@ test('allegati: caricamento a pezzi, permessi della riga e dei campi, nomi peric
     assert.equal((await chiama('POST', '/api/dati/articoli', { nome: 'Finto', foto: [{ id: '0'.repeat(17), nome: 'x.png' }] })).stato, 422);   // un file mai caricato
     assert.equal((await chiama('POST', '/api/dati/articoli', { nome: 'Finto', foto: [{ id: '../../x' }] })).stato, 422);
     assert.equal((await chiama('POST', '/api/dati/articoli', { nome: 'Finto', foto: [doc] })).stato, 422);   // un .html non è un'immagine
-    for (const p of [`/api/file/articoli/${art.json.id}/foto/..%2F..%2Fkubo.db`, `/api/file/articoli/..%2F..%2Fx/foto/${foto.id}`, `/api/file/articoli/${art.json.id}/nome/${foto.id}`])
+    for (const p of [`/api/file/articoli/${art.json.id}/foto/..%2F..%2Flumi.db`, `/api/file/articoli/..%2F..%2Fx/foto/${foto.id}`, `/api/file/articoli/${art.json.id}/nome/${foto.id}`])
       assert.equal((await chiama('GET', p, null, { grezzo: true })).stato, 404, p);
     assert.equal((await chiama('POST', '/api/file/carica', { nome: 'grosso.bin', dimensione: 26 * 1024 * 1024 })).stato, 413);
     // un ruolo che non vede la foto, uno che vede solo i propri
@@ -185,9 +185,9 @@ test('token personali: Bearer con i permessi del ruolo, mostrato una volta, revo
     await chiama('POST', '/api/utenti', { nome: 'Giulia', email: 'g@prova.it', password: 'password-giulia', ruolo: 'collaboratore' });
     esci(); await chiama('POST', '/api/accedi', { email: 'g@prova.it', password: 'password-giulia' });
     const t = (await chiama('POST', '/api/token', { nome: 'Sito', giorni: 30 })).json;
-    assert.match(t.token, /^kubo_/); assert.ok(t.scade);
+    assert.match(t.token, /^lumi_/); assert.ok(t.scade);
     const elenco = (await chiama('GET', '/api/token')).json; assert.equal(elenco.length, 1); assert.equal(elenco[0].token, undefined); assert.equal(elenco[0].inizio, t.token.slice(0, 9));
-    const c = await chiama('POST', '/api/dati/clienti', { nome: 'Dal sito' }, { token: t.token }); assert.equal(c.stato, 200);   // niente X-Kubo con il Bearer
+    const c = await chiama('POST', '/api/dati/clienti', { nome: 'Dal sito' }, { token: t.token }); assert.equal(c.stato, 200);   // niente X-Lumi con il Bearer
     assert.equal(c.json.creato_da, (await chiama('GET', '/api/stato')).json.utente.id);
     assert.equal((await chiama('DELETE', `/api/dati/clienti/${c.json.id}`, null, { token: t.token })).stato, 403);   // il collaboratore non elimina
     assert.equal((await chiama('POST', '/api/token', { nome: 'Altro' }, { token: t.token })).stato, 403);
@@ -195,7 +195,7 @@ test('token personali: Bearer con i permessi del ruolo, mostrato una volta, revo
     const io = (await chiama('GET', '/api/stato')).json.utente.id;   // un token rubato non cambia la password
     assert.equal((await chiama('PATCH', `/api/utenti/${io}`, { password: 'presa-dal-token' }, { token: t.token })).stato, 403);
     assert.equal((await chiama('PATCH', `/api/utenti/${io}`, { nome: 'Giulia B.' }, { token: t.token })).stato, 200);
-    assert.equal((await chiama('GET', '/api/dati/clienti', null, { token: 'kubo_sbagliato' })).stato, 401);
+    assert.equal((await chiama('GET', '/api/dati/clienti', null, { token: 'lumi_sbagliato' })).stato, 401);
     assert.equal((await chiama('DELETE', `/api/token/${t.id}`)).stato, 200);
     assert.equal((await chiama('GET', '/api/dati/clienti', null, { token: t.token })).stato, 401);
     const vecchio = (await chiama('POST', '/api/token', { nome: 'Scaduto', giorni: 0.00000001 })).json;
@@ -212,7 +212,7 @@ test('webhook: firma HMAC, tentativi con attesa, registro delle consegne, solo i
   try {
     await configura();
     assert.equal((await chiama('PUT', '/api/webhook/nuovo', { url: 'ftp://x' })).stato, 400);
-    const w = (await chiama('PUT', '/api/webhook/nuovo', { nome: 'Contabilità', url: `http://127.0.0.1:${finto.address().port}/kubo`, entita: ['clienti'], eventi: ['crea', 'modifica'] })).json;
+    const w = (await chiama('PUT', '/api/webhook/nuovo', { nome: 'Contabilità', url: `http://127.0.0.1:${finto.address().port}/lumi`, entita: ['clienti'], eventi: ['crea', 'modifica'] })).json;
     assert.match(w.segreto, /^whsec_/);
     const c = (await chiama('POST', '/api/dati/clienti', { nome: 'Marta' })).json;
     await chiama('POST', '/api/dati/fornitori', { nome: 'Non interessa' });
@@ -220,13 +220,13 @@ test('webhook: firma HMAC, tentativi con attesa, registro delle consegne, solo i
     assert.ok(ok, 'la consegna arriva dopo il secondo tentativo'); assert.equal(ok.tentativi, 2); assert.equal(ok.codice, 200);
     assert.equal(ricevute.length, 2);
     const { h, corpo } = ricevute[1], j = JSON.parse(corpo);
-    assert.equal(h['x-kubo-firma'], firma(w.segreto, h['x-kubo-tempo'], corpo)); assert.equal(h['x-kubo-evento'], 'clienti.crea');
+    assert.equal(h['x-lumi-firma'], firma(w.segreto, h['x-lumi-tempo'], corpo)); assert.equal(h['x-lumi-evento'], 'clienti.crea');
     assert.equal(j.id, c.id); assert.equal(j.dati.nome, 'Marta'); assert.equal(j.consegna, ok.id);
     await chiama('DELETE', `/api/dati/clienti/${c.id}`);   // «elimina» non è fra gli eventi scelti
     await chiama('POST', `/api/webhook/${w.id}/prova`);
     await aspetta(() => ricevute.length >= 3);
     await new Promise(r => setTimeout(r, 100));
-    assert.deepEqual(ricevute.map(x => x.h['x-kubo-evento']), ['clienti.crea', 'clienti.crea', 'prova']);
+    assert.deepEqual(ricevute.map(x => x.h['x-lumi-evento']), ['clienti.crea', 'clienti.crea', 'prova']);
     // senza risposta: dopo i tentativi la consegna è «fallita», e si può riprovare a mano
     const w2 = (await chiama('PUT', '/api/webhook/nuovo', { url: 'http://127.0.0.1:9/chiuso' })).json;
     await chiama('POST', '/api/dati/clienti', { nome: 'Luca' });
@@ -240,17 +240,17 @@ test('webhook: firma HMAC, tentativi con attesa, registro delle consegne, solo i
 });
 
 test('backup: uno zip con la copia coerente del database e gli allegati', async () => {
-  const cartella = mkdtempSync(join(tmpdir(), 'kubo-prova-')), db = apri(join(cartella, 'kubo.db'));
+  const cartella = mkdtempSync(join(tmpdir(), 'lumi-prova-')), db = apri(join(cartella, 'lumi.db'));
   const srv = creaServer(db); await new Promise(r => srv.listen(0, '127.0.0.1', r));
   const base = `http://127.0.0.1:${srv.address().port}`;
   try {
-    const r = await fetch(base + '/api/configura', { method: 'POST', headers: { 'X-Kubo': '1', 'Content-Type': 'application/json' }, body: JSON.stringify({ azienda: 'B', nome: 'T', email: 't@p.it', password: 'password-lunga', modelli: ['negozio'] }) });
-    const Cookie = r.headers.get('set-cookie').split(';')[0], H = { 'X-Kubo': '1', 'Content-Type': 'application/json', Cookie };
+    const r = await fetch(base + '/api/configura', { method: 'POST', headers: { 'X-Lumi': '1', 'Content-Type': 'application/json' }, body: JSON.stringify({ azienda: 'B', nome: 'T', email: 't@p.it', password: 'password-lunga', modelli: ['negozio'] }) });
+    const Cookie = r.headers.get('set-cookie').split(';')[0], H = { 'X-Lumi': '1', 'Content-Type': 'application/json', Cookie };
     await fetch(base + '/api/dati/clienti', { method: 'POST', headers: H, body: JSON.stringify({ nome: 'Nel backup' }) });
     const b = await fetch(base + '/api/import/backup', { headers: { Cookie } });
-    assert.equal(b.status, 200); assert.match(b.headers.get('content-disposition'), /kubo-backup-.*\.zip/);
-    const z = F.leggiZip(Buffer.from(await b.arrayBuffer())); assert.ok(z.nomi.includes('kubo.db') && z.nomi.includes('LEGGIMI.txt'));
-    const copia = join(cartella, 'copia.db'); writeFileSync(copia, z.leggi('kubo.db'));
+    assert.equal(b.status, 200); assert.match(b.headers.get('content-disposition'), /lumi-backup-.*\.zip/);
+    const z = F.leggiZip(Buffer.from(await b.arrayBuffer())); assert.ok(z.nomi.includes('lumi.db') && z.nomi.includes('LEGGIMI.txt'));
+    const copia = join(cartella, 'copia.db'); writeFileSync(copia, z.leggi('lumi.db'));
     const d2 = new DatabaseSync(copia); assert.equal(d2.prepare("SELECT c_nome n FROM d_clienti").get().n, 'Nel backup');
     assert.equal(d2.prepare('SELECT COUNT(*) n FROM _sessioni').get().n, 0); d2.close();   // nessuna sessione aperta nello zip
   } finally { srv.close(); }

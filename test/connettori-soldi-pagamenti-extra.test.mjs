@@ -1,7 +1,7 @@
 // Klarna (HPP sopra Klarna Payments) e Axerve (ex GestPay) contro finti servizi locali. Nessuna chiamata vera.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { finto, kubo, accendi, manda } from './connettori-finto.mjs';
+import { finto, gestionale, accendi, manda } from './connettori-finto.mjs';
 import { pubblicoDi } from '../connettori/_soldi/comuni.js';
 
 const vendita = async (K, prezzo = 30, q = 2) => {
@@ -21,7 +21,7 @@ async function fattura(K, prezzo = 100) {
 const BASIC = 'Basic ' + Buffer.from('K123_abc:pw-prova').toString('base64');
 
 test('Klarna: sessione KP + HPP, ritorno riletto dall\'API (sessione → ordine → cattura) → vendita pagata; falsi e doppioni non fanno niente', async () => {
-  const K = await kubo(); let kp = null, hpp = null, hppStato = 'WAITING', ordine = 'AUTHORIZED', catture = [];
+  const K = await gestionale(); let kp = null, hpp = null, hppStato = 'WAITING', ordine = 'AUTHORIZED', catture = [];
   const S = await finto({
     'GET /payments/v1/sessions/:id': () => ({ stato: 404, corpo: { error_code: 'NOT_FOUND' } }),
     'POST /payments/v1/sessions': (p, c, { intestazioni }) => { assert.equal(intestazioni.authorization, BASIC); kp = c; return { session_id: 'kp-sess-0001', client_token: 'x', payment_method_categories: [] }; },
@@ -32,25 +32,25 @@ test('Klarna: sessione KP + HPP, ritorno riletto dall\'API (sessione → ordine 
   });
   try {
     const v = await vendita(K);
-    // niente indirizzo nel connettore: vale quello pubblico di Kubo della Libreria
-    assert.equal((await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: 'https://kubo.esempio.it' })).stato, 200);
+    // niente indirizzo nel connettore: vale quello pubblico di Lumi della Libreria
+    assert.equal((await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: 'https://lumi.esempio.it' })).stato, 200);
     await accendi(K, 'klarna', { base: S.url, segreti: { password: 'pw-prova' }, impostazioni: { utente: 'K123_abc' } });
     assert.equal((await K.chiama('POST', '/api/connettori/klarna/prova')).json.ok, true);
     const l = await K.chiama('POST', '/api/connettori/klarna/azioni/link_vendita', { args: { vendita: v.id } });
     assert.equal(l.stato, 200, JSON.stringify(l.json)); assert.equal(l.json.url, 'https://pay.playground.klarna.com/eu/hpp/payments/abc');
-    assert.equal(kp.order_amount, 6000); assert.equal(kp.purchase_currency, 'EUR'); assert.equal(kp.merchant_reference1, `kubo-v-${v.id}`); assert.equal(kp.order_lines[0].total_amount, 6000);
+    assert.equal(kp.order_amount, 6000); assert.equal(kp.purchase_currency, 'EUR'); assert.equal(kp.merchant_reference1, `lumi-v-${v.id}`); assert.equal(kp.order_lines[0].total_amount, 6000);
     assert.equal(hpp.payment_session_url, `${S.url}/payments/v1/sessions/kp-sess-0001`); assert.equal(hpp.options.place_order_mode, 'CAPTURE_ORDER');
-    assert.equal(hpp.merchant_urls.success, 'https://kubo.esempio.it/api/connettori/klarna/pub/ritorno?sid={{session_id}}');
+    assert.equal(hpp.merchant_urls.success, 'https://lumi.esempio.it/api/connettori/klarna/pub/ritorno?sid={{session_id}}');
     const ritorno = sid => fetch(`${K.base}/api/connettori/klarna/pub/ritorno?sid=${sid}`).then(r => r.text());
     // un sid inventato non tocca l'API; quello vero ancora in attesa non incassa
     const prima = S.chiamate.length;
     assert.match(await ritorno('hpp-falsa-9999'), /in verifica/); assert.equal(S.chiamate.length, prima);
     assert.match(await ritorno('hpp-sess-0001'), /in verifica/); assert.equal(await stato(K, v.id), 'aperta');
-    // completata: l'ordine è autorizzato → Kubo lo cattura una volta sola → pagata
+    // completata: l'ordine è autorizzato → Lumi lo cattura una volta sola → pagata
     hppStato = 'COMPLETED';
     assert.match(await ritorno('hpp-sess-0001'), /Pagamento ricevuto/);
     assert.equal(await stato(K, v.id), 'pagata');
-    assert.equal(catture.length, 1); assert.equal(catture[0].c.captured_amount, 6000); assert.equal(catture[0].chiave, 'kubo-cattura-ord-0001');
+    assert.equal(catture.length, 1); assert.equal(catture[0].c.captured_amount, 6000); assert.equal(catture[0].chiave, 'lumi-cattura-ord-0001');
     // il cliente ricarica la pagina, il giro ripassa: niente doppioni
     assert.match(await ritorno('hpp-sess-0001'), /in verifica/);
     assert.deepEqual((await K.chiama('POST', '/api/connettori/klarna/giri/controlla')).json.risultato, { controllati: 0, pagati: 0 });
@@ -59,7 +59,7 @@ test('Klarna: sessione KP + HPP, ritorno riletto dall\'API (sessione → ordine 
 });
 
 test('Klarna senza indirizzo pubblico: il giro trova l\'ordine già catturato dalla HPP → fattura pagata', async () => {
-  const K = await kubo(['fatture']); let kp = null, hpp = null;
+  const K = await gestionale(['fatture']); let kp = null, hpp = null;
   const S = await finto({
     'POST /payments/v1/sessions': (p, c) => { kp = c; return { session_id: 'kp-sess-0002' }; },
     'POST /hpp/v1/sessions': (p, c) => { hpp = c; return { session_id: 'hpp-sess-0002', redirect_url: 'https://pay.playground.klarna.com/eu/hpp/payments/def' }; },
@@ -79,7 +79,7 @@ test('Klarna senza indirizzo pubblico: il giro trova l\'ordine già catturato da
 });
 
 test('Axerve: payment/create con apikey, link alla pagina pagam, esito riletto con payment/detail → vendita pagata; falsi e doppioni non fanno niente', async () => {
-  const K = await kubo(); let creato = null, risultato = '';
+  const K = await gestionale(); let creato = null, risultato = '';
   const S = await finto({
     'POST /api/v1/payment/create': (p, c, { intestazioni }) => { assert.equal(intestazioni.authorization, 'apikey chiave-prova'); creato = c;
       return { error: { code: '0', description: 'request correctly processed' }, payload: { paymentToken: 'Tok123abc', paymentID: '0000000001', userRedirect: { href: '' } } }; },
@@ -91,14 +91,14 @@ test('Axerve: payment/create con apikey, link alla pagina pagam, esito riletto c
     const v = await vendita(K);
     // l'indirizzo del connettore vince su quello della Libreria
     assert.equal((await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: 'https://altro.esempio.it' })).stato, 200);
-    await accendi(K, 'axerve', { base: S.url, segreti: { chiave: 'chiave-prova' }, impostazioni: { shop: 'GESPAY12345', indirizzo: 'https://kubo.esempio.it' } });
+    await accendi(K, 'axerve', { base: S.url, segreti: { chiave: 'chiave-prova' }, impostazioni: { shop: 'GESPAY12345', indirizzo: 'https://lumi.esempio.it' } });
     assert.equal((await K.chiama('POST', '/api/connettori/axerve/prova')).json.ok, true);
     const l = await K.chiama('POST', '/api/connettori/axerve/azioni/link_vendita', { args: { vendita: v.id } });
     assert.equal(l.stato, 200, JSON.stringify(l.json));
     assert.equal(l.json.url, 'https://sandbox.gestpay.net/pagam/pagam.aspx?a=GESPAY12345&b=Tok123abc');
     assert.equal(creato.amount, '60.00'); assert.equal(creato.currency, 'EUR'); assert.equal(creato.shopLogin, 'GESPAY12345');
     const t = creato.shopTransactionID; assert.match(t, /^K[0-9A-Z]+$/);
-    assert.equal(creato.responseURLs.serverNotificationURL, `https://kubo.esempio.it/api/connettori/axerve/pub/esito?t=${t}`);
+    assert.equal(creato.responseURLs.serverNotificationURL, `https://lumi.esempio.it/api/connettori/axerve/pub/esito?t=${t}`);
     const esito = q => fetch(`${K.base}/api/connettori/axerve/pub/esito?${q}`).then(r => r.text());
     // un codice inventato non tocca l'API; quello vero ancora da pagare non incassa (anche se l'URL dice OK)
     const prima = S.chiamate.length;
@@ -118,7 +118,7 @@ test('Axerve: payment/create con apikey, link alla pagina pagam, esito riletto c
 });
 
 test('Axerve senza indirizzo pubblico: KO non incassa, il giro trova il pagamento OK → fattura pagata', async () => {
-  const K = await kubo(['fatture']); const creati = [], esiti = {};
+  const K = await gestionale(['fatture']); const creati = [], esiti = {};
   const S = await finto({
     'POST /api/v1/payment/create': (p, c) => { creati.push(c); return { error: { code: '0' }, payload: { paymentToken: `Tok${creati.length}`, paymentID: `00${creati.length}`, userRedirect: { href: `https://ecomm.esempio/redirect/${creati.length}` } } }; },
     'POST /api/v1/payment/detail': (p, c) => ({ error: { code: '0' }, payload: { transactionResult: esiti[c.shopTransactionID] || '', shopTransactionID: c.shopTransactionID, amount: creati.find(x => x.shopTransactionID === c.shopTransactionID).amount, currency: 'EUR' } }),
@@ -141,7 +141,7 @@ test('Axerve senza indirizzo pubblico: KO non incassa, il giro trova il pagament
 
 // il contratto del catalogo lo controlla connettori-soldi-catalogo.test.mjs; qui il minimo per chi lancia solo questo file
 test('Klarna e Axerve: il nucleo li carica, catalogo e testi in tutte le lingue', async () => {
-  const K = await kubo(['negozio', 'fatture']);
+  const K = await gestionale(['negozio', 'fatture']);
   try {
     const l = (await K.chiama('GET', '/api/connettori')).json;
     for (const id of ['klarna', 'axerve']) {
@@ -156,9 +156,9 @@ test('Klarna e Axerve: il nucleo li carica, catalogo e testi in tutte le lingue'
 });
 
 test('pubblicoDi: l\'indirizzo del connettore, se no quello https della Libreria (k.pubblico), senza barra finale', () => {
-  assert.equal(pubblicoDi({ imp: { indirizzo: 'https://kubo.esempio.it/' }, pubblico: 'https://altro.esempio.it' }), 'https://kubo.esempio.it');
-  assert.equal(pubblicoDi({ imp: { indirizzo: '' }, pubblico: 'https://kubo.esempio.it' }), 'https://kubo.esempio.it');
+  assert.equal(pubblicoDi({ imp: { indirizzo: 'https://lumi.esempio.it/' }, pubblico: 'https://altro.esempio.it' }), 'https://lumi.esempio.it');
+  assert.equal(pubblicoDi({ imp: { indirizzo: '' }, pubblico: 'https://lumi.esempio.it' }), 'https://lumi.esempio.it');
   assert.equal(pubblicoDi({ imp: {}, pubblico: 'http://192.168.1.20:8080' }), '');   // i servizi di pagamento vogliono https
   assert.equal(pubblicoDi({ imp: {}, pubblico: '' }), '');
-  assert.equal(pubblicoDi({ imp: { kubo: 'https://k.esempio.it' }, pubblico: '' }, 'kubo'), 'https://k.esempio.it');
+  assert.equal(pubblicoDi({ imp: { altro: 'https://k.esempio.it' }, pubblico: '' }, 'altro'), 'https://k.esempio.it');
 });

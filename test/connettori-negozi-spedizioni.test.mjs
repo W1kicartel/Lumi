@@ -1,7 +1,7 @@
 // I connettori delle spedizioni (Sendcloud, ShippyPro, Packlink, Qapla', corrieri) contro finti servizi locali.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { finto, kubo, accendi, manda, firmaHmacDi } from './connettori-finto.mjs';
+import { finto, gestionale, accendi, manda, firmaHmacDi } from './connettori-finto.mjs';
 
 // un cliente con l'indirizzo e una sua vendita
 let nArticoli = 0;
@@ -12,7 +12,7 @@ async function venditaConCliente(K, { nome = 'Mario Rossi', indirizzo = 'Via Rom
 }
 
 test('Sendcloud: etichetta dalla vendita (indirizzo scomposto), webhook firmato → stato sulla vendita, «dov\'è il pacco di Rossi?»', async () => {
-  const K = await kubo(), pacchi = [];
+  const K = await gestionale(), pacchi = [];
   let stato = { id: 1000, message: 'Ready to send' };
   const S = await finto({
     'GET /api/v2/user': () => ({ user: { company_name: 'Bottega' } }),
@@ -32,7 +32,7 @@ test('Sendcloud: etichetta dalla vendita (indirizzo scomposto), webhook firmato 
     assert.equal(r.json.tracking, '3SABC123', JSON.stringify(r.json));
     assert.equal(r.json.etichetta, 'https://panel.example/documents/555');
     assert.deepEqual(pacchi[0], { from_address: { sender_address_id: 42 }, to_address: { name: 'Mario Rossi', address_line_1: 'Via Roma', house_number: '12', postal_code: '20121', city: 'Milano', country_code: 'IT', state_province_code: 'IT-MI', phone_number: '3330000000', email: 'mario.rossi@esempio.it' },
-      ship_with: { type: 'shipping_option_code', properties: { shipping_option_code: 'brt:standard' } }, parcels: [{ weight: { value: '2.5', unit: 'kg' } }], order_number: String(v.numero), total_order_price: { value: '40', currency: 'EUR' }, external_reference_id: `kubo-${v.id}-0` });
+      ship_with: { type: 'shipping_option_code', properties: { shipping_option_code: 'brt:standard' } }, parcels: [{ weight: { value: '2.5', unit: 'kg' } }], order_number: String(v.numero), total_order_price: { value: '40', currency: 'EUR' }, external_reference_id: `lumi-${v.id}-0` });
     assert.match((await K.chiama('GET', `/api/dati/vendite/${v.id}`)).json.note, /Spedizione BRT 3SABC123: Ready to send/);
     // il corriere consegna: Sendcloud avvisa con il webhook firmato
     const ev = JSON.stringify({ action: 'parcel_status_changed', timestamp: 1760000000, parcel: { id: 555, tracking_number: '3SABC123', status: { id: 11, message: 'Delivered' }, carrier: { code: 'brt' } } });
@@ -49,7 +49,7 @@ test('Sendcloud: etichetta dalla vendita (indirizzo scomposto), webhook firmato 
 });
 
 test('Qapla\': pushShipment dalla vendita, stato con getShipment sulla vendita, webhook col codice segreto, giro delle non consegnate', async () => {
-  const K = await kubo(), spinte = []; let consegnato = false;
+  const K = await gestionale(), spinte = []; let consegnato = false;
   const S = await finto({
     'GET /1.2/getShipments/': (p, c, { q }) => (q.get('apiKey') === 'qk' ? { getShipments: { result: 'OK', shipments: [] } } : { getShipments: { result: 'KO', error: 'apiKey non valida' } }),
     'POST /1.2/pushShipment/': (p, c) => { spinte.push(c); return { pushShipment: { result: 'OK', count: 1, shipments: [{ result: 'OK', id: 77, url: 'https://track.example/abc', courier: 'BRT', trackingNumber: c.pushShipment[0].trackingNumber }] } }; },
@@ -77,7 +77,7 @@ test('Qapla\': pushShipment dalla vendita, stato con getShipment sulla vendita, 
 });
 
 test('Packlink PRO: bozza dalla vendita con Authorization, evento col codice segreto → spedizione riletta e tracking sulla vendita', async () => {
-  const K = await kubo(), bozze = [], richiami = []; let stato = 'AWAITING_COMPLETION';
+  const K = await gestionale(), bozze = [], richiami = []; let stato = 'AWAITING_COMPLETION';
   const S = await finto({
     'GET /v1/users/me': (p, c, { intestazioni }) => (intestazioni.authorization === 'pk-finta' ? { email: 'spedizioni@bottega.example' } : { stato: 401, corpo: {} }),
     'POST /v1/shipments': (p, c) => { bozze.push(c); return { reference: 'IT2026PRO0001' }; },
@@ -90,11 +90,11 @@ test('Packlink PRO: bozza dalla vendita con Authorization, evento col codice seg
     const codice = pag.impostazioni.find(i => i.id === 'codice').valore;
     assert.equal((await K.chiama('POST', '/api/connettori/packlink/prova')).json.messaggio, 'spedizioni@bottega.example');
     // l'indirizzo degli eventi: senza indirizzo né Libreria un errore chiaro; poi quello scritto, poi (vuoto) quello della Libreria
-    assert.match(JSON.stringify((await K.chiama('POST', '/api/connettori/packlink/azioni/eventi', { args: {} })).json), /indirizzo pubblico https di Kubo/);
-    assert.equal((await K.chiama('POST', '/api/connettori/packlink/azioni/eventi', { args: { indirizzo: 'https://kubo.bottega.example/' } })).json.ok, true);
+    assert.match(JSON.stringify((await K.chiama('POST', '/api/connettori/packlink/azioni/eventi', { args: {} })).json), /indirizzo pubblico https di Lumi/);
+    assert.equal((await K.chiama('POST', '/api/connettori/packlink/azioni/eventi', { args: { indirizzo: 'https://lumi.bottega.example/' } })).json.ok, true);
     assert.equal((await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: 'https://pubblico.bottega.example' })).stato, 200);
     assert.equal((await K.chiama('POST', '/api/connettori/packlink/azioni/eventi', { args: {} })).json.ok, true);
-    assert.deepEqual(richiami, [`https://kubo.bottega.example/api/connettori/packlink/in/${codice}`, `https://pubblico.bottega.example/api/connettori/packlink/in/${codice}`]);
+    assert.deepEqual(richiami, [`https://lumi.bottega.example/api/connettori/packlink/in/${codice}`, `https://pubblico.bottega.example/api/connettori/packlink/in/${codice}`]);
     const v = await venditaConCliente(K, { nome: 'Luca De Santis', indirizzo: 'Borgo Parmigianino 7, 43121 Parma (PR)' });
     const r = await K.chiama('POST', '/api/connettori/packlink/azioni/bozza', { args: { vendita: v.numero, peso: 3 } });
     assert.equal(r.json.riferimento, 'IT2026PRO0001', JSON.stringify(r.json));
@@ -111,7 +111,7 @@ test('Packlink PRO: bozza dalla vendita con Authorization, evento col codice seg
 });
 
 test('DHL: spedizione Express con Basic e conto, tracking unificato con DHL-API-Key sulla vendita, giro delle aperte', async () => {
-  const K = await kubo(), spedizioni = []; let codice = 'transit';
+  const K = await gestionale(), spedizioni = []; let codice = 'transit';
   const S = await finto({
     'POST /mydhlapi/test/shipments': (p, c, { intestazioni }) => { spedizioni.push({ c, auth: intestazioni.authorization }); return { shipmentTrackingNumber: '1234567890', trackingUrl: 'https://track.example/1234567890', documents: [{ typeCode: 'label', imageFormat: 'PDF', content: 'JVBERi0x' }] }; },
     'GET /track/shipments': (p, c, { q, intestazioni }) => (intestazioni['dhl-api-key'] !== 'dk' ? { stato: 401, corpo: {} } : q.get('trackingNumber') === '00340434292135100186' ? { stato: 404, corpo: { detail: 'No shipment' } }
@@ -136,10 +136,10 @@ test('DHL: spedizione Express con Basic e conto, tracking unificato con DHL-API-
 });
 
 test('UPS e FedEx: token client credentials (Basic per UPS, form per FedEx), tracking collegato alla vendita, consegnato esce dal giro', async () => {
-  const K = await kubo(); let consegnato = false;
+  const K = await gestionale(); let consegnato = false;
   const S = await finto({
     'POST /security/v1/oauth/token': (p, c, { intestazioni }) => (intestazioni.authorization === 'Basic ' + Buffer.from('ups-id:ups-sec').toString('base64') && c.grant_type === 'client_credentials' ? { access_token: 'ups-tok', expires_in: '14399' } : { stato: 401, corpo: {} }),
-    'GET /api/track/v1/details/:n': (p, c, { intestazioni }) => (intestazioni.authorization !== 'Bearer ups-tok' || !intestazioni.transid || intestazioni.transactionsrc !== 'Kubo' ? { stato: 401, corpo: {} }
+    'GET /api/track/v1/details/:n': (p, c, { intestazioni }) => (intestazioni.authorization !== 'Bearer ups-tok' || !intestazioni.transid || intestazioni.transactionsrc !== 'Lumi' ? { stato: 401, corpo: {} }
       : { trackResponse: { shipment: [{ package: [{ trackingNumber: p.n, currentStatus: { description: consegnato ? 'Consegnato' : 'In transito', type: consegnato ? 'D' : 'I' }, activity: [{ location: { address: { city: 'Napoli' } }, status: { type: consegnato ? 'D' : 'I' }, date: '20261009' }] }] }] } }),
     'POST /oauth/token': (p, c) => (c.client_id === 'fx-id' && c.client_secret === 'fx-sec' ? { access_token: 'fx-tok', expires_in: 3599 } : { stato: 401, corpo: {} }),
     'POST /track/v1/trackingnumbers': (p, c, { intestazioni }) => (intestazioni.authorization !== 'Bearer fx-tok' ? { stato: 401, corpo: {} }

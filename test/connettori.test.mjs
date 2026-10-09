@@ -2,7 +2,7 @@
 // e i connettori ufficiali, tutti contro finti servizi locali. Nessuna chiamata vera in rete.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { finto, kubo, accendi, manda, firmaStripeDi, firmaHmacDi } from './connettori-finto.mjs';
+import { finto, gestionale, accendi, manda, firmaStripeDi, firmaHmacDi } from './connettori-finto.mjs';
 import { TESTI } from '../server/moduli/connettori-lingue.js';
 import { prossimo } from '../server/moduli/connettori.js';
 
@@ -12,7 +12,7 @@ const vendita = async (K, prezzo = 30, q = 2) => {
 };
 
 test('Stripe: webhook firmato → vendita pagata, «Stripe» nella storia, idempotenza, firma sbagliata, segreti mai fuori', async () => {
-  const K = await kubo();
+  const K = await gestionale();
   try {
     const v = await vendita(K);
     await accendi(K, 'stripe', { segreti: { chiave: 'sk_test_abc123', firma: 'whsec_provaprova' } });
@@ -52,7 +52,7 @@ test('Stripe: link di pagamento dall\'azione (il finto Stripe riceve il form), s
     assert.equal((await manda(K, '/api/connettori/stripe/in', '{}')).stato, 404);
   } finally { await K.chiudi(); await S.chiudi(); }
 });
-const K0 = () => kubo();
+const K0 = () => gestionale();
 
 test('cataloghi dei messaggi dei connettori: stesse chiavi e parametri nelle sei lingue', () => {
   const par = s => [...String(s).matchAll(/\{(\w+)\}/g)].map(m => m[1]).sort();
@@ -72,10 +72,10 @@ test('pianificatore: «ogni» e «alle» nel fuso', () => {
 });
 
 test('SumUp: il webhook senza firma non basta, si rilegge il checkout dall\'API', async () => {
-  const K = await kubo(); let stato = 'PENDING', ref = '';
+  const K = await gestionale(); let stato = 'PENDING', ref = '';
   const S = await finto({ 'GET /v0.1/checkouts/:id': p => ({ id: p.id, status: stato, amount: 60, currency: 'EUR', checkout_reference: ref }) });
   try {
-    const v = await vendita(K); ref = `kubo-${v.id}`;
+    const v = await vendita(K); ref = `lumi-${v.id}`;
     await accendi(K, 'sumup', { base: S.url, segreti: { chiave: 'sup_sk_x' } });
     const ev = JSON.stringify({ event_type: 'CHECKOUT_STATUS_CHANGED', id: 'chk_1' });
     assert.match((await manda(K, '/api/connettori/sumup/in', ev)).json.esito, /ignorato/);   // un falso «pagato» non passa: l'API dice PENDING
@@ -88,7 +88,7 @@ test('SumUp: il webhook senza firma non basta, si rilegge il checkout dall\'API'
 });
 
 test('WooCommerce: prodotti a pagine, giacenza in uscita senza eco, ordine firmato → vendita, mappa resistente alle rinomine', async () => {
-  const K = await kubo(), put = [];
+  const K = await gestionale(), put = [];
   const prodotti = [[{ id: 11, sku: 'V1', name: 'Vaso blu', regular_price: '30.00', stock_quantity: 7 }], [{ id: 12, sku: 'P9', name: 'Piatto', regular_price: '12.50', stock_quantity: 3 }]];
   const S = await finto({
     'GET /wp-json/wc/v3/products': (p, c, { q }) => ({ stato: 200, intestazioni: { 'X-WP-TotalPages': '2' }, corpo: prodotti[Number(q.get('page') || 1) - 1] }),
@@ -107,7 +107,7 @@ test('WooCommerce: prodotti a pagine, giacenza in uscita senza eco, ordine firma
     await K.nucleo.lavora(); assert.equal(put.length, 0);   // quello che arriva dal sito non torna indietro
     assert.deepEqual((await K.chiama('POST', '/api/connettori/woocommerce/giri/prodotti')).json.risultato, { creati: 0, aggiornati: 0, uguali: 2 });
     const vaso = (await K.chiama('GET', '/api/dati/articoli?q=V1')).json.righe[0]; assert.equal(vaso.giacenza, 7); assert.equal(vaso.prezzo, 30);
-    // Kubo cambia la giacenza due volte: in coda conta solo l'ultima
+    // Lumi cambia la giacenza due volte: in coda conta solo l'ultima
     await K.chiama('PATCH', `/api/dati/articoli/${vaso.id}`, { giacenza: 6 }); await K.chiama('PATCH', `/api/dati/articoli/${vaso.id}`, { giacenza: 4 });
     await new Promise(r => setTimeout(r, 50)); await K.nucleo.lavora();
     assert.deepEqual(put.at(-1), ['11', 4]); assert.ok(put.length <= 2);
@@ -128,7 +128,7 @@ test('WooCommerce: prodotti a pagine, giacenza in uscita senza eco, ordine firma
 });
 
 test('Shopify: client credentials con token che scade e si rinnova, GraphQL a pagine, inventorySetQuantities, webhook', async () => {
-  const K = await kubo(); let token = 0; const mut = [];
+  const K = await gestionale(); let token = 0; const mut = [];
   const S = await finto({
     'POST /admin/oauth/access_token': (p, c) => (c.grant_type === 'client_credentials' && c.client_secret === 'shpss_x' ? { access_token: `shpat_${++token}`, expires_in: token === 1 ? 30 : 86399, scope: 'read_products' } : { stato: 401, corpo: {} }),
     'POST /admin/api/2026-07/graphql.json': (p, c, { intestazioni }) => {
@@ -165,8 +165,8 @@ async function fattura(K, { email = 'rossi@cliente.example', scadenza } = {}) {
   return e.json;
 }
 
-test('Openapi SDI: invio dell\'XML di Kubo, notifica di scarto dal callback con il codice segreto, passive', async () => {
-  const K = await kubo(['negozio', 'fatture']);
+test('Openapi SDI: invio dell\'XML di Lumi, notifica di scarto dal callback con il codice segreto, passive', async () => {
+  const K = await gestionale(['negozio', 'fatture']);
   const S = await finto({ 'POST /invoices': (p, c) => (typeof c === 'string' && c.includes('<ImportoTotaleDocumento>122.00<') ? { success: true, data: { uuid: 'u-1' } } : { stato: 400, corpo: { message: 'xml' } }) });
   try {
     const f = await fattura(K);
@@ -215,7 +215,7 @@ test('Email e PEC: fattura per email con l\'XML in allegato e promemoria delle s
       } });
   });
   await new Promise(r => smtp.listen(0, '127.0.0.1', r));
-  const K = await kubo(['negozio', 'fatture']);
+  const K = await gestionale(['negozio', 'fatture']);
   try {
     const f = await fattura(K, { scadenza: '2026-09-15' });
     await accendi(K, 'posta', { segreti: { password: 'pw-casella' }, impostazioni: { host: '127.0.0.1', porta: smtp.address().port, sicurezza: 'nessuna', utente: 'info@bottega.example', mittente: 'Bottega <info@bottega.example>' } });
@@ -233,7 +233,7 @@ test('Email e PEC: fattura per email con l\'XML in allegato e promemoria delle s
 });
 
 test('Calendario: feed .ics con il codice segreto, Google Calendar con OAuth (PKCE, ritorno, rinnovo del token)', async () => {
-  const K = await kubo(['studio']); let scambi = [];
+  const K = await gestionale(['studio']); let scambi = [];
   const S = await finto({
     'POST /token': (p, c) => { scambi.push(c); return c.grant_type === 'authorization_code' ? { access_token: 'ya29.a', refresh_token: 'r1', expires_in: 1 } : { access_token: 'ya29.b', expires_in: 3600 }; },
     'POST /calendar/v3/calendars/primary/events': (p, c) => ({ id: 'g1', summary: c.summary }),
@@ -246,7 +246,7 @@ test('Calendario: feed .ics con il codice segreto, Google Calendar con OAuth (PK
     const codice = pag.impostazioni.find(i => i.id === 'feed').valore;
     assert.equal((await fetch(`${K.base}/api/connettori/calendario/pub/agenda.ics?t=no`)).status, 404);
     const ics = await (await fetch(`${K.base}/api/connettori/calendario/pub/agenda.ics?t=${codice}`)).text();
-    assert.match(ics, /^BEGIN:VCALENDAR\r\n/); assert.match(ics, /SUMMARY:Anna\\; Bianchi/); assert.match(ics, new RegExp(`UID:${ap.id}@kubo`));
+    assert.match(ics, /^BEGIN:VCALENDAR\r\n/); assert.match(ics, /SUMMARY:Anna\\; Bianchi/); assert.match(ics, new RegExp(`UID:${ap.id}@lumi`));
     // OAuth: inizio (con PKCE) → il servizio rimanda a «ritorno» con code e state → token salvato cifrato
     const ini = (await K.chiama('POST', '/api/connettori/calendario/oauth/inizio', { base: K.base })).json;
     const u = new URL(ini.url); assert.equal(u.searchParams.get('code_challenge_method'), 'S256'); assert.equal(u.searchParams.get('access_type'), 'offline');
@@ -265,15 +265,15 @@ test('Calendario: feed .ics con il codice segreto, Google Calendar con OAuth (PK
 test('nucleo: un connettore di terzi si attiva solo con la sua somma, SSRF, pianificatore che recupera un giro perso', async () => {
   const { mkdtempSync, mkdirSync, writeFileSync } = await import('node:fs'), { join } = await import('node:path'), { tmpdir } = await import('node:os');
   const { apri } = await import('../server/db.js'), { creaServer } = await import('../server/api.js'), { istanze } = await import('../server/moduli/connettori.js');
-  const dir = mkdtempSync(join(tmpdir(), 'kubo-conn-')); mkdirSync(join(dir, 'connettori', 'mio'), { recursive: true });
+  const dir = mkdtempSync(join(tmpdir(), 'lumi-conn-')); mkdirSync(join(dir, 'connettori', 'mio'), { recursive: true });
   writeFileSync(join(dir, 'connettori', 'mio', 'connettore.js'), `globalThis.mioEseguito = (globalThis.mioEseguito || 0) + 1;
 export default { id: 'mio', nome: 'Mio', impostazioni: [{ id: 'url', nome: 'Url', tipo: 'url' }], permessi: { clienti: { leggi: true } },
     pianificati: { conta: { ogni: '1h', async giro(k) { const n = (k.stato.leggi('n') || 0) + 1; k.stato.scrivi('n', n); return { n }; } } } };`);
-  const db = apri(join(dir, 'kubo.db')), srv = creaServer(db); await new Promise(r => srv.listen(0, '127.0.0.1', r));
+  const db = apri(join(dir, 'lumi.db')), srv = creaServer(db); await new Promise(r => srv.listen(0, '127.0.0.1', r));
   const base = `http://127.0.0.1:${srv.address().port}`; let biscotto = '';
-  const chiama = async (m, p, c) => { const r = await fetch(base + p, { method: m, headers: { 'Content-Type': 'application/json', 'X-Kubo': '1', ...(biscotto ? { Cookie: biscotto } : {}) }, body: c ? JSON.stringify(c) : undefined }); const s = r.headers.get('set-cookie'); if (s) biscotto = s.split(';')[0]; return { stato: r.status, json: await r.json().catch(() => null) }; };
+  const chiama = async (m, p, c) => { const r = await fetch(base + p, { method: m, headers: { 'Content-Type': 'application/json', 'X-Lumi': '1', ...(biscotto ? { Cookie: biscotto } : {}) }, body: c ? JSON.stringify(c) : undefined }); const s = r.headers.get('set-cookie'); if (s) biscotto = s.split(';')[0]; return { stato: r.status, json: await r.json().catch(() => null) }; };
   try {
-    await chiama('POST', '/api/configura', { azienda: 'B', nome: 'T', email: 't@esempio.it', password: 'prova-kubo-1', modelli: ['negozio'] });
+    await chiama('POST', '/api/configura', { azienda: 'B', nome: 'T', email: 't@esempio.it', password: 'prova-lumi-1', modelli: ['negozio'] });
     const n = istanze.get(db); await n.pronti;
     const mio = (await chiama('GET', '/api/connettori')).json.find(c => c.id === 'mio'); assert.equal(mio.origine, 'locale'); assert.match(mio.somma, /^[0-9a-f]{64}$/);
     // finché il titolare non conferma la somma il codice di terzi non gira (nemmeno all'avvio) e la pagina mostra solo la somma
@@ -287,7 +287,7 @@ export default { id: 'mio', nome: 'Mio', impostazioni: [{ id: 'url', nome: 'Url'
     assert.equal((await chiama('PUT', '/api/connettori/mio', { impostazioni: { url: 'http://192.168.1.10/x' } })).stato, 400);
     assert.equal((await chiama('PUT', '/api/connettori/mio', { interni: true, impostazioni: { url: 'http://192.168.1.10/x' } })).stato, 200);
     await assert.rejects(n.k('stripe').http.get('http://127.0.0.1:9/'), /interna/);
-    // primo passaggio: il giro «ogni» parte subito; poi Kubo «resta spento» 5 ore: al riavvio un solo giro di recupero
+    // primo passaggio: il giro «ogni» parte subito; poi Lumi «resta spento» 5 ore: al riavvio un solo giro di recupero
     await n.pianificatore(); assert.equal(n.k('mio').stato.leggi('n'), 1);
     await n.pianificatore(Date.now() + 5 * 36e5); assert.equal(n.k('mio').stato.leggi('n'), 2);
     await n.pianificatore(Date.now() + 5 * 36e5); assert.equal(n.k('mio').stato.leggi('n'), 2);
@@ -303,7 +303,7 @@ export default { id: 'mio', nome: 'Mio', impostazioni: [{ id: 'url', nome: 'Url'
 });
 
 test('coda: una modifica che arriva mentre la precedente sta partendo non si perde («unisci: ultimo» non tocca quella in volo)', async () => {
-  const K = await kubo(), put = []; let libera, fermo = new Promise(r => { libera = r; }), partito;
+  const K = await gestionale(), put = []; let libera, fermo = new Promise(r => { libera = r; }), partito;
   const inVolo = new Promise(r => { partito = r; });
   const S = await finto({
     'GET /wp-json/wc/v3/products': () => ({ stato: 200, intestazioni: { 'X-WP-TotalPages': '1' }, corpo: [{ id: 11, sku: 'V1', name: 'Vaso blu', regular_price: '30.00', stock_quantity: 7 }] }),

@@ -3,7 +3,7 @@
 // Niente rete vera, dati inventati.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { finto, kubo, accendi } from './connettori-finto.mjs';
+import { finto, gestionale, accendi } from './connettori-finto.mjs';
 import { coda } from './connettori-comunica-coda.mjs';
 import pcloud from '../connettori/pcloud/connettore.js';
 
@@ -19,12 +19,12 @@ async function fattura(K) {
 const collega = (K, id) => K.nucleo.k(id).salvaSegreto('_oauth', JSON.stringify({ access_token: 'tok', refresh_token: 'r', scade: Date.now() + 36e5 }));
 // i campi di un corpo multipart/form-data: [{ nome, file, tipo, valore }]
 const parti = corpo => [...corpo.matchAll(/Content-Disposition: form-data; name="([^"]+)"(?:; filename="([^"]+)")?\r\n(?:Content-Type: ([^\r]+)\r\n)?\r\n([\s\S]*?)\r\n--/g)].map(m => ({ nome: m[1], file: m[2], tipo: m[3], valore: m[4] }));
-const VECCHI = ['kubo-2026-01-01-02-30-00.db', 'kubo-2026-01-02-02-30-00.db', 'kubo-2026-01-03-02-30-00.db'];
+const VECCHI = ['lumi-2026-01-01-02-30-00.db', 'lumi-2026-01-02-02-30-00.db', 'lumi-2026-01-03-02-30-00.db'];
 
 test('Box: cartelle per id (il 409 dà quella che c\'è), fattura multipart, nuova versione se il file c\'è, backup con rotazione', async () => {
-  const K = await kubo(['negozio', 'fatture']);
-  // il Box finto: cartelle e file per id, la radice è «0»; Kubo/Backup c'è già con tre backup vecchi e un appunto
-  const voci = [{ id: 'd1', name: 'Kubo', parent: '0', cartella: true }, { id: 'd2', name: 'Backup', parent: 'd1', cartella: true },
+  const K = await gestionale(['negozio', 'fatture']);
+  // il Box finto: cartelle e file per id, la radice è «0»; Lumi/Backup c'è già con tre backup vecchi e un appunto
+  const voci = [{ id: 'd1', name: 'Lumi', parent: '0', cartella: true }, { id: 'd2', name: 'Backup', parent: 'd1', cartella: true },
     ...[...VECCHI, 'appunti.txt'].map((n, i) => ({ id: `v${i}`, name: n, parent: 'd2' }))];
   let n = 0; const versioni = [], tolti = [];
   const S = await finto({
@@ -52,22 +52,22 @@ test('Box: cartelle per id (il 409 dà quella che c\'è), fattura multipart, nuo
     assert.equal((await K.chiama('POST', '/api/connettori/box/prova')).json.messaggio, 'titolare@bottega.example');
     const f = await fattura(K);
     const r = await K.chiama('POST', '/api/connettori/box/azioni/salva_documento', { args: { fattura: f.id } });
-    assert.equal(r.stato, 200, JSON.stringify(r.json)); assert.equal(r.json.cartella, 'Kubo/Fatture/2026');
-    // «Kubo» c'era (409 con l'id), Fatture e 2026 sono nuove
+    assert.equal(r.stato, 200, JSON.stringify(r.json)); assert.equal(r.json.cartella, 'Lumi/Fatture/2026');
+    // «Lumi» c'era (409 con l'id), Fatture e 2026 sono nuove
     const anno = voci.find(v => v.name === '2026'), fatture = voci.find(v => v.name === 'Fatture');
     assert.equal(fatture.parent, 'd1'); assert.equal(anno.parent, fatture.id);
     const file = voci.filter(v => v.parent === anno.id); assert.deepEqual(file.map(v => v.name.split('.').pop()), ['html', 'xml']);
     const up = S.chiamate.find(c => c.percorso === '/api/2.0/files/content');
-    assert.match(up.intestazioni['content-type'], /^multipart\/form-data; boundary=kubo/); assert.equal(up.intestazioni.authorization, 'Bearer tok');
+    assert.match(up.intestazioni['content-type'], /^multipart\/form-data; boundary=lumi/); assert.equal(up.intestazioni.authorization, 'Bearer tok');
     const [a, b] = parti(up.corpo); assert.equal(a.nome, 'attributes'); assert.equal(b.nome, 'file'); assert.equal(b.file, file[0].name); assert.match(b.tipo, /^text\/html/); assert.match(b.valore, /<html/i);
     assert.match(file[1].file.valore, /FatturaElettronica/);
     // di nuovo: nessun doppione, due nuove versioni sui file che ci sono
     assert.equal((await K.chiama('POST', '/api/connettori/box/azioni/salva_documento', { args: { fattura: f.id } })).stato, 200);
     assert.equal(voci.filter(v => v.parent === anno.id).length, 2); assert.deepEqual(versioni.map(v => v.id), file.map(v => v.id));
     assert.equal(versioni[0].attributi.name, file[0].name);
-    // il backup: caricato in Kubo/Backup, poi restano i 2 più recenti (il nuovo e il 3 gennaio); l'appunto non si tocca
+    // il backup: caricato in Lumi/Backup, poi restano i 2 più recenti (il nuovo e il 3 gennaio); l'appunto non si tocca
     const g = (await K.chiama('POST', '/api/connettori/box/giri/backup')).json;
-    assert.equal(g.esito, 'ok', JSON.stringify(g)); assert.match(g.risultato.caricato, /^kubo-[\d-]+\.db$/); assert.equal(g.risultato.tolti, 2);
+    assert.equal(g.esito, 'ok', JSON.stringify(g)); assert.match(g.risultato.caricato, /^lumi-[\d-]+\.db$/); assert.equal(g.risultato.tolti, 2);
     const nuovo = voci.find(v => v.name === g.risultato.caricato); assert.equal(nuovo.parent, 'd2'); assert.ok(nuovo.file.valore.startsWith('SQLite format 3'));
     assert.deepEqual(tolti.sort(), VECCHI.slice(0, 2)); assert.ok(voci.some(v => v.name === 'appunti.txt'));
   } finally { await K.chiudi(); await S.chiudi(); }
@@ -83,8 +83,8 @@ test('pCloud: regione UE/USA, codice scambiato su oauth2_token (token senza scad
   assert.equal(pcloud.oauth.token(conX('eapi.pcloud.com', 'api.pcloud.com')), 'https://eapi.pcloud.com/oauth2_token');
   assert.equal(pcloud.oauth.token(conX('evil.example')), 'https://eapi.pcloud.com/oauth2_token');
   assert.equal(pcloud.oauth.pkce, false); assert.deepEqual(pcloud.oauth.conserva, ['hostname']); assert.ok(!pcloud.impostazioni.some(i => i.id === 'regione'));
-  const K = await kubo(['negozio', 'fatture']);
-  const cartelle = new Map([['/', 0], ['/Kubo', 11], ['/Kubo/Backup', 12]]), file = [...VECCHI, 'appunti.txt'].map((n, i) => ({ fileid: 500 + i, name: n, folderid: 12 }));
+  const K = await gestionale(['negozio', 'fatture']);
+  const cartelle = new Map([['/', 0], ['/Lumi', 11], ['/Lumi/Backup', 12]]), file = [...VECCHI, 'appunti.txt'].map((n, i) => ({ fileid: 500 + i, name: n, folderid: 12 }));
   let n = 100; const tolti = [];
   const S = await finto({
     'POST /oauth2_token': (p, c) => (c.code === 'codice-1' && c.client_id === 'cid' && c.client_secret === 'sec' ? { result: 0, access_token: 'tokpc', token_type: 'bearer', uid: 42, locationid: 2 } : { result: 2012, error: 'Invalid code.' }),
@@ -114,8 +114,8 @@ test('pCloud: regione UE/USA, codice scambiato su oauth2_token (token senza scad
     const f = await fattura(K);
     const r = await K.chiama('POST', '/api/connettori/pcloud/azioni/salva_documento', { args: { fattura: f.id } });
     assert.equal(r.stato, 200, JSON.stringify(r.json));
-    assert.deepEqual(S.chiamate.filter(c => c.percorso === '/createfolderifnotexists').map(c => c.q.path), ['/Kubo', '/Kubo/Fatture', '/Kubo/Fatture/2026', '/Kubo', '/Kubo/Fatture', '/Kubo/Fatture/2026']);
-    const su = file.filter(x => x.folderid === cartelle.get('/Kubo/Fatture/2026')); assert.equal(su.length, 2);
+    assert.deepEqual(S.chiamate.filter(c => c.percorso === '/createfolderifnotexists').map(c => c.q.path), ['/Lumi', '/Lumi/Fatture', '/Lumi/Fatture/2026', '/Lumi', '/Lumi/Fatture', '/Lumi/Fatture/2026']);
+    const su = file.filter(x => x.folderid === cartelle.get('/Lumi/Fatture/2026')); assert.equal(su.length, 2);
     assert.match(su[0].name, /\.html$/); assert.equal(su[0].parte.file, su[0].name); assert.match(su[0].parte.valore, /<html/i); assert.match(su[1].parte.valore, /FatturaElettronica/);
     const up = S.chiamate.find(c => c.percorso === '/uploadfile');
     assert.equal(up.intestazioni.authorization, 'Bearer tokpc'); assert.equal(up.q.nopartial, '1'); assert.equal(up.q.access_token, undefined);   // il token non va nell'indirizzo
@@ -131,14 +131,14 @@ test('pCloud: regione UE/USA, codice scambiato su oauth2_token (token senza scad
 });
 
 test('ClickUp: token pk_ così com\'è, Lumi crea il compito con la scadenza in millisecondi, un\'attività nuova diventa un compito una volta', async () => {
-  const K = await kubo(['professionista']); let n = 0;
+  const K = await gestionale(['professionista']); let n = 0;
   const S = await finto({
     'GET /api/v2/list/:id': p => (p.id === '901234567' ? { id: p.id, name: 'Lavori' } : { stato: 404, corpo: { err: 'List not found', ECODE: 'SUBCAT_016' } }),
     'POST /api/v2/list/:id/task': (p, c) => ({ id: `86a${++n}`, name: c.name, url: `https://app.clickup.com/t/86a${n}` }),
   });
   try {
     const token = 'pk_' + '12345678_ABCDEFGHIJKLMNOPQRSTUVWXYZ012345';
-    await accendi(K, 'clickup', { base: S.url, segreti: { token }, impostazioni: { lista: '901234567', da_attivita: true, pubblico: 'https://kubo.bottega.it' } });
+    await accendi(K, 'clickup', { base: S.url, segreti: { token }, impostazioni: { lista: '901234567', da_attivita: true, pubblico: 'https://lumi.bottega.it' } });
     assert.equal((await K.chiama('POST', '/api/connettori/clickup/prova')).json.messaggio, 'Lista «Lavori»');
     assert.equal(S.chiamate[0].intestazioni.authorization, token);   // senza «Bearer»
     const args = { nome: 'Ordinare il materiale', note: 'Viti e tasselli', scadenza: '20/10/2026' };
@@ -156,15 +156,15 @@ test('ClickUp: token pk_ così com\'è, Lumi crea il compito con la scadenza in 
     await coda(K);
     const u = S.chiamate.filter(c => c.metodo === 'POST').at(-1).corpo;
     assert.equal(u.name, 'Preparare l\'offerta'); assert.equal(u.due_date, Date.parse('2026-10-22T12:00:00Z'));
-    assert.ok(u.description.includes(`https://kubo.bottega.it/#/e/attivita/${riga.id}`));
+    assert.ok(u.description.includes(`https://lumi.bottega.it/#/e/attivita/${riga.id}`));
     assert.equal(K.nucleo.k('clickup').sincro.remoto('attivita', riga.id), '86a2');
     await K.chiama('PATCH', `/api/dati/attivita/${riga.id}`, { note: 'cambiata' }); await coda(K);
     assert.equal(S.chiamate.filter(c => c.metodo === 'POST').length, 2);
   } finally { await K.chiudi(); await S.chiudi(); }
 });
 
-test('Microsoft To Do: device code verso il tenant con Tasks.ReadWrite, la lista per nome o la predefinita, dueDateTime nel fuso di Kubo', async () => {
-  const K = await kubo(['professionista']), messi = [];
+test('Microsoft To Do: device code verso il tenant con Tasks.ReadWrite, la lista per nome o la predefinita, dueDateTime nel fuso di Lumi', async () => {
+  const K = await gestionale(['professionista']), messi = [];
   const S = await finto({
     'POST /consumers/oauth2/v2.0/devicecode': () => ({ device_code: 'dc', user_code: 'WXYZ-9876', verification_uri: 'https://microsoft.com/devicelogin', interval: 5, expires_in: 900 }),
     'POST /consumers/oauth2/v2.0/token': (p, c) => (c.grant_type === 'urn:ietf:params:oauth:grant-type:device_code' && c.device_code === 'dc' ? { access_token: 'tokms', refresh_token: 'r', expires_in: 3600 } : { stato: 400, corpo: { error: 'invalid_grant' } }),
@@ -195,7 +195,7 @@ test('Microsoft To Do: device code verso il tenant con Tasks.ReadWrite, la lista
 });
 
 test('Google Tasks: la lista per nome o @default, due in RFC 3339 (conta la data), un\'attività nuova diventa un compito', async () => {
-  const K = await kubo(['professionista']), messi = [];
+  const K = await gestionale(['professionista']), messi = [];
   const S = await finto({
     'GET /tasks/v1/users/@me/lists': () => ({ kind: 'tasks#taskLists', items: [{ id: 'MDEx', title: 'I miei compiti' }, { id: 'MDEy', title: 'Bottega' }] }),
     'POST /tasks/v1/lists/:id/tasks': (p, c, { intestazioni }) => { messi.push({ lista: decodeURIComponent(p.id), corpo: c, auth: intestazioni.authorization }); return { id: `tk${messi.length}`, title: c.title, webViewLink: `https://tasks.google.com/task/tk${messi.length}` }; },

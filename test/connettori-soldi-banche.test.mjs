@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { generateKeyPairSync, verify } from 'node:crypto';
-import { finto, kubo, accendi } from './connettori-finto.mjs';
+import { finto, gestionale, accendi } from './connettori-finto.mjs';
 
 const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
 const PEM = privateKey.export({ type: 'pkcs8', format: 'pem' });
@@ -52,13 +52,13 @@ test('catalogo delle banche: categoria, guida, fonti e traduzioni complete', asy
 });
 
 test('Enable Banking: JWT RS256, consenso con state, sessione, movimenti a pagine → proposta → fattura pagata', async () => {
-  const K = await kubo(['fatture']); let f = null, sessioni = 0;
+  const K = await gestionale(['fatture']); let f = null, sessioni = 0;
   // il finto Enable Banking: ogni chiamata deve portare un JWT valido dell'applicazione «app-prova»
   const accesso = h => { const j = jwtValido(String(h.authorization || '').replace(/^Bearer /, ''));
     return j && j.testa.alg === 'RS256' && j.testa.kid === 'app-prova' && j.corpo.iss === 'enablebanking.com' && j.corpo.aud === 'api.enablebanking.com' && j.corpo.exp - j.corpo.iat <= 86400 && j.corpo.exp > Date.now() / 1000; };
   const no = { stato: 401, corpo: { message: 'JWT non valido' } };
   const S = await finto({
-    'GET /application': (p, c, { intestazioni }) => (accesso(intestazioni) ? { name: 'Kubo prova' } : no),
+    'GET /application': (p, c, { intestazioni }) => (accesso(intestazioni) ? { name: 'Lumi prova' } : no),
     'GET /aspsps': (p, c, { intestazioni, q }) => (accesso(intestazioni) ? { aspsps: [{ name: 'Banca Finta', country: q.get('country'), bic: 'FINTITMM', psu_types: ['business'], maximum_consent_validity: 15552000 }] } : no),
     'POST /auth': (p, c, { intestazioni }) => (accesso(intestazioni) ? { url: `https://banca.example/consenso?state=${c.state}`, authorization_id: 'au-1' } : no),
     'POST /sessions': (p, c, { intestazioni }) => { if (!accesso(intestazioni) || c.code !== 'cod-1') return no; sessioni++;
@@ -112,7 +112,7 @@ test('Enable Banking: JWT RS256, consenso con state, sessione, movimenti a pagin
 });
 
 test('Qonto: chiave «login:segreto», conti attivi, movimenti a pagine dal giorno giusto → proposta → fattura pagata', async () => {
-  const K = await kubo(['fatture']); let f = null;
+  const K = await gestionale(['fatture']); let f = null;
   const no = { stato: 401, corpo: { errors: [{ detail: 'chiave non valida' }] } }, ok = h => h.authorization === 'bottega-1234:sk-prova-qonto';
   const S = await finto({
     'GET /v2/organization': (p, c, { intestazioni }) => (ok(intestazioni) ? { organization: { slug: 'bottega-1234', bank_accounts: [
@@ -149,7 +149,7 @@ test('Qonto: chiave «login:segreto», conti attivi, movimenti a pagine dal gior
 });
 
 test('Revolut Business: consenso, codice → token con client_assertion JWT, rinnovo, movimenti a pagine → proposta → fattura pagata', async () => {
-  const K = await kubo(['fatture']); let f = null; const token = [];
+  const K = await gestionale(['fatture']); let f = null; const token = [];
   const asserzione = c => { const j = c?.client_assertion_type === 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer' && jwtValido(c.client_assertion);
     return j && j.testa.alg === 'RS256' && j.corpo.iss === '127.0.0.1' && j.corpo.sub === 'cli-prova' && j.corpo.aud === 'https://revolut.com' && j.corpo.exp > Date.now() / 1000; };
   const no = { stato: 401, corpo: { message: 'non autorizzato' } }, ok = h => /^Bearer acc-[12]$/.test(h.authorization || '');

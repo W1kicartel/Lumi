@@ -1,5 +1,5 @@
-// La voce locale di Lumi senza il modello vero: un finto kubo-voce (uno script Node con lo stesso protocollo a righe JSON)
-// fa la parte di Parakeet. Si provano l'endpoint (autenticazione, X-Kubo, Lumi spento, limiti di dimensione e durata,
+// La voce locale di Lumi senza il modello vero: un finto lumi-voce (uno script Node con lo stesso protocollo a righe JSON)
+// fa la parte di Parakeet. Si provano l'endpoint (autenticazione, X-Lumi, Lumi spento, limiti di dimensione e durata,
 // limite al minuto), la fila (una trascrizione alla volta, nello stesso ordine), il processo che cade, i file
 // temporanei sempre cancellati, la scelta del motore, il download del modello ONNX con le impronte, il ricampionamento
 // del browser e la regola della lingua nelle istruzioni di Lumi. La prova con Parakeet vero è test/voce-vera.mjs.
@@ -20,11 +20,11 @@ import { sistema } from '../server/moduli/lumi/nucleo.js';
 import { ricampiona, unisci } from '../web/lumi/voce.js';
 
 attiva();
-delete process.env.ANTHROPIC_API_KEY; delete process.env.DEEPGRAM_API_KEY; delete process.env.KUBO_LUMI_LIMITE; delete process.env.KUBO_VOCE;
+delete process.env.ANTHROPIC_API_KEY; delete process.env.DEEPGRAM_API_KEY; delete process.env.LUMI_LUMI_LIMITE; delete process.env.LUMI_VOCE;
 const RADICE = join(dirname(fileURLToPath(import.meta.url)), '..');
-const dir = mkdtempSync(join(tmpdir(), 'kubo-voce-prova-')), temp = join(dir, 'temp'), FINTO = join(dir, 'finto-voce'), REGISTRO = join(dir, 'registro.txt');
+const dir = mkdtempSync(join(tmpdir(), 'lumi-voce-prova-')), temp = join(dir, 'temp'), FINTO = join(dir, 'finto-voce'), REGISTRO = join(dir, 'registro.txt');
 
-// Il finto kubo-voce. Il primo campione dice cosa fare: 7 → cade senza rispondere, 9 → risponde con un errore,
+// Il finto lumi-voce. Il primo campione dice cosa fare: 7 → cade senza rispondere, 9 → risponde con un errore,
 // 5 → ci mette 150 ms. Non cancella il file (lo deve fare il server) e segna nel registro le richieste che si sovrappongono.
 const SCRIPT = `#!${process.execPath}
 const { readFileSync, appendFileSync } = require('node:fs');
@@ -52,12 +52,12 @@ async function avvia(db = apri()) {
   const srv = creaServer(db); await new Promise(r => srv.listen(0, '127.0.0.1', r));
   const base = `http://127.0.0.1:${srv.address().port}`; let biscotto = '';
   const chiama = async (metodo, percorso, corpo) => {
-    const r = await fetch(base + percorso, { method: metodo, headers: { 'Content-Type': 'application/json', 'X-Kubo': '1', ...(biscotto ? { Cookie: biscotto } : {}) }, body: corpo ? JSON.stringify(corpo) : undefined });
+    const r = await fetch(base + percorso, { method: metodo, headers: { 'Content-Type': 'application/json', 'X-Lumi': '1', ...(biscotto ? { Cookie: biscotto } : {}) }, body: corpo ? JSON.stringify(corpo) : undefined });
     const c = r.headers.get('set-cookie'); if (c) biscotto = c.split(';')[0];
     return { stato: r.status, json: await r.json().catch(() => null) };
   };
-  const voce = async (corpo, { xKubo = true, cookie = true } = {}) => {
-    const r = await fetch(base + '/api/lumi/voce/trascrivi', { method: 'POST', headers: { 'Content-Type': 'application/octet-stream', ...(xKubo ? { 'X-Kubo': '1' } : {}), ...(cookie && biscotto ? { Cookie: biscotto } : {}) }, body: corpo });
+  const voce = async (corpo, { xLumi = true, cookie = true } = {}) => {
+    const r = await fetch(base + '/api/lumi/voce/trascrivi', { method: 'POST', headers: { 'Content-Type': 'application/octet-stream', ...(xLumi ? { 'X-Lumi': '1' } : {}), ...(cookie && biscotto ? { Cookie: biscotto } : {}) }, body: corpo });
     return { stato: r.status, json: await r.json().catch(() => null) };
   };
   const accedi = (email, password) => { biscotto = ''; return chiama('POST', '/api/accedi', { email, password }); };
@@ -66,15 +66,15 @@ async function avvia(db = apri()) {
 
 before(async () => {
   writeFileSync(FINTO, SCRIPT); chmodSync(FINTO, 0o755);
-  process.env.KUBO_VOCE_BINARIO = FINTO; process.env.KUBO_VOCE_TEMP = temp;
+  process.env.LUMI_VOCE_BINARIO = FINTO; process.env.LUMI_VOCE_TEMP = temp;
   (await import('node:fs')).mkdirSync(temp);
   k = await avvia();
-  assert.equal((await k.chiama('POST', '/api/configura', { azienda: 'Bottega Voce', nome: 'Titolare', email: 'titolare@esempio.it', password: 'prova-kubo-1', modelli: [] })).stato, 200);
+  assert.equal((await k.chiama('POST', '/api/configura', { azienda: 'Bottega Voce', nome: 'Titolare', email: 'titolare@esempio.it', password: 'prova-lumi-1', modelli: [] })).stato, 200);
   assert.equal((await k.chiama('PUT', '/api/lumi/impostazioni', { limite: 600 })).stato, 200);
 });
 after(async () => {
   await k?.chiudi();
-  delete process.env.KUBO_VOCE_BINARIO; delete process.env.KUBO_VOCE_TEMP;
+  delete process.env.LUMI_VOCE_BINARIO; delete process.env.LUMI_VOCE_TEMP;
   rmSync(dir, { recursive: true, force: true });
 });
 const registro = () => (existsSync(REGISTRO) ? readFileSync(REGISTRO, 'utf8') : '');
@@ -97,9 +97,9 @@ test('trascrive: il testo torna senza spazi attorno, e il file temporaneo (0600)
   assert.match(registro(), /richiesta \d+ 16000/);
 });
 
-test('autenticazione e permessi: senza accesso 401, senza X-Kubo 403, con Lumi spento 400', async () => {
+test('autenticazione e permessi: senza accesso 401, senza X-Lumi 403, con Lumi spento 400', async () => {
   assert.equal((await k.voce(audio(1), { cookie: false })).stato, 401);
-  assert.equal((await k.voce(audio(1), { xKubo: false })).stato, 403);
+  assert.equal((await k.voce(audio(1), { xLumi: false })).stato, 403);
   assert.equal((await k.chiama('PUT', '/api/lumi/impostazioni', { attivo: false })).stato, 200);
   const spento = await k.voce(audio(1));
   assert.equal(spento.stato, 400); assert.match(spento.json.errore, /Lumi è spento/);
@@ -109,7 +109,7 @@ test('autenticazione e permessi: senza accesso 401, senza X-Kubo 403, con Lumi s
   assert.equal((await k.chiama('POST', '/api/utenti', { nome: 'Marta', email: 'marta@esempio.it', password: 'prova-marta-1', ruolo: 'collaboratore' })).stato, 200);
   await k.accedi('marta@esempio.it', 'prova-marta-1');
   assert.equal((await k.voce(audio(0.5))).stato, 200);
-  await k.accedi('titolare@esempio.it', 'prova-kubo-1');
+  await k.accedi('titolare@esempio.it', 'prova-lumi-1');
 });
 
 test('limiti: vuoto o non float32 → 400, oltre 60 secondi → 413 (e il corpo non arriva al motore)', async () => {
@@ -161,51 +161,51 @@ test('limite al minuto per persona, lo stesso delle domande', async () => {
 });
 
 test('senza motore la voce locale non c\'è: 503, e lo stato lo dice', async () => {
-  delete process.env.KUBO_VOCE_BINARIO; process.env.KUBO_VOCE = 'no';
+  delete process.env.LUMI_VOCE_BINARIO; process.env.LUMI_VOCE = 'no';
   const k3 = await avvia();
   try {
-    await k3.chiama('POST', '/api/configura', { azienda: 'Senza voce', nome: 'T', email: 't@esempio.it', password: 'prova-kubo-1', modelli: [] });
+    await k3.chiama('POST', '/api/configura', { azienda: 'Senza voce', nome: 'T', email: 't@esempio.it', password: 'prova-lumi-1', modelli: [] });
     const s = (await k3.chiama('POST', '/api/lumi', { azione: 'stato' })).json;
     assert.equal(s.voceLocale, false); assert.equal(s.voceMotore, null);
     const r = await k3.voce(audio(1));
     assert.equal(r.stato, 503); assert.match(r.json.errore, /non c'è/);
-  } finally { await k3.chiudi(); process.env.KUBO_VOCE_BINARIO = FINTO; delete process.env.KUBO_VOCE; }
+  } finally { await k3.chiudi(); process.env.LUMI_VOCE_BINARIO = FINTO; delete process.env.LUMI_VOCE; }
 });
 
-test('i messaggi della voce si traducono nella lingua di chi usa Kubo', async () => {
+test('i messaggi della voce si traducono nella lingua di chi usa Lumi', async () => {
   const L = await import('../server/moduli/lingue.js');
   assert.equal(L.traduci('Audio troppo lungo: al massimo 60 secondi', 'de'), 'Audio zu lang: höchstens 60 Sekunden');
   assert.equal(L.traduci('La voce locale è occupata: riprova fra poco', 'en'), 'Local voice is busy: try again shortly');
 });
 
 test('scelta del motore: Mac con chip Apple, programma indicato, Lode in ripiego, ONNX, niente', () => {
-  const radice = '/kubo', esiste = f => f === '/kubo/desktop/bin/kubo-voce';
+  const radice = '/lumi', esiste = f => f === '/lumi/desktop/bin/lumi-voce';
   const base = { radice, env: {}, esiste, sherpa: false, memoria: 16 * 2 ** 30, cartellaModello: '/dati/voce-onnx' };
-  assert.deepEqual(scegliMotore({ ...base, piattaforma: 'darwin', arch: 'arm64' }), { motore: 'mac', binario: '/kubo/desktop/bin/kubo-voce' });
-  assert.deepEqual(scegliMotore({ ...base, piattaforma: 'darwin', arch: 'arm64', esiste: f => f === '/kubo/bin/kubo-voce' }), { motore: 'mac', binario: '/kubo/bin/kubo-voce' });   // nell'app
-  assert.equal(scegliMotore({ ...base, piattaforma: 'darwin', arch: 'x64' }), null);   // Mac Intel: kubo-voce non gira
-  assert.equal(scegliMotore({ ...base, piattaforma: 'darwin', arch: 'arm64', env: { KUBO_VOCE: 'no' } }), null);
+  assert.deepEqual(scegliMotore({ ...base, piattaforma: 'darwin', arch: 'arm64' }), { motore: 'mac', binario: '/lumi/desktop/bin/lumi-voce' });
+  assert.deepEqual(scegliMotore({ ...base, piattaforma: 'darwin', arch: 'arm64', esiste: f => f === '/lumi/bin/lumi-voce' }), { motore: 'mac', binario: '/lumi/bin/lumi-voce' });   // nell'app
+  assert.equal(scegliMotore({ ...base, piattaforma: 'darwin', arch: 'x64' }), null);   // Mac Intel: lumi-voce non gira
+  assert.equal(scegliMotore({ ...base, piattaforma: 'darwin', arch: 'arm64', env: { LUMI_VOCE: 'no' } }), null);
   assert.equal(scegliMotore({ ...base, piattaforma: 'darwin', arch: 'arm64', env: { NODE_TEST_CONTEXT: 'child' } }), null);
-  // il lode-voce di Lode, se Kubo non ha il suo
+  // il lode-voce di Lode, se Lumi non ha il suo
   assert.deepEqual(scegliMotore({ ...base, piattaforma: 'darwin', arch: 'arm64', esiste: f => f === '/Applications/Lode.app/Contents/Resources/bin/lode-voce' }),
     { motore: 'lode', binario: '/Applications/Lode.app/Contents/Resources/bin/lode-voce' });
-  assert.equal(scegliMotore({ ...base, piattaforma: 'darwin', arch: 'arm64', env: { KUBO_VOCE_BINARIO: '/lode/desktop/bin/lode-voce' }, esiste: () => true }).motore, 'lode');
+  assert.equal(scegliMotore({ ...base, piattaforma: 'darwin', arch: 'arm64', env: { LUMI_VOCE_BINARIO: '/lode/desktop/bin/lode-voce' }, esiste: () => true }).motore, 'lode');
   // un programma indicato vale ovunque
-  assert.deepEqual(scegliMotore({ ...base, piattaforma: 'linux', arch: 'x64', env: { KUBO_VOCE_BINARIO: '/x/finto' }, esiste: () => true }), { motore: 'mac', binario: '/x/finto' });
-  // altrove: ONNX solo con sherpa-onnx-node, la cartella del modello e abbastanza memoria (o KUBO_VOCE=onnx)
+  assert.deepEqual(scegliMotore({ ...base, piattaforma: 'linux', arch: 'x64', env: { LUMI_VOCE_BINARIO: '/x/finto' }, esiste: () => true }), { motore: 'mac', binario: '/x/finto' });
+  // altrove: ONNX solo con sherpa-onnx-node, la cartella del modello e abbastanza memoria (o LUMI_VOCE=onnx)
   assert.equal(scegliMotore({ ...base, piattaforma: 'linux', arch: 'x64' }), null);
   assert.deepEqual(scegliMotore({ ...base, piattaforma: 'win32', arch: 'x64', sherpa: true }), { motore: 'onnx', cartella: '/dati/voce-onnx' });
   assert.equal(scegliMotore({ ...base, piattaforma: 'linux', arch: 'x64', sherpa: true, memoria: 4 * 2 ** 30 }), null);
-  assert.equal(scegliMotore({ ...base, piattaforma: 'linux', arch: 'x64', sherpa: true, memoria: 4 * 2 ** 30, env: { KUBO_VOCE: 'onnx' } }).motore, 'onnx');
+  assert.equal(scegliMotore({ ...base, piattaforma: 'linux', arch: 'x64', sherpa: true, memoria: 4 * 2 ** 30, env: { LUMI_VOCE: 'onnx' } }).motore, 'onnx');
   assert.equal(scegliMotore({ ...base, piattaforma: 'linux', arch: 'x64', sherpa: true, cartellaModello: null }), null);   // database in memoria
-  assert.deepEqual(scegliMotore({ ...base, piattaforma: 'darwin', arch: 'arm64', sherpa: true, env: { KUBO_VOCE: 'onnx' } }), { motore: 'onnx', cartella: '/dati/voce-onnx' });
+  assert.deepEqual(scegliMotore({ ...base, piattaforma: 'darwin', arch: 'arm64', sherpa: true, env: { LUMI_VOCE: 'onnx' } }), { motore: 'onnx', cartella: '/dati/voce-onnx' });
 });
 
-test('i file audio lasciati da un Kubo chiuso di colpo si tolgono all\'avvio (solo quelli dei processi morti)', () => {
+test('i file audio lasciati da Lumi chiuso di colpo si tolgono all\'avvio (solo quelli dei processi morti)', () => {
   const d = mkdtempSync(join(dir, 'rimasti-'));
-  writeFileSync(join(d, 'kubo-voce-999999-1.f32'), 'x'); writeFileSync(join(d, `kubo-voce-${process.pid}-1.f32`), 'x'); writeFileSync(join(d, 'altro.f32'), 'x');
+  writeFileSync(join(d, 'lumi-voce-999999-1.f32'), 'x'); writeFileSync(join(d, `lumi-voce-${process.pid}-1.f32`), 'x'); writeFileSync(join(d, 'altro.f32'), 'x');
   assert.equal(pulisciRimasti(d), 1);
-  assert.deepEqual(readdirSync(d).sort(), ['altro.f32', `kubo-voce-${process.pid}-1.f32`]);
+  assert.deepEqual(readdirSync(d).sort(), ['altro.f32', `lumi-voce-${process.pid}-1.f32`]);
 });
 
 test('creaVoceLocale da sola: senza motore rifiuta, con il finto risponde in ordine, e il riposo chiude il processo', async () => {
@@ -291,13 +291,13 @@ test('Lumi risponde nella lingua di chi gli scrive o parla, in tutte le varianti
   assert.match(sistema({ lingua: 'de' }), /When it is unclear, reply in German/);
 });
 
-test('sherpa-onnx-node è solo facoltativo, con la versione esatta; kubo-voce finisce nel pacchetto del Mac', () => {
+test('sherpa-onnx-node è solo facoltativo, con la versione esatta; lumi-voce finisce nel pacchetto del Mac', () => {
   const p = JSON.parse(readFileSync(join(RADICE, 'package.json'), 'utf8'));
   assert.equal(p.dependencies, undefined);
   assert.deepEqual(p.optionalDependencies, { 'sherpa-onnx-node': ONNX.VERSIONE_SHERPA });
   const d = JSON.parse(readFileSync(join(RADICE, 'desktop', 'package.json'), 'utf8')).build;
-  assert.ok(d.mac.extraResources.some(x => x.from === 'bin' && x.to === 'kubo/bin' && x.filter.includes('kubo-voce')));
-  assert.equal(d.mac.x64ArchFiles, 'Contents/Resources/kubo/bin/kubo-voce');
+  assert.ok(d.mac.extraResources.some(x => x.from === 'bin' && x.to === 'lumi/bin' && x.filter.includes('lumi-voce')));
+  assert.equal(d.mac.x64ArchFiles, 'Contents/Resources/lumi/bin/lumi-voce');
   assert.ok(d.mac.extendInfo.NSMicrophoneUsageDescription);
   // il binario compilato non va nel repository
   assert.match(readFileSync(join(RADICE, '.gitignore'), 'utf8'), /^desktop\/bin\/$/m);

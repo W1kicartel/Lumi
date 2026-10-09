@@ -2,7 +2,7 @@
 // Nessuna chiamata vera in rete, nessuna chiave vera.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { finto, kubo, accendi, manda, firmaHmacDi } from './connettori-finto.mjs';
+import { finto, gestionale, accendi, manda, firmaHmacDi } from './connettori-finto.mjs';
 import * as X from '../server/moduli/documenti-xml.js';
 import yousign from '../connettori/yousign/connettore.js';
 import acube from '../connettori/acube/connettore.js';
@@ -30,7 +30,7 @@ const preventivo = async (K, cliente, oggetto = 'Sito web') => (await K.chiama('
 const firmaYs = (s, corpo) => `sha256=${firmaHmacDi(s, corpo, 'hex')}`;
 
 test('Yousign: manda in firma (richiesta, PDF in multipart, firmatario, attivazione), webhook firmato → accettato, replay, firma sbagliata', async () => {
-  const K = await kubo(['professionista']);
+  const K = await gestionale(['professionista']);
   const S = await finto({
     'POST /signature_requests': () => ({ id: 'sr-1', status: 'draft' }),
     'POST /signature_requests/:id/documents': () => ({ id: 'doc-1', nature: 'signable_document' }),
@@ -48,7 +48,7 @@ test('Yousign: manda in firma (richiesta, PDF in multipart, firmatario, attivazi
     assert.deepEqual(S.chiamate.map(c => c.percorso), ['/signature_requests', '/signature_requests/sr-1/documents', '/signature_requests/sr-1/signers', '/signature_requests/sr-1/activate']);
     assert.ok(S.chiamate.every(c => c.intestazioni.authorization === 'Bearer ys_prova_123'));
     const [sr, doc, sig] = S.chiamate;
-    assert.equal(sr.corpo.delivery_mode, 'email'); assert.equal(sr.corpo.timezone, 'Europe/Rome'); assert.equal(sr.corpo.external_id, `kubo-p-${p.id}`);
+    assert.equal(sr.corpo.delivery_mode, 'email'); assert.equal(sr.corpo.timezone, 'Europe/Rome'); assert.equal(sr.corpo.external_id, `lumi-p-${p.id}`);
     assert.match(doc.intestazioni['content-type'], /^multipart\/form-data; boundary=/);
     assert.match(doc.corpo, /name="file"; filename="[\w.-]+\.pdf"\r\nContent-Type: application\/pdf\r\n\r\n%PDF-1\.4/); assert.match(doc.corpo, /name="nature"\r\n\r\nsignable_document\r\n/);
     assert.match(doc.corpo, /Progetto grafico/); assert.match(doc.corpo, /Firma per accettazione/);
@@ -58,7 +58,7 @@ test('Yousign: manda in firma (richiesta, PDF in multipart, firmatario, attivazi
     assert.equal((await K.chiama('GET', `/api/dati/preventivi/${p.id}`)).json.stato, 'inviato');
     assert.equal((await K.chiama('POST', '/api/connettori/yousign/azioni/firma', { args: { preventivo: p.id } })).stato, 502);   // già in firma
     // il webhook: firma sbagliata 401, buona → accettato da «Yousign», di nuovo → doppione
-    const corpo = JSON.stringify({ event_id: 'ev-1', event_name: 'signature_request.done', event_time: '1760000000', sandbox: true, data: { signature_request: { id: 'sr-1', status: 'done', external_id: `kubo-p-${p.id}` } } });
+    const corpo = JSON.stringify({ event_id: 'ev-1', event_name: 'signature_request.done', event_time: '1760000000', sandbox: true, data: { signature_request: { id: 'sr-1', status: 'done', external_id: `lumi-p-${p.id}` } } });
     assert.equal((await manda(K, '/api/connettori/yousign/in', corpo, { 'X-Yousign-Signature-256': firmaYs('altro', corpo) })).stato, 401);
     assert.equal((await manda(K, '/api/connettori/yousign/in', corpo)).stato, 401);
     const w = await manda(K, '/api/connettori/yousign/in', corpo, { 'X-Yousign-Signature-256': firmaYs('segreto-ys', corpo) });
@@ -67,7 +67,7 @@ test('Yousign: manda in firma (richiesta, PDF in multipart, firmatario, attivazi
     assert.equal((await manda(K, '/api/connettori/yousign/in', corpo, { 'X-Yousign-Signature-256': firmaYs('segreto-ys', corpo) })).json.doppione, true);
     // un rifiuto riconosciuto dall'external_id porta il preventivo a «rifiutato»; un evento qualunque è ignorato
     const p2 = await preventivo(K, cl.id, 'Logo');
-    const no = JSON.stringify({ event_id: 'ev-2', event_name: 'signature_request.declined', data: { signature_request: { id: 'sr-9', status: 'declined', external_id: `kubo-p-${p2.id}`, decline_information: { reason: 'Prezzo alto' } } } });
+    const no = JSON.stringify({ event_id: 'ev-2', event_name: 'signature_request.declined', data: { signature_request: { id: 'sr-9', status: 'declined', external_id: `lumi-p-${p2.id}`, decline_information: { reason: 'Prezzo alto' } } } });
     assert.match((await manda(K, '/api/connettori/yousign/in', no, { 'X-Yousign-Signature-256': firmaYs('segreto-ys', no) })).json.esito, /rifiutato/);
     assert.equal((await K.chiama('GET', `/api/dati/preventivi/${p2.id}`)).json.stato, 'rifiutato');
     const altro = JSON.stringify({ event_id: 'ev-3', event_name: 'signer.notified', data: {} });
@@ -99,7 +99,7 @@ const passiva = (numero = 'A-77') => X.xml(FORNITORE, { stato: 'emessa', numero,
 const ricevute = K => K.db.prepare('SELECT COUNT(*) n FROM d_fatture_ricevute WHERE archiviato = 0').get().n;
 
 test('A-Cube: login JWT in memoria, invio dell\'XML, esiti SDI dal webhook con il codice segreto, passive scaricate e importate', async () => {
-  const K = await kubo(['negozio', 'fatture']); let login = 0;
+  const K = await gestionale(['negozio', 'fatture']); let login = 0;
   const S = await finto({
     'POST /login': (p, c) => (c.email === 'amm@bottega.example' && c.password === 'pw-prova' ? { token: `jwt-${++login}` } : { stato: 401, corpo: { message: 'credenziali' } }),
     'POST /invoices': (p, c, { intestazioni }) => (intestazioni.authorization !== 'Bearer jwt-1' ? { stato: 401, corpo: {} }
@@ -138,7 +138,7 @@ test('A-Cube: login JWT in memoria, invio dell\'XML, esiti SDI dal webhook con i
 });
 
 test('A-Cube: un 401 con il JWT in memoria fa rifare il login una volta; password sbagliata = errore chiaro', async () => {
-  const K = await kubo(['negozio', 'fatture']); let login = 0;
+  const K = await gestionale(['negozio', 'fatture']); let login = 0;
   const S = await finto({
     'POST /login': (p, c) => (c.password === 'pw-prova' ? { token: `jwt-${++login}` } : { stato: 401, corpo: {} }),
     'POST /invoices': (p, c, { intestazioni }) => (intestazioni.authorization === `Bearer jwt-${login}` && login > 1 ? { uuid: `a-${login}` } : { stato: 401, corpo: {} }),
@@ -156,7 +156,7 @@ test('A-Cube: un 401 con il JWT in memoria fa rifare il login una volta; passwor
 
 // ---------- Invoicetronic ----------
 test('Invoicetronic: invio con Basic (chiave come utente), giri pianificati di esiti e passive con il cursore', async () => {
-  const K = await kubo(['negozio', 'fatture']), basic = `Basic ${Buffer.from('ik_test_prova:').toString('base64')}`;
+  const K = await gestionale(['negozio', 'fatture']), basic = `Basic ${Buffer.from('ik_test_prova:').toString('base64')}`;
   const S = await finto({
     'POST /send/xml': (p, c, { intestazioni }) => (intestazioni.authorization === basic && typeof c === 'string' && c.includes('<ImportoTotaleDocumento>122.00<') ? { stato: 201, corpo: { id: 501, file_name: 'x.xml' } } : { stato: 401, corpo: {} }),
     'GET /update': (p, c, { q, intestazioni }) => (intestazioni.authorization !== basic ? { stato: 401, corpo: {} } : q.get('page') !== '1' ? [] : [

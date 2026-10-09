@@ -56,7 +56,7 @@ test('ogni file dell\'interfaccia toccato dalle lingue si legge (sintassi)', () 
 });
 
 test('i testi del motore web passano tutti da t(): niente frasi italiane scritte a mano', () => {
-  // le stringhe fra apici con una parola italiana maiuscola seguita da altre parole sono frasi per chi usa Kubo
+  // le stringhe fra apici con una parola italiana maiuscola seguita da altre parole sono frasi per chi usa Lumi
   const frase = /(['`])(?:Salva|Crea|Nuov[oa]|Archivia|Ripristina|Elimina|Togli|Aggiungi|Cerca|Nessun|Accedi|Benvenuto|Personalizza|Colonne|Filtri?|Persone|Gestione|Esci|Vista|Ruol[oi])\b[^'`]*\1/;
   for (const f of ['app.js', 'viste.js', 'campi.js', 'filtri.js', 'personalizza.js', 'utenti.js', 'ui.js'].map(x => join(RADICE, 'web', x))) {
     readFileSync(f, 'utf8').split('\n').forEach((riga, i) => {
@@ -174,7 +174,7 @@ async function avvia() {
   const srv = creaServer(apri()); await new Promise(r => srv.listen(0, '127.0.0.1', r));
   const base = `http://127.0.0.1:${srv.address().port}`; let biscotto = '';
   const chiama = async (metodo, percorso, corpo, { lingua } = {}) => {
-    const r = await fetch(base + percorso, { method: metodo, headers: { 'Content-Type': 'application/json', 'X-Kubo': '1', ...(lingua ? { 'Accept-Language': lingua } : {}), ...(biscotto ? { Cookie: biscotto } : {}) }, body: corpo ? JSON.stringify(corpo) : undefined });
+    const r = await fetch(base + percorso, { method: metodo, headers: { 'Content-Type': 'application/json', 'X-Lumi': '1', ...(lingua ? { 'Accept-Language': lingua } : {}), ...(biscotto ? { Cookie: biscotto } : {}) }, body: corpo ? JSON.stringify(corpo) : undefined });
     const c = r.headers.get('set-cookie'); if (c) biscotto = c.split(';')[0];
     return { stato: r.status, json: await r.json().catch(() => null) };
   };

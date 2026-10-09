@@ -54,7 +54,7 @@ test('--controlla: docs/CATALOGO.md vecchio o mancante è un problema', () => {
   assert.deepEqual(problemi(lista, giusto.replace('# Catalogo', '# Catalogo vecchio')), [['docs/CATALOGO.md', ['non è aggiornato: npm run catalogo']]]);
   assert.match(problemi(lista, null)[0][1][0], /manca/);
   // e il comando vero: 1 su un file vecchio o mancante, 0 su quello giusto (scritti in una cartella temporanea)
-  const dir = mkdtempSync(join(tmpdir(), 'kubo-catalogo-')), cli = join(import.meta.dirname, '..', 'strumenti', 'catalogo.mjs');
+  const dir = mkdtempSync(join(tmpdir(), 'lumi-catalogo-')), cli = join(import.meta.dirname, '..', 'strumenti', 'catalogo.mjs');
   const esce = file => { try { execFileSync(process.execPath, [cli, '--controlla', '--file', file], { stdio: 'pipe' }); return 0; } catch (e) { return e.status; } };
   writeFileSync(join(dir, 'vecchio.md'), giusto + '\nriga in più\n'); writeFileSync(join(dir, 'giusto.md'), giusto);
   assert.equal(esce(join(dir, 'vecchio.md')), 1); assert.equal(esce(join(dir, 'manca.md')), 1); assert.equal(esce(join(dir, 'giusto.md')), 0);

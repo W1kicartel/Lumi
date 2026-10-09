@@ -2,13 +2,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
-import { finto, kubo, accendi, manda, firmaHmacDi } from './connettori-finto.mjs';
+import { finto, gestionale, accendi, manda, firmaHmacDi } from './connettori-finto.mjs';
 
 const aspetta = async K => { await new Promise(r => setTimeout(r, 50)); await K.nucleo.lavora(); };
 const nuovoArticolo = async (K, codice, giacenza = 5, prezzo = 20) => (await K.chiama('POST', '/api/dati/articoli', { nome: codice, codice, prezzo, giacenza })).json;
 
 test('Amazon SP-API: LWA con refresh token (niente SigV4), offerte collegate per SKU, ordini a pagine con NextToken, giacenza con patch, conferma spedizione', async () => {
-  const K = await kubo(), patch = [], conferme = []; let token = 0;
+  const K = await gestionale(), patch = [], conferme = []; let token = 0;
   const S = await finto({
     'POST /auth/o2/token': (p, c) => (c.grant_type === 'refresh_token' && c.refresh_token === 'Atzr|finto' && c.client_secret === 'segreto-lwa' ? { access_token: `Atza|${++token}`, expires_in: 3600, token_type: 'bearer' } : { stato: 400, corpo: { error: 'invalid_grant' } }),
     'GET /sellers/v1/marketplaceParticipations': () => ({ payload: [{ marketplace: { id: 'APJ6JRA9NG5V4' } }] }),
@@ -44,10 +44,10 @@ test('Amazon SP-API: LWA con refresh token (niente SigV4), offerte collegate per
 });
 
 test('eBay: refresh token con Basic, inventario collegato per SKU con «next», ordini pagati → vendite, bulkUpdatePriceQuantity, spedizione', async () => {
-  const K = await kubo(), qta = [], spediti = [];
+  const K = await gestionale(), qta = [], spediti = [];
   const S = await finto({
     'POST /identity/v1/oauth2/token': (p, c, { intestazioni }) => (intestazioni.authorization !== 'Basic ' + Buffer.from('app-id:cert-id').toString('base64') ? { stato: 401, corpo: { error: 'invalid_client' } }
-      : c.grant_type === 'authorization_code' && c.code === 'v^1.1#codice' && c.redirect_uri === 'Bottega-Kubo-PRD-runame' ? { access_token: 'v^1.1#breve', refresh_token: 'v^1.1#refresh', refresh_token_expires_in: 47304000, expires_in: 7200 }
+      : c.grant_type === 'authorization_code' && c.code === 'v^1.1#codice' && c.redirect_uri === 'Bottega-Lumi-PRD-runame' ? { access_token: 'v^1.1#breve', refresh_token: 'v^1.1#refresh', refresh_token_expires_in: 47304000, expires_in: 7200 }
       : c.grant_type === 'refresh_token' && c.refresh_token === 'v^1.1#refresh' && c.scope.includes('sell.inventory') ? { access_token: 'v^1.1#utente', expires_in: 7200, token_type: 'User Access Token' } : { stato: 400, corpo: { error: 'invalid_grant' } }),
     'GET /sell/inventory/v1/inventory_item': (p, c, { q }) => (q.get('offset') === '0' ? { inventoryItems: [{ sku: 'EB-LAMPADA' }], next: 'https://api.ebay.com/sell/inventory/v1/inventory_item?limit=100&offset=100', total: 2 } : { inventoryItems: [{ sku: 'EB-ALTRO' }], total: 2 }),
     'POST /sell/inventory/v1/bulk_update_price_quantity': (p, c) => { qta.push(c); return { responses: [{ statusCode: 200, sku: c.requests[0].sku }] }; },
@@ -60,10 +60,10 @@ test('eBay: refresh token con Basic, inventario collegato per SKU con «next», 
   });
   try {
     const lampada = await nuovoArticolo(K, 'EB-LAMPADA', 6, 30);
-    await accendi(K, 'ebay', { base: S.url, segreti: { client_id: 'app-id', client_secret: 'cert-id' }, impostazioni: { runame: 'Bottega-Kubo-PRD-runame' } });
-    // consenso con il RuName: Kubo dà l'indirizzo, eBay rimanda su /pub/ritorno con code e state
+    await accendi(K, 'ebay', { base: S.url, segreti: { client_id: 'app-id', client_secret: 'cert-id' }, impostazioni: { runame: 'Bottega-Lumi-PRD-runame' } });
+    // consenso con il RuName: Lumi dà l'indirizzo, eBay rimanda su /pub/ritorno con code e state
     const u = new URL((await K.chiama('POST', '/api/connettori/ebay/azioni/collega', { args: {} })).json.indirizzo);
-    assert.equal(u.pathname, '/oauth2/authorize'); assert.equal(u.searchParams.get('redirect_uri'), 'Bottega-Kubo-PRD-runame');
+    assert.equal(u.pathname, '/oauth2/authorize'); assert.equal(u.searchParams.get('redirect_uri'), 'Bottega-Lumi-PRD-runame');
     assert.match(await (await fetch(`${K.base}/api/connettori/ebay/pub/ritorno?code=${encodeURIComponent('v^1.1#codice')}`)).text(), /non riuscito/);   // senza state no
     assert.match(await (await fetch(`${K.base}/api/connettori/ebay/pub/ritorno?code=${encodeURIComponent('v^1.1#codice')}&state=altro`)).text(), /non riuscito/);
     assert.match(await (await fetch(`${K.base}/api/connettori/ebay/pub/ritorno?code=${encodeURIComponent('v^1.1#codice')}&state=${u.searchParams.get('state')}&expires_in=299`)).text(), /collegato/);
@@ -84,7 +84,7 @@ test('eBay: refresh token con Basic, inventario collegato per SKU con «next», 
 });
 
 test('Etsy: OAuth PKCE del nucleo, x-api-key con il segreto condiviso, ricevute pagate → vendite con il cliente, inventario riscritto, tracking', async () => {
-  const K = await kubo(), scambi = [], inventari = [], tracking = [];
+  const K = await gestionale(), scambi = [], inventari = [], tracking = [];
   const inventario = { products: [{ product_id: 1, sku: 'ET-COLLANA', is_deleted: false, offerings: [{ offering_id: 9, quantity: 4, is_enabled: true, price: { amount: 2500, divisor: 100, currency_code: 'EUR' } }], property_values: [] },
     { product_id: 2, sku: 'ET-ALTRA', offerings: [{ offering_id: 10, quantity: 1, is_enabled: true, price: { amount: 1000, divisor: 100 } }], property_values: [{ property_id: 200, property_name: 'Colore', value_ids: [1], values: ['Blu'], scale_id: null }] }],
     price_on_property: [], quantity_on_property: [], sku_on_property: [200] };

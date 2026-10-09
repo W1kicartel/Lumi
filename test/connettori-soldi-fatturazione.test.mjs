@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { finto, kubo, accendi } from './connettori-finto.mjs';
+import { finto, gestionale, accendi } from './connettori-finto.mjs';
 
 const AZ = { ragione_sociale: 'Bottega Prova srl', piva: '12345678903', codice_fiscale: '12345678903', regime: 'RF01', via: 'Via dei Mille 10', cap: '20121', comune: 'Milano', provincia: 'MI', email: 'info@bottega.example', iban: 'IT60X0542811101000000123456', aliquota: 22 };
 async function fattura(K, prezzo = 100) {
@@ -16,7 +16,7 @@ async function fattura(K, prezzo = 100) {
 const PASSIVA = readFileSync(new URL('./documenti/fattura-attesa.xml', import.meta.url));
 
 test('Aruba: un solo accesso, upload dell\'XML in base64, esito scartato segnalato, fatture passive importate una volta', async () => {
-  const K = await kubo(['fatture']); let accessi = 0, caricato = null, stato = 'Inviata';
+  const K = await gestionale(['fatture']); let accessi = 0, caricato = null, stato = 'Inviata';
   const S = await finto({
     'POST /auth/signin': (p, c) => { accessi++; assert.equal(c.grant_type, 'password'); assert.equal(c.username, 'ARUBA123'); assert.equal(c.password, 'pw-prova'); return { access_token: 'tok-aruba', refresh_token: 'rt', expires_in: 1800 }; },
     'POST /services/invoice/upload': (p, c, { intestazioni }) => { assert.equal(intestazioni.authorization, 'Bearer tok-aruba'); caricato = Buffer.from(c.dataFile, 'base64').toString('utf8'); return { errorCode: '0000', errorDescription: null, uploadFileName: 'IT12345678903_00001.xml.p7m' }; },
@@ -49,7 +49,7 @@ test('Aruba: un solo accesso, upload dell\'XML in base64, esito scartato segnala
 });
 
 test('Fatture in Cloud: token manuale, clienti a pagine abbinati per partita IVA, fattura copiata con le aliquote e inviata allo SDI, spese → fatture ricevute', async () => {
-  const K = await kubo(['fatture']); let documento = null, inviato = 0;
+  const K = await gestionale(['fatture']); let documento = null, inviato = 0;
   const auth = int => assert.equal(int.authorization, 'Bearer fic-manuale');
   const S = await finto({
     'GET /user/companies': (p, c, { intestazioni }) => { auth(intestazioni); return { data: { companies: [{ id: 4242, name: 'Bottega Prova srl' }] } }; },
@@ -66,7 +66,7 @@ test('Fatture in Cloud: token manuale, clienti a pagine abbinati per partita IVA
     const f = await fattura(K);
     await accendi(K, 'fatture-in-cloud', { base: S.url, segreti: { token: 'fic-manuale' } });
     assert.equal((await K.chiama('POST', '/api/connettori/fatture-in-cloud/prova')).json.ok, true);
-    // Rossi c'è già in Kubo (stessa partita IVA): si abbina e prende email; Verdi è nuovo
+    // Rossi c'è già in Lumi (stessa partita IVA): si abbina e prende email; Verdi è nuovo
     const g = await K.chiama('POST', '/api/connettori/fatture-in-cloud/giri/clienti');
     assert.deepEqual(g.json.risultato, { creati: 1, aggiornati: 1, uguali: 0 }, JSON.stringify(g.json));
     assert.deepEqual((await K.chiama('POST', '/api/connettori/fatture-in-cloud/giri/clienti')).json.risultato, { creati: 0, aggiornati: 0, uguali: 2 });
@@ -84,7 +84,7 @@ test('Fatture in Cloud: token manuale, clienti a pagine abbinati per partita IVA
 });
 
 test('Fatture in Cloud: «Collega con un codice» (device code in JSON, risposta dentro «data»), poi le chiamate con il token OAuth; il codice OAuth resta, in JSON', async () => {
-  const K = await kubo(['fatture']); const chiamate = []; let auth = null;
+  const K = await gestionale(['fatture']); const chiamate = []; let auth = null;
   const S = await finto({
     'POST /oauth/device': (p, c, { intestazioni }) => { chiamate.push({ device: true, c, tipo: intestazioni['content-type'] });
       return { data: { device_code: 'dc-fic', user_code: 'FIC-1234', scope: c.scope, verification_uri: 'https://fattureincloud.it/connetti', interval: 5, expires_in: 300 } }; },
