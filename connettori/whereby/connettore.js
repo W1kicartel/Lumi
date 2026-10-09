@@ -66,7 +66,7 @@ export default {
   uscita: { appuntamenti: { campi: ['quando', 'stato', 'servizio'], quando: (r, k) => !!salaDi(k, r) || (k.imp.automatico === true && !annullato(k, r)), invia: async (r, k) => { await segui(r, k); } } },
   catalogo: {
     categoria: 'calendario', sito: 'https://whereby.com', costo: 'a-consumo',
-    costoNota: 'L\'API (Whereby Embedded) ha un piano gratuito con 2.000 minuti-partecipante al mese; oltre si paga a consumo (circa 0,004 $ al minuto-partecipante) o con il piano Build da 6,99 $ al mese. Le stanze non chiedono account a chi entra.',
+    costoNota: 'L\'API (Whereby Embedded) ha il piano Explore gratuito con 2.000 minuti-partecipante al mese (senza minuti in più); Build costa 10,99 $ al mese con 2.000 minuti inclusi, poi 0,0042 $ al minuto-partecipante (IVA esclusa). Chi entra nella stanza non ha bisogno di un account.',
     serve: [
       { cosa: 'Una chiave API di Whereby Embedded', dove: 'whereby.com/org → Configure → API → Generate key (serve un account Whereby Embedded)', link: 'https://whereby.com/information/embedded/' },
     ],
@@ -77,7 +77,7 @@ export default {
   },
   testi: {
     en: { nome: 'Whereby', descrizione: 'A Whereby video room for remote appointments, with the link in the notes.', 'imp.chiave': 'API key', 'imp.prefisso': 'Start of the room name (e.g. mystudio)', 'imp.gruppo': 'Group rooms (more than 4 people)', 'imp.automatico': 'Create the room for every new appointment', 'imp.durata': 'Length of an appointment without a service (minutes)', 'az.crea_riunione': 'Create the Whereby room',
-      'cat.costoNota': 'The API (Whereby Embedded) has a free plan with 2,000 participant minutes a month; beyond that it is pay as you go (about $0.004 per participant minute) or the Build plan from $6.99 a month. Rooms need no account to join.',
+      'cat.costoNota': 'The API (Whereby Embedded) has the free Explore plan with 2,000 participant minutes a month (no extra minutes); Build costs $10.99 a month with 2,000 minutes included, then $0.0042 per participant minute (VAT excluded). Guests need no account to join.',
       'cat.serve': [{ cosa: 'A Whereby Embedded API key', dove: 'whereby.com/org → Configure → API → Generate key (a Whereby Embedded account is needed)' }],
       'cat.passi': ['Create a Whereby Embedded account (free to start).', 'In the dashboard open Configure → API and generate a key.', 'Paste the key here and press «Test».', 'On the appointment press «Create the Whereby room» (or ask Lumi): the links go into the notes.', 'If you want a room for every new appointment, turn on «Create the room for every new appointment».', 'If the appointment moves, Kubo creates a new room; if it is cancelled, it deletes it.'] },
     es: { nome: 'Whereby', descrizione: 'Una sala de vídeo Whereby para las citas a distancia, con el enlace en las notas.', 'imp.chiave': 'Clave API', 'imp.prefisso': 'Inicio del nombre de la sala (p. ej. miestudio)', 'imp.gruppo': 'Salas para grupos (más de 4 personas)', 'imp.automatico': 'Crear la sala para cada cita nueva', 'imp.durata': 'Duración de una cita sin servicio (minutos)', 'az.crea_riunione': 'Crear la sala Whereby' },
