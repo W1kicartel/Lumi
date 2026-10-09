@@ -428,6 +428,10 @@ export default function registra({ r, prima, db, S, D, P, A, meta, serve, Errore
     return { piano: prepara({ cliente: c.id, modello: { nome: m.nome, lingua: m.lingua }, variabili: args.variabili }), cliente: c, scelto: m };
   }
   const oraLocale = (iso, l) => { try { return new Intl.DateTimeFormat(l, { timeZone: fuso(), hour: '2-digit', minute: '2-digit', weekday: 'short' }).format(new Date(iso)); } catch { return iso; } };
+  // quello che la scheda di conferma ha mostrato: se all'esecuzione il piano è diverso (la finestra si è chiusa o aperta, un
+  // altro modello), non parte niente che l'utente non abbia visto
+  const visti = new Map(), firma = pl => JSON.stringify([pl.numero, pl.tipo, pl.modello?.nome || null, pl.modello?.lingua || null, pl.testo]);
+  const chiaveVista = (ctx, args) => `${ctx?.utente?.id ?? ''}|${JSON.stringify(args)}`;
   const puoScrivere = ctx => { const rb = rubrica(); return !!attivoId() && !!rb && P.puo(ctx, rb.e, 'modifica'); };
   const puoLeggere = ctx => { const rb = rubrica(); return !!rb && P.puo(ctx, rb.e, 'leggi'); };
   lumi?.strumento({
@@ -438,6 +442,8 @@ export default function registra({ r, prima, db, S, D, P, A, meta, serve, Errore
     anteprima: async ({ ctx, args, lingua = 'it' }) => {
       let x; try { x = pianoLumi(ctx, args); } catch (e) { if (e?.extra?._wa) return { errore: testoWa(lingua, e.extra._wa, e.extra._p) }; throw e; }
       const pl = x.piano, no = x.no || pl?.no; if (no) return { errore: motivo(no, lingua) };
+      if (visti.size > 500) visti.delete(visti.keys().next().value);
+      visti.set(chiaveVista(ctx, args), firma(pl));
       const T = k => testoWa(lingua, k);
       return { titolo: T('lumi.titolo'), righe: [[T('lumi.a'), `${nomeDi(x.cliente)} · ${pl.numero}`],
         [T('lumi.finestra'), pl.finestra.aperta ? testoWa(lingua, 'lumi.aperta', { ora: oraLocale(pl.finestra.scade, lingua) }) : T('lumi.chiusa')],
@@ -446,6 +452,8 @@ export default function registra({ r, prima, db, S, D, P, A, meta, serve, Errore
     },
     esegui: async ({ ctx, args }) => {
       const x = pianoLumi(ctx, args), no = x.no || x.piano?.no; if (no) throw errore(409, no.motivo, no.p);
+      const k = chiaveVista(ctx, args), visto = visti.get(k); visti.delete(k);
+      if (visto !== firma(x.piano)) throw errore(409, 'cambiato');
       const r = await esegui(x.piano, { chi: ctx?.utente?.nome || null });
       return { inviato: true, a: nomeDi(x.cliente), numero: x.piano.numero, modello: x.piano.modello?.nome || null, testo: x.piano.testo, costo: r.costo };
     },

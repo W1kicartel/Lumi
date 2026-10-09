@@ -388,6 +388,12 @@ test('verifica: STOP non si scavalca con un «sì» a mano, un PDF fallito non f
     assert.equal(K.db.prepare("SELECT stato FROM _whatsapp_messaggi WHERE chiave = 'prova:prev'").get().stato, 'inviato');
     assert.equal(K.db.prepare("SELECT stato FROM _whatsapp_messaggi WHERE tipo = 'documento' ORDER BY id DESC").get().stato, 'fallito');
     assert.equal(await W.lavora(lavoro), 'già'); assert.equal(testi(), 1);
+    // 4. Lumi: la scheda mostrava il testo libero (finestra aperta); se alla conferma la finestra è chiusa non parte un modello mai visto
+    const argsL = { cliente: 'Anna Bianchi', messaggio: 'Il tuo ordine è pronto' }, prima = S.chiamate.length;
+    const ant = await K.chiama('POST', '/api/lumi/strumenti/whatsapp_scrivi/anteprima', { args: argsL, lingua: 'it' }); assert.match(ant.json.righe[1][1], /^aperta/);
+    K.db.prepare("UPDATE _whatsapp_messaggi SET quando = '2020-01-01T00:00:00.000Z' WHERE numero = '+393470001111' AND verso = 'in'").run();
+    const es = await K.chiama('POST', '/api/lumi/strumenti/whatsapp_scrivi/esegui', { args: argsL, gettone: ant.json.gettone });
+    assert.equal(es.stato, 409, JSON.stringify(es.json)); assert.equal(S.chiamate.slice(prima).filter(x => x.percorso.endsWith('/messages')).length, 0);
     // 3. un ruolo che vede solo i clienti creati da lui non vede le conversazioni degli altri
     await K.chiama('PUT', '/api/ruoli/propri', { nome: 'Propri', entita: { '*': { leggi: true, crea: true, modifica: true, soloPropri: true } } });
     await K.chiama('POST', '/api/utenti', { nome: 'Piero', email: 'p@prova.it', password: 'password-piero', ruolo: 'propri' });
