@@ -89,6 +89,16 @@ test('Zoho CRM: data center, token rinnovato, cliente → Contact (upsert per Em
   assert.equal(man.oauth.token({ imp: { regione: 'eu' }, base: '' }), 'https://accounts.zoho.eu/oauth/v2/token');
   assert.equal(man.oauth.autorizza({ imp: { regione: 'com' }, base: '' }), 'https://accounts.zoho.com/oauth/v2/auth');
   assert.equal(man.oauth.token({ imp: { regione: 'ca' }, base: '' }), 'https://accounts.zohocloud.ca/oauth/v2/token');
+  // «accounts-server» del ritorno e «api_domain» del token (k.oauth.extra()) vincono sulla regione, solo se sono domini di Zoho
+  const { zbase } = await import('../connettori/zoho-crm/connettore.js'), conX = x => ({ imp: { regione: 'com' }, base: '', oauth: { extra: () => x } });
+  assert.deepEqual(man.oauth.conserva, ['accounts-server', 'location', 'api_domain']);
+  assert.equal(man.oauth.token(conX({ 'accounts-server': 'https://accounts.zoho.eu' })), 'https://accounts.zoho.eu/oauth/v2/token');
+  assert.equal(man.oauth.token(conX({ 'accounts-server': 'https://accounts.zohocloud.ca' })), 'https://accounts.zohocloud.ca/oauth/v2/token');
+  assert.equal(man.oauth.token(conX({ 'accounts-server': 'https://accounts.zoho.eu.evil.example' })), 'https://accounts.zoho.com/oauth/v2/token');
+  assert.equal(man.oauth.autorizza(conX({ 'accounts-server': 'https://accounts.zoho.eu' })), 'https://accounts.zoho.com/oauth/v2/auth');   // l'autorizzazione resta sulla regione scelta
+  assert.equal(zbase(conX({ api_domain: 'https://www.zohoapis.in' })), 'https://www.zohoapis.in/crm/v8');
+  assert.equal(zbase(conX({ api_domain: 'https://evil.example/www.zohoapis.in' })), 'https://www.zohoapis.com/crm/v8');
+  assert.equal(zbase(conX({})), 'https://www.zohoapis.com/crm/v8');
   const K = await kubo(['negozio']); let n = 0; const upsert = [], aziende = [];
   const contatti = [{ id: '7001', Email: 'Giulia@Esempio.it', First_Name: 'Giulia', Last_Name: 'Rossi', Phone: '+39 347 2222222', Modified_Time: '2026-10-08T10:00:00+02:00' }];
   const S = await finto({
@@ -105,11 +115,15 @@ test('Zoho CRM: data center, token rinnovato, cliente → Contact (upsert per Em
     const u = new URL((await K.chiama('POST', '/api/connettori/zoho-crm/oauth/inizio', { base: 'http://127.0.0.1:9' })).json.url);
     assert.equal(u.origin + u.pathname, `${S.url}/oauth/v2/auth`);
     assert.equal(u.searchParams.get('scope'), 'ZohoCRM.modules.contacts.ALL,ZohoCRM.modules.accounts.ALL'); assert.equal(u.searchParams.get('access_type'), 'offline');
+    // il ritorno porta accounts-server e location, il token api_domain: tutto in k.oauth.extra()
+    const rz = await K.chiama('GET', `/api/connettori/zoho-crm/oauth/ritorno?state=${u.searchParams.get('state')}&code=c-zoho&location=eu&accounts-server=${encodeURIComponent('https://accounts.zoho.eu')}`);
+    assert.match(rz.intestazioni.get('location'), /oauth=ok/);
+    assert.deepEqual(K.nucleo.k('zoho-crm').oauth.extra(), { 'accounts-server': 'https://accounts.zoho.eu', location: 'eu', api_domain: 'https://www.zohoapis.eu' });
     // il token salvato è scaduto: si rinnova con il refresh_token sul data center
     K.nucleo.k('zoho-crm').salvaSegreto('_oauth', JSON.stringify({ access_token: 'vecchio', refresh_token: 'r-zoho', scade: Date.now() - 1000 }));
     const p = (await K.chiama('POST', '/api/connettori/zoho-crm/prova')).json;
     assert.equal(p.ok, true, JSON.stringify(p)); assert.match(p.messaggio, /eu/);
-    const t = S.chiamate.find(c => c.percorso === '/oauth/v2/token');
+    const t = S.chiamate.filter(c => c.percorso === '/oauth/v2/token').at(-1);
     assert.equal(t.corpo.grant_type, 'refresh_token'); assert.equal(t.corpo.refresh_token, 'r-zoho'); assert.equal(t.corpo.client_id, '1000.FINTO');
     // un cliente con la P.IVA: Account e poi Contact collegato
     const c = (await K.chiama('POST', '/api/dati/clienti', { nome: 'Ferramenta Bassi', email: 'Info@Bassi.it', telefono: '+39 02 123456', tipo: 'azienda', piva: '01234567890', indirizzo: 'Via Roma 1, Milano' })).json;
