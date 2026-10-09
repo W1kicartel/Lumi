@@ -269,34 +269,41 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
   function accoda(id, tipo, chiaveC, corpo, { unisci = null, fra = 0 } = {}) {
     const ora = Date.now(), c = JSON.stringify(corpo ?? {});
     if (unisci === 'ultimo' && chiaveC != null) {
-      const x = db.prepare("SELECT id FROM _connettori_coda WHERE connettore = ? AND tipo = ? AND chiave = ? AND stato = 'attesa'").get(id, tipo, String(chiaveC));
+      // non quello che sta partendo adesso: ha già letto la riga, e il valore nuovo andrebbe perso (si mette in fila dopo)
+      const x = db.prepare("SELECT id FROM _connettori_coda WHERE connettore = ? AND tipo = ? AND chiave = ? AND stato = 'attesa' ORDER BY id").all(id, tipo, String(chiaveC)).find(r => !inVolo.has(r.id));
       if (x) { db.prepare('UPDATE _connettori_coda SET corpo = ?, aggiornato = ? WHERE id = ?').run(c, new Date().toISOString(), x.id); return x.id; }
     }
     const n = db.prepare('INSERT INTO _connettori_coda (connettore, tipo, chiave, corpo, prossimo, creato) VALUES (?, ?, ?, ?, ?, ?)').run(id, tipo, chiaveC == null ? null : String(chiaveC), c, ora + fra, new Date().toISOString()).lastInsertRowid;
     setImmediate(() => lavora().catch(e => console.error('connettori coda', e)));   // dopo la transazione di chi accoda
     return n;
   }
-  let lavorando = false;
-  async function lavora() {
-    if (lavorando) return 0; lavorando = true; let n = 0;
-    try {
-      for (const x of db.prepare("SELECT * FROM _connettori_coda WHERE stato = 'attesa' AND prossimo <= ? ORDER BY id LIMIT 50").all(Date.now())) {
-        if (!attivo(x.connettore)) continue;
-        const k = kPer(x.connettore), t0 = Date.now(); n++;
-        try {
-          const [gen, nome] = x.tipo.split(':'), corpo = leggiJson(x.corpo);
-          if (gen === 'uscita') { const u = k.man.uscita[nome]; let r = null; try { r = k.dati.leggi(nome, corpo.id); } catch { r = null; } if (r) await u.invia(r, k); }
-          else await k.man.lavori[x.tipo](corpo, k);
-          db.prepare("UPDATE _connettori_coda SET stato = 'fatto', tentativi = tentativi + 1, errore = NULL, aggiornato = ? WHERE id = ?").run(new Date().toISOString(), x.id);
-          annota(x.connettore, 'uscita', 'ok', x.tipo, x.chiave, Date.now() - t0);
-        } catch (e) {
-          const t = x.tentativi + 1, fine = t > ATTESE.length;
-          db.prepare('UPDATE _connettori_coda SET stato = ?, tentativi = ?, prossimo = ?, errore = ?, aggiornato = ? WHERE id = ?')
-            .run(fine ? 'fallito' : 'attesa', t, Date.now() + (ATTESE[t - 1] || 0) * 1000, String(e.message).slice(0, 500), new Date().toISOString(), x.id);
-          annota(x.connettore, 'uscita', fine ? 'errore' : 'avviso', x.tipo, String(e.message).slice(0, 500), Date.now() - t0);
-        }
-      }
-    } finally { lavorando = false; }
+  // un giro della coda alla volta; chi chiede mentre gira (un accoda, il battito, un test) aspetta lo stesso giro, che
+  // ricomincia una volta in più per prendere quello che è arrivato nel frattempo
+  const inVolo = new Set();
+  let corsa = null, ancora = false;
+  function lavora() {
+    if (corsa) { ancora = true; return corsa; }
+    corsa = (async () => { let n = 0; try { do { ancora = false; n += await giroCoda(); } while (ancora); } finally { corsa = null; } return n; })();
+    return corsa;
+  }
+  async function giroCoda() {
+    let n = 0;
+    for (const x of db.prepare("SELECT * FROM _connettori_coda WHERE stato = 'attesa' AND prossimo <= ? ORDER BY id LIMIT 50").all(Date.now())) {
+      if (!attivo(x.connettore)) continue;
+      const k = kPer(x.connettore), t0 = Date.now(); n++; inVolo.add(x.id);
+      try {
+        const [gen, nome] = x.tipo.split(':'), corpo = leggiJson(x.corpo);
+        if (gen === 'uscita') { const u = k.man.uscita[nome]; let r = null; try { r = k.dati.leggi(nome, corpo.id); } catch { r = null; } if (r) await u.invia(r, k); }
+        else await k.man.lavori[x.tipo](corpo, k);
+        db.prepare("UPDATE _connettori_coda SET stato = 'fatto', tentativi = tentativi + 1, errore = NULL, aggiornato = ? WHERE id = ?").run(new Date().toISOString(), x.id);
+        annota(x.connettore, 'uscita', 'ok', x.tipo, x.chiave, Date.now() - t0);
+      } catch (e) {
+        const t = x.tentativi + 1, fine = t > ATTESE.length;
+        db.prepare('UPDATE _connettori_coda SET stato = ?, tentativi = ?, prossimo = ?, errore = ?, aggiornato = ? WHERE id = ?')
+          .run(fine ? 'fallito' : 'attesa', t, Date.now() + (ATTESE[t - 1] || 0) * 1000, String(e.message).slice(0, 500), new Date().toISOString(), x.id);
+        annota(x.connettore, 'uscita', fine ? 'errore' : 'avviso', x.tipo, String(e.message).slice(0, 500), Date.now() - t0);
+      } finally { inVolo.delete(x.id); }
+    }
     return n;
   }
   // le modifiche ai campi dichiarati in «uscita» vanno in coda, ma non quelle che arrivano dal connettore stesso

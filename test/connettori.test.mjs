@@ -301,3 +301,23 @@ export default { id: 'mio', nome: 'Mio', impostazioni: [{ id: 'url', nome: 'Url'
     assert.equal((await chiama('PUT', '/api/connettori/stripe', { attivo: true })).stato, 403);
   } finally { srv.closeAllConnections?.(); srv.close(); }
 });
+
+test('coda: una modifica che arriva mentre la precedente sta partendo non si perde («unisci: ultimo» non tocca quella in volo)', async () => {
+  const K = await kubo(), put = []; let libera, fermo = new Promise(r => { libera = r; }), partito;
+  const inVolo = new Promise(r => { partito = r; });
+  const S = await finto({
+    'GET /wp-json/wc/v3/products': () => ({ stato: 200, intestazioni: { 'X-WP-TotalPages': '1' }, corpo: [{ id: 11, sku: 'V1', name: 'Vaso blu', regular_price: '30.00', stock_quantity: 7 }] }),
+    'PUT /wp-json/wc/v3/products/:id': async (p, c) => { put.push(c.stock_quantity); partito(); await fermo; return { id: p.id }; },
+  });
+  try {
+    await accendi(K, 'woocommerce', { base: S.url, segreti: { ck: 'ck_x', cs: 'cs_y', webhook: 'segreto-woo' } });
+    await K.chiama('POST', '/api/connettori/woocommerce/giri/prodotti');
+    const vaso = (await K.chiama('GET', '/api/dati/articoli?q=V1')).json.righe[0];
+    await K.chiama('PATCH', `/api/dati/articoli/${vaso.id}`, { giacenza: 6 });
+    await inVolo;                                                     // la giacenza 6 sta partendo (letta, richiesta aperta)
+    await K.chiama('PATCH', `/api/dati/articoli/${vaso.id}`, { giacenza: 4 });
+    libera(); fermo = Promise.resolve();
+    await K.nucleo.lavora();                                          // aspetta il giro in corso, che riparte per la 4
+    assert.deepEqual(put, [6, 4]);
+  } finally { await K.chiudi(); await S.chiudi(); }
+});
