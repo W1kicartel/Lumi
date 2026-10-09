@@ -173,3 +173,27 @@ test('Squarespace: prodotti a cursore, giacenza con setFiniteOperations e Idempo
     assert.equal((await K.chiama('GET', '/api/dati/vendite')).json.righe[0].totale, 22);
   } finally { await K.chiudi(); await S.chiudi(); }
 });
+
+test('Wix: chiave API e wix-site-id, ordini pagati a cursore → vendite con il cliente', async () => {
+  const K = await kubo(), cercati = [];
+  const SITO = '0e1d2c3b-4a59-6877-8695-a4b3c2d1e0f9';
+  const S = await finto({
+    'POST /ecom/v1/orders/search': (p, c, { intestazioni }) => {
+      if (intestazioni.authorization !== 'IST.chiave-wix' || intestazioni['wix-site-id'] !== SITO) return { stato: 403, corpo: { message: 'no' } };
+      cercati.push(c.search);
+      if (c.search.cursorPaging.limit === 1) return { orders: [], metadata: { hasNext: false } };
+      if (!c.search.cursorPaging.cursor) return { orders: [{ id: 'w1', number: '10001', status: 'APPROVED', paymentStatus: 'PAID', updatedDate: '2026-10-09T08:00:00Z', buyerInfo: { email: 'gaia@esempio.it' },
+        billingInfo: { contactDetails: { firstName: 'Gaia', lastName: 'Fontana', phone: '3471234567' } }, shippingInfo: { logistics: { shippingDestination: { address: { addressLine: 'Via Dante 3', city: 'Pisa', postalCode: '56125', subdivision: 'IT-PI', country: 'IT' } } } },
+        lineItems: [{ productName: { original: 'Quaderno' }, quantity: 3, price: { amount: '6.00' }, totalPriceAfterTax: { amount: '16.50' }, physicalProperties: { sku: 'WX-QUAD' } }] }], metadata: { hasNext: true, cursors: { next: 'cur2' } } };
+      return { orders: [{ id: 'w2', number: '10002', status: 'CANCELED', paymentStatus: 'PAID', updatedDate: '2026-10-09T09:00:00Z', lineItems: [] }], metadata: { hasNext: false } };
+    },
+  });
+  try {
+    await K.chiama('POST', '/api/dati/articoli', { nome: 'Quaderno', codice: 'WX-QUAD', prezzo: 6, giacenza: 10 });
+    await accendi(K, 'wix', { base: S.url, segreti: { chiave: 'IST.chiave-wix' }, impostazioni: { sito: SITO } });
+    assert.equal((await K.chiama('POST', '/api/connettori/wix/prova')).json.ok, true);
+    assert.deepEqual((await K.chiama('POST', '/api/connettori/wix/giri/ordini')).json.risultato, { vendite: 1, ignorati: 1 });
+    assert.equal(cercati[1].filter.paymentStatus, 'PAID'); assert.ok(cercati[1].filter.updatedDate.$gte); assert.deepEqual(cercati[2], { cursorPaging: { limit: 100, cursor: 'cur2' } });
+    const v = (await K.chiama('GET', '/api/dati/vendite')).json.righe[0]; assert.equal(v.totale, 16.5); assert.equal(v.cliente.titolo, 'Gaia Fontana');
+  } finally { await K.chiudi(); await S.chiudi(); }
+});
