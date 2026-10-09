@@ -24,6 +24,10 @@ jobs:
       - name: Prove
         shell: bash
         run: node --test --test-reporter=spec --test-reporter-destination=stdout --test-reporter=./strumenti/rapporto-github.mjs --test-reporter-destination=stdout test/*.test.mjs
+      - name: Diagnosi dei file che falliscono (uno per uno, con la coda dell'uscita)
+        if: failure()
+        shell: bash
+        run: node strumenti/diagnosi-ci.mjs
       - name: Catalogo delle integrazioni aggiornato
         if: matrix.os == 'ubuntu-latest'
         run: node strumenti/catalogo.mjs --controlla
