@@ -161,7 +161,7 @@ test('HubSpot: cliente → contatto (batch/upsert per email) e azienda con P.IVA
     const firma = firmaV3('segreto-app', 'POST', 'https://kubo.esempio.it/api/connettori/hubspot/in', corpo, ts);
     const ok = await manda(K, '/api/connettori/hubspot/in', corpo, { 'X-HubSpot-Signature-v3': firma, 'X-HubSpot-Request-Timestamp': ts });
     assert.equal(ok.stato, 200, JSON.stringify(ok.json)); assert.match(ok.json.esito, /1 creati/);
-    assert.equal((await manda(K, '/api/connettori/hubspot/in', corpo, { 'X-HubSpot-Signature-v3': firma.replace(/^./, 'A'), 'X-HubSpot-Request-Timestamp': ts })).stato, 401);
+    assert.equal((await manda(K, '/api/connettori/hubspot/in', corpo, { 'X-HubSpot-Signature-v3': (firma[0] === 'A' ? 'B' : 'A') + firma.slice(1), 'X-HubSpot-Request-Timestamp': ts })).stato, 401);
     const vecchio = String(Date.now() - 6 * 6e4);
     assert.equal((await manda(K, '/api/connettori/hubspot/in', corpo, { 'X-HubSpot-Signature-v3': firmaV3('segreto-app', 'POST', 'https://kubo.esempio.it/api/connettori/hubspot/in', corpo, vecchio), 'X-HubSpot-Request-Timestamp': vecchio })).stato, 401);
   } finally { await K.chiudi(); await S.chiudi(); }
