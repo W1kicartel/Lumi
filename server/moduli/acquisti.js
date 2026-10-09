@@ -178,16 +178,17 @@ export function ricevi(k, ctx, ordine, { righe = null, data = oggiIso(), ddt = '
   const perId = new Map((o.righe || []).map(r => [r.id, r]));
   const scelte = righe ? righe.map(x => ({ r: perId.get(String(x.riga)), q: Number(x.quantita) })) : (o.righe || []).map(r => ({ r, q: num(r.quantita) - num(r.ricevuta) }));
   if (scelte.some(x => !x.r)) throw new Error('Riga sconosciuta in questo ordine');
+  if (new Set(scelte.map(x => x.r.id)).size !== scelte.length) throw new Error('La stessa riga compare più volte');
   const vere = scelte.filter(x => x.q !== 0);
   if (!vere.length) throw new Error('Niente da ricevere');
   for (const { r, q } of vere) if (!(q > 0) || q > num(r.quantita) - num(r.ricevuta) + 1e-9) throw new Error(`Quantità non valida per «${titoloDi(r.articolo)}»: ne mancano ${num(r.quantita) - num(r.ricevuta)}`);
   const haCosto = S.leggi(db, imp.articoli).campi.some(c => c.id === 'costo' && c.tipo === 'valuta');
   return transazione(db, () => {
     for (const { r, q } of vere) {
-      const id = idDi(r.articolo), a = D.leggi(db, imp.articoli, id, ctx, { conRighe: false }), g = num(a.giacenza), costo = num(r.costo);
-      const v = { giacenza: g + q };
-      if (haCosto && costo > 0) v.costo = g > 0 && num(a.costo) > 0 ? euro(Math.round((cent(a.costo) * g + cent(costo) * q) / (g + q))) : costo;
-      D.modifica(db, imp.articoli, id, v, ctx);
+      // il costo medio è un calcolo del sistema: si legge e si scrive anche se il ruolo non vede o non modifica il costo
+      const id = idDi(r.articolo), a = D.leggi(db, imp.articoli, id, null, { conRighe: false }), g = num(a.giacenza), costo = num(r.costo);
+      D.modifica(db, imp.articoli, id, { giacenza: g + q }, ctx);
+      if (haCosto && costo > 0) D.modifica(db, imp.articoli, id, { costo: g > 0 && num(a.costo) > 0 ? euro(Math.round((cent(a.costo) * g + cent(costo) * q) / (g + q))) : costo }, null);
       D.modifica(db, imp.righe, r.id, { ricevuta: num(r.ricevuta) + q }, ctx);
       db.prepare('INSERT INTO _acquisti_ricevimenti (ordine, riga, articolo, quantita, costo, data, ddt, utente, quando) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
         .run(o.id, r.id, id, q, cent(costo), data, String(ddt || '').slice(0, 60), ctx?.utente?.id ?? null, new Date().toISOString());
