@@ -14,6 +14,12 @@ Lumi è il gestionale; dentro c'è l'assistente, che si chiama anche lui Lumi. P
 
 Gratis, licenza MIT, zero dipendenze obbligatorie: basta Node ≥ 22.5.
 
+## Scaricalo
+
+- **Windows:** l'installatore `Lumi-x.y.z-windows.exe` è nelle [release](https://github.com/W1kicartel/Lumi/releases/latest). Non serve installare Node né essere amministratore. Windows non conosce ancora l'autore e mostra «Windows ha protetto il PC»: clic su **Ulteriori informazioni** → **Esegui comunque**.
+- **Linux:** `Lumi-x.y.z-linux.AppImage` o `.deb`, nelle stesse [release](https://github.com/W1kicartel/Lumi/releases/latest).
+- **Mac**, e chi preferisce il codice: le due righe qui sotto.
+
 ## Provalo in due minuti
 
 ```bash

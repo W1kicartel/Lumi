@@ -29,7 +29,7 @@ const MODULI_SERVER = await Promise.all(readdirSync(CARTELLA_MODULI).filter(f =>
 export const moduliWeb = () => readdirSync(join(WEB, 'moduli')).filter(f => f.endsWith('.js')).sort().map(f => `/moduli/${f}`);
 
 const WEB = join(dirname(fileURLToPath(import.meta.url)), '..', 'web');
-const VERSIONE = '0.1.0';
+const VERSIONE = '0.2.0';
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json',
   '.svg': 'image/svg+xml', '.png': 'image/png', '.woff2': 'font/woff2', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json' };
 

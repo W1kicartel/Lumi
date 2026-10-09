@@ -1,0 +1,26 @@
+# Le prove su Linux, Windows e Mac a ogni modifica su main. Le prove fallite diventano annotazioni con file e riga.
+name: Prove
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  prove:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24 }
+      - name: Prove
+        shell: bash
+        run: node --test --test-reporter=spec --test-reporter-destination=stdout --test-reporter=./strumenti/rapporto-github.mjs --test-reporter-destination=stdout test/*.test.mjs
+      - name: Catalogo delle integrazioni aggiornato
+        if: matrix.os == 'ubuntu-latest'
+        run: node strumenti/catalogo.mjs --controlla

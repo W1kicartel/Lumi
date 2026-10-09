@@ -1,6 +1,6 @@
 {
   "name": "lumi",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Lumi: il gestionale open source che ogni azienda monta a modo suo. Un file SQLite, zero dipendenze.",
   "license": "MIT",

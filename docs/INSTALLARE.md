@@ -4,8 +4,17 @@ Tre strade, dalla più semplice. I dati sono sempre un unico file SQLite (`lumi.
 
 ## 1. L'app per il computer (consigliata)
 
-Per chi non vuole sentir parlare di server. Si scarica l'installatore dalla pagina delle versioni ([github.com/W1kicartel/Lumi/releases](https://github.com/W1kicartel/Lumi/releases)):
-**Lumi-x.y.z-mac.dmg**, **Lumi-x.y.z-windows.exe** oppure **Lumi-x.y.z-linux.AppImage** / **.deb**.
+Per chi non vuole sentir parlare di server. Si scarica l'installatore dalla pagina delle versioni ([github.com/W1kicartel/Lumi/releases](https://github.com/W1kicartel/Lumi/releases/latest)):
+**Lumi-x.y.z-windows.exe** oppure **Lumi-x.y.z-linux.AppImage** / **.deb**. Sul Mac, per ora, si usa la strada 2: l'app per Mac arriva quando sarà firmata da Apple (senza firma, scaricata da internet, non si apre).
+
+**Windows, passo per passo:**
+
+1. Scarica `Lumi-x.y.z-windows.exe` dalla release più recente e aprilo.
+2. Windows mostra «Windows ha protetto il PC» perché l'installatore non è ancora firmato con un certificato: clic su **Ulteriori informazioni**, poi **Esegui comunque**. È normale per i programmi open source appena pubblicati.
+3. Scegli la cartella (va bene quella proposta: non servono i diritti di amministratore) e **Installa**. Lumi si apre da solo alla fine.
+4. Se Windows chiede se Lumi può comunicare sulle reti, scegli **Reti private**: serve agli altri dispositivi dell'ufficio per collegarsi.
+
+L'app per Windows contiene già tutto (non serve installare Node). La voce locale di Lumi lì non c'è ancora: l'assistente ascolta con Deepgram o con la voce del browser ([LUMI.md](LUMI.md#la-voce)). Ogni installatore viene costruito e provato da GitHub Actions ([.github/workflows/rilascio.yml](../.github/workflows/rilascio.yml)): prima passano tutte le prove, poi l'app impacchettata si accende e risponde, e solo allora finisce nella release.
 
 Al primo avvio l'app chiede come usare quel computer:
 
