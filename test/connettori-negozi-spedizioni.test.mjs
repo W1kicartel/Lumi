@@ -46,3 +46,31 @@ test('Sendcloud: etichetta dalla vendita (indirizzo scomposto), webhook firmato 
     assert.equal(d.json.stato, 'En route to sorting center', JSON.stringify(d.json)); assert.equal(d.json.tracking, '3SABC123');
   } finally { await K.chiudi(); await S.chiudi(); }
 });
+
+test('Qapla\': pushShipment dalla vendita, stato con getShipment sulla vendita, webhook col codice segreto, giro delle non consegnate', async () => {
+  const K = await kubo(), spinte = []; let consegnato = false;
+  const S = await finto({
+    'GET /1.2/getShipments/': (p, c, { q }) => (q.get('apiKey') === 'qk' ? { getShipments: { result: 'OK', shipments: [] } } : { getShipments: { result: 'KO', error: 'apiKey non valida' } }),
+    'POST /1.2/pushShipment/': (p, c) => { spinte.push(c); return { pushShipment: { result: 'OK', count: 1, shipments: [{ result: 'OK', id: 77, url: 'https://track.example/abc', courier: 'BRT', trackingNumber: c.pushShipment[0].trackingNumber }] } }; },
+    'GET /1.2/getShipment/': (p, c, { q }) => ({ getShipment: { result: 'OK', shipments: [{ id: 77, trackingNumber: q.get('trackingNumber'), url: 'https://track.example/abc', courier: { code: 'BRT', name: 'BRT' }, isDelivered: consegnato,
+      status: { date: '2026-10-09 10:00:00', place: 'Bologna', status: consegnato ? 'Consegnata' : 'In transito', qaplaStatus: { id: consegnato ? 6 : 3, status: consegnato ? 'Consegnata' : 'In transito' } } }] } }),
+  });
+  try {
+    const pag = await accendi(K, 'qapla', { base: S.url, segreti: { chiave: 'qk' } });
+    const codice = pag.impostazioni.find(i => i.id === 'codice').valore;
+    assert.equal((await K.chiama('POST', '/api/connettori/qapla/prova')).json.ok, true);
+    const v = await venditaConCliente(K, { nome: 'Anna Ferri', indirizzo: 'Viale Europa 33, 40121 Bologna BO' });
+    const r = await K.chiama('POST', '/api/connettori/qapla/azioni/traccia', { args: { vendita: v.numero, tracking: 'BRT0001', corriere: 'brt' } });
+    assert.equal(r.json.tracciamento, 'https://track.example/abc', JSON.stringify(r.json));
+    const x = spinte[0]; assert.equal(x.apiKey, 'qk');
+    assert.deepEqual({ ...x.pushShipment[0], shipDate: 'oggi' }, { reference: String(v.numero), trackingNumber: 'BRT0001', courier: 'BRT', shipDate: 'oggi', name: 'Anna Ferri', email: 'mario.rossi@esempio.it', telephone: '3330000000',
+      street: 'Viale Europa 33', city: 'Bologna', ZIP: '40121', state: 'BO', country: 'IT', amount: 40, language: 'it' });
+    const d = await K.chiama('POST', '/api/connettori/qapla/azioni/dove', { args: { chi: 'Ferri' } });
+    assert.equal(d.json.stato, 'In transito', JSON.stringify(d.json)); assert.equal(d.json.dove, 'Bologna');
+    consegnato = true;
+    assert.equal((await manda(K, '/api/connettori/qapla/in/sbagliato', JSON.stringify({ trackingNumber: 'BRT0001' }))).stato, 401);
+    assert.equal((await manda(K, `/api/connettori/qapla/in/${codice}`, JSON.stringify({ trackingNumber: 'BRT0001' }))).json.esito, 'spedizione: Consegnata');
+    assert.match((await K.chiama('GET', `/api/dati/vendite/${v.id}`)).json.note, /Spedizione BRT BRT0001: Consegnata/);
+    assert.deepEqual((await K.chiama('POST', '/api/connettori/qapla/giri/stati')).json.risultato, { lette: 0, consegnate: 0 });   // consegnata: esce dal giro
+  } finally { await K.chiudi(); await S.chiudi(); }
+});
