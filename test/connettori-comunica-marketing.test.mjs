@@ -194,3 +194,36 @@ test('Meta Lead Ads: il giro legge i lead nuovi dei moduli e crea i clienti (pro
     assert.ok((await K.chiama('GET', '/api/dati/clienti?perPagina=100')).json.righe.some(r => r.email === 'teo@esempio.it'));
   } finally { await K.chiudi(); await S.chiudi(); }
 });
+
+test('Recensioni Google: il primo giro segna il punto, poi le nuove diventano avvisi; la risposta con anteprima e PUT …/reply', async () => {
+  const K = await kubo(['studio']); let risposta = null;
+  const rec = (id, nome, stelle, testo, quando, rr) => ({ name: `accounts/111111/locations/222222/reviews/${id}`, reviewId: id, reviewer: { displayName: nome }, starRating: stelle, comment: testo, createTime: quando, updateTime: quando, ...(rr ? { reviewReply: { comment: rr } } : {}) });
+  const tutte = [rec('rev-vecchia1', 'Carla', 'FOUR', 'Bene', '2026-09-01T10:00:00Z', 'Grazie Carla!')];
+  const S = await finto({
+    'GET /v4/accounts/:a/locations/:l/reviews': () => ({ reviews: [...tutte].sort((a, b) => b.updateTime.localeCompare(a.updateTime)), averageRating: 4.5, totalReviewCount: tutte.length }),
+    'PUT /v4/accounts/:a/locations/:l/reviews/:id/reply': (p, c) => { risposta = { id: p.id, ...c }; return { comment: c.comment, updateTime: '2026-10-09T12:00:00Z' }; },
+  });
+  try {
+    await accendi(K, 'google-business', { base: S.url, segreti: { client_id: 'gid', client_secret: 'gsec' }, impostazioni: { account: 'accounts/111111', sede: '222222' } });
+    oauthFinto(K, 'google-business');
+    assert.equal((await K.chiama('POST', '/api/connettori/google-business/prova')).json.messaggio, '1 recensioni, media 4.5');
+    assert.deepEqual((await K.chiama('POST', '/api/connettori/google-business/giri/recensioni')).json.risultato, { nuove: 0, senzaRisposta: 0, media: 4.5, totale: 1 });   // la prima volta niente valanga di avvisi
+    tutte.push(rec('rev-nuova22', 'Marco Gialli', 'FIVE', 'Servizio eccellente, torneremo!', '2026-10-08T18:30:00Z'));
+    const g = (await K.chiama('POST', '/api/connettori/google-business/giri/recensioni')).json;
+    assert.equal(g.esito, 'ok', JSON.stringify(g)); assert.equal(g.risultato.nuove, 1); assert.equal(g.risultato.senzaRisposta, 1);
+    const avvisi = K.db.prepare("SELECT titolo FROM _connettori_registro WHERE connettore = 'google-business' AND esito = 'avviso'").all().map(x => x.titolo);
+    assert.ok(avvisi.some(t => /Nuova recensione ★★★★★ da Marco Gialli: «Servizio eccellente/.test(t)), JSON.stringify(avvisi));
+    assert.equal(S.chiamate.find(c => c.metodo === 'GET').intestazioni.authorization, 'Bearer tok');
+    assert.equal(S.chiamate.find(c => c.metodo === 'GET').q.orderBy, 'updateTime desc');
+    assert.equal((await K.chiama('POST', '/api/connettori/google-business/giri/recensioni')).json.risultato.nuove, 0);
+    // Lumi: le ultime recensioni, poi la bozza di risposta mostrata prima di pubblicare
+    const l = (await K.chiama('POST', '/api/connettori/google-business/azioni/recensioni', {})).json;
+    assert.equal(l.recensioni[0].id, 'rev-nuova22'); assert.equal(l.recensioni[0].stelle, 5);
+    const args = { recensione: 'rev-nuova22', risposta: 'Grazie Marco, a presto!' };
+    const ant = (await K.chiama('POST', '/api/connettori/google-business/azioni/rispondi_recensione', { args, anteprima: true })).json;
+    assert.match(ant.righe[0][1], /Marco Gialli/); assert.deepEqual(ant.righe[1], ['Risposta', 'Grazie Marco, a presto!']); assert.equal(risposta, null);
+    const fatto = (await K.chiama('POST', '/api/connettori/google-business/azioni/rispondi_recensione', { args })).json;
+    assert.equal(fatto.pubblicata, true); assert.deepEqual(risposta, { id: 'rev-nuova22', comment: 'Grazie Marco, a presto!' });
+    assert.equal((await K.chiama('POST', '/api/connettori/google-business/azioni/rispondi_recensione', { args: { recensione: 'rev-nuova22', risposta: '  ' } })).stato, 502);
+  } finally { await K.chiudi(); await S.chiudi(); }
+});
