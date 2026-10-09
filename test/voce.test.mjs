@@ -303,5 +303,5 @@ test('sherpa-onnx-node è solo facoltativo, con la versione esatta; lumi-voce fi
   assert.ok(d.mac.extendInfo.NSMicrophoneUsageDescription);
   // il binario compilato non va nel repository
   assert.match(readFileSync(join(RADICE, '.gitignore'), 'utf8'), /^desktop\/bin\/$/m);
-  assert.ok(statSync(join(RADICE, 'desktop', 'voce-mac', 'compila.sh')).mode & 0o100);
+  if (process.platform !== 'win32') assert.ok(statSync(join(RADICE, 'desktop', 'voce-mac', 'compila.sh')).mode & 0o100);   // su Windows niente bit di esecuzione
 });

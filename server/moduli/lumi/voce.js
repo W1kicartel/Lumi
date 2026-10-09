@@ -16,7 +16,7 @@
 import { spawn as spawnNode } from 'node:child_process';
 import { existsSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir, homedir, totalmem } from 'node:os';
-import { join, basename } from 'node:path';
+import { join, basename, posix } from 'node:path';
 import * as ONNX from './voce-onnx.js';
 
 export const SR = 16000;
@@ -42,8 +42,9 @@ export function pulisciRimasti(dir = tmpdir()) {
 export function candidati({ radice, env = process.env, casa = homedir() }) {
   const l = [];
   if (env.LUMI_VOCE_BINARIO) l.push({ file: env.LUMI_VOCE_BINARIO, tipo: basename(env.LUMI_VOCE_BINARIO) === 'lode-voce' ? 'lode' : 'mac', indicato: true });
-  l.push({ file: join(radice, 'desktop', 'bin', 'lumi-voce'), tipo: 'mac' }, { file: join(radice, 'bin', 'lumi-voce'), tipo: 'mac' });
-  for (const app of ['/Applications/Lode.app', join(casa, 'Applications', 'Lode.app')]) l.push({ file: join(app, 'Contents', 'Resources', 'bin', 'lode-voce'), tipo: 'lode' });
+  // lumi-voce e lode-voce ci sono solo sul Mac: percorsi con «/» anche quando questo codice gira altrove (le prove su Windows)
+  l.push({ file: posix.join(radice, 'desktop', 'bin', 'lumi-voce'), tipo: 'mac' }, { file: posix.join(radice, 'bin', 'lumi-voce'), tipo: 'mac' });
+  for (const app of ['/Applications/Lode.app', posix.join(casa, 'Applications', 'Lode.app')]) l.push({ file: posix.join(app, 'Contents', 'Resources', 'bin', 'lode-voce'), tipo: 'lode' });
   return l;
 }
 
