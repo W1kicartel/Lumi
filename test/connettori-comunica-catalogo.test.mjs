@@ -10,7 +10,8 @@ const NOSTRI = ['brevo', 'twilio', 'skebby', 'telegram', 'slack', 'teams', 'disc
   'google-drive', 'dropbox', 'onedrive', 's3', 'webdav', 'outlook', 'caldav', 'calendly', 'cal-com', 'zoom',
   'google-sheets', 'airtable', 'notion', 'mailchimp', 'hubspot', 'meta-lead', 'google-business', 'trustpilot',
   'typeform', 'tally', 'jotform', 'google-ads-lead', 'acuity', 'jitsi', 'vonage', 'aruba-sms', 'smshosting', 'clicksend', 'gotify',
-  'trello', 'todoist', 'asana', 'pipedrive', 'mailerlite', 'baserow', 'carddav', 'google-contatti', 'excel-online'];
+  'trello', 'todoist', 'asana', 'pipedrive', 'mailerlite', 'baserow', 'carddav', 'google-contatti', 'excel-online',
+  'box', 'pcloud', 'clickup', 'microsoft-todo', 'google-tasks'];
 const CATEGORIE = ['email', 'sms', 'messaggi', 'calendario', 'prenotazioni', 'archivio', 'produttivita', 'marketing', 'recensioni', 'ia'];
 const LINGUE = ['en', 'es', 'fr', 'de', 'pt'];
 
