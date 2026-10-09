@@ -20,3 +20,13 @@ export function nomeDi(k, riga, sem = 'clienti') {
   const def = k.S.leggi(k.db, k.entita(sem)), t = def && k.S.campoTitolo?.(def);
   return String((t && riga[t.id]) ?? k.valore(riga, sem, 'nome') ?? '').trim();
 }
+// tutte le righe di una sezione modificate dopo «dal» (in ordine di modifica), a pagine da 500
+export function* modificateDopo(k, sem, dal = '', massimo = 20000) {
+  for (let p = 1, n = 0; n < massimo; p++) {
+    const l = k.dati.elenca(sem, { filtri: dal ? [{ campo: 'modificato', op: '>', valore: dal }] : [], ordina: [{ campo: 'modificato', dir: 'asc' }], pagina: p, perPagina: 500 }).righe;
+    for (const r of l) { n++; yield r; }
+    if (l.length < 500) return;
+  }
+}
+// «Anna Maria Bianchi» → ['Anna', 'Maria Bianchi']
+export const nomeCognome = s => { const p = String(s || '').trim().split(/\s+/); return [p[0] || '', p.slice(1).join(' ')]; };
