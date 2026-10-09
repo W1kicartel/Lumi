@@ -5,9 +5,8 @@ import assert from 'node:assert/strict';
 import { finto, kubo, accendi, manda, firmaHmacDi } from './connettori-finto.mjs';
 import { leggiIcs, vevento, sposta, spiega, dataIcs } from '../connettori/_comunica/caldav.js';
 import { firmaCalendly, firmaCalendlyDi } from '../connettori/calendly/connettore.js';
+import { coda } from './connettori-comunica-coda.mjs';
 
-const pausa = ms => new Promise(r => setTimeout(r, ms));
-const coda = async K => { await pausa(50); await K.nucleo.lavora(); };
 const appuntamenti = async K => (await K.chiama('GET', '/api/dati/appuntamenti?perPagina=100')).json.righe;
 const clienti = async K => (await K.chiama('GET', '/api/dati/clienti?perPagina=100')).json.righe;
 

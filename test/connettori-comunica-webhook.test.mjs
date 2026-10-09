@@ -4,8 +4,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
 import { finto, kubo, accendi, manda } from './connettori-finto.mjs';
+import { coda } from './connettori-comunica-coda.mjs';
 
-const pausa = (ms = 50) => new Promise(r => setTimeout(r, ms));
 
 test('Webhook: eventi delle sezioni scelte firmati come Stripe, creato/modificato, entrata con il codice che non duplica i clienti', async () => {
   const K = await kubo(['negozio', 'studio']), arrivi = [];
@@ -14,9 +14,9 @@ test('Webhook: eventi delle sezioni scelte firmati come Stripe, creato/modificat
     const pag = await accendi(K, 'webhook', { segreti: { url: `${S.url}/hook/n8n` }, impostazioni: { sezioni: 'clienti, appuntamenti' } });
     const firma = pag.impostazioni.find(i => i.id === 'firma').valore, codice = pag.impostazioni.find(i => i.id === 'codice').valore;
     assert.equal((await K.chiama('POST', '/api/connettori/webhook/prova')).json.ok, true); assert.equal(arrivi[0].c.evento, 'prova');
-    const cl = (await K.chiama('POST', '/api/dati/clienti', { nome: 'Sara Galli', email: 'sara@esempio.it' })).json; await pausa(); await K.nucleo.lavora();
-    await K.chiama('PATCH', `/api/dati/clienti/${cl.id}`, { telefono: '3331112222' }); await pausa(); await K.nucleo.lavora();
-    await K.chiama('POST', '/api/dati/articoli', { nome: 'Vaso', codice: 'V1', prezzo: 3 }); await pausa(); await K.nucleo.lavora();   // sezione non scelta
+    const cl = (await K.chiama('POST', '/api/dati/clienti', { nome: 'Sara Galli', email: 'sara@esempio.it' })).json; await coda(K);
+    await K.chiama('PATCH', `/api/dati/clienti/${cl.id}`, { telefono: '3331112222' }); await coda(K);
+    await K.chiama('POST', '/api/dati/articoli', { nome: 'Vaso', codice: 'V1', prezzo: 3 }); await coda(K);   // sezione non scelta
     const ev = arrivi.slice(1);
     assert.deepEqual(ev.map(x => x.c.evento), ['clienti.creato', 'clienti.modificato']);
     assert.equal(ev[0].c.riga.nome, 'Sara Galli'); assert.equal(ev[1].c.riga.telefono, '3331112222'); assert.equal(ev[0].h['x-kubo-evento'], 'clienti.creato');
@@ -53,7 +53,7 @@ test('ntfy, Pushover e Google Chat: argomento segreto generato, priorità, chiav
     await accendi(K, 'pushover', { base: P.url, segreti: { token: 'a'.repeat(30), utente: 'u'.repeat(30) } });
     await accendi(K, 'google-chat', { segreti: { url: `${S.url}/v1/spaces/AAA/messages?key=k&token=t` } });
     const art = (await K.chiama('POST', '/api/dati/articoli', { nome: 'Vaso', codice: 'V1', prezzo: 25, giacenza: 9 })).json;
-    await K.chiama('POST', '/api/dati/vendite', { righe: [{ articolo: art.id, quantita: 1, prezzo: 25 }] }); await pausa(); await K.nucleo.lavora();
+    await K.chiama('POST', '/api/dati/vendite', { righe: [{ articolo: art.id, quantita: 1, prezzo: 25 }] }); await coda(K);
     const vend = push.filter(x => /Nuova vendita/.test(x.c || x.pushover?.message || x.chat?.text || ''));
     assert.equal(vend.length, 3, JSON.stringify(push));
     assert.deepEqual(Object.keys(vend.find(x => x.pushover).pushover).sort(), ['message', 'title', 'token', 'user']);

@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHmac, createHash } from 'node:crypto';
 import { finto, kubo, accendi, manda, firmaHmacDi } from './connettori-finto.mjs';
+import { coda } from './connettori-comunica-coda.mjs';
 
 const pausa = ms => new Promise(r => setTimeout(r, ms));
 const oauthFinto = (K, id) => K.nucleo.k(id).salvaSegreto('_oauth', JSON.stringify({ access_token: 'tok', refresh_token: 'r', scade: Date.now() + 36e5 }));
@@ -110,11 +111,11 @@ test('Mailchimp: solo i clienti con il consenso (PUT per hash md5, tag), uscita 
     // Anna si è disiscritta in Mailchimp: in Kubo il consenso è «no» (e la modifica non riparte verso Mailchimp)
     const cliente = async n => (await K.chiama('GET', '/api/dati/clienti?perPagina=100')).json.righe.find(r => r.nome.startsWith(n));
     assert.equal((await cliente('Anna')).consenso, false);
-    await pausa(50); await K.nucleo.lavora(); assert.equal(S.chiamate.filter(c => c.metodo === 'PUT').length, 1);
+    await coda(K); assert.equal(S.chiamate.filter(c => c.metodo === 'PUT').length, 1);
     // un cliente nuovo con il consenso va subito (uscita), con il tag dal campo scelto
     await K.chiama('PUT', '/api/connettori/mailchimp', { impostazioni: { tag_campo: 'note' } });
     await K.chiama('POST', '/api/dati/clienti', { nome: 'Sara Blu', email: 'sara@esempio.it', consenso: true, note: 'VIP' });
-    await pausa(50); await K.nucleo.lavora();
+    await coda(K);
     assert.ok(membri.has(md5('sara@esempio.it'))); assert.deepEqual(tag.at(-1)[1].map(t => t.name).sort(), ['Kubo', 'VIP']);
     // l'azione per Lumi: un cliente senza consenso non si iscrive
     const luca = await cliente('Luca');
@@ -141,12 +142,12 @@ test('HubSpot: cliente → contatto (batch/upsert per email) e azienda con P.IVA
     assert.equal((await K.chiama('POST', '/api/connettori/hubspot/prova')).json.ok, true);
     // un cliente con la P.IVA: contatto (upsert per email) e azienda
     const c = (await K.chiama('POST', '/api/dati/clienti', { nome: 'Ferramenta Bassi', email: 'Info@Bassi.it', telefono: '+39 02 123456', tipo: 'azienda', piva: '01234567890' })).json;
-    await pausa(50); await K.nucleo.lavora();
+    await coda(K);
     assert.deepEqual(upsert[0].inputs[0], { idProperty: 'email', id: 'info@bassi.it', properties: { email: 'info@bassi.it', firstname: 'Ferramenta', lastname: 'Bassi', phone: '+39 02 123456' } });
     assert.equal(S.chiamate.find(x => x.percorso.endsWith('/batch/upsert')).intestazioni.authorization, 'Bearer pat-eu1-' + '00000000-1111-2222-3333-444444444444');
     assert.equal(aziende[0].properties.name, 'Ferramenta Bassi'); assert.match(aziende[0].properties.description, /01234567890/);
     assert.equal(K.nucleo.k('hubspot').sincro.remoto('clienti', c.id), '9010');
-    await K.chiama('PATCH', `/api/dati/clienti/${c.id}`, { telefono: '+39 02 654321' }); await pausa(50); await K.nucleo.lavora();
+    await K.chiama('PATCH', `/api/dati/clienti/${c.id}`, { telefono: '+39 02 654321' }); await coda(K);
     assert.equal(aziende.at(-1).id, 'co1');   // la seconda volta si aggiorna la stessa azienda
     // HubSpot → Kubo: il contatto cambiato diventa un cliente, e il giro dopo non riscrive niente
     const g = (await K.chiama('POST', '/api/connettori/hubspot/giri/contatti')).json;
@@ -154,7 +155,7 @@ test('HubSpot: cliente → contatto (batch/upsert per email) e azienda con P.IVA
     const giulia = (await K.chiama('GET', '/api/dati/clienti?perPagina=100')).json.righe.find(r => r.email === 'giulia@esempio.it');
     assert.equal(giulia.nome, 'Giulia Rossi'); assert.equal(giulia.telefono, '+39 347 2222222');
     assert.deepEqual((await K.chiama('POST', '/api/connettori/hubspot/giri/contatti')).json.risultato, { creati: 0, aggiornati: 0, uguali: 0 });
-    await pausa(50); await K.nucleo.lavora(); assert.equal(upsert.length, 2);   // quello che arriva da HubSpot non torna indietro
+    await coda(K); assert.equal(upsert.length, 2);   // quello che arriva da HubSpot non torna indietro
     // webhook v3: firma giusta → il contatto si rilegge; firma sbagliata o vecchia → 401
     const corpo = JSON.stringify([{ eventId: 77, subscriptionType: 'contact.creation', objectId: 601, occurredAt: Date.now() }]), ts = String(Date.now());
     const firma = firmaV3('segreto-app', 'POST', 'https://kubo.esempio.it/api/connettori/hubspot/in', corpo, ts);

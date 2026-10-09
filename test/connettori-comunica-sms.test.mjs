@@ -9,7 +9,6 @@ import { firmaTwilio } from '../connettori/twilio/connettore.js';
 import { e164 } from '../connettori/_comunica/telefono.js';
 import { pezzi } from '../connettori/_comunica/sms.js';
 
-const pausa = (ms = 50) => new Promise(r => setTimeout(r, ms));
 const domaniAlle = hhZ => `${new Date(Date.now() + 864e5).toLocaleDateString('sv-SE', { timeZone: FUSO })}T${hhZ}:00:00Z`;
 
 test('numeri E.164 e lunghezza degli SMS', () => {

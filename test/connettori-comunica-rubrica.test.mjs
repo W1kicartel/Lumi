@@ -4,8 +4,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { finto, kubo, accendi } from './connettori-finto.mjs';
 import { vcard } from '../connettori/_comunica/rubrica.js';
+import { coda } from './connettori-comunica-coda.mjs';
 
-const pausa = (ms = 50) => new Promise(r => setTimeout(r, ms));
 const xml = corpo => ({ stato: 207, intestazioni: { 'Content-Type': 'application/xml; charset=utf-8' }, corpo: `<?xml version="1.0"?><d:multistatus xmlns:d="DAV:" xmlns:card="urn:ietf:params:xml:ns:carddav">${corpo}</d:multistatus>` });
 
 test('vCard 3.0: nome, cellulare internazionale, email, caratteri speciali', () => {
@@ -26,16 +26,16 @@ test('CardDAV: trova la rubrica (principal → home → addressbook), scrive i c
     await accendi(K, 'carddav', { base: S.url, segreti: { password: 'abcd-efgh-ijkl-mnop' }, impostazioni: { utente: 'anna@icloud.example' } });
     assert.deepEqual((await K.chiama('POST', '/api/connettori/carddav/prova')).json, { ok: true, messaggio: `${S.url}/123/carddavhome/card/` });
     assert.deepEqual((await K.chiama('POST', '/api/connettori/carddav/azioni/rubriche', { args: {} })).json.rubriche, [{ url: `${S.url}/123/carddavhome/card/`, nome: 'Contatti' }]);
-    const cl = (await K.chiama('POST', '/api/dati/clienti', { nome: 'Luca Ferri', telefono: '347 000 1111' })).json; await pausa(); await K.nucleo.lavora();
+    const cl = (await K.chiama('POST', '/api/dati/clienti', { nome: 'Luca Ferri', telefono: '347 000 1111' })).json; await coda(K);
     assert.match(schede[`kubo-${cl.id}.vcf`], /\r\nFN:Luca Ferri\r\nN:Ferri;Luca;;;\r\nTEL;TYPE=CELL:\+393470001111\r\n/);
-    await K.chiama('PATCH', `/api/dati/clienti/${cl.id}`, { email: 'luca@esempio.it' }); await pausa(); await K.nucleo.lavora();
+    await K.chiama('PATCH', `/api/dati/clienti/${cl.id}`, { email: 'luca@esempio.it' }); await coda(K);
     assert.match(schede[`kubo-${cl.id}.vcf`], /EMAIL;TYPE=INTERNET:luca@esempio\.it/);
     await K.chiama('POST', '/api/dati/clienti', { nome: 'Senza recapiti' });
     const g = await K.chiama('POST', '/api/connettori/carddav/giri/tutti'); assert.deepEqual(g.json.risultato, { scritti: 1, saltati: 1 }, JSON.stringify(g.json));
     assert.deepEqual((await K.chiama('POST', '/api/connettori/carddav/giri/tutti')).json.risultato, { scritti: 0, saltati: 0 });
     // password sbagliata: errore leggibile nel registro, il giro non si blocca in silenzio
     await K.chiama('PUT', '/api/connettori/carddav', { segreti: { password: 'sbagliata' } });
-    await K.chiama('PATCH', `/api/dati/clienti/${cl.id}`, { telefono: '347 000 2222' }); await pausa(); await K.nucleo.lavora();
+    await K.chiama('PATCH', `/api/dati/clienti/${cl.id}`, { telefono: '347 000 2222' }); await coda(K);
     assert.ok((await K.chiama('GET', '/api/connettori/carddav')).json.registro.some(x => x.esito === 'avviso' && /non è stata salvata \(HTTP 401\)/.test(x.dettagli || '')));
   } finally { await K.chiudi(); await S.chiudi(); }
 });
@@ -57,12 +57,12 @@ test('Google Contatti: crea il contatto, aggiorna con l\'etag, rilegge se è cam
   try {
     await accendi(K, 'google-contatti', { base: S.url, segreti: { client_id: 'cid', client_secret: 'cs' } });
     K.nucleo.k('google-contatti').salvaSegreto('_oauth', JSON.stringify({ access_token: 'tok-g', refresh_token: 'r', scade: Date.now() + 36e5 }));
-    const cl = (await K.chiama('POST', '/api/dati/clienti', { nome: 'Marta Riva', telefono: '3200001111', email: 'marta@esempio.it' })).json; await pausa(); await K.nucleo.lavora();
+    const cl = (await K.chiama('POST', '/api/dati/clienti', { nome: 'Marta Riva', telefono: '3200001111', email: 'marta@esempio.it' })).json; await coda(K);
     assert.deepEqual(contatti['people/c1'].names, [{ givenName: 'Marta', familyName: 'Riva' }]); assert.deepEqual(contatti['people/c1'].phoneNumbers, [{ value: '+393200001111', type: 'mobile' }]);
-    await K.chiama('PATCH', `/api/dati/clienti/${cl.id}`, { telefono: '3200002222' }); await pausa(); await K.nucleo.lavora();
+    await K.chiama('PATCH', `/api/dati/clienti/${cl.id}`, { telefono: '3200002222' }); await coda(K);
     assert.equal(contatti['people/c1'].phoneNumbers[0].value, '+393200002222'); assert.equal(contatti['people/c1'].etag, 'e1-2'); assert.equal(contatti['people/c1'].campi, 'names,phoneNumbers,emailAddresses,biographies');
     contatti['people/c1'].etag = 'e1-9';   // modificato sul telefono
-    await K.chiama('PATCH', `/api/dati/clienti/${cl.id}`, { email: 'marta.riva@esempio.it' }); await pausa(); await K.nucleo.lavora();
+    await K.chiama('PATCH', `/api/dati/clienti/${cl.id}`, { email: 'marta.riva@esempio.it' }); await coda(K);
     assert.equal(contatti['people/c1'].emailAddresses[0].value, 'marta.riva@esempio.it'); assert.equal(contatti['people/c1'].etag, 'e1-10');
     assert.equal(n, 1);   // sempre lo stesso contatto
   } finally { await K.chiudi(); await S.chiudi(); }

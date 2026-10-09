@@ -5,6 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { finto, kubo, accendi } from './connettori-finto.mjs';
 import { firmaV4 } from '../connettori/_comunica/sigv4.js';
+import { coda } from './connettori-comunica-coda.mjs';
 
 const AZ = { ragione_sociale: 'Bottega Prova srl', piva: '12345678903', codice_fiscale: '12345678903', regime: 'RF01', via: 'Via dei Mille 10', cap: '20121', comune: 'Milano', provincia: 'MI', email: 'info@bottega.example', iban: 'IT60X0542811101000000123456', aliquota: 22 };
 async function fattura(K, { stato = 'emessa' } = {}) {
@@ -99,9 +100,9 @@ test('OneDrive: device code verso il tenant, la fattura emessa si salva da sola 
     const d = await K.chiama('POST', '/api/connettori/onedrive/oauth/dispositivo'); assert.equal(d.stato, 200, JSON.stringify(d.json)); assert.equal(d.json.codice, 'ABCD-1234');
     assert.equal(S.chiamate[0].corpo.scope, 'Files.ReadWrite offline_access'); assert.equal(S.chiamate[0].corpo.client_id, 'app');
     assert.equal((await K.chiama('POST', '/api/connettori/onedrive/oauth/dispositivo/controlla')).json.collegato, true);
-    const b = await fattura(K, { stato: 'bozza' }); await new Promise(r => setTimeout(r, 50)); await K.nucleo.lavora();
+    const b = await fattura(K, { stato: 'bozza' }); await coda(K);
     assert.equal(messi.length, 0);   // la bozza non parte
-    assert.equal((await K.chiama('PATCH', `/api/dati/fatture/${b.id}`, { stato: 'emessa' })).stato, 200); await new Promise(r => setTimeout(r, 50)); await K.nucleo.lavora();
+    assert.equal((await K.chiama('PATCH', `/api/dati/fatture/${b.id}`, { stato: 'emessa' })).stato, 200); await coda(K);
     assert.equal(messi.length, 2, JSON.stringify(S.chiamate.map(c => c.percorso)));
     assert.match(messi[0].via, /^Kubo\/Fatture\/2026\/.+\.html:\/content$/); assert.equal(messi[0].auth, 'Bearer tok'); assert.match(messi[0].tipo, /^text\/html/);
     assert.match(messi[1].via, /\.xml:\/content$/); assert.match(messi[1].corpo, /FatturaElettronica/);

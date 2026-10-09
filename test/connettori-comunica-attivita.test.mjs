@@ -3,9 +3,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { finto, kubo, accendi } from './connettori-finto.mjs';
+import { coda } from './connettori-comunica-coda.mjs';
 
 const pausa = ms => new Promise(r => setTimeout(r, ms));
-const coda = async K => { await pausa(50); await K.nucleo.lavora(); };
 
 test('Todoist: Lumi crea il compito con la scadenza a parole nel progetto chiesto; un\'attività nuova diventa un compito una volta sola', async () => {
   const K = await kubo(['professionista']); let n = 0;

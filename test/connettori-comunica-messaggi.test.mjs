@@ -3,8 +3,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { finto, kubo, accendi, manda } from './connettori-finto.mjs';
+import { coda } from './connettori-comunica-coda.mjs';
 
-const pausa = (ms = 50) => new Promise(r => setTimeout(r, ms));
 const TOKEN = '123456789:AAH' + 'x'.repeat(32);
 
 test('Telegram: il titolare si collega con il codice, il cliente con il suo link, webhook con secret_token, avvisi delle vendite', async () => {
@@ -56,8 +56,8 @@ test('Telegram: il titolare si collega con il codice, il cliente con il suo link
     const prima = inviati.length;
     const art = (await K.chiama('POST', '/api/dati/articoli', { nome: 'Vaso', codice: 'V1', prezzo: 30, giacenza: 9, soglia: 2 })).json;
     const v = (await K.chiama('POST', '/api/dati/vendite', { cliente: cl.id, righe: [{ articolo: art.id, quantita: 2, prezzo: 30 }] })).json;
-    await pausa(); await K.nucleo.lavora();
-    await K.chiama('PATCH', `/api/dati/vendite/${v.id}`, { note: 'ritira domani' }); await pausa(); await K.nucleo.lavora();
+    await coda(K);
+    await K.chiama('PATCH', `/api/dati/vendite/${v.id}`, { note: 'ritira domani' }); await coda(K);
     const avvisi = inviati.slice(prima).filter(m => /Nuova vendita/.test(m.text));
     assert.equal(avvisi.length, 1, JSON.stringify(inviati.slice(prima))); assert.match(avvisi[0].text, /^Nuova vendita V-\d{4}-0001: 60,00 € · Anna Bianchi$/); assert.equal(avvisi[0].chat_id, 111);
     // /stop scollega il cliente
@@ -82,7 +82,7 @@ test('Slack, Teams e Discord: prova, scorte basse una volta (e di nuovo dopo il 
     assert.equal(arrivi.slack[0].text, 'Kubo è collegato a questo canale.');
     assert.equal(arrivi.teams[0].attachments[0].contentType, 'application/vnd.microsoft.card.adaptive'); assert.equal(arrivi.teams[0].attachments[0].content.body[0].text, 'Kubo è collegato a questo canale.');
     assert.deepEqual(arrivi.discord[0].allowed_mentions, { parse: [] });
-    const giro = async () => { await pausa(); await K.nucleo.lavora(); };
+    const giro = async () => { await coda(K); };
     const a = (await K.chiama('POST', '/api/dati/articoli', { nome: 'Piatto blu', codice: 'P1', prezzo: 12, giacenza: 5, soglia: 3 })).json; await giro();
     const scorte = l => l.map(m => m.text ?? m.content ?? m.attachments?.[0].content.body[0].text).filter(t => /Scorta bassa/.test(t || ''));
     assert.equal(scorte(arrivi.slack).length, 0);

@@ -6,9 +6,8 @@ import { finto, kubo, accendi, manda, firmaHmacDi } from './connettori-finto.mjs
 import { isoLocale, leggiRisposte } from '../connettori/_comunica/moduli.js';
 import { leggiMultipart, risposteGrezze } from '../connettori/jotform/connettore.js';
 import { stanza } from '../connettori/jitsi/connettore.js';
+import { coda } from './connettori-comunica-coda.mjs';
 
-const pausa = ms => new Promise(r => setTimeout(r, ms));
-const coda = async K => { await pausa(50); await K.nucleo.lavora(); };
 const righe = async (K, sem) => (await K.chiama('GET', `/api/dati/${sem}?perPagina=100`)).json.righe;
 
 test('moduli.js: ora locale → UTC (legale e solare), risposte → contatto, data e ora, note', () => {
