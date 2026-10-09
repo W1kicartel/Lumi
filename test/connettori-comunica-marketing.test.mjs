@@ -227,3 +227,36 @@ test('Recensioni Google: il primo giro segna il punto, poi le nuove diventano av
     assert.equal((await K.chiama('POST', '/api/connettori/google-business/azioni/rispondi_recensione', { args: { recensione: 'rev-nuova22', risposta: '  ' } })).stato, 502);
   } finally { await K.chiudi(); await S.chiudi(); }
 });
+
+test('Trustpilot: recensioni nuove come avviso (apikey), risposta e invito con il token client_credentials', async () => {
+  const K = await kubo(['studio']); const tok = [], inviti = [], risposte = [];
+  const rv = (id, nome, stelle, titolo, quando) => ({ id, consumer: { displayName: nome }, stars: stelle, title: titolo, text: titolo, createdAt: quando });
+  const tutte = [rv('5f0000000000000000000001', 'Carla', 5, 'Ottimo', '2026-09-01T10:00:00Z')];
+  const S = await finto({
+    'POST /v1/oauth/oauth-business-users-for-applications/accesstoken': (p, c) => { tok.push(c); return c.grant_type === 'client_credentials' && c.client_id === 'tp-key' && c.client_secret === 'tp-secret' ? { access_token: 'tp-tok', expires_in: 359999 } : { stato: 401, corpo: {} }; },
+    'GET /v1/business-units/find': (p, c, { q }) => (q.get('name') === 'bottega.it' ? { id: 'bu123', displayName: 'Bottega' } : { stato: 404, corpo: {} }),
+    'GET /v1/business-units/:id/reviews': () => ({ reviews: [...tutte].reverse() }),
+    'POST /v1/private/reviews/:id/reply': (p, c) => { risposte.push({ id: p.id, ...c }); return { stato: 201, corpo: {} }; },
+    'POST /v1/private/business-units/:id/email-invitations': (p, c, { intestazioni }) => { inviti.push({ bu: p.id, corpo: c, utente: intestazioni['x-business-user-id'] }); return { stato: 202, corpo: {} }; },
+  });
+  try {
+    const anna = (await K.chiama('POST', '/api/dati/clienti', { nome: 'Anna Bianchi', email: 'anna@esempio.it' })).json;
+    await accendi(K, 'trustpilot', { base: S.url, segreti: { chiave: 'tp-key', segreto: 'tp-secret' }, impostazioni: { dominio: 'https://bottega.it/', utente: 'bu-user-1', mittente: 'Bottega' } });
+    assert.equal((await K.chiama('POST', '/api/connettori/trustpilot/prova')).json.messaggio, 'Bottega');
+    assert.deepEqual((await K.chiama('POST', '/api/connettori/trustpilot/giri/recensioni')).json.risultato, { nuove: 0, senzaRisposta: 0 });
+    tutte.push(rv('5f0000000000000000000002', 'Marco', 2, 'Consegna in ritardo', '2026-10-08T09:00:00Z'));
+    assert.deepEqual((await K.chiama('POST', '/api/connettori/trustpilot/giri/recensioni')).json.risultato, { nuove: 1, senzaRisposta: 1 });
+    assert.equal(S.chiamate.find(c => c.percorso.endsWith('/reviews')).intestazioni.apikey, 'tp-key');
+    assert.ok(K.db.prepare("SELECT titolo FROM _connettori_registro WHERE connettore = 'trustpilot' AND esito = 'avviso'").all().some(x => /★★ da Marco: «Consegna in ritardo»/.test(x.titolo)));
+    const args = { recensione: '5f0000000000000000000002', risposta: 'Ci scusi Marco, abbiamo rimediato.' };
+    assert.match((await K.chiama('POST', '/api/connettori/trustpilot/azioni/rispondi_recensione', { args, anteprima: true })).json.righe[0][1], /Marco/);
+    assert.equal((await K.chiama('POST', '/api/connettori/trustpilot/azioni/rispondi_recensione', { args })).json.pubblicata, true);
+    assert.deepEqual(risposte[0], { id: '5f0000000000000000000002', message: 'Ci scusi Marco, abbiamo rimediato.', authorBusinessUserId: 'bu-user-1' });
+    assert.equal(S.chiamate.find(c => c.percorso.endsWith('/reply')).intestazioni.authorization, 'Bearer tp-tok');
+    const inv = (await K.chiama('POST', '/api/connettori/trustpilot/azioni/chiedi_recensione', { args: { cliente: anna.id } })).json;
+    assert.equal(inv.invitato, 'anna@esempio.it');
+    assert.equal(inviti[0].bu, 'bu123'); assert.equal(inviti[0].utente, 'bu-user-1');
+    assert.equal(inviti[0].corpo.consumerName, 'Anna Bianchi'); assert.equal(inviti[0].corpo.referenceNumber, anna.id); assert.equal(inviti[0].corpo.senderName, 'Bottega');
+    assert.equal(tok.length, 1);   // il token vale 100 ore: uno solo
+  } finally { await K.chiudi(); await S.chiudi(); }
+});
