@@ -8,7 +8,7 @@ const VERSIONE = '2022-06-28';
 const nbase = k => k.base || 'https://api.notion.com';
 const opz = (k, json) => ({ bearer: k.segreti.token, intestazioni: { 'Notion-Version': VERSIONE }, ...(json ? { json } : {}) });
 const no = (r, cosa) => new Error(`Notion ha risposto ${r.stato} a ${cosa}${r.json?.message ? ': ' + r.json.message : ''}`);
-const idDb = k => String(k.imp.database || '').replace(/^.*?([0-9a-f]{32}|[0-9a-f-]{36}).*$/i, '$1');   // anche l'indirizzo intero del database
+const idDb = k => encodeURIComponent(String(k.imp.database || '').trim().replace(/^.*?([0-9a-f]{32}|[0-9a-f-]{36}).*$/i, '$1'));   // anche l'indirizzo intero del database
 const rt = s => [{ type: 'text', text: { content: String(s).slice(0, 2000) } }];
 // un valore di Kubo nella forma della proprietà di Notion; null = la proprietà si svuota
 function proprieta(tipo, v) {

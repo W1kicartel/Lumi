@@ -44,7 +44,7 @@ async function giro(k) {
         (await importa(k, l)) === 'creato' ? conti.creati++ : conti.presenti++;
         const t = Math.floor(Date.parse(l.created_time) / 1000); if (t > ultimo) ultimo = t;
       }
-      const prossima = r.json?.paging?.next; url = prossima && prossima.startsWith(gbase(k)) ? prossima : null;   // solo verso Meta
+      const prossima = r.json?.paging?.next; url = prossima && URL.canParse(prossima) && new URL(prossima).origin === new URL(gbase(k)).origin ? prossima : null;   // solo verso Meta
     }
     k.stato.scrivi(`dopo:${f}`, ultimo);
   }

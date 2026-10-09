@@ -260,3 +260,19 @@ test('Trustpilot: recensioni nuove come avviso (apikey), risposta e invito con i
     assert.equal(tok.length, 1);   // il token vale 100 ore: uno solo
   } finally { await K.chiudi(); await S.chiudi(); }
 });
+
+test('produttività, marketing, recensioni: il contratto del catalogo e le traduzioni nelle sei lingue', async () => {
+  const CHIAVI = ['categoria', 'sito', 'costo', 'costoNota', 'serve', 'passi', 'difficolta', 'zone', 'fonti', 'prova', 'parole'];
+  for (const id of ['google-sheets', 'airtable', 'notion', 'mailchimp', 'hubspot', 'meta-lead', 'google-business', 'trustpilot']) {
+    const m = (await import(`../connettori/${id}/connettore.js`)).default, c = m.catalogo;
+    assert.equal(m.id, id); assert.deepEqual(CHIAVI.filter(x => c[x] == null), [], id);
+    assert.ok(['produttivita', 'marketing', 'recensioni'].includes(c.categoria), id);
+    assert.ok(['gratis', 'a-consumo', 'abbonamento', 'contratto'].includes(c.costo) && ['facile', 'media', 'difficile'].includes(c.difficolta), id);
+    assert.ok(c.passi.length >= 3 && c.passi.length <= 8, id); assert.ok(c.serve.every(s => s.cosa && s.dove && /^https:\/\//.test(s.link)), id);
+    assert.ok(c.fonti.length && c.fonti.every(f => /^https:\/\//.test(f)) && /^https:\/\//.test(c.sito) && c.prova === 'finto', id);
+    const en = m.testi.en; assert.equal(typeof en['cat.costoNota'], 'string', id);
+    assert.equal(en['cat.passi'].length, c.passi.length, id); assert.equal(en['cat.serve'].length, c.serve.length, id);
+    const brevi = ['nome', 'descrizione', ...(m.impostazioni || []).map(i => `imp.${i.id}`), ...Object.keys(m.azioni || {}).map(a => `az.${a}`), ...Object.keys(m.pianificati || {}).map(g => `giro.${g}`)];
+    for (const l of ['en', 'es', 'fr', 'de', 'pt']) assert.deepEqual(brevi.filter(x => !m.testi[l]?.[x]), [], `${id} ${l}`);
+  }
+});
