@@ -28,6 +28,10 @@ export const TESTI = {
     'ricette-intestazioni': "Le intestazioni sono un oggetto JSON con nomi semplici (lettere, numeri, trattini)",
     'ricette-righe': "Al massimo 500 righe per richiesta",
     'ricette-risposta': "Il servizio ha risposto {stato} ({dettaglio})",
+    'copia-no': "Di questo connettore non si fanno copie",
+    'copia-nome': "Dai un nome al servizio (lettere o cifre)",
+    'copia-doppia': "C'è già un connettore «{nome}»",
+    'copia-accesa': "Spegnilo prima di toglierlo",
   },
   en: {
     sconosciuto: 'Unknown connector', spento: 'Connector off or missing', 'giro-sconosciuto': 'Unknown scheduled run',
@@ -55,6 +59,10 @@ export const TESTI = {
     'ricette-intestazioni': "Headers are a JSON object with simple names (letters, digits, dashes)",
     'ricette-righe': "At most 500 rows per request",
     'ricette-risposta': "The service answered {stato} ({dettaglio})",
+    'copia-no': "This connector cannot be copied",
+    'copia-nome': "Give the service a name (letters or digits)",
+    'copia-doppia': "There is already a connector «{nome}»",
+    'copia-accesa': "Switch it off before removing it",
   },
   es: {
     sconosciuto: 'Conector desconocido', spento: 'Conector apagado o inexistente', 'giro-sconosciuto': 'Tarea programada desconocida',
@@ -82,6 +90,10 @@ export const TESTI = {
     'ricette-intestazioni': "Las cabeceras son un objeto JSON con nombres simples (letras, números, guiones)",
     'ricette-righe': "Como máximo 500 filas por petición",
     'ricette-risposta': "El servicio respondió {stato} ({dettaglio})",
+    'copia-no': "De este conector no se hacen copias",
+    'copia-nome': "Ponle un nombre al servicio (letras o cifras)",
+    'copia-doppia': "Ya existe un conector «{nome}»",
+    'copia-accesa': "Apágalo antes de quitarlo",
   },
   fr: {
     sconosciuto: 'Connecteur inconnu', spento: 'Connecteur éteint ou inexistant', 'giro-sconosciuto': 'Tâche planifiée inconnue',
@@ -109,6 +121,10 @@ export const TESTI = {
     'ricette-intestazioni': "Les en-têtes sont un objet JSON aux noms simples (lettres, chiffres, tirets)",
     'ricette-righe': "500 lignes par requête au maximum",
     'ricette-risposta': "Le service a répondu {stato} ({dettaglio})",
+    'copia-no': "Ce connecteur ne peut pas être copié",
+    'copia-nome': "Donnez un nom au service (lettres ou chiffres)",
+    'copia-doppia': "Il existe déjà un connecteur « {nome} »",
+    'copia-accesa': "Désactivez-le avant de le retirer",
   },
   de: {
     sconosciuto: 'Unbekannter Connector', spento: 'Connector aus oder nicht vorhanden', 'giro-sconosciuto': 'Unbekannter geplanter Lauf',
@@ -136,6 +152,10 @@ export const TESTI = {
     'ricette-intestazioni': "Header sind ein JSON-Objekt mit einfachen Namen (Buchstaben, Ziffern, Bindestriche)",
     'ricette-righe': "Höchstens 500 Zeilen pro Anfrage",
     'ricette-risposta': "Der Dienst antwortete {stato} ({dettaglio})",
+    'copia-no': "Dieser Konnektor kann nicht kopiert werden",
+    'copia-nome': "Gib dem Dienst einen Namen (Buchstaben oder Ziffern)",
+    'copia-doppia': "Es gibt schon einen Konnektor „{nome}“",
+    'copia-accesa': "Schalte ihn aus, bevor du ihn entfernst",
   },
   pt: {
     sconosciuto: 'Conector desconhecido', spento: 'Conector desligado ou inexistente', 'giro-sconosciuto': 'Execução agendada desconhecida',
@@ -163,6 +183,10 @@ export const TESTI = {
     'ricette-intestazioni': "Os cabeçalhos são um objeto JSON com nomes simples (letras, números, hífens)",
     'ricette-righe': "No máximo 500 linhas por requisição",
     'ricette-risposta': "O serviço respondeu {stato} ({dettaglio})",
+    'copia-no': "Este conector não pode ser copiado",
+    'copia-nome': "Dê um nome ao serviço (letras ou números)",
+    'copia-doppia': "Já existe um conector «{nome}»",
+    'copia-accesa': "Desative antes de remover",
   },
 };
 export const testo = (l, chiave, p = {}) => String(TESTI[l]?.[chiave] ?? TESTI.it[chiave] ?? chiave).replace(/\{(\w+)\}/g, (x, k) => (k in p ? String(p[k]) : x));

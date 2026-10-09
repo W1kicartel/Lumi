@@ -173,4 +173,11 @@ export default {
   'connettori.r-aggiungi-campo': "Zuordnung hinzufügen",
   'connettori.r-indirizzo-entrata': "Adresse für den Dienst (JSON-POST)",
   'connettori.r-salva-prima': "Speichern und aktivieren, um die Adresse zu sehen.",
+  'connettori.copia': "Einen weiteren Dienst so verbinden",
+  'connettori.copia-aiuto': "Ein zweiter Dienst mit eigener Adresse, Authentifizierung und eigenen Rezepten.",
+  'connettori.copia-nome': "Name des Dienstes (z. B. CRM)",
+  'connettori.copia-crea': "Anlegen",
+  'connettori.copia-di': "Kopie von „{nome}“",
+  'connettori.togli-copia': "Diesen Dienst entfernen",
+  'connettori.togli-copia-conferma': "„{nome}“ mit Einstellungen, Geheimnissen und Protokoll entfernen?",
 };

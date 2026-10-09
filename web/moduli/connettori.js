@@ -87,6 +87,7 @@ async function pagina(contenuto, k, id) {
   if (c.rotto) { corpo.append(h('div.avviso', t('connettori.rotto'))); return; }
   if (c.daApprovare) { corpo.append(h('div.avviso', t(c.cambiato ? 'connettori.cambiato' : 'connettori.da-approvare')), h('p', t('connettori.somma'), h('br'), h('code.mono.conn-somma', c.somma))); return; }
   corpo.append(guida(k, c));
+  if (c.copie || c.copiaDi) corpo.append(copie(k, c));
   if (c.mancano?.length) corpo.append(h('div.avviso', t('connettori.mancano', { cosa: c.mancano.join(', ') })));
   if (c.cambiato) corpo.append(h('div.avviso', t('connettori.cambiato')));
   corpo.append(impostazioni(k, c, salva), collegamenti(k, c, ricarica));
@@ -173,6 +174,20 @@ function editorRicette(k, c, i) {
   }
   disegna();
   return { el, get value() { return lista; } };
+}
+
+// le copie (HTTP, webhook): un secondo servizio con indirizzo, accesso e ricette suoi; una copia spenta si toglie
+function copie(k, c) {
+  const { h } = k, id = encodeURIComponent(c.id);
+  if (c.copiaDi) return h('div.conn-riga', h('span.nota', t('connettori.copia-di', { nome: c.copiaDi })), !c.acceso ? h('button.btn.piccolo.nudo.pericolo', { on: { click: () =>
+    finestra(k, t('connettori.togli-copia'), [h('p', t('connettori.togli-copia-conferma', { nome: c.nome }))], t('connettori.togli'), async () => {
+      try { await k.api('DELETE', `/connettori/${id}`); location.hash = '#/connettori'; } catch (e) { k.toast(e.message, true); } }) } }, t('connettori.togli-copia')) : null);
+  return h('div.conn-riga', h('button.btn.piccolo', { on: { click: () => {
+    const nome = h('input.campo', { autocomplete: 'off', placeholder: t('connettori.copia-nome'), 'aria-label': t('connettori.copia-nome') });
+    finestra(k, t('connettori.copia'), [h('p.nota', t('connettori.copia-aiuto')), nome], t('connettori.copia-crea'), async () => {
+      try { const x = await k.api('POST', `/connettori/${id}/copie`, { nome: nome.value }); location.hash = `#/connettori/${encodeURIComponent(x.id)}`; } catch (e) { k.toast(e.message, true); } });
+    nome.focus();
+  } } }, '+ ', t('connettori.copia')), h('span.nota', t('connettori.copia-aiuto')));
 }
 
 // accendere chiede conferma con i permessi (e la somma, per un connettore che non è di Kubo)

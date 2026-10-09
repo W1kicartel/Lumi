@@ -234,3 +234,28 @@ test('OpenAPI 3.1 dallo schema: tipi con null, webhooks, permessi di chi chiede,
     assert.equal((await K.chiama('GET', '/api/openapi-3.1.json')).stato, 401);
   } finally { await K.chiudi(); }
 });
+
+test('copie del connettore HTTP: due servizi REST con indirizzo, accesso e ricette propri; si toglie solo spenta', async () => {
+  const K = await kubo();
+  const A = await finto({ 'GET /me': () => ({ ok: 1 }) }), B = await finto({ 'GET /stato': () => ({ ok: 1 }) });
+  try {
+    assert.equal((await K.chiama('POST', '/api/connettori/stripe/copie', { nome: 'Altro' })).stato, 400);
+    assert.equal((await K.chiama('POST', '/api/connettori/http/copie', { nome: '  ' })).stato, 400);
+    const crm = (await K.chiama('POST', '/api/connettori/http/copie', { nome: 'CRM Città' })).json;
+    assert.equal(crm.id, 'http-crm-citta'); assert.equal(crm.nome, 'CRM Città'); assert.equal(crm.copiaDi, 'http');
+    assert.equal((await K.chiama('POST', '/api/connettori/http/copie', { nome: 'crm città' })).stato, 409);
+    assert.equal((await K.chiama('POST', '/api/connettori/http-crm-citta/copie', { nome: 'x' })).stato, 400);   // niente copie di copie
+    await accendi(K, 'http', { segreti: { chiave: 'chiave-a' }, impostazioni: { base: A.url, accesso: 'bearer', prova_percorso: '/me' } });
+    await accendi(K, 'http-crm-citta', { segreti: { chiave: 'chiave-b' }, impostazioni: { base: B.url, accesso: 'intestazione', accesso_nome: 'X-Token', prova_percorso: '/stato' } });
+    assert.equal((await K.chiama('POST', '/api/connettori/http/prova')).json.ok, true);
+    assert.equal((await K.chiama('POST', '/api/connettori/http-crm-citta/prova')).json.ok, true);
+    assert.equal(A.chiamate[0].intestazioni.authorization, 'Bearer chiave-a'); assert.equal(B.chiamate[0].intestazioni['x-token'], 'chiave-b');
+    assert.ok((await K.chiama('GET', '/api/connettori/catalogo?q=crm')).json.voci.some(v => v.id === 'http-crm-citta'));
+    assert.equal((await K.chiama('DELETE', '/api/connettori/http-crm-citta')).stato, 409);   // accesa
+    await K.chiama('PUT', '/api/connettori/http-crm-citta', { attivo: false });
+    assert.equal((await K.chiama('DELETE', '/api/connettori/http-crm-citta')).json.ok, true);
+    assert.equal((await K.chiama('GET', '/api/connettori/http-crm-citta')).stato, 404);
+    assert.equal(K.db.prepare("SELECT COUNT(*) n FROM _connettori_segreti WHERE connettore = 'http-crm-citta'").get().n, 0);
+    assert.equal((await K.chiama('DELETE', '/api/connettori/http')).stato, 400);   // l'originale non si toglie
+  } finally { await K.chiudi(); await A.chiudi(); await B.chiudi(); }
+});

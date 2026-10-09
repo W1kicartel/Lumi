@@ -174,4 +174,11 @@ export default {
   'connettori.r-aggiungi-campo': "Aggiungi un abbinamento",
   'connettori.r-indirizzo-entrata': "Indirizzo da dare al servizio (POST JSON)",
   'connettori.r-salva-prima': "Salva e accendi per vedere l'indirizzo.",
+  'connettori.copia': "Collega un altro servizio così",
+  'connettori.copia-aiuto': "Un secondo servizio con il suo indirizzo, la sua autenticazione e le sue ricette.",
+  'connettori.copia-nome': "Nome del servizio (es. CRM)",
+  'connettori.copia-crea': "Crea",
+  'connettori.copia-di': "Copia di «{nome}»",
+  'connettori.togli-copia': "Togli questo servizio",
+  'connettori.togli-copia-conferma': "Togliere «{nome}» con le sue impostazioni, i segreti e il registro?",
 };

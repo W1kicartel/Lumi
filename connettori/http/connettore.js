@@ -5,7 +5,7 @@
 import { manifestoRicette, testiRicette } from '../../server/moduli/connettori-ricette.js';
 
 export default {
-  id: 'http', nome: 'HTTP / API REST', versione: 1, icona: 'ingranaggio',
+  id: 'http', nome: 'HTTP / API REST', versione: 1, icona: 'ingranaggio', copie: true,   // «copie»: un secondo servizio con indirizzo, accesso e ricette suoi
   descrizione: 'Collega qualsiasi servizio con un\'API REST, senza scrivere codice: ricette in uscita, bottoni e webhook in entrata.',
   catalogo: {
     categoria: 'automazione', sito: 'https://www.rfc-editor.org/rfc/rfc9110', costo: 'gratis', costoNota: 'Gratis in Kubo: paghi solo il servizio che colleghi, se è a pagamento',

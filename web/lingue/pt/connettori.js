@@ -173,4 +173,11 @@ export default {
   'connettori.r-aggiungi-campo': "Adicionar uma correspondência",
   'connettori.r-indirizzo-entrata': "Endereço para o serviço (POST JSON)",
   'connettori.r-salva-prima': "Salve e ative para ver o endereço.",
+  'connettori.copia': "Conectar outro serviço assim",
+  'connettori.copia-aiuto': "Um segundo serviço com o seu endereço, a sua autenticação e as suas receitas.",
+  'connettori.copia-nome': "Nome do serviço (ex. CRM)",
+  'connettori.copia-crea': "Criar",
+  'connettori.copia-di': "Cópia de «{nome}»",
+  'connettori.togli-copia': "Remover este serviço",
+  'connettori.togli-copia-conferma': "Remover «{nome}» com as suas configurações, segredos e registro?",
 };

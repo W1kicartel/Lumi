@@ -94,7 +94,8 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
     CREATE TABLE IF NOT EXISTS _connettori_mappa (connettore TEXT NOT NULL, entita TEXT NOT NULL, riga TEXT NOT NULL, remoto TEXT NOT NULL, impronta TEXT, aggiornato TEXT,
       PRIMARY KEY (connettore, entita, remoto));
     CREATE INDEX IF NOT EXISTS _connettori_mappa_r ON _connettori_mappa(connettore, entita, riga);
-    CREATE TABLE IF NOT EXISTS _connettori_oauth (state TEXT PRIMARY KEY, connettore TEXT NOT NULL, verificatore TEXT NOT NULL, ritorno TEXT NOT NULL, scade INTEGER NOT NULL);`);
+    CREATE TABLE IF NOT EXISTS _connettori_oauth (state TEXT PRIMARY KEY, connettore TEXT NOT NULL, verificatore TEXT NOT NULL, ritorno TEXT NOT NULL, scade INTEGER NOT NULL);
+    CREATE TABLE IF NOT EXISTS _connettori_copie (id TEXT PRIMARY KEY, base TEXT NOT NULL, nome TEXT NOT NULL, creato TEXT NOT NULL);`);
 
   // ---------- messaggi nelle sei lingue (server/moduli/connettori-lingue.js) ----------
   const linguaDi = (req, ctx) => { try { return (ctx?.utente && db.prepare('SELECT lingua FROM _lingue_utenti WHERE utente = ?').get(ctx.utente.id)?.lingua) || meta.leggi(db, 'lingue.azienda') || 'it'; } catch { return 'it'; } };
@@ -109,6 +110,12 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
   // ---------- i connettori di questo database ----------
   const cartellaDati = () => { const l = db.location?.(); return l ? join(dirname(l), 'connettori') : null; };
   let tutti = new Map(UFFICIALI.map(c => [c.id, c]));
+  // le copie di un connettore con «copie: true» (HTTP, webhook): un secondo servizio REST con il suo indirizzo, la sua
+  // autenticazione, i suoi segreti e le sue ricette. Stesso codice, id suo («http-crm»): segreti, identità e registro sono per id.
+  const copia = x => { const b = tutti.get(x.base); if (!b?.man?.copie || b.copiaDi) return null;
+    const testi = Object.fromEntries(Object.entries(b.man.testi || {}).map(([l, t]) => [l, { ...t, nome: undefined }]));
+    return { ...b, id: x.id, man: { ...b.man, id: x.id, nome: x.nome, testi }, copiaDi: b.id }; };
+  for (const x of db.prepare('SELECT * FROM _connettori_copie ORDER BY creato').all()) { const c = copia(x); if (c && !tutti.has(x.id)) tutti.set(x.id, c); }
   const approvata = (id, s) => { try { const x = db.prepare('SELECT attivo, somma FROM _connettori WHERE id = ?').get(id); return !!x?.attivo && x.somma === s; } catch { return false; } };
   const pronti = (async () => { const c = cartellaDati(); if (!c) return; for (const x of await carica(c, 'locale', approvata)) if (!tutti.has(x.id)) tutti.set(x.id, x); })().catch(e => console.error('connettori', e));
   const riga = id => db.prepare('SELECT * FROM _connettori WHERE id = ?').get(id);
@@ -296,7 +303,7 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
   D.ascolta((ev, dbEv) => {
     if (dbEv !== db || !['crea', 'modifica', 'elimina', 'ripristina'].includes(ev.tipo)) return;
     for (const [id, c] of tutti) {
-      if (c.rotto || !c.man || origine === id || !attivo(id)) continue;
+      if (c.rotto || (!c.man?.uscita && typeof c.man?.eventi !== 'function') || origine === id || !attivo(id)) continue;   // chi non ascolta non costa una query
       // «eventi(ev, k)»: ogni crea/modifica/elimina/ripristina che non viene dal connettore stesso (le ricette in uscita)
       if (typeof c.man.eventi === 'function') { try { c.man.eventi(ev, kPer(id)); } catch (e) { annota(id, 'uscita', 'errore', 'eventi', String(e.message).slice(0, 300)); } }
       if (!c.man.uscita || !['crea', 'modifica'].includes(ev.tipo)) continue;
@@ -412,6 +419,7 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
     const { man } = c, salvati = segretiSalvati(id), imp = impDi(id), tok = tokenSalvato(id);
     const base = { id, nome: tr(man, l, 'nome', man.nome), descrizione: tr(man, l, 'descrizione', man.descrizione), icona: man.icona || 'cartella', versione: man.versione || 1, origine: c.origine,
       somma: c.somma, attivo: attivo(id), acceso: !!x?.attivo, cambiato: c.origine === 'locale' && !!x?.attivo && x.somma !== c.somma, catalogo: vistaCatalogo(man, l, completa),
+      ...(c.copiaDi ? { copiaDi: c.copiaDi } : {}), ...(man.copie && !c.copiaDi ? { copie: true } : {}),
       mancano: [...(man.impostazioni || []).filter(i => i.obbligatorio !== false && i.segreto && !i.generato && !salvati.has(i.id)).map(i => tr(man, l, `imp.${i.id}`, i.nome)), ...mancanti(id)] };
     if (!completa) return base;
     return { ...base, interni: !!x?.interni,
@@ -516,6 +524,25 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
     if (def.schema && !def.schema.test(t)) throw errore(400, 'valore-non-valido', { nome: def.nome });
     return t;
   }
+  // una copia nuova: { nome } → id «<base>-<nome>»; si toglie solo spenta (con segreti, impostazioni e registro)
+  r('POST', '/api/connettori/:id/copie', async ({ ctx, p, corpo, req }) => {
+    titolare(ctx); await pronti; const b = conn(p.id); if (!b.man.copie || b.copiaDi) throw errore(400, 'copia-no');
+    const nome = String(corpo.nome || '').trim().slice(0, 60), pezzo = nome.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40 - p.id.length);
+    const id = `${p.id}-${pezzo}`; if (!nome || !pezzo || !ID.test(id)) throw errore(400, 'copia-nome');
+    if (tutti.has(id)) throw errore(409, 'copia-doppia', { nome: id });
+    const x = { id, base: p.id, nome, creato: new Date().toISOString() };
+    db.prepare('INSERT INTO _connettori_copie (id, base, nome, creato) VALUES (?, ?, ?, ?)').run(x.id, x.base, x.nome, x.creato);
+    tutti.set(id, copia(x)); registraLumi(id); annota(id, 'sistema', 'ok', 'copia', { di: p.id, chi: ctx.utente.nome });
+    return scheda(id, linguaDi(req, ctx), true);
+  });
+  r('DELETE', '/api/connettori/:id', async ({ ctx, p }) => {
+    titolare(ctx); await pronti; const c = tutti.get(p.id); if (!c?.copiaDi) throw errore(400, 'copia-no');
+    if (riga(p.id)?.attivo) throw errore(409, 'copia-accesa');
+    transazione(db, () => { for (const t of ['_connettori_copie']) db.prepare(`DELETE FROM ${t} WHERE id = ?`).run(p.id);
+      for (const t of ['_connettori_segreti', '_connettori_registro', '_connettori_giri', '_connettori_coda', '_connettori_eventi', '_connettori_mappa']) db.prepare(`DELETE FROM ${t} WHERE connettore = ?`).run(p.id);
+      db.prepare('DELETE FROM _connettori WHERE id = ?').run(p.id); });
+    tutti.delete(p.id); kCache.delete(p.id); return { ok: true };
+  });
   r('POST', '/api/connettori/:id/prova', async ({ ctx, p }) => {
     titolare(ctx); await pronti; const { man } = conn(p.id), t0 = Date.now();
     if (!man.prova) return { ok: true };

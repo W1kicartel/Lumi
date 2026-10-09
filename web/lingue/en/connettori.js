@@ -173,4 +173,11 @@ export default {
   'connettori.r-aggiungi-campo': "Add a match",
   'connettori.r-indirizzo-entrata': "Address to give the service (JSON POST)",
   'connettori.r-salva-prima': "Save and switch on to see the address.",
+  'connettori.copia': "Connect another service like this",
+  'connettori.copia-aiuto': "A second service with its own address, authentication and recipes.",
+  'connettori.copia-nome': "Service name (e.g. CRM)",
+  'connettori.copia-crea': "Create",
+  'connettori.copia-di': "Copy of «{nome}»",
+  'connettori.togli-copia': "Remove this service",
+  'connettori.togli-copia-conferma': "Remove «{nome}» with its settings, secrets and log?",
 };

@@ -201,6 +201,7 @@ await manda(K, '/api/connettori/prenota/in', corpo, { 'X-Prenota-Firma': firmaHm
 | `catalogo` | la carta e la guida nella Libreria: vedi «Il blocco catalogo». Obbligatorio per i connettori ufficiali. |
 | `eventi(ev, k)` | ogni crea/modifica/elimina/ripristina in Kubo che non viene dal connettore stesso (anti-eco), dentro la transazione: per mettere in coda (`k.accoda`), non per chiamare la rete. `ev = { tipo, entita, id, prima, dopo }`. |
 | `azioni`, `permessi` come funzioni | `azioni: imp => ({ … })`, `permessi: imp => ({ … })`: dipendono dalle impostazioni salvate (con i predefiniti). Le ricette del connettore HTTP usano questo. Gli strumenti di Lumi si registrano di nuovo a ogni salvataggio. |
+| `copie: true` | il titolare può crearne altre istanze con un nome (`<id>-<nome>`), ognuna con impostazioni, segreti, ricette, identità e registro propri. |
 | impostazioni `ricette` e `json` | un valore strutturato (elenco o oggetto) salvato nelle impostazioni. `controlla(valore, { interni, S, db })` lo ripulisce o lancia un errore; la pagina ha un editor per `ricette` e un'area di testo per `json`. |
 
 ### Il `k` di un connettore
@@ -235,7 +236,16 @@ await manda(K, '/api/connettori/prenota/in', corpo, { 'X-Prenota-Firma': firmaHm
 - un percorso per «prova la connessione»;
 - le **ricette**.
 
-Il motore è `server/moduli/connettori-ricette.js`, lo stesso dei ponti. Una ricetta ha `id`, `nome`, `tipo`, `sezione` e
+Il motore è `server/moduli/connettori-ricette.js`, lo stesso dei ponti.
+
+**Più servizi.** Per un secondo servizio REST c'è «Collega un altro servizio così» nella pagina del connettore
+(`POST /api/connettori/http/copie { nome }`). Nasce una copia con un id suo, per esempio `http-crm`, e con i suoi:
+- indirizzo e autenticazione;
+- segreti e ricette;
+- identità di servizio e registro.
+
+Una copia spenta si toglie (`DELETE /api/connettori/<id>`) insieme a segreti, impostazioni e registro. Vale per ogni
+connettore con `copie: true` nel manifesto (HTTP e webhook). Una ricetta ha `id`, `nome`, `tipo`, `sezione` e
 `attiva`, più i campi del suo tipo:
 
 | Tipo | Cosa fa | Campi |
