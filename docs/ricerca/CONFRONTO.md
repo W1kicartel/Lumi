@@ -88,7 +88,7 @@ Poi vengono la contabilità analitica per centri di costo, le presenze e le note
 
 ## Cosa è stato costruito in questo giro (giro 4, squadra «confronto»)
 
-La matrice qui sopra descrive Kubo **prima** di questo giro. Questo giro ha chiuso le lacune dalla 1 alla 5 e una parte della 6:
+La matrice qui sopra descrive Kubo **prima** di questo giro. Questo giro ha chiuso le lacune dalla 1 alla 5 e la 8, più una parte della 6:
 
 | lacuna | modulo | adesso |
 |---|---|---|
@@ -98,5 +98,6 @@ La matrice qui sopra descrive Kubo **prima** di questo giro. Questo giro ha chiu
 | 4. Previsione di cassa | Tesoreria | **c'è**: settimane o mesi, ritardo medio di ogni cliente, previsioni ricorrenti a mano, F24 del modulo fisco |
 | 5. Acquisti | Acquisti ([ACQUISTI.md](../ACQUISTI.md)) | **c'è**: riordino sotto scorta, ordini per fornitore, ricevimenti parziali con costo medio ponderato, confronto ordinato/ricevuto/fatturato |
 | 6. Magazzino avanzato | Magazzino ([MAGAZZINO.md](../MAGAZZINO.md)) | **parziale**: registro dei movimenti, valore al costo, inventario fisico con lettore e rettifiche. Mancano più depositi, lotti/seriali/scadenze e FIFO |
+| 8. Contratti ricorrenti | Ricorrenti ([RICORRENTI.md](../RICORRENTI.md)) | **c'è**: canoni con periodicità e fine, fatture per ogni periodo arretrato (bozza o emesse), giro automatico facoltativo, incassi futuri nella previsione di cassa |
 
-Per il giro dopo, nell'ordine: il resto della 6 (depositi, lotti), poi la 7 (ordine cliente → DDT → fattura riepilogativa), la 8 (contratti ricorrenti), la 9 (pipeline CRM) e la 10 (cassa con registratore telematico).
+Per il giro dopo, nell'ordine: il resto della 6 (depositi, lotti), poi la 7 (ordine cliente → DDT → fattura riepilogativa), la 9 (pipeline CRM) e la 10 (cassa con registratore telematico). La 8 è passata avanti alla 6 e alla 7 perché era piccola e chiusa: depositi e DDT toccano le vendite e le automazioni di tutti i modelli e vanno progettati con calma.
