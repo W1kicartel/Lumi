@@ -414,7 +414,7 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
     return { ...base, interni: !!x?.interni,
       permessi: Object.entries(permessiDi(id)).map(([sem, p]) => ({ entita: S.leggi(db, entitaDi(id, sem))?.nome || sem, ...p })),
       impostazioni: (man.impostazioni || []).map(i => ({ id: i.id, nome: tr(man, l, `imp.${i.id}`, i.nome), aiuto: tr(man, l, `aiuto.${i.id}`, i.aiuto) || null, tipo: i.tipo || 'testo', segreto: !!i.segreto,
-        opzioni: i.opzioni || null, ...(i.segreto ? { salvato: salvati.has(i.id), ...(i.generato ? { valore: segreto(id, i.id), generato: true } : {}) } : { valore: imp[i.id] ?? i.predefinito ?? null }) })),
+        opzioni: i.opzioni || null, ...(i.tipo === 'ricette' ? { assoluti: !!i.assoluti } : {}), ...(i.segreto ? { salvato: salvati.has(i.id), ...(i.generato ? { valore: segreto(id, i.id), generato: true } : {}) } : { valore: imp[i.id] ?? i.predefinito ?? null }) })),
       // «nelPercorso»: il codice generato va in fondo all'indirizzo anche con una verifica su misura (le ricette in entrata)
       webhook: man.entrata ? { percorso: `/api/connettori/${id}/in`, firma: man.entrata.firma?.tipo || 'nessuna', nelPercorso: man.entrata.firma?.tipo === 'token' || !!man.entrata.firma?.nelPercorso } : null,
       oauth: man.oauth && (typeof man.oauth.usato !== 'function' || man.oauth.usato(impPiene(id))) ? { tipo: man.oauth.tipo || 'codice', collegato: !!tok?.access_token, scade: tok?.scade || null, rinnovo: !!tok?.refresh_token } : null,
