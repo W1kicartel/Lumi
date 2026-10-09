@@ -2,6 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { finto, kubo, accendi, manda } from './connettori-finto.mjs';
+import { pubblicoDi } from '../connettori/_soldi/comuni.js';
 
 const vendita = async (K, prezzo = 30, q = 2) => {
   const art = (await K.chiama('POST', '/api/dati/articoli', { nome: 'Vaso', codice: 'V1', prezzo, giacenza: 5 })).json;
@@ -31,7 +32,9 @@ test('Klarna: sessione KP + HPP, ritorno riletto dall\'API (sessione → ordine 
   });
   try {
     const v = await vendita(K);
-    await accendi(K, 'klarna', { base: S.url, segreti: { password: 'pw-prova' }, impostazioni: { utente: 'K123_abc', indirizzo: 'https://kubo.esempio.it' } });
+    // niente indirizzo nel connettore: vale quello pubblico di Kubo della Libreria
+    assert.equal((await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: 'https://kubo.esempio.it' })).stato, 200);
+    await accendi(K, 'klarna', { base: S.url, segreti: { password: 'pw-prova' }, impostazioni: { utente: 'K123_abc' } });
     assert.equal((await K.chiama('POST', '/api/connettori/klarna/prova')).json.ok, true);
     const l = await K.chiama('POST', '/api/connettori/klarna/azioni/link_vendita', { args: { vendita: v.id } });
     assert.equal(l.stato, 200, JSON.stringify(l.json)); assert.equal(l.json.url, 'https://pay.playground.klarna.com/eu/hpp/payments/abc');
@@ -86,6 +89,8 @@ test('Axerve: payment/create con apikey, link alla pagina pagam, esito riletto c
   });
   try {
     const v = await vendita(K);
+    // l'indirizzo del connettore vince su quello della Libreria
+    assert.equal((await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: 'https://altro.esempio.it' })).stato, 200);
     await accendi(K, 'axerve', { base: S.url, segreti: { chiave: 'chiave-prova' }, impostazioni: { shop: 'GESPAY12345', indirizzo: 'https://kubo.esempio.it' } });
     assert.equal((await K.chiama('POST', '/api/connettori/axerve/prova')).json.ok, true);
     const l = await K.chiama('POST', '/api/connettori/axerve/azioni/link_vendita', { args: { vendita: v.id } });
@@ -148,4 +153,12 @@ test('Klarna e Axerve: il nucleo li carica, catalogo e testi in tutte le lingue'
       for (const lingua of ['en', 'es', 'fr', 'de', 'pt']) for (const k of chiavi) assert.ok(man.testi[lingua][k], `${id}: manca ${lingua}.${k}`);
     }
   } finally { await K.chiudi(); }
+});
+
+test('pubblicoDi: l\'indirizzo del connettore, se no quello https della Libreria (k.pubblico), senza barra finale', () => {
+  assert.equal(pubblicoDi({ imp: { indirizzo: 'https://kubo.esempio.it/' }, pubblico: 'https://altro.esempio.it' }), 'https://kubo.esempio.it');
+  assert.equal(pubblicoDi({ imp: { indirizzo: '' }, pubblico: 'https://kubo.esempio.it' }), 'https://kubo.esempio.it');
+  assert.equal(pubblicoDi({ imp: {}, pubblico: 'http://192.168.1.20:8080' }), '');   // i servizi di pagamento vogliono https
+  assert.equal(pubblicoDi({ imp: {}, pubblico: '' }), '');
+  assert.equal(pubblicoDi({ imp: { kubo: 'https://k.esempio.it' }, pubblico: '' }, 'kubo'), 'https://k.esempio.it');
 });

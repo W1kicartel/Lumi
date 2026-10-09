@@ -1,10 +1,11 @@
 // WhatsApp con la Cloud API di Meta, diretta: nessun intermediario, le tariffe di Meta senza ricarichi.
 // Serve: l'ID del numero, l'ID dell'account WhatsApp Business (WABA), il token permanente di un utente di sistema con
 // whatsapp_business_messaging e whatsapp_business_management, la chiave segreta dell'app (firma X-Hub-Signature-256 dei
-// webhook) e il token di verifica, che Kubo genera e il titolare incolla su Meta. La verifica GET (hub.challenge) la fa
-// server/moduli/whatsapp.js sullo stesso indirizzo /api/connettori/whatsapp/in. Guida: docs/WHATSAPP.md.
+// webhook) e il token di verifica, che Kubo genera e il titolare incolla su Meta. La verifica GET (hub.challenge) è
+// entrata.verificaGet qui sotto, sullo stesso indirizzo /api/connettori/whatsapp/in. Guida: docs/WHATSAPP.md.
 import { bus } from '../../server/moduli/whatsapp-bus.js';
 import * as C from './cloud.js';
+import { sfidaMeta } from '../../server/moduli/connettori-rete.js';
 
 const ver = k => k.imp.versione || 'v24.0';
 const chiama = (k, m, url, opz = {}) => k.http[m](/^https?:/.test(url) ? url : `${k.base}/${ver(k)}/${url}`, { ...opz, bearer: k.segreti.token });
@@ -32,6 +33,8 @@ export default {
     firma: { tipo: 'hmac', intestazione: 'x-hub-signature-256', segreto: 'segreto_app', formato: 'hex' },
     idempotenza: C.idempotenza,
     gestisci: (ev, k) => C.consegna(bus, k, C.eventi(ev)),
+    // GET /api/connettori/whatsapp/in: la verifica di Meta (hub.challenge) con il token generato da Kubo
+    verificaGet: (q, k) => sfidaMeta(q, k.segreti.verifica),
   },
   lavori: { 'whatsapp:invia': (corpo, k) => bus.get(k.db)?.lavora(corpo, k.id) },
   // l'interfaccia comune dei tre servizi (server/moduli/whatsapp.js non sa quale c'è sotto)

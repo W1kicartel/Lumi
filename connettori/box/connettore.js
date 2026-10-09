@@ -3,6 +3,8 @@
 // Box lavora per id: le cartelle si cercano creandole (POST /2.0/folders, il 409 «item_name_in_use» porta l'id di quella che
 // c'è già). Caricamento multipart su upload.box.com (attributes JSON prima del file); se il nome c'è già, il 409 porta l'id
 // del file e si carica una nuova versione con /files/{id}/content. Il caricamento diretto arriva a 50 MB.
+// PKCE no (pkce: false): Box non lo documenta (né code_challenge su /authorize né code_verifier su /oauth2/token), e il
+// client è confidenziale, con il client_secret.
 // API: https://developer.box.com/reference/post-files-content/
 import { randomBytes } from 'node:crypto';
 import { archivio, testiArchivio } from '../_comunica/documento.js';
@@ -64,7 +66,7 @@ export default {
   impostazioni: [...A.impostazioni,
     { id: 'client_id', nome: 'Box: Client ID', segreto: true }, { id: 'client_secret', nome: 'Box: Client Secret', segreto: true }],
   richiede: A.richiede, permessi: A.permessi, azioni: A.azioni, uscita: A.uscita, pianificati: A.pianificati,
-  oauth: { tipo: 'codice', autorizza: 'https://account.box.com/api/oauth2/authorize', token: k => (k.base ? `${k.base}/oauth2/token` : 'https://api.box.com/oauth2/token'), scope: 'root_readwrite' },
+  oauth: { tipo: 'codice', autorizza: 'https://account.box.com/api/oauth2/authorize', token: k => (k.base ? `${k.base}/oauth2/token` : 'https://api.box.com/oauth2/token'), scope: 'root_readwrite', pkce: false },
   prova: async k => {
     if (!k.oauth.collegato()) return { ok: false, messaggio: 'Collega l\'account Box' };
     const r = await k.http.get(`${api(k)}/users/me?fields=login`, { bearer: await k.oauth.token() });

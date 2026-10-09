@@ -82,3 +82,35 @@ test('Fatture in Cloud: token manuale, clienti a pagine abbinati per partita IVA
     assert.equal(x.numero, 'C-55'); assert.equal(x.totale, 122); assert.equal(x.fornitore.titolo, 'Carta & Co srl');
   } finally { await K.chiudi(); await S.chiudi(); }
 });
+
+test('Fatture in Cloud: «Collega con un codice» (device code in JSON, risposta dentro «data»), poi le chiamate con il token OAuth; il codice OAuth resta, in JSON', async () => {
+  const K = await kubo(['fatture']); const chiamate = []; let auth = null;
+  const S = await finto({
+    'POST /oauth/device': (p, c, { intestazioni }) => { chiamate.push({ device: true, c, tipo: intestazioni['content-type'] });
+      return { data: { device_code: 'dc-fic', user_code: 'FIC-1234', scope: c.scope, verification_uri: 'https://fattureincloud.it/connetti', interval: 5, expires_in: 300 } }; },
+    'POST /oauth/token': (p, c, { intestazioni }) => { chiamate.push({ c, tipo: intestazioni['content-type'] });
+      if (c.grant_type === 'urn:ietf:params:oauth:grant-type:device_code') return chiamate.filter(x => x.c.device_code).length < 2 ? { stato: 400, corpo: { error: 'authorization_pending' } } : { token_type: 'bearer', access_token: 'fic-oauth', refresh_token: 'fic-rt', expires_in: 86400 };
+      return { token_type: 'bearer', access_token: 'fic-oauth-2', refresh_token: 'fic-rt-2', expires_in: 86400 }; },
+    'GET /user/companies': (p, c, { intestazioni }) => { auth = intestazioni.authorization; return { data: { companies: [{ id: 4242, name: 'Bottega Prova srl' }] } }; },
+  });
+  try {
+    await accendi(K, 'fatture-in-cloud', { base: S.url, segreti: { client_id: 'fic-cid' } });   // per il codice basta il Client ID
+    assert.equal((await K.chiama('GET', '/api/connettori/fatture-in-cloud')).json.oauth.dispositivo, true);
+    const d = await K.chiama('POST', '/api/connettori/fatture-in-cloud/oauth/dispositivo');
+    assert.equal(d.stato, 200, JSON.stringify(d.json)); assert.equal(d.json.codice, 'FIC-1234'); assert.equal(d.json.indirizzo, 'https://fattureincloud.it/connetti'); assert.equal(d.json.intervallo, 5);
+    const dev = chiamate.find(x => x.device); assert.match(dev.tipo, /json/);
+    assert.deepEqual(dev.c, { client_id: 'fic-cid', scope: 'entity.clients:a entity.suppliers:r issued_documents.invoices:a received_documents:r settings:r' });
+    assert.deepEqual((await K.chiama('POST', '/api/connettori/fatture-in-cloud/oauth/dispositivo/controlla')).json, { attesa: true });
+    assert.deepEqual((await K.chiama('POST', '/api/connettori/fatture-in-cloud/oauth/dispositivo/controlla')).json, { collegato: true });
+    const t = chiamate.at(-1); assert.match(t.tipo, /json/); assert.deepEqual(t.c, { client_id: 'fic-cid', grant_type: 'urn:ietf:params:oauth:grant-type:device_code', device_code: 'dc-fic' });
+    assert.equal((await K.chiama('POST', '/api/connettori/fatture-in-cloud/prova')).json.ok, true); assert.equal(auth, 'Bearer fic-oauth');
+    // il collegamento con il codice di autorizzazione c'è ancora: scambio del codice in JSON con il segreto
+    await K.chiama('PUT', '/api/connettori/fatture-in-cloud', { segreti: { client_secret: 'fic-sec' } });
+    const u = new URL((await K.chiama('POST', '/api/connettori/fatture-in-cloud/oauth/inizio', { base: K.base })).json.url);
+    assert.equal(u.origin + u.pathname, S.url + '/oauth/authorize'); assert.equal(u.searchParams.get('client_id'), 'fic-cid');
+    const r = await fetch(K.base + '/api/connettori/fatture-in-cloud/oauth/ritorno?code=cod-fic&state=' + u.searchParams.get('state'), { redirect: 'manual' });
+    assert.match(r.headers.get('location'), /oauth=ok/);
+    const x = chiamate.at(-1); assert.match(x.tipo, /json/); assert.equal(x.c.grant_type, 'authorization_code'); assert.equal(x.c.code, 'cod-fic'); assert.equal(x.c.client_secret, 'fic-sec');
+    assert.equal(x.c.redirect_uri, K.base + '/api/connettori/fatture-in-cloud/oauth/ritorno');
+  } finally { await K.chiudi(); await S.chiudi(); }
+});

@@ -88,3 +88,7 @@
 .conn-indirizzo { display: grid; gap: 4px; }
 @media (max-width: 640px) { .conn-cerca { flex-basis: 100%; } .conn-mono.grande { width: 40px; height: 40px; } }
 .conn-campi label.conn-spunta { display: flex; align-items: center; gap: 8px; } .conn-campi label.conn-spunta input { margin: 0; }
+/* il codice del collegamento con un codice (device code): grande, da leggere e da scrivere altrove */
+.conn-codice { font-size: 1.5rem; letter-spacing: .12em; padding: .3rem .6rem; border: 1px solid var(--linea-forte); border-radius: var(--raggio); }
+.conn-pubblico form.conn-riga { flex-wrap: wrap; }
+.conn-pubblico .campo { flex: 1 1 18rem; min-width: 0; }

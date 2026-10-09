@@ -122,6 +122,16 @@ test('Mailchimp: solo i clienti con il consenso (PUT per hash md5, tag), uscita 
     const ant = (await K.chiama('POST', '/api/connettori/mailchimp/azioni/iscrivi', { args: { cliente: luca.id }, anteprima: true })).json;
     assert.ok(ant.avvisi.some(a => /consenso/.test(a)));
     assert.equal((await K.chiama('POST', '/api/connettori/mailchimp/azioni/iscrivi', { args: { cliente: luca.id } })).stato, 502);
+    // il webhook di Mailchimp: la GET di controllo con il codice → 200; unsubscribe (form-urlencoded) → il consenso diventa «no»
+    const cod = K.nucleo.segreto('mailchimp', 'codice'), form = { 'Content-Type': 'application/x-www-form-urlencoded' };
+    assert.equal((await fetch(`${K.base}/api/connettori/mailchimp/in/${cod}`)).status, 200);
+    assert.equal((await fetch(`${K.base}/api/connettori/mailchimp/in/sbagliato`)).status, 401);
+    const via = new URLSearchParams({ type: 'unsubscribe', fired_at: '2026-10-09 10:00:00', 'data[action]': 'unsub', 'data[id]': 'm1', 'data[list_id]': 'a1b2c3d4e5', 'data[email]': 'Sara@esempio.it' }).toString();
+    assert.equal((await manda(K, '/api/connettori/mailchimp/in/sbagliato', via, form)).stato, 401);
+    assert.equal((await cliente('Sara')).consenso, true);
+    const w = await manda(K, `/api/connettori/mailchimp/in/${cod}`, via, form); assert.equal(w.stato, 200, JSON.stringify(w.json)); assert.match(w.json.esito, /consenso tolto/);
+    assert.equal((await cliente('Sara')).consenso, false);
+    assert.match((await manda(K, `/api/connettori/mailchimp/in/${cod}`, 'type=profile&data[email]=anna%40esempio.it', form)).json.esito, /^ignorato/);
   } finally { await K.chiudi(); await S.chiudi(); }
 });
 
@@ -164,6 +174,10 @@ test('HubSpot: cliente → contatto (batch/upsert per email) e azienda con P.IVA
     assert.equal((await manda(K, '/api/connettori/hubspot/in', corpo, { 'X-HubSpot-Signature-v3': (firma[0] === 'A' ? 'B' : 'A') + firma.slice(1), 'X-HubSpot-Request-Timestamp': ts })).stato, 401);
     const vecchio = String(Date.now() - 6 * 6e4);
     assert.equal((await manda(K, '/api/connettori/hubspot/in', corpo, { 'X-HubSpot-Signature-v3': firmaV3('segreto-app', 'POST', 'https://kubo.esempio.it/api/connettori/hubspot/in', corpo, vecchio), 'X-HubSpot-Request-Timestamp': vecchio })).stato, 401);
+    // senza il suo indirizzo vale quello di Kubo nella Libreria (la firma comprende l'URL)
+    await K.chiama('PUT', '/api/connettori/hubspot', { impostazioni: { pubblico: null } }); await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: 'https://kubo.libreria.it' });
+    const corpo2 = JSON.stringify([{ eventId: 78, subscriptionType: 'contact.creation', objectId: 601, occurredAt: Date.now() }]), ts2 = String(Date.now());
+    assert.equal((await manda(K, '/api/connettori/hubspot/in', corpo2, { 'X-HubSpot-Signature-v3': firmaV3('segreto-app', 'POST', 'https://kubo.libreria.it/api/connettori/hubspot/in', corpo2, ts2), 'X-HubSpot-Request-Timestamp': ts2 })).stato, 200);
   } finally { await K.chiudi(); await S.chiudi(); }
 });
 
@@ -186,7 +200,14 @@ test('Meta Lead Ads: il giro legge i lead nuovi dei moduli e crea i clienti (pro
     const tutti = (await K.chiama('GET', '/api/dati/clienti?perPagina=100')).json.righe, paola = tutti.find(r => r.email === 'paola@esempio.it');
     assert.equal(tutti.length, 2); assert.equal(paola.nome, 'Paola Ferri'); assert.equal(paola.telefono, '+393330000001'); assert.equal(paola.provenienza, 'social');
     assert.match(paola.note, /Instagram.*«Richiesta preventivo».*«Autunno 2026»/); assert.match(paola.note, /quale servizio: Consulenza/);
-    assert.deepEqual((await K.chiama('POST', '/api/connettori/meta-lead/giri/lead')).json.risultato, { creati: 0, presenti: 2 });   // gli stessi lead: niente doppioni
+    assert.deepEqual((await K.chiama('POST', '/api/connettori/meta-lead/azioni/leggi_lead', { args: {} })).json, { creati: 0, presenti: 2 });   // gli stessi lead: niente doppioni
+    // con l'App Secret c'è il webhook: il giro pianificato diventa un ripasso ogni 6 ore
+    assert.match((await K.chiama('POST', '/api/connettori/meta-lead/giri/lead')).json.risultato.saltato, /webhook/);
+    // la verifica GET di Meta: il token generato da Kubo → hub.challenge; un token sbagliato → 403
+    const tok = K.nucleo.segreto('meta-lead', 'verifica'); assert.ok(tok);
+    const sfida = await fetch(`${K.base}/api/connettori/meta-lead/in?hub.mode=subscribe&hub.verify_token=${tok}&hub.challenge=1158201444`);
+    assert.equal(sfida.status, 200); assert.equal(await sfida.text(), '1158201444');
+    assert.equal((await fetch(`${K.base}/api/connettori/meta-lead/in?hub.mode=subscribe&hub.verify_token=sbagliato&hub.challenge=1`)).status, 403);
     // il webhook: firma dell'App Secret → il lead si rilegge dall'API; senza firma giusta → 401
     const corpo = JSON.stringify({ object: 'page', entry: [{ id: '99', time: 1, changes: [{ field: 'leadgen', value: { leadgen_id: 'L3', form_id: '1234567890', page_id: '99' } }] }] });
     assert.equal((await manda(K, '/api/connettori/meta-lead/in', corpo, { 'X-Hub-Signature-256': 'sha256=' + firmaHmacDi('altro', corpo, 'hex') })).stato, 401);

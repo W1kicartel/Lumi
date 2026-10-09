@@ -1,7 +1,7 @@
 // Posta e PEC: manda le fatture ai clienti (con l'XML FatturaPA in allegato) e i promemoria delle fatture scadute,
 // ogni mattina alle 9 (una volta per fattura). La PEC è la stessa cosa con il server SMTP della casella PEC.
 import { invia } from './smtp.js';
-import { xmlDi } from '../openapi-sdi/connettore.js';
+import { copiaXmlDi } from '../openapi-sdi/connettore.js';   // l'allegato è una copia: nessun progressivo d'invio consumato
 const conf = k => ({ host: k.imp.host, porta: Number(k.imp.porta || 587), sicurezza: k.imp.sicurezza, utente: k.imp.utente, password: k.segreti.password, interni: k.interni() });
 // le date nei messaggi ai clienti all'italiana (gg/mm/aaaa), non come le salva il database
 const giorno = d => (/^(\d{4})-(\d{2})-(\d{2})/.exec(String(d || '')) || []).slice(1).reverse().join('/') || '—';
@@ -29,7 +29,7 @@ export default {
         return { titolo: 'Fattura per email', righe: [['Fattura', fattura.numero], ['A', a || '—'], ['Totale', k.euro(fattura.totale)]], avvisi: [...(a ? [] : ['Il cliente non ha un indirizzo email']), ...(no ? [no] : [])] }; },
       async esegui({ fattura }, k) {
         emessa(k, fattura); const a = destinatario(k, fattura); if (!a) throw new Error('Il cliente non ha un indirizzo email');
-        let allegati = []; try { const x = xmlDi(k, fattura); allegati = [{ nome: x.nome, tipo: 'application/xml', contenuto: x.xml }]; } catch { allegati = []; }
+        let allegati = []; try { const x = copiaXmlDi(k, fattura); allegati = [{ nome: x.nome, tipo: 'application/xml', contenuto: x.xml }]; } catch { allegati = []; }
         await invia(conf(k), { da: k.imp.mittente, a, oggetto: `Fattura ${fattura.numero} del ${giorno(fattura.data)}`, testo: `Buongiorno,\nin allegato la fattura ${fattura.numero} del ${giorno(fattura.data)}, totale ${k.euro(fattura.totale)}.\n\nGrazie.`, allegati });
         return { a };
       },

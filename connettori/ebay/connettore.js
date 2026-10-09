@@ -3,8 +3,12 @@
 // Accesso: user token OAuth; Kubo tiene il refresh token (dura 18 mesi) e chiede l'access token di 2 ore con
 // grant_type=refresh_token e Authorization: Basic base64(client_id:client_secret)
 // (https://developer.ebay.com/api-docs/static/oauth-refresh-token-request.html). Il refresh token nasce solo dal consenso
-// con il codice (la pagina User Tokens dà un token di 2 ore): eBay vuole il RuName come redirect_uri e il Basic anche qui,
-// quindi il consenso lo fa il connettore («Collega l'account» → ritorno su /pub/ritorno, oppure l'indirizzo incollato).
+// con il codice (la pagina User Tokens dà un token di 2 ore): eBay vuole il RuName come redirect_uri e il Basic anche qui.
+// Il consenso lo fa il connettore («Collega l'account» → ritorno su /pub/ritorno, oppure l'indirizzo incollato) e non
+// l'OAuth del kit (che pure ha basic, pkce: false e redirect: k => k.imp.runame) per due motivi: eBay vuole lo «scope»
+// anche nella richiesta di rinnovo, che il kit non manda; e l'«auth accepted URL» del RuName dev'essere https, quindi
+// chi ha Kubo solo in rete locale deve poter incollare l'indirizzo del ritorno («Completa il collegamento»), cosa che
+// la rotta di ritorno del kit non permette. In più i refresh token già salvati restano validi.
 // Attenzione: la Inventory API vede solo le inserzioni create con la Inventory API (o migrate con bulkMigrateListing);
 // quelle create da Seller Hub restano fuori dal collegamento delle giacenze. Gli ordini arrivano comunque tutti.
 // Nessun dato personale degli acquirenti entra in Kubo (solo il numero d'ordine): niente obblighi di cancellazione.

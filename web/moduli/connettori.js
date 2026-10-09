@@ -25,6 +25,15 @@ const nomeCat = c => (c ? t('connettori.cat-' + (CATEGORIE.includes(c) ? c : 'al
 const monogramma = (k, c, grande = false) => k.h(grande ? 'span.conn-mono.grande' : 'span.conn-mono', { stile: { '--t': tinta(c.id) }, 'aria-hidden': 'true', testo: iniziali(c.nome || c.id) });
 const chipDi = (k, s) => k.h('span.chip', { stile: { '--c': `var(--${s.colore})` }, testo: s.nome });
 
+// l'indirizzo pubblico di Kubo: uno solo per tutti i webhook e i ritorni dei connettori (k.pubblico)
+function pubblicoKubo(k) {
+  const { h } = k, campo = h('input.campo', { type: 'url', placeholder: 'https://kubo.esempio.it', autocomplete: 'off', 'aria-label': t('connettori.pubblico-titolo') }), esito = h('span.nota');
+  k.get('/connettori/impostazioni').then(x => { campo.value = x.pubblico || ''; }).catch(() => {});
+  return h('section.foglio.conn-pubblico', h('h2', t('connettori.pubblico-titolo')), h('p.nota', t('connettori.pubblico-aiuto')),
+    h('form.conn-riga', { on: { submit: async ev => { ev.preventDefault(); try { const x = await k.api('PUT', '/connettori/impostazioni', { pubblico: campo.value }); campo.value = x.pubblico; esito.textContent = t('connettori.pubblico-salvato'); } catch (e) { esito.textContent = e.message; } } } },
+      campo, h('button.btn', { type: 'submit' }, t('connettori.salva')), esito));
+}
+
 // ---------- la libreria ----------
 // i filtri restano tornando dalla pagina di un connettore
 const filtri = { q: '', categoria: '', costo: '', difficolta: '', zona: '' };
@@ -56,7 +65,7 @@ async function libreria(contenuto, k) {
   contenuto.replaceChildren(h('div.testa', h('h1', t('connettori.libreria'))), h('div.corpo.conn.conn-libreria',
     h('p.conn-sotto', t('connettori.libreria-sotto', { n: dati.totale, accese: accese.filter(v => v.attivo).length })),
     h('div.conn-barra', cerca, h('div.conn-rapidi', rapidi)), categorie, tue, h('div.conn-riga', conteggio), griglia, vuoto,
-    h('p.nota', t('connettori.terzi'), ' ', t('connettori.smanettoni'))));
+    pubblicoKubo(k), h('p.nota', t('connettori.terzi'), ' ', t('connettori.smanettoni'))));
   aggiorna();
   if (matchMedia('(pointer: fine)').matches) cerca.focus();
 }
@@ -99,10 +108,13 @@ async function pagina(contenuto, k, id) {
 const sicuro = u => (/^https?:\/\//i.test(String(u || '')) ? u : null);   // i link vengono dai manifesti: solo http(s)
 const fuori = (k, href, ...figli) => (sicuro(href) ? k.h('a', { href, target: '_blank', rel: 'noopener noreferrer' }, ...figli) : null);
 const cosaPuo = p => ['leggi', 'crea', 'modifica', 'elimina'].filter(x => p[x]).map(x => t('connettori.p-' + x)).join(', ');
+// «*» (permessi: { '*': { leggi: true } }) è «tutte le sezioni (sola lettura)», non una sezione che si chiama «*»
+const vocePermesso = p => (p.tutte && p.leggi && !p.crea && !p.modifica && !p.elimina ? t('connettori.tutte-lettura')
+  : t('connettori.permesso', { sezione: p.tutte ? t('connettori.tutte-sezioni') : p.entita, cosa: cosaPuo(p) }));
 function guida(k, c) {
   const { h } = k, g = c.catalogo;
   const permessi = h('section.foglio', h('h2', t('connettori.permessi-titolo')), c.permessi?.length
-    ? h('ul.conn-elenco', c.permessi.map(p => h('li', t('connettori.permesso', { sezione: p.entita, cosa: cosaPuo(p) }))))
+    ? h('ul.conn-elenco', c.permessi.map(p => h('li', vocePermesso(p))))
     : h('p.nota', t('connettori.nessun-permesso')));
   if (!g) return h('div.conn-guida', h('p.conn-sotto', c.descrizione || ''), permessi);
   const tag = (x, finto) => h(finto ? 'span.conn-tag.finto' : 'span.conn-tag', x);
@@ -161,6 +173,8 @@ function editorRicette(k, c, i) {
     if (r.tipo === 'uscita') parti.push(h('fieldset.conn-eventi', h('legend.etichetta', t('connettori.r-eventi')),
       EVENTI.map(e => spunta((r.eventi || []).includes(e), t('connettori.ev-' + e), v => { r.eventi = EVENTI.filter(x => (x === e ? v : (r.eventi || []).includes(x))); }))));
     else parti.push(spunta(r.scrive !== false, t('connettori.r-scrive'), v => { r.scrive = v; }));
+    // un indirizzo completo su un altro sito riceve la chiave o il token solo con questa spunta (connettore HTTP)
+    if (!i.assoluti) parti.push(spunta(!!r.conAccesso, t('connettori.r-con-accesso'), v => { if (v) r.conAccesso = true; else delete r.conAccesso; }));
     return h('div.conn-ricetta', testa, h('div.conn-campi', parti),
       campo(t('connettori.r-corpo'), scrivi(r, 'corpo', { area: true, ph: '{"email":"{email}"}' }), t('connettori.r-segnaposto', { campi: ['id', ...campi.map(x => x.id)].map(x => `{${x}}`).join(' ') })));
   }
@@ -196,7 +210,7 @@ function interruttore(k, c, salva) {
   if (c.attivo || c.acceso) return h('button.btn', { on: { click: () => salva({ attivo: false }) } }, t('connettori.spegni'));
   return h('button.btn.pieno', { on: { click: () => finestra(k, t('connettori.accendi-titolo', { nome: c.nome }), [
     c.daApprovare ? h('p', t('connettori.da-approvare')) : h('p', t('connettori.potra')),
-    h('ul.conn-elenco', c.permessi.map(p => h('li', t('connettori.permesso', { sezione: p.entita, cosa: ['leggi', 'crea', 'modifica', 'elimina'].filter(x => p[x]).map(x => t('connettori.p-' + x)).join(', ') })))),
+    h('ul.conn-elenco', c.permessi.map(p => h('li', vocePermesso(p)))),
     c.origine === 'locale' ? h('p', t('connettori.somma'), h('br'), h('code.mono.conn-somma', c.somma)) : null,
   ], t('connettori.accendi'), () => salva({ attivo: true, somma: c.somma })) } }, t('connettori.accendi'));
 }
@@ -236,7 +250,8 @@ function impostazioni(k, c, salva) {
 function collegamenti(k, c, ricarica) {
   const { h } = k, righe = [], gen = c.impostazioni.find(i => i.generato)?.valore;
   if (c.webhook) {
-    const u = location.origin + c.webhook.percorso + ((c.webhook.firma === 'token' || c.webhook.nelPercorso) && gen ? '/' + gen : '');   // il codice segreto in fondo all'indirizzo
+    // l'indirizzo pubblico di Kubo (Libreria › Indirizzo pubblico), se c'è; altrimenti quello del browser
+    const u = (c.webhook.url || location.origin + c.webhook.percorso) + ((c.webhook.firma === 'token' || c.webhook.nelPercorso) && gen ? '/' + gen : '');   // il codice segreto in fondo all'indirizzo
     righe.push(h('label', h('span.etichetta', t('connettori.webhook')), h('div.conn-riga', h('code.mono.conn-valore', u), h('button.btn.piccolo', { type: 'button', on: { click: () => copia(k, u) } }, t('connettori.copia'))), h('span.nota', t('connettori.webhook-aiuto'))));
   }
   for (const p of c.pubbliche) if (gen) {
@@ -246,8 +261,33 @@ function collegamenti(k, c, ricarica) {
   if (c.oauth) righe.push(h('div.conn-riga', h('span.etichetta', t('connettori.account')),
     c.oauth.collegato ? h('span.chip', { stile: { '--c': 'var(--verde)' }, testo: t('connettori.collegato') }) : h('span.chip', { testo: t('connettori.scollegato') }),
     c.oauth.scade ? h('span.nota', t('connettori.scade', { quando: quando(c.oauth.scade) })) : null,
-    c.oauth.tipo === 'codice' && c.attivo ? h('button.btn.piccolo', { on: { click: async () => { try { const r = await k.api('POST', `/connettori/${encodeURIComponent(c.id)}/oauth/inizio`, { base: location.origin }); location.href = r.url; } catch (e) { k.toast(e.message, true); } } } }, c.oauth.collegato ? t('connettori.ricollega') : t('connettori.collega')) : null));
+    c.oauth.tipo === 'codice' && c.attivo ? h('button.btn.piccolo', { on: { click: async () => { try { const r = await k.api('POST', `/connettori/${encodeURIComponent(c.id)}/oauth/inizio`, { base: location.origin }); location.href = r.url; } catch (e) { k.toast(e.message, true); } } } }, c.oauth.collegato ? t('connettori.ricollega') : t('connettori.collega')) : null,
+    c.oauth.dispositivo && c.attivo ? h('button.btn.piccolo', { on: { click: () => dispositivo(k, c, ricarica) } }, t('connettori.dispositivo')) : null));
+  // l'indirizzo di ritorno da registrare nel servizio (lo stesso che Kubo manda come redirect_uri)
+  if (c.oauth?.tipo === 'codice' && c.oauth.ritorno) { const u = (c.pubblico || location.origin) + c.oauth.ritorno;
+    righe.push(h('label', h('span.etichetta', t('connettori.ritorno')), h('div.conn-riga', h('code.mono.conn-valore', u), h('button.btn.piccolo', { type: 'button', on: { click: () => copia(k, u) } }, t('connettori.copia'))))); }
   return righe.length ? h('section.foglio', h('h2', t('connettori.collegamento')), h('div.conn-campi', righe)) : h('div');
+}
+
+// il collegamento con un codice (device code): il codice e l'indirizzo del servizio, poi Kubo controlla da solo finché
+// la persona conferma, il codice scade o la finestra si chiude
+async function dispositivo(k, c, ricarica) {
+  const { h } = k, base = `/connettori/${encodeURIComponent(c.id)}/oauth/dispositivo`;
+  let d; try { d = await k.api('POST', base); } catch (e) { k.toast(e.message, true); return; }
+  const stato = h('p.nota', { 'aria-live': 'polite' }, t('connettori.dispositivo-attesa')), fine = Date.now() + d.scade * 1000;
+  let aperta = true;
+  finestra(k, t('connettori.dispositivo-titolo', { nome: c.nome }), [
+    h('p', t('connettori.dispositivo-passi')),
+    d.indirizzo ? h('p', h('a', { href: d.indirizzo, target: '_blank', rel: 'noopener noreferrer' }, d.indirizzo)) : null,
+    h('div.conn-riga', h('code.mono.conn-codice', d.codice), h('button.btn.piccolo', { type: 'button', on: { click: () => copia(k, d.codice) } }, t('connettori.copia'))), stato,
+  ], t('connettori.dispositivo-chiudi'), () => { aperta = false; });
+  while (aperta && Date.now() < fine && document.body.contains(stato)) {
+    await new Promise(r => setTimeout(r, d.intervallo * 1000));
+    if (!document.body.contains(stato)) break;
+    try { const r = await k.api('POST', `${base}/controlla`); if (r.collegato) { stato.closest('.conn-velo')?.remove(); k.toast(t('connettori.collegato')); ricarica(); return; } }
+    catch (e) { stato.textContent = e.message; return; }
+  }
+  if (document.body.contains(stato)) stato.textContent = t('connettori.dispositivo-scaduto');
 }
 
 // i campi che il connettore usa, abbinati ai campi di Kubo per id (una rinomina non rompe niente)

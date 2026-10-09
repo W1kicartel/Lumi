@@ -1,7 +1,8 @@
 // npm run catalogo: scrive docs/CATALOGO.md dai manifesti dei connettori ufficiali (connettori/<id>/connettore.js),
 // raggruppati per categoria: cosa fa, cosa serve, costo, difficoltà, provato con un servizio finto o con quello vero.
-// Con --controlla non scrive niente: elenca i connettori il cui blocco «catalogo» non va ed esce con 1 (come il test).
-import { readdirSync, existsSync, writeFileSync } from 'node:fs';
+// Con --controlla non scrive niente: elenca i connettori il cui blocco «catalogo» non va, e se docs/CATALOGO.md non è quello
+// che si rigenererebbe adesso (un manifesto cambiato senza «npm run catalogo»), ed esce con 1 (come il test).
+import { readdirSync, existsSync, writeFileSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { CATEGORIE } from '../web/libreria.js';
@@ -53,13 +54,23 @@ export function generaCatalogo(lista) {
   return righe.join('\n');
 }
 
+export const FILE_CATALOGO = join(RADICE, 'docs', 'CATALOGO.md');
+// i problemi: [[id, [messaggi]]], con «docs/CATALOGO.md» se il file scritto (testo, null se manca) non è quello di adesso
+export function problemi(lista, scritto) {
+  const male = lista.map(x => [x.id, x.rotto ? [`non si carica: ${x.rotto}`] : controllaCatalogo(x.man)]).filter(([, p]) => p.length);
+  if (scritto !== generaCatalogo(lista)) male.push(['docs/CATALOGO.md', [scritto == null ? 'manca: npm run catalogo' : 'non è aggiornato: npm run catalogo']]);
+  return male;
+}
+
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const lista = await manifesti();
   if (process.argv.includes('--controlla')) {
-    const male = lista.map(x => [x.id, x.rotto ? [`non si carica: ${x.rotto}`] : controllaCatalogo(x.man)]).filter(([, p]) => p.length);
+    const i = process.argv.indexOf('--file'), file = i > 0 && process.argv[i + 1] ? process.argv[i + 1] : FILE_CATALOGO;   // --file: un altro percorso (i test)
+    let scritto = null; try { scritto = readFileSync(file, 'utf8'); } catch { scritto = null; }
+    const male = problemi(lista, scritto);
     for (const [id, p] of male) console.error(`${id}: ${p.join('; ')}`);
     process.exit(male.length ? 1 : 0);
   }
-  const f = join(RADICE, 'docs', 'CATALOGO.md'); writeFileSync(f, generaCatalogo(lista));
+  const f = FILE_CATALOGO; writeFileSync(f, generaCatalogo(lista));
   console.log(`docs/CATALOGO.md: ${lista.filter(x => x.man?.catalogo).length} integrazioni`);
 }

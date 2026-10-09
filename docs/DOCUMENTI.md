@@ -120,6 +120,7 @@ Il file segue la **versione 1.2.2, formato FPR12**, per le fatture tra privati: 
   - un consumatore con il solo codice fiscale: `0000000`;
   - un cliente estero: `XXXXXXX`.
 - Il file si chiama `IT<partita IVA>_<progressivo>.xml`. Il progressivo è di 5 caratteri, in base 36, e cresce a ogni esportazione: anche se riesporti la stessa fattura, il nome non si ripete mai. Lo SDI rifiuta un file con un nome che ha già ricevuto.
+- **Invio e copia.** I connettori che mandano allo SDI (Openapi, Aruba, A-Cube, Invoicetronic) usano `xmlDi(k, fattura)`: un progressivo nuovo a ogni invio, ricordato per quella fattura in `_meta` (`documenti.fatturapa.<id>`). Le copie per l'archivio (Drive, Dropbox, S3, WebDAV…) e per l'email usano `copiaXmlDi(k, fattura)` (`connettori/openapi-sdi/connettore.js`), che non tocca il contatore: riusa il progressivo dell'ultimo invio, quindi il file ha lo stesso nome di quello mandato allo SDI. Se la fattura non è mai stata inviata, il progressivo è fisso e ricavato dal suo id (`progressivoCopia`, lo stesso del pacchetto per il commercialista): copie ripetute hanno sempre lo stesso nome.
 
 I test confrontano il file con un esempio atteso (`test/documenti/fattura-attesa.xml`) e, se sul computer c'è `xmllint`, controllano che sia XML ben formato.
 

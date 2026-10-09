@@ -6,7 +6,7 @@
 // gli uid dei conti. Poi GET /accounts/{uid}/transactions?date_from=… a pagine (continuation_key). Il consenso dura al
 // massimo ~180 giorni (dipende dalla banca): una settimana prima Kubo avvisa di rinnovarlo.
 import { createSign, createHash, randomBytes, timingSafeEqual } from 'node:crypto';
-import { registraMovimenti, RICHIEDE_BANCA, PERMESSI_BANCA, AZIONI_BANCA, TESTI_BANCA } from '../_soldi/banca.js';
+import { registraMovimenti, RICHIEDE_BANCA, PERMESSI_BANCA } from '../_soldi/banca.js';
 import { giorno } from '../_soldi/comuni.js';
 
 const b64 = x => Buffer.from(typeof x === 'string' ? x : JSON.stringify(x)).toString('base64url');
@@ -46,7 +46,6 @@ export default {
   permessi: PERMESSI_BANCA,
   prova: async k => { const r = await k.http.get(`${k.base}/application`, { bearer: jwt(k) }); return { ok: r.ok, messaggio: r.ok ? null : r.json?.message || `HTTP ${r.stato}` }; },
   azioni: {
-    ...AZIONI_BANCA,
     // senza «su»: solo il titolare
     banche: {
       nome: 'Banche disponibili', descrizione: 'Elenca le banche collegabili nel paese scelto',
@@ -58,9 +57,9 @@ export default {
     },
     collega: {
       nome: 'Collega il conto', descrizione: 'Apre il consenso sul sito della banca',
-      input: { indirizzo: { tipo: 'testo', nome: 'L\'indirizzo di Kubo nel browser (es. https://kubo.esempio.it)' } },
+      input: { indirizzo: { tipo: 'testo', nome: 'L\'indirizzo di Kubo nel browser (vuoto: l\'indirizzo pubblico della Libreria)', facoltativo: true } },
       async esegui({ indirizzo }, k) {
-        const base = String(indirizzo || '').replace(/\/+$/, '');
+        const base = String(indirizzo || k.pubblico || '').replace(/\/+$/, '');   // vuoto: l'indirizzo pubblico di Kubo (k.pubblico)
         if (!/^https?:\/\/[^/\s]+$/.test(base)) throw new Error('Indirizzo di Kubo non valido');
         if (!k.imp.banca) throw new Error('Scegli prima la banca nelle impostazioni');
         // il consenso più lungo che la banca permette (maximum_consent_validity, in secondi), al massimo 180 giorni
@@ -138,7 +137,7 @@ export default {
       'Attiva l\'applicazione collegando un tuo conto, come chiede Enable Banking.',
       'In Kubo incolla l\'ID dell\'applicazione e la chiave privata, scrivi il nome della banca e accendi il connettore.',
       'Premi «Collega il conto» e dai il consenso sul sito della banca: dura fino a 180 giorni, poi Kubo ti avvisa di rinnovarlo.',
-      'Se vuoi tenere i movimenti in Kubo, crea una sezione «Movimenti» con i campi data, importo, descrizione, controparte, conto e fattura; senza, Kubo tiene solo le proposte di abbinamento.',
+      'Prima di accendere, in Tesoreria premi «Prepara»: i movimenti entrano in «Movimenti di banca» e si abbinano alle fatture in Tesoreria › Banca (anche da Lumi).',
     ],
     difficolta: 'media',
     zone: ['IT', 'UE'],
@@ -147,7 +146,7 @@ export default {
     parole: ['banca', 'conto corrente', 'movimenti', 'estratto conto', 'riconciliazione', 'open banking', 'psd2', 'bonifici', 'bank', 'bank account', 'transactions', 'reconciliation'],
   },
   testi: {
-    en: { ...TESTI_BANCA.en, descrizione: 'Your bank account transactions flow into Kubo and get matched to invoices to collect and to pay.',
+    en: { descrizione: 'Your bank account transactions flow into Kubo and get matched to invoices to collect and to pay.',
       'imp.applicazione': 'Application ID', 'imp.chiave_privata': 'Application private key (the .pem file)', 'imp.banca': 'Bank name, as in the Enable Banking list (e.g. Intesa Sanpaolo)', 'imp.paese': 'Bank country', 'imp.tipo': 'Account type',
       'az.banche': 'Available banks', 'az.collega': 'Connect the account', 'az.scollega': 'Disconnect the account', 'giro.movimenti': 'Transactions',
       'cat.costoNota': 'The sandbox is free. In production, linking accounts you own is free (a «restricted» application, activated by linking one of your accounts); other people\'s accounts need a contract with Enable Banking.',
@@ -159,18 +158,18 @@ export default {
         'Activate the application by linking one of your accounts, as Enable Banking asks.',
         'In Kubo paste the application ID and the private key, type the bank name and switch the connector on.',
         'Press «Connect the account» and give consent on the bank website: it lasts up to 180 days, then Kubo reminds you to renew it.',
-        'To keep the transactions in Kubo, create a «Movimenti» section with the fields data, importo, descrizione, controparte, conto and fattura; without it Kubo keeps only the matching suggestions.',
+        'Before switching it on, press «Prepare» in Treasury: transactions land in «Bank transactions» and are matched to invoices in Treasury › Bank (Lumi can do it too).',
       ] },
-    es: { ...TESTI_BANCA.es, descrizione: 'Los movimientos de tu cuenta bancaria entran en Kubo y se concilian con las facturas por cobrar y por pagar.',
+    es: { descrizione: 'Los movimientos de tu cuenta bancaria entran en Kubo y se concilian con las facturas por cobrar y por pagar.',
       'imp.applicazione': 'ID de la aplicación', 'imp.chiave_privata': 'Clave privada de la aplicación (el archivo .pem)', 'imp.banca': 'Nombre del banco, como en la lista de Enable Banking', 'imp.paese': 'País del banco', 'imp.tipo': 'Tipo de cuenta',
       'az.banche': 'Bancos disponibles', 'az.collega': 'Conectar la cuenta', 'az.scollega': 'Desconectar la cuenta', 'giro.movimenti': 'Movimientos' },
-    fr: { ...TESTI_BANCA.fr, descrizione: 'Les opérations de ton compte bancaire arrivent dans Kubo et sont rapprochées des factures à encaisser et à payer.',
+    fr: { descrizione: 'Les opérations de ton compte bancaire arrivent dans Kubo et sont rapprochées des factures à encaisser et à payer.',
       'imp.applicazione': 'ID de l\'application', 'imp.chiave_privata': 'Clé privée de l\'application (le fichier .pem)', 'imp.banca': 'Nom de la banque, comme dans la liste Enable Banking', 'imp.paese': 'Pays de la banque', 'imp.tipo': 'Type de compte',
       'az.banche': 'Banques disponibles', 'az.collega': 'Connecter le compte', 'az.scollega': 'Déconnecter le compte', 'giro.movimenti': 'Opérations' },
-    de: { ...TESTI_BANCA.de, descrizione: 'Die Umsätze deines Bankkontos kommen in Kubo an und werden offenen Ein- und Ausgangsrechnungen zugeordnet.',
+    de: { descrizione: 'Die Umsätze deines Bankkontos kommen in Kubo an und werden offenen Ein- und Ausgangsrechnungen zugeordnet.',
       'imp.applicazione': 'Anwendungs-ID', 'imp.chiave_privata': 'Privater Schlüssel der Anwendung (die .pem-Datei)', 'imp.banca': 'Name der Bank, wie in der Enable-Banking-Liste', 'imp.paese': 'Land der Bank', 'imp.tipo': 'Kontoart',
       'az.banche': 'Verfügbare Banken', 'az.collega': 'Konto verbinden', 'az.scollega': 'Konto trennen', 'giro.movimenti': 'Umsätze' },
-    pt: { ...TESTI_BANCA.pt, descrizione: 'Os movimentos da sua conta bancária entram no Kubo e são conciliados com as faturas a receber e a pagar.',
+    pt: { descrizione: 'Os movimentos da sua conta bancária entram no Kubo e são conciliados com as faturas a receber e a pagar.',
       'imp.applicazione': 'ID da aplicação', 'imp.chiave_privata': 'Chave privada da aplicação (o arquivo .pem)', 'imp.banca': 'Nome do banco, como na lista do Enable Banking', 'imp.paese': 'País do banco', 'imp.tipo': 'Tipo de conta',
       'az.banche': 'Bancos disponíveis', 'az.collega': 'Conectar a conta', 'az.scollega': 'Desconectar a conta', 'giro.movimenti': 'Movimentos' },
   },

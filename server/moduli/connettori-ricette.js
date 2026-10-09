@@ -70,6 +70,8 @@ export function controllaRicette(lista, { S, db, interni = false, tipi = TIPI, a
     else if (!percorso.startsWith('/')) sbaglia('ricetta-barra', { n });
     const corpo = String(r.corpo ?? '').slice(0, 20000);
     const out = { ...base, metodo, percorso, corpo };
+    // un indirizzo completo riceve l'accesso del connettore (chiave, token) solo se il titolare lo dice per quella ricetta
+    if (/^https?:\/\//i.test(percorso) && r.conAccesso === true) out.conAccesso = true;
     if (tipo === 'uscita') { const ev = (Array.isArray(r.eventi) ? r.eventi : ['crea', 'modifica']).filter(e => EVENTI.includes(e)); out.eventi = ev.length ? ev : ['crea', 'modifica']; }
     else out.scrive = r.scrive !== false;
     return out;
@@ -115,7 +117,7 @@ export function corpoDi(modello, v, campi = []) {
 // ---------- la richiesta: indirizzo, accesso, intestazioni, firma; la stessa per l'anteprima e per l'invio ----------
 function intestazioniExtra(imp) {
   let x = imp?.intestazioni; if (typeof x === 'string') { try { x = JSON.parse(x); } catch { x = null; } }
-  return x && typeof x === 'object' && !Array.isArray(x) ? Object.fromEntries(Object.entries(x).filter(([a]) => /^[A-Za-z0-9-]{1,64}$/.test(a)).map(([a, b]) => [a, String(b)])) : {};
+  return x && typeof x === 'object' && !Array.isArray(x) ? Object.fromEntries(Object.entries(x).filter(([a, b]) => /^[A-Za-z0-9-]{1,64}$/.test(a) && !/[\r\n\0]/.test(String(b))).map(([a, b]) => [a, String(b)])) : {};
 }
 export async function prepara(k, r, v, { anteprima = false } = {}) {
   const def = k.S.leggi(k.db, r.sezione), campi = def ? k.S.campiAttivi(def) : [];
@@ -123,7 +125,9 @@ export async function prepara(k, r, v, { anteprima = false } = {}) {
   if (!assoluto && !base) sbaglia('ricette-base');
   if (assoluto && origineConSegnaposto(r.percorso)) sbaglia('ricetta-host', { n: r.nome || r.id });
   const u = new URL(assoluto ? riempi(r.percorso, v, campi, true) : base + riempi(r.percorso, v, campi, true));
-  const opz = { intestazioni: intestazioniExtra(k.imp) }, a = k.imp.accesso || 'nessuno', s = k.segreti, nome = k.imp.accesso_nome;
+  // un indirizzo completo su un altro sito (o senza indirizzo base): niente chiave né token, salvo «conAccesso» nella ricetta
+  const altroSito = assoluto && (!base || new URL(base).host !== u.host);
+  const opz = { intestazioni: intestazioniExtra(k.imp) }, a = altroSito && !r.conAccesso ? 'nessuno' : k.imp.accesso || 'nessuno', s = k.segreti, nome = k.imp.accesso_nome;
   let visibile = u.href;
   if (a === 'intestazione') opz.intestazioni[nome || 'X-API-Key'] = s.chiave || '';
   else if (a === 'query') { u.searchParams.set(nome || 'api_key', s.chiave || ''); const w = new URL(u); w.searchParams.set(nome || 'api_key', '••••'); visibile = w.href; }
@@ -166,7 +170,7 @@ export function manifestoRicette({ accesso = true } = {}) {
       // relativo all'indirizzo base, come le ricette: «.altro.it/» o un indirizzo completo porterebbero la chiave altrove
       { id: 'prova_percorso', nome: 'Percorso per provare la connessione (es. /me)', schema: /^\/[^\s{}]{0,500}$/ },
     ] : []),
-    { id: 'intestazioni', nome: 'Intestazioni in più (JSON, es. {"Accept-Language":"it"})', tipo: 'json', controlla: v => { if (v == null || v === '') return null; if (typeof v !== 'object' || Array.isArray(v)) sbaglia('ricette-intestazioni'); return Object.fromEntries(Object.entries(v).slice(0, 30).map(([a, b]) => { if (!/^[A-Za-z0-9-]{1,64}$/.test(a)) sbaglia('ricette-intestazioni'); return [a, String(b).slice(0, 2000)]; })); } },
+    { id: 'intestazioni', nome: 'Intestazioni in più (JSON, es. {"Accept-Language":"it"})', tipo: 'json', controlla: v => { if (v == null || v === '') return null; if (typeof v !== 'object' || Array.isArray(v)) sbaglia('ricette-intestazioni'); return Object.fromEntries(Object.entries(v).slice(0, 30).map(([a, b]) => { if (!/^[A-Za-z0-9-]{1,64}$/.test(a) || /[\r\n\0]/.test(String(b))) sbaglia('ricette-intestazioni'); return [a, String(b).slice(0, 2000)]; })); } },
     { id: 'ricette', nome: 'Ricette', tipo: 'ricette', predefinito: [], assoluti: !accesso, controlla: (v, x) => controllaRicette(v, { ...x, assoluti: !accesso }) },
     { id: 'codice', nome: 'Codice segreto delle ricette in entrata (va in fondo all\'indirizzo)', segreto: true, generato: true },
     { id: 'firma_entrata', nome: 'Segreto HMAC delle richieste in entrata (facoltativo)', segreto: true, obbligatorio: false },
@@ -204,9 +208,11 @@ export function manifestoRicette({ accesso = true } = {}) {
     azioni: impo => Object.fromEntries(attive(impo, 'azione').map(r => [r.id, {
       nome: r.nome, descrizione: `${r.nome} (${r.metodo} ${r.percorso})`, su: r.sezione, scrive: r.scrive !== false, lumi: true,
       input: { riga: { tipo: 'relazione', entita: r.sezione, nome: 'La riga' } },
-      async proponi({ riga }, k) {
+      async proponi({ riga }, k, { ctx } = {}) {
         const q = await prepara(k, r, valoriDi(k, r, riga, { evento: 'azione' }), { anteprima: true });
-        return { titolo: r.nome, righe: [['Metodo', q.metodo], ['Indirizzo', q.visibile], ...(q.corpoTesto ? [['Corpo', q.corpoTesto.slice(0, 1500)]] : [])], avvisi: [] };
+        // l'indirizzo completo di un ponte (hooks.zapier.com/…, il webhook di Make o n8n) vale come un segreto: solo il titolare lo vede
+        const visibile = ctx?.r?.id === 'titolare' || !/^https?:\/\//i.test(r.percorso) ? q.visibile : `${new URL(q.url).origin}/…`;
+        return { titolo: r.nome, righe: [['Metodo', q.metodo], ['Indirizzo', visibile], ...(q.corpoTesto ? [['Corpo', q.corpoTesto.slice(0, 1500)]] : [])], avvisi: [] };
       },
       async esegui({ riga }, k) {
         const x = await chiama(k, r, valoriDi(k, r, riga, { evento: 'azione' }));

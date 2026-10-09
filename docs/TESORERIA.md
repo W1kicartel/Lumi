@@ -117,7 +117,15 @@ I movimenti stanno in una **sezione normale**, `movimenti_banca` («Movimenti di
 | `valuta_il`, `conto`, `fonte` | | no | `fonte`: camt053, cbi, csv, openbanking, manuale |
 | `stato`, `abbinato` | stato, testo | no | li scrive la tesoreria, se ci sono |
 
-Se un connettore usa una sua sezione con gli stessi id di campo, basta indicarla in **Impostazioni → Sezione dei movimenti di banca**. Lo stato degli abbinamenti la tesoreria lo tiene in `_tesoreria_abbinamenti`, quindi funziona anche con una sezione senza «stato».
+I connettori bancari ufficiali (Enable Banking, Qonto, Revolut Business, Wise: `connettori/_soldi/banca.js`) scrivono qui,
+con `fonte: openbanking` e `id_esterno` = l'id del movimento nella banca: un giro che rilegge gli ultimi giorni non crea
+doppioni, e un movimento tolto a mano non torna. Senza la sezione il giro si ferma con un errore che dice di premere
+«Prepara». L'abbinamento lo fa **solo la tesoreria** (pagina Banca, strumento di Lumi `tesoreria_abbina_movimento`): i
+connettori non hanno proposte né «riconcilia» loro; dopo un giro avvisano soltanto quanti movimenti nuovi la tesoreria sa
+già abbinare. Le loro letture di fatture, rate, clienti e fornitori servono a quel conto, e non segnano pagato niente.
+
+Se un connettore usa una sua sezione con gli stessi id di campo, basta indicarla in **Impostazioni → Sezione dei movimenti di banca**
+(e, nella pagina del connettore, abbinare la sua sezione `movimenti_banca` a quella). Lo stato degli abbinamenti la tesoreria lo tiene in `_tesoreria_abbinamenti`, quindi funziona anche con una sezione senza «stato».
 
 ### Le proposte
 

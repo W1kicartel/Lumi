@@ -37,6 +37,11 @@ test('Vonage: SMS in form (Unicode con le emoji, callback col codice), errore pe
     assert.deepEqual(S.chiamate.find(c => c.percorso === '/sms/json').corpo, { api_key: 'abcd1234', api_secret: SEC, from: 'Bottega', to: '393331234567', text: 'Il tuo ordine è pronto 😀', type: 'unicode', 'client-ref': 'kubo', callback: `${PUB}/api/connettori/vonage/in/${codice}` });
     const no = await K.chiama('POST', '/api/connettori/vonage/azioni/manda_sms', { args: { cliente: anna.id, testo: 'errore' } });
     assert.equal(no.stato, 502); assert.match(no.json.errore, /Bad Credentials \(stato 4\)/);
+    // senza il suo indirizzo, la ricevuta va all'indirizzo pubblico di Kubo nella Libreria
+    await K.chiama('PUT', '/api/connettori/vonage', { impostazioni: { pubblico: null } }); await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: 'https://kubo.libreria.it' });
+    await K.chiama('POST', '/api/connettori/vonage/azioni/manda_sms', { args: { cliente: anna.id, testo: 'Ciao' } });
+    assert.equal(S.chiamate.filter(c => c.percorso === '/sms/json').at(-1).corpo.callback, `https://kubo.libreria.it/api/connettori/vonage/in/${codice}`);
+    await K.chiama('PUT', '/api/connettori/vonage', { impostazioni: { pubblico: PUB } });
     await K.chiama('POST', '/api/dati/appuntamenti', { quando: domaniAlle('13'), cliente: anna.id });
     assert.deepEqual((await K.chiama('POST', '/api/connettori/vonage/giri/promemoria')).json.risultato, { mandati: 1, senza_numero: 0 });
     const pr = S.chiamate.filter(c => c.percorso === '/sms/json').at(-1).corpo; assert.match(pr.text, /^Promemoria: Anna, ti aspettiamo .+ Bottega$/); assert.equal(pr.type, undefined);

@@ -27,7 +27,8 @@ test('Mollie: link → webhook con il codice segreto → si rilegge il pagamento
   });
   try {
     const v = await vendita(K);
-    await accendi(K, 'mollie', { base: S.url, segreti: { chiave: 'test_' + 'dHar4XY7LxsDOtmnkVtjNVWXLSlXsM' }, impostazioni: { indirizzo: 'https://kubo.esempio.it/' } });
+    assert.equal((await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: 'https://kubo.esempio.it/' })).stato, 200);   // l'indirizzo pubblico della Libreria: il connettore non ha il suo
+    await accendi(K, 'mollie', { base: S.url, segreti: { chiave: 'test_' + 'dHar4XY7LxsDOtmnkVtjNVWXLSlXsM' } });
     const codice = await generato(K, 'mollie', 'webhook'); assert.ok(codice?.length > 20);
     const ant = await K.chiama('POST', '/api/connettori/mollie/azioni/link_vendita', { args: { vendita: v.id }, anteprima: true });
     assert.equal(ant.json.righe[1][1], '60,00 €');
@@ -158,7 +159,8 @@ test('Square: link con l\'ordine → webhook firmato (indirizzo + corpo) → pag
   const firmato = (corpo, f = firma(corpo)) => manda(K, '/api/connettori/square/in', corpo, { 'X-Square-HmacSha256-Signature': f });
   try {
     const v = await vendita(K), v2 = await vendita(K, 15, 1);
-    await accendi(K, 'square', { base: S.url, segreti: { token: 'EAAAl_prova_token_sandbox_1234', firma: chiave }, impostazioni: { luogo: 'L8XYZ', indirizzo: 'https://kubo.esempio.es/', terminale: 'device:995CS397A6475287' } });
+    assert.equal((await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: 'https://kubo.esempio.es/' })).stato, 200);   // la firma usa l'indirizzo della Libreria: il connettore non ha il suo
+    await accendi(K, 'square', { base: S.url, segreti: { token: 'EAAAl_prova_token_sandbox_1234', firma: chiave }, impostazioni: { luogo: 'L8XYZ', terminale: 'device:995CS397A6475287' } });
     const l = await K.chiama('POST', '/api/connettori/square/azioni/link_vendita', { args: { vendita: v.id } });
     assert.equal(l.stato, 200, JSON.stringify(l.json)); assert.equal(l.json.url, 'https://square.link/u/PROVA1');
     const c = S.chiamate[0];

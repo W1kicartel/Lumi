@@ -160,6 +160,7 @@ test('Outlook: codice del dispositivo sul tenant scelto, appuntamenti → eventi
     // riaperto in Kubo: l'evento tolto da Outlook si ricrea; annullato in Kubo: si toglie
     await K.chiama('PATCH', `/api/dati/appuntamenti/${a.id}`, { stato: 'confermato' }); await coda(K);
     assert.ok(eventi.has('AAMk-2'), JSON.stringify([...eventi.keys()]));
+    assert.equal(K.db.prepare("SELECT COUNT(*) n FROM _connettori_mappa WHERE connettore = 'outlook' AND riga = ?").get(String(a.id)).n, 1);   // il legame vecchio è sciolto (k.sincro.scollega)
     await K.chiama('PATCH', `/api/dati/appuntamenti/${a.id}`, { stato: 'annullato' }); await coda(K);
     assert.ok(!eventi.has('AAMk-2')); assert.equal(S.chiamate.at(-1).metodo, 'DELETE');
     assert.ok(giro >= 3);

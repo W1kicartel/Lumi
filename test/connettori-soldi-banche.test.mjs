@@ -1,5 +1,5 @@
 // Le banche (Enable Banking, Qonto, Revolut Business) contro finti servizi locali: il collegamento, i movimenti a pagine,
-// la proposta di abbinamento con una fattura emessa e la riconciliazione. Il finto servizio controlla anche l'accesso
+// i movimenti nella sezione della tesoreria e l'abbinamento (della tesoreria) con una fattura emessa. Il finto servizio controlla anche l'accesso
 // (JWT RS256 verificato con la chiave pubblica, la chiave API di Qonto). Nessuna chiamata vera in rete.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -20,24 +20,22 @@ const AZ = { ragione_sociale: 'Bottega Prova srl', piva: '12345678903', codice_f
 // una fattura emessa da 122,00 € (100 + IVA 22%)
 async function fattura(K) {
   assert.equal((await K.chiama('PUT', '/api/documenti/azienda', AZ)).stato, 200);
-  await K.chiama('POST', '/api/documenti/prepara');
+  await K.chiama('POST', '/api/documenti/prepara'); await K.chiama('POST', '/api/tesoreria/prepara');
   const cl = (await K.chiama('POST', '/api/dati/clienti', { nome: 'Verdi Arredi srl', piva: '00743110157', via: 'Corso Italia 5', cap: '10121', comune: 'Torino', provincia: 'TO', codice_destinatario: 'ABC1234' })).json;
   const f = (await K.chiama('POST', '/api/dati/fatture', { cliente: cl.id, data: '2026-09-01', righe: [{ descrizione: 'Mobile su misura', quantita: 1, prezzo: 100, aliquota: 22 }] })).json;
   const e = await K.chiama('PATCH', `/api/dati/fatture/${f.id}`, { stato: 'emessa' }); assert.equal(e.stato, 200, JSON.stringify(e.json));
   assert.equal(e.json.totale, 122); assert.ok(e.json.numero);
   return e.json;
 }
-// dalla proposta alla fattura pagata, con la data del movimento
+// dalla proposta della tesoreria (l'unico motore di abbinamento) alla fattura pagata, con la data del movimento
 async function riconcilia(K, id, f, data) {
-  const pr = (await K.chiama('POST', `/api/connettori/${id}/azioni/proposte`, { args: {} })).json.proposte;
-  assert.equal(pr.length, 1, JSON.stringify(pr)); assert.equal(pr[0].fattura, f.id); assert.match(pr[0].motivo, /numero nella causale/);
-  const ant = (await K.chiama('POST', `/api/connettori/${id}/azioni/riconcilia`, { args: { movimento: pr[0].movimento }, anteprima: true })).json;
-  assert.equal(ant.avvisi.length, 0, JSON.stringify(ant));
-  const r = await K.chiama('POST', `/api/connettori/${id}/azioni/riconcilia`, { args: { movimento: pr[0].movimento } });
-  assert.equal(r.stato, 200, JSON.stringify(r.json)); assert.equal(r.json.fattura, f.id);
+  const b = (await K.chiama('GET', '/api/tesoreria/banca')).json, l = b.daAbbinare.filter(x => x.proposte.length);
+  assert.equal(l.length, 1, JSON.stringify(b)); assert.equal(l[0].proposte[0].chiavi[0], `f:${f.id}:1`);
+  const r = await K.chiama('POST', '/api/tesoreria/abbina', { movimento: l[0].id, chiavi: l[0].proposte[0].chiavi });
+  assert.equal(r.stato, 200, JSON.stringify(r.json));
   const dopo = (await K.chiama('GET', `/api/dati/fatture/${f.id}`)).json; assert.equal(dopo.stato, 'pagata'); assert.equal(dopo.pagata_il, data);
-  assert.equal(dopo.modificato_da, `servizio:${id}`);
-  assert.equal((await K.chiama('POST', `/api/connettori/${id}/azioni/proposte`, { args: {} })).json.proposte.length, 0);
+  assert.equal((await K.chiama('GET', '/api/tesoreria/banca')).json.daAbbinare.filter(x => x.proposte.length).length, 0);
+  assert.ok((await K.chiama('GET', '/api/dati/movimenti_banca?perPagina=50')).json.righe.every(x => x.fonte === 'openbanking' && x.id_esterno));
 }
 
 test('catalogo delle banche: categoria, guida, fonti e traduzioni complete', async () => {
@@ -180,7 +178,10 @@ test('Revolut Business: consenso, codice → token con client_assertion JWT, rin
     f = await fattura(K);
     await accendi(K, 'revolut-business', { base: S.url, segreti: { chiave_privata: PEM }, impostazioni: { client_id: 'cli-prova', ambiente: 'sandbox' } });
     assert.equal((await K.chiama('POST', '/api/connettori/revolut-business/giri/movimenti')).json.risultato, 'conto non collegato');
-    const c = await K.chiama('POST', '/api/connettori/revolut-business/azioni/collega', { args: { indirizzo: K.base } });
+    // senza indirizzo vale quello pubblico della Libreria (k.pubblico)
+    assert.equal((await K.chiama('POST', '/api/connettori/revolut-business/azioni/collega', { args: {} })).stato, 502);
+    await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: K.base });
+    const c = await K.chiama('POST', '/api/connettori/revolut-business/azioni/collega', { args: {} });
     assert.equal(c.stato, 200, JSON.stringify(c.json));
     const u = new URL(c.json.url); assert.equal(u.origin + u.pathname, 'https://sandbox-business.revolut.com/app-confirm');
     assert.equal(u.searchParams.get('client_id'), 'cli-prova'); assert.equal(u.searchParams.get('redirect_uri'), `${K.base}/api/connettori/revolut-business/pub/ritorno`); assert.equal(u.searchParams.get('response_type'), 'code');

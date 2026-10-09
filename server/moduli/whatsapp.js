@@ -15,9 +15,8 @@
 //   GET  /api/whatsapp/modelli · POST …/sincronizza · POST /api/whatsapp/modelli · PUT …/modelli/:nome/:lingua/mappa
 //   GET  /api/whatsapp/ricette · PUT /api/whatsapp/ricette/:id · POST /api/whatsapp/ricette/:id/anteprima
 //   GET  /api/whatsapp/registro                     i messaggi fermati o falliti, con il motivo
-//   GET  /api/connettori/whatsapp/in                PUBBLICA: la verifica del webhook di Meta (hub.challenge)
 //   GET  /api/whatsapp/file/:codice                 PUBBLICA: il PDF per Twilio, con un codice casuale, per 7 giorni
-import { randomBytes, timingSafeEqual } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 import { bus, PROVIDER } from './whatsapp-bus.js';
 import * as R from './whatsapp-regole.js';
 import { testo as testoWa } from './whatsapp-lingue.js';
@@ -51,7 +50,6 @@ export const RICETTE = [
 const PREDEFINITE = { prefisso: '+39', silenzio: { da: '21:00', a: '09:00' }, silenzioTutti: false, limiteGiorno: 250, maxClienteGiorno: 3, marketingOgniGiorni: 7,
   sconosciuti: 'chiedi', orari: { apre: '09:00', chiude: '19:00', giorni: [1, 2, 3, 4, 5, 6] }, lingua: 'it', tariffe: {} };
 const ORDINE = { coda: 0, inviato: 1, consegnato: 2, letto: 3 };
-const uguali = (a, b) => { const x = Buffer.from(String(a || '')), y = Buffer.from(String(b || '')); return x.length > 0 && x.length === y.length && timingSafeEqual(x, y); };
 
 export const istanzeWa = new WeakMap();
 
@@ -611,11 +609,6 @@ export default function registra({ r, prima, db, S, D, P, A, meta, serve, Errore
       costo: R.costo(m.categoria, { tariffe: imp().tariffe, provider: attivoId() }), nota: m.categoria === 'marketing' ? testoWa(l, 'consenso-marketing') : null };
   });
   r('GET', '/api/whatsapp/registro', ({ ctx }) => { titolare(ctx); return db.prepare("SELECT id, numero, nome, tipo, modello, categoria, stato, motivo, ricetta, chi, quando FROM _whatsapp_messaggi WHERE verso = 'out' AND stato IN ('bloccato', 'fallito') ORDER BY id DESC LIMIT 100").all(); });
-  // la verifica del webhook di Meta: GET con hub.mode=subscribe, hub.verify_token (il token generato da Kubo) e hub.challenge
-  r('GET', '/api/connettori/whatsapp/in', ({ q, res }) => {
-    let ok = false; try { ok = q.get('hub.mode') === 'subscribe' && !!nucleo()?.attivo('whatsapp') && uguali(q.get('hub.verify_token'), nucleo().segreto('whatsapp', 'verifica')); } catch { ok = false; }
-    res.writeHead(ok ? 200 : 403, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' }).end(ok ? String(q.get('hub.challenge') || '').replace(/[^\w.-]/g, '').slice(0, 200) : '');
-  }, { pubblica: true });
   r('GET', '/api/whatsapp/file/:codice', ({ p, res }) => {
     const x = file.get(p.codice); if (!x || x.scade < Date.now()) { res.writeHead(404, { 'Content-Type': 'text/plain' }).end(''); return; }
     res.writeHead(200, { 'Content-Type': x.tipo, 'Content-Disposition': `inline; filename="${x.nome.replace(/[^\w. -]/g, '_')}"`, 'Cache-Control': 'no-store' }).end(x.dati);

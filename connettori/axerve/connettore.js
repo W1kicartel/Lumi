@@ -7,7 +7,7 @@
 // (stato «aperti»); senza indirizzo pubblico c'è il giro «controlla» ogni 10 minuti (app sul PC).
 // Fonti: https://api.axerve.com/ (oggi https://api.paymentorchestra.fabrick.com/): base URL, apikey, payment/create, payment/detail, responseURLs
 import { randomBytes } from 'node:crypto';
-import { azioniLink, testiLink, incassa, RICHIEDE_INCASSI, PERMESSI_INCASSI } from '../_soldi/comuni.js';
+import { azioniLink, testiLink, incassa, RICHIEDE_INCASSI, PERMESSI_INCASSI, pubblicoDi } from '../_soldi/comuni.js';
 
 const prod = k => k.imp.ambiente === 'produzione';
 const base = k => k.base || (prod(k) ? 'https://ecomms2s.sella.it' : 'https://sandbox.gestpay.net');
@@ -18,7 +18,7 @@ const errore = r => new Error(`Axerve ha risposto ${r.stato}: ${String(r.json?.e
 const ST = /^K[0-9A-Z]{6,30}$/;
 const aperti = k => k.stato.leggi('aperti') || [];
 const togli = (k, st) => k.stato.scrivi('aperti', aperti(k).filter(x => x.st !== st));
-const pubblico = k => String(k.imp.indirizzo || '').replace(/\/$/, '');
+const pubblico = k => pubblicoDi(k);   // il suo indirizzo o, se vuoto, quello https della Libreria (k.pubblico)
 
 // un tentativo riletto da Axerve: OK → incasso; KO → non si guarda più; il resto aspetta
 async function controlla(k, x) {
@@ -99,7 +99,7 @@ export default {
       { cosa: 'Shop login e API key (in prova: quelli dell\'ambiente di test sandbox)', dove: 'Back office Axerve › Configurazione › Ambiente › Sicurezza › API key', link: 'https://www.axerve.com/' },
       { cosa: 'Un indirizzo pubblico https di Kubo (facoltativo)', dove: 'Il tuo dominio o un tunnel verso il computer di Kubo', link: 'https://api.axerve.com/' },
     ],
-    passi: ['Chiedi ad Axerve (o a Banca Sella) l\'attivazione del pagamento online, oppure apri un account di test sandbox.', 'Nel back office genera l\'API key e copia lo shop login (prima quelli di test).', 'In Kubo incolla shop login e API key e scegli l\'ambiente.', 'Se Kubo ha un indirizzo pubblico https, scrivilo: Kubo lo manda ad Axerve per ogni link e vede l\'esito subito; altrimenti controlla ogni 10 minuti.', 'Premi «Prova la connessione» e accendi.', 'Dalla vendita o dalla fattura crea il link Axerve e mandalo al cliente.'],
+    passi: ['Chiedi ad Axerve (o a Banca Sella) l\'attivazione del pagamento online, oppure apri un account di test sandbox.', 'Nel back office genera l\'API key e copia lo shop login (prima quelli di test).', 'In Kubo incolla shop login e API key e scegli l\'ambiente.', 'Se Kubo ha un indirizzo pubblico https, scrivilo (se hai impostato l\'indirizzo pubblico di Kubo nella Libreria, puoi lasciarlo vuoto): Kubo lo manda ad Axerve per ogni link e vede l\'esito subito; altrimenti controlla ogni 10 minuti.', 'Premi «Prova la connessione» e accendi.', 'Dalla vendita o dalla fattura crea il link Axerve e mandalo al cliente.'],
     difficolta: 'media', zone: ['IT'],
     fonti: ['https://api.axerve.com/', 'https://api.paymentorchestra.fabrick.com/', 'https://docs.axerve.com/'],
     prova: 'finto', parole: ['axerve', 'gestpay', 'banca sella', 'sella', 'fabrick', 'pos virtuale', 'carta di credito', 'pay by link', 'link di pagamento', 'virtual pos'],
@@ -108,7 +108,7 @@ export default {
     en: { descrizione: 'Payment links on the secure Axerve page (formerly Banca Sella GestPay): Kubo reads the outcome back from the API and marks sales and invoices paid.', 'imp.shop': 'Shop login (e.g. GESPAY12345)', 'imp.chiave': 'Axerve API key', 'imp.ambiente': 'Environment', 'imp.indirizzo': 'Public Kubo address (for the instant outcome, optional)', ...testiLink('Axerve link', 'sale', 'invoice'), 'giro.controlla': 'Check Axerve payments',
       'cat.costoNota': 'Fees depend on your contract with Axerve or Banca Sella (usually a percentage per transaction, sometimes with a monthly fee; the e-commerce offers are on the Axerve website). Kubo adds no costs.',
       'cat.serve': [{ cosa: 'Shop login and API key (for tests: the sandbox ones)', dove: 'Axerve back office › Configuration › Environment › Security › API key' }, { cosa: 'A public https address for Kubo (optional)', dove: 'Your domain or a tunnel to the Kubo computer' }],
-      'cat.passi': ['Ask Axerve (or Banca Sella) to enable online payments, or open a sandbox test account.', 'In the back office generate the API key and copy the shop login (test ones first).', 'Paste shop login and API key into Kubo and choose the environment.', 'If Kubo has a public https address, enter it: Kubo sends it to Axerve with each link and sees the outcome at once; otherwise it checks every 10 minutes.', 'Press «Test connection» and switch on.', 'From a sale or an invoice create the Axerve link and send it to the customer.'] },
+      'cat.passi': ['Ask Axerve (or Banca Sella) to enable online payments, or open a sandbox test account.', 'In the back office generate the API key and copy the shop login (test ones first).', 'Paste shop login and API key into Kubo and choose the environment.', 'If Kubo has a public https address, enter it (if you set Kubo\'s public address in the Library, you can leave it empty): Kubo sends it to Axerve with each link and sees the outcome at once; otherwise it checks every 10 minutes.', 'Press «Test connection» and switch on.', 'From a sale or an invoice create the Axerve link and send it to the customer.'] },
     es: { descrizione: 'Enlaces de pago en la página segura de Axerve (antes Banca Sella GestPay): Kubo relee el resultado en la API y marca pagadas ventas y facturas.', 'imp.shop': 'Shop login (p. ej. GESPAY12345)', 'imp.chiave': 'Clave API de Axerve', 'imp.ambiente': 'Entorno', 'imp.indirizzo': 'Dirección pública de Kubo (para el resultado inmediato, opcional)', ...testiLink('Enlace Axerve', 'venta', 'factura'), 'giro.controlla': 'Comprobar pagos Axerve' },
     fr: { descrizione: 'Liens de paiement sur la page sécurisée Axerve (ex Banca Sella GestPay) : Kubo relit le résultat via l\'API et marque ventes et factures payées.', 'imp.shop': 'Shop login (ex. GESPAY12345)', 'imp.chiave': 'Clé API Axerve', 'imp.ambiente': 'Environnement', 'imp.indirizzo': 'Adresse publique de Kubo (pour le résultat immédiat, facultatif)', ...testiLink('Lien Axerve', 'vente', 'facture'), 'giro.controlla': 'Vérifier les paiements Axerve' },
     de: { descrizione: 'Zahlungslinks auf der sicheren Axerve-Seite (früher Banca Sella GestPay): Kubo liest das Ergebnis über die API nach und markiert Verkäufe und Rechnungen als bezahlt.', 'imp.shop': 'Shop-Login (z. B. GESPAY12345)', 'imp.chiave': 'Axerve-API-Schlüssel', 'imp.ambiente': 'Umgebung', 'imp.indirizzo': 'Öffentliche Kubo-Adresse (für das sofortige Ergebnis, optional)', ...testiLink('Axerve-Link', 'Verkauf', 'Rechnung'), 'giro.controlla': 'Axerve-Zahlungen prüfen' },

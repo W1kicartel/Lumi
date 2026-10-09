@@ -1,7 +1,10 @@
 // Outlook e Microsoft 365: l'agenda di Kubo e il calendario principale di Outlook allineati nei due sensi, con Microsoft Graph.
 // - Kubo → Outlook: un appuntamento nuovo o spostato diventa un evento (POST/PATCH /me/events); annullato, l'evento si toglie.
 // - Outlook → Kubo: ogni 15 minuti un giro con calendarView/delta (solo le novità dall'ultima volta, con il deltaLink salvato).
-//   Le subscription di Graph non servono: vorrebbero rispondere al validationToken, e il webhook di Kubo non risponde a sfide.
+//   Le subscription di Graph (notifiche push) adesso si potrebbero fare: entrata.risposta rimanda il validationToken come
+//   text/plain. Ma chiedono l'indirizzo pubblico, una subscription da creare e da rinnovare prima dei 3 giorni (un altro
+//   giro), il clientState da controllare, e la notifica dice solo «è cambiato qualcosa»: il delta va letto comunque.
+//   Per un calendario il giro di 15 minuti basta, e funziona anche senza indirizzo pubblico: si resta così.
 // Accesso: OAuth con il codice del dispositivo (app desktop, nessun indirizzo pubblico), app registrata su Entra come client
 // pubblico, tenant configurabile («common», «organizations», «consumers» o l'id dell'organizzazione).
 // Anti-eco: changeKey dell'evento ricordato dopo ogni scrittura; le scritture del connettore non ripartono (nucleo).
@@ -17,7 +20,7 @@ const daGraph = (o, fuso) => { if (!o?.dateTime) return null; const s = o.dateTi
 // le changeKey ricordate (le ultime 5000), rilette prima di scrivere: il giro e la coda in uscita possono incrociarsi
 const ricorda = (k, nuove, via = []) => { const c = { ...(k.stato.leggi('chiavi') || {}), ...nuove }; for (const x of via) delete c[x]; k.stato.scrivi('chiavi', Object.fromEntries(Object.entries(c).slice(-5000))); };
 // un evento tolto da Outlook e poi riaperto in Kubo: si scorda l'id vecchio, così ne nasce uno nuovo
-const scorda = (k, rigaId) => k.db.prepare('DELETE FROM _connettori_mappa WHERE connettore = ? AND entita = ? AND riga = ?').run(k.id, k.entita(SEM), String(rigaId));
+const scorda = (k, rigaId) => k.sincro.scollega(SEM, { riga: rigaId });
 
 export default {
   id: 'outlook', nome: 'Outlook e Microsoft 365', versione: 1, icona: 'calendario',

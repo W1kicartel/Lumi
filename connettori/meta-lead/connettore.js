@@ -1,12 +1,13 @@
 // Meta Lead Ads: chi compila un modulo di Facebook o Instagram diventa un cliente di Kubo, con la provenienza e una nota
 // con il nome del modulo, la campagna e le altre risposte.
-// - Ogni 15 minuti un giro legge i lead nuovi dei moduli scelti (Graph API GET /<form-id>/leads filtrati per time_created).
-//   È la strada principale: il webhook di Meta va prima verificato con una sfida GET (hub.challenge) a cui Kubo non può
-//   rispondere, perché i webhook di Kubo accettano solo POST;
-// - se l'abbonamento è già verificato altrove e Kubo ha un indirizzo pubblico, l'entrata POST firmata con X-Hub-Signature-256
-//   (HMAC-SHA256 del corpo con l'App Secret) prende il leadgen_id e rilegge il lead dall'API: arriva in pochi secondi.
+// - Webhook (la strada veloce, quando c'è l'App Secret): Meta verifica l'indirizzo con una GET (hub.challenge e il token di
+//   verifica che Kubo ha generato, entrata.verificaGet), poi manda in POST firmato con X-Hub-Signature-256 (HMAC-SHA256 del
+//   corpo con l'App Secret) il leadgen_id: Kubo rilegge il lead dall'API e arriva in pochi secondi.
+// - Il giro legge i lead nuovi dei moduli scelti (Graph API GET /<form-id>/leads filtrati per time_created): ogni 15 minuti
+//   senza webhook; con l'App Secret salvato resta come rete di sicurezza ogni 6 ore (un lead perso da Meta non si perde).
 // Un lead già importato non si importa due volte (k.sincro), e un cliente con la stessa email o lo stesso telefono non si duplica.
 import { opzione } from '../_comunica/tabelle.js';
+import { sfidaMeta } from '../../server/moduli/connettori-rete.js';
 const gbase = k => k.base || 'https://graph.facebook.com';
 const ver = k => String(k.imp.versione || 'v25.0').replace(/^(?!v)/, 'v');
 const CAMPI = 'id,created_time,field_data,form_id,ad_name,adset_name,campaign_name,platform,is_organic';
@@ -49,8 +50,11 @@ async function giro(k) {
     k.stato.scrivi(`dopo:${f}`, ultimo);
   }
   if (conti.creati) k.avvisa(`${conti.creati} nuovi contatti dai moduli di Meta`);
+  k.stato.scrivi('giroPieno', Date.now());
   return conti;
 }
+// il giro pianificato: con il webhook (App Secret salvato) basta un ripasso ogni 6 ore
+const giroPianificato = k => (k.segreti.segreto_app && Date.now() - (k.stato.leggi('giroPieno') || 0) < 6 * 36e5 ? { saltato: 'c\'è il webhook: ripasso ogni 6 ore' } : giro(k));
 export default {
   id: 'meta-lead', nome: 'Meta Lead Ads', versione: 1, icona: 'persona',
   descrizione: 'Chi compila i moduli delle inserzioni su Facebook e Instagram diventa un cliente.',
@@ -58,6 +62,7 @@ export default {
     { id: 'token', nome: 'Token di accesso della Pagina (di lunga durata)', segreto: true },
     { id: 'moduli', nome: 'Id dei moduli (separati da virgola)', schema: /^[\d\s,;]+$/ },
     { id: 'segreto_app', nome: 'App Secret (solo per il webhook)', segreto: true, obbligatorio: false },
+    { id: 'verifica', nome: 'Token di verifica del webhook (da incollare su Meta)', segreto: true, generato: true },
     { id: 'versione', nome: 'Versione della Graph API', predefinito: 'v25.0', schema: /^v?\d{1,3}\.\d$/ },
   ],
   richiede: { clienti: { nome: {}, email: { tipo: ['email'], facoltativo: true }, telefono: { tipo: ['telefono', 'testo'], facoltativo: true }, provenienza: { tipo: ['scelta', 'testo'], facoltativo: true }, note: { tipo: ['testo_lungo', 'testo'], facoltativo: true } } },
@@ -67,9 +72,11 @@ export default {
     const r = await k.http.get(`${gbase(k)}/${ver(k)}/${f}?fields=name,status,leads_count`, { bearer: k.segreti.token });
     return { ok: r.ok, messaggio: r.ok ? `${r.json?.name} (${r.json?.leads_count ?? 0} lead)` : `HTTP ${r.stato}${r.json?.error?.message ? ': ' + r.json.error.message : ''}` };
   },
-  pianificati: { lead: { nome: 'Lead nuovi dai moduli', ogni: '15m', giro } },
+  pianificati: { lead: { nome: 'Lead nuovi dai moduli', ogni: '15m', giro: giroPianificato } },
   entrata: {
     firma: { tipo: 'hmac', intestazione: 'x-hub-signature-256', segreto: 'segreto_app', formato: 'hex' },
+    // la verifica dell'abbonamento: hub.verify_token = il token generato da Kubo, risposta = hub.challenge
+    verificaGet: (q, k) => sfidaMeta(q, k.segreti.verifica),
     idempotenza: ev => (ev?.entry || []).flatMap(e => (e.changes || []).map(c => c.value?.leadgen_id)).filter(Boolean).join(',').slice(0, 300) || null,
     async gestisci(ev, k) {
       if (ev?.object !== 'page') return 'ignorato: non è una pagina';
@@ -98,7 +105,7 @@ export default {
       { cosa: 'Un\'app Meta di tipo Business con i permessi leads_retrieval, pages_show_list, pages_read_engagement, pages_manage_metadata, pages_manage_ads', dove: 'developers.facebook.com → Le mie app → Crea app → Business → Casi d\'uso / Permessi', link: 'https://developers.facebook.com/apps/' },
       { cosa: 'Il token di accesso della Pagina di lunga durata (non scade se nasce da un token utente di lunga durata)', dove: 'Graph API Explorer → seleziona l\'app e la Pagina → Genera token → poi Strumento di debug del token → Estendi; oppure un utente di sistema in Business Manager', link: 'https://developers.facebook.com/tools/explorer/' },
       { cosa: 'L\'id di ogni modulo', dove: 'Meta Business Suite → Tutti gli strumenti → Moduli istantanei (Strumenti per i moduli): la colonna ID', link: 'https://business.facebook.com/latest/instant_forms' },
-      { cosa: 'Solo per il webhook: l\'App Secret e un indirizzo pubblico di Kubo', dove: 'App → Impostazioni dell\'app → Di base → Chiave segreta', link: 'https://developers.facebook.com/docs/graph-api/webhooks/getting-started' },
+      { cosa: 'Solo per il webhook: l\'App Secret e l\'indirizzo pubblico di Kubo (nella Libreria)', dove: 'App → Impostazioni dell\'app → Di base → Chiave segreta', link: 'https://developers.facebook.com/docs/graph-api/webhooks/getting-started' },
     ],
     passi: [
       'Crea un\'app Meta di tipo Business e aggiungi i permessi leads_retrieval, pages_show_list, pages_read_engagement, pages_manage_metadata e pages_manage_ads.',
@@ -106,20 +113,20 @@ export default {
       'In Meta Business Suite → Strumenti per i moduli dai accesso ai lead all\'app («Accesso ai lead» → CRM), altrimenti l\'API risponde 403.',
       'Incolla il token e gli id dei moduli (separati da virgola), poi premi «Prova la connessione».',
       'Premi «Controlla i moduli adesso»: arrivano i lead degli ultimi 30 giorni, poi ogni 15 minuti quelli nuovi.',
-      'Facoltativo: se Kubo ha un indirizzo pubblico e l\'abbonamento al campo «leadgen» è già verificato, punta il webhook a <indirizzo>/api/connettori/meta-lead/in e incolla qui l\'App Secret.',
+      'Facoltativo, per i lead in pochi secondi: con l\'indirizzo pubblico di Kubo impostato, in App → Webhook → Page abbona il campo «leadgen» con l\'URL e il token di verifica che Kubo ti mostra, poi incolla qui l\'App Secret: il giro diventa un ripasso ogni 6 ore.',
     ],
     difficolta: 'difficile', zone: ['mondo'],
     fonti: ['https://developers.facebook.com/docs/marketing-api/guides/lead-ads/retrieving', 'https://developers.facebook.com/docs/graph-api/webhooks/getting-started', 'https://developers.facebook.com/docs/graph-api/webhooks/reference/page/#leadgen', 'https://developers.facebook.com/docs/facebook-login/guides/access-tokens/get-long-lived', 'https://developers.facebook.com/docs/permissions/reference/leads_retrieval'],
     prova: 'finto', parole: ['meta', 'facebook', 'instagram', 'lead ads', 'moduli', 'forms', 'lead', 'contatti', 'inserzioni', 'ads', 'campagne'],
   },
   testi: {
-    en: { nome: 'Meta Lead Ads', descrizione: 'People who fill in Facebook and Instagram ad forms become customers.', 'imp.token': 'Page access token (long-lived)', 'imp.moduli': 'Form ids (comma separated)', 'imp.segreto_app': 'App Secret (webhook only)', 'imp.versione': 'Graph API version', 'az.leggi_lead': 'Check the forms now', 'giro.lead': 'New leads from the forms',
+    en: { nome: 'Meta Lead Ads', descrizione: 'People who fill in Facebook and Instagram ad forms become customers.', 'imp.token': 'Page access token (long-lived)', 'imp.moduli': 'Form ids (comma separated)', 'imp.segreto_app': 'App Secret (webhook only)', 'imp.verifica': 'Webhook verify token (paste it on Meta)', 'imp.versione': 'Graph API version', 'az.leggi_lead': 'Check the forms now', 'giro.lead': 'New leads from the forms',
       'cat.costoNota': 'The API is free: you only pay for the ads, with the budget set in Ads Manager (auction on cost per lead or impressions, no fixed minimum beyond about €1 a day).',
       'cat.serve': [{ cosa: 'A Business-type Meta app with permissions leads_retrieval, pages_show_list, pages_read_engagement, pages_manage_metadata, pages_manage_ads', dove: 'developers.facebook.com → My Apps → Create App → Business → Use cases / Permissions' }, { cosa: 'The long-lived Page access token (it does not expire if it comes from a long-lived user token)', dove: 'Graph API Explorer → choose app and Page → Generate token → then Access Token Debugger → Extend; or a system user in Business Manager' }, { cosa: 'The id of each form', dove: 'Meta Business Suite → All tools → Instant forms (Forms library): the ID column' }, { cosa: 'Webhook only: the App Secret and a public address for Kubo', dove: 'App → App settings → Basic → App secret' }],
-      'cat.passi': ['Create a Business-type Meta app and add leads_retrieval, pages_show_list, pages_read_engagement, pages_manage_metadata and pages_manage_ads.', 'Generate the Page token with Graph API Explorer; extend it with the token debugger (or use a Business Manager system user).', 'In Meta Business Suite → Forms library give the app access to leads («Leads access» → CRM), otherwise the API answers 403.', 'Paste the token and the form ids (comma separated), then press «Test connection».', 'Press «Check the forms now»: leads from the last 30 days arrive, then new ones every 15 minutes.', 'Optional: if Kubo has a public address and the «leadgen» subscription is already verified, point the webhook to <address>/api/connettori/meta-lead/in and paste the App Secret here.'] },
-    es: { nome: 'Meta Lead Ads', descrizione: 'Quien rellena los formularios de los anuncios de Facebook e Instagram se convierte en cliente.', 'imp.token': 'Token de acceso de la página (de larga duración)', 'imp.moduli': 'Ids de los formularios (separados por comas)', 'imp.segreto_app': 'App Secret (solo para el webhook)', 'imp.versione': 'Versión de la Graph API', 'az.leggi_lead': 'Revisar los formularios ahora', 'giro.lead': 'Leads nuevos de los formularios' },
-    fr: { nome: 'Meta Lead Ads', descrizione: 'Les personnes qui remplissent les formulaires des publicités Facebook et Instagram deviennent clients.', 'imp.token': 'Jeton d\'accès de la Page (longue durée)', 'imp.moduli': 'Ids des formulaires (séparés par des virgules)', 'imp.segreto_app': 'App Secret (webhook uniquement)', 'imp.versione': 'Version de la Graph API', 'az.leggi_lead': 'Vérifier les formulaires maintenant', 'giro.lead': 'Nouveaux leads des formulaires' },
-    de: { nome: 'Meta Lead Ads', descrizione: 'Wer die Formulare der Facebook- und Instagram-Anzeigen ausfüllt, wird Kunde.', 'imp.token': 'Seiten-Zugriffstoken (langlebig)', 'imp.moduli': 'Formular-IDs (durch Komma getrennt)', 'imp.segreto_app': 'App Secret (nur für den Webhook)', 'imp.versione': 'Graph-API-Version', 'az.leggi_lead': 'Formulare jetzt prüfen', 'giro.lead': 'Neue Leads aus den Formularen' },
-    pt: { nome: 'Meta Lead Ads', descrizione: 'Quem preenche os formulários dos anúncios do Facebook e Instagram vira cliente.', 'imp.token': 'Token de acesso da Página (de longa duração)', 'imp.moduli': 'Ids dos formulários (separados por vírgula)', 'imp.segreto_app': 'App Secret (só para o webhook)', 'imp.versione': 'Versão da Graph API', 'az.leggi_lead': 'Verificar os formulários agora', 'giro.lead': 'Novos leads dos formulários' },
+      'cat.passi': ['Create a Business-type Meta app and add leads_retrieval, pages_show_list, pages_read_engagement, pages_manage_metadata and pages_manage_ads.', 'Generate the Page token with Graph API Explorer; extend it with the token debugger (or use a Business Manager system user).', 'In Meta Business Suite → Forms library give the app access to leads («Leads access» → CRM), otherwise the API answers 403.', 'Paste the token and the form ids (comma separated), then press «Test connection».', 'Press «Check the forms now»: leads from the last 30 days arrive, then new ones every 15 minutes.', 'Optional, for leads within seconds: with Kubo\'s public address set, in App → Webhooks → Page subscribe the «leadgen» field with the URL and verify token Kubo shows you, then paste the App Secret here: the check becomes a pass every 6 hours.'] },
+    es: { nome: 'Meta Lead Ads', descrizione: 'Quien rellena los formularios de los anuncios de Facebook e Instagram se convierte en cliente.', 'imp.token': 'Token de acceso de la página (de larga duración)', 'imp.moduli': 'Ids de los formularios (separados por comas)', 'imp.segreto_app': 'App Secret (solo para el webhook)', 'imp.verifica': 'Token de verificación del webhook (pégalo en Meta)', 'imp.versione': 'Versión de la Graph API', 'az.leggi_lead': 'Revisar los formularios ahora', 'giro.lead': 'Leads nuevos de los formularios' },
+    fr: { nome: 'Meta Lead Ads', descrizione: 'Les personnes qui remplissent les formulaires des publicités Facebook et Instagram deviennent clients.', 'imp.token': 'Jeton d\'accès de la Page (longue durée)', 'imp.moduli': 'Ids des formulaires (séparés par des virgules)', 'imp.segreto_app': 'App Secret (webhook uniquement)', 'imp.verifica': 'Jeton de vérification du webhook (à coller sur Meta)', 'imp.versione': 'Version de la Graph API', 'az.leggi_lead': 'Vérifier les formulaires maintenant', 'giro.lead': 'Nouveaux leads des formulaires' },
+    de: { nome: 'Meta Lead Ads', descrizione: 'Wer die Formulare der Facebook- und Instagram-Anzeigen ausfüllt, wird Kunde.', 'imp.token': 'Seiten-Zugriffstoken (langlebig)', 'imp.moduli': 'Formular-IDs (durch Komma getrennt)', 'imp.segreto_app': 'App Secret (nur für den Webhook)', 'imp.verifica': 'Verifizierungstoken des Webhooks (bei Meta einfügen)', 'imp.versione': 'Graph-API-Version', 'az.leggi_lead': 'Formulare jetzt prüfen', 'giro.lead': 'Neue Leads aus den Formularen' },
+    pt: { nome: 'Meta Lead Ads', descrizione: 'Quem preenche os formulários dos anúncios do Facebook e Instagram vira cliente.', 'imp.token': 'Token de acesso da Página (de longa duração)', 'imp.moduli': 'Ids dos formulários (separados por vírgula)', 'imp.segreto_app': 'App Secret (só para o webhook)', 'imp.verifica': 'Token de verificação do webhook (cole na Meta)', 'imp.versione': 'Versão da Graph API', 'az.leggi_lead': 'Verificar os formulários agora', 'giro.lead': 'Novos leads dos formulários' },
   },
 };

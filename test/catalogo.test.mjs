@@ -3,7 +3,11 @@
 // Un connettore nuovo senza il blocco fa fallire questo test con il suo nome e cosa manca (docs/CONNETTORI.md).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { manifesti, generaCatalogo } from '../strumenti/catalogo.mjs';
+import { manifesti, generaCatalogo, problemi } from '../strumenti/catalogo.mjs';
+import { execFileSync } from 'node:child_process';
+import { writeFileSync, mkdtempSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { controllaCatalogo, vistaCatalogo, testoRicerca } from '../server/moduli/connettori-catalogo.js';
 
 const lista = await manifesti();
@@ -41,4 +45,17 @@ test('npm run catalogo: il Markdown ha tutti i connettori con il catalogo, per c
   assert.match(s, /## Pagamenti \(\d+\)/); assert.match(s, /## Automazione \(\d+\)/);
   assert.match(s, /## Senza blocco catalogo\n\n- `senza`/);
   assert.match(s, /\| \[Stripe\]\(#stripe\) \| Pagamenti \| A consumo \| Media \| servizio finto \|/);
+});
+
+// «npm run catalogo -- --controlla» fallisce anche quando docs/CATALOGO.md non è quello che si rigenererebbe adesso
+test('--controlla: docs/CATALOGO.md vecchio o mancante è un problema', () => {
+  const giusto = generaCatalogo(lista);
+  assert.deepEqual(problemi(lista, giusto), []);
+  assert.deepEqual(problemi(lista, giusto.replace('# Catalogo', '# Catalogo vecchio')), [['docs/CATALOGO.md', ['non è aggiornato: npm run catalogo']]]);
+  assert.match(problemi(lista, null)[0][1][0], /manca/);
+  // e il comando vero: 1 su un file vecchio o mancante, 0 su quello giusto (scritti in una cartella temporanea)
+  const dir = mkdtempSync(join(tmpdir(), 'kubo-catalogo-')), cli = join(import.meta.dirname, '..', 'strumenti', 'catalogo.mjs');
+  const esce = file => { try { execFileSync(process.execPath, [cli, '--controlla', '--file', file], { stdio: 'pipe' }); return 0; } catch (e) { return e.status; } };
+  writeFileSync(join(dir, 'vecchio.md'), giusto + '\nriga in più\n'); writeFileSync(join(dir, 'giusto.md'), giusto);
+  assert.equal(esce(join(dir, 'vecchio.md')), 1); assert.equal(esce(join(dir, 'manca.md')), 1); assert.equal(esce(join(dir, 'giusto.md')), 0);
 });

@@ -96,3 +96,25 @@ export const stessoSegreto = uguali;
 // le firme per i test e per chi scrive un connettore (docs/CONNETTORI.md)
 export const firmaStripeDi = (segreto, corpo, t = Math.floor(Date.now() / 1000)) => `t=${t},v1=${createHmac('sha256', segreto).update(`${t}.${corpo}`).digest('hex')}`;
 export const firmaHmacDi = (segreto, corpo, formato = 'base64') => createHmac('sha256', segreto).update(corpo).digest(formato);
+
+// il corpo multipart/form-data dei webhook (Jotform, alcuni moduli) → { campo: valore }: i campi di testo in UTF-8, i file
+// solo descritti in «_file» ({ campo, nome, tipo, dimensione }), senza il contenuto. Il buffer si legge in latin1 per non
+// spostare i byte, poi ogni valore torna UTF-8.
+export function leggiMultipart(grezzo, tipo = '') {
+  const b = /boundary=(?:"([^"]+)"|([^;\s]+))/i.exec(String(tipo || '')); if (!b) return null;
+  const testo = (Buffer.isBuffer(grezzo) ? grezzo : Buffer.from(String(grezzo ?? ''), 'utf8')).toString('latin1'), out = {}, file = [];
+  for (const parte of testo.split(`--${b[1] || b[2]}`)) {
+    const i = parte.indexOf('\r\n\r\n'); if (i < 0) continue;
+    const testa = parte.slice(0, i), nome = /name="([^"]*)"/i.exec(testa)?.[1], valore = parte.slice(i + 4).replace(/\r\n$/, '');
+    if (!nome) continue;
+    const nomeFile = /filename="([^"]*)"/i.exec(testa)?.[1];
+    if (nomeFile != null) { file.push({ campo: nome, nome: Buffer.from(nomeFile, 'latin1').toString('utf8'), tipo: /content-type:\s*([^\r\n;]+)/i.exec(testa)?.[1] || null, dimensione: valore.length }); continue; }
+    out[nome] = Buffer.from(valore, 'latin1').toString('utf8');
+  }
+  if (file.length) out._file = file;
+  return out;
+}
+// la verifica GET dei webhook di Meta (WhatsApp, Lead Ads, Instagram): hub.mode=subscribe, hub.verify_token = il token che
+// Kubo ha generato, risposta = hub.challenge (solo cifre e poco altro). Per entrata.verificaGet.
+export const sfidaMeta = (q, token) => (q.get('hub.mode') === 'subscribe' && !!token && uguali(String(q.get('hub.verify_token') || ''), token)
+  ? { testo: String(q.get('hub.challenge') || '').replace(/[^\w.-]/g, '').slice(0, 200) } : { stato: 403, testo: '' });

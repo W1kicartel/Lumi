@@ -77,17 +77,24 @@ test('Qapla\': pushShipment dalla vendita, stato con getShipment sulla vendita, 
 });
 
 test('Packlink PRO: bozza dalla vendita con Authorization, evento col codice segreto → spedizione riletta e tracking sulla vendita', async () => {
-  const K = await kubo(), bozze = []; let stato = 'AWAITING_COMPLETION';
+  const K = await kubo(), bozze = [], richiami = []; let stato = 'AWAITING_COMPLETION';
   const S = await finto({
     'GET /v1/users/me': (p, c, { intestazioni }) => (intestazioni.authorization === 'pk-finta' ? { email: 'spedizioni@bottega.example' } : { stato: 401, corpo: {} }),
     'POST /v1/shipments': (p, c) => { bozze.push(c); return { reference: 'IT2026PRO0001' }; },
     'GET /v1/shipments/:rif': p => ({ reference: p.rif, state: stato, carrier: 'GLS', tracking_codes: stato === 'AWAITING_COMPLETION' ? [] : ['GLS99887766'] }),
     'GET /v1/shipments/:rif/track': () => [{ description: 'In consegna', city: 'Parma', timestamp: 1760000000 }],
+    'POST /v1/shipments/callback': (p, c) => { richiami.push(c.url); return {}; },
   });
   try {
     const pag = await accendi(K, 'packlink', { base: S.url, segreti: { chiave: 'pk-finta' }, impostazioni: { servizio: 20945, mittente_nome: 'Bottega', mittente_via: 'Via del Corso 1', mittente_cap: '00186', mittente_comune: 'Roma' } });
     const codice = pag.impostazioni.find(i => i.id === 'codice').valore;
     assert.equal((await K.chiama('POST', '/api/connettori/packlink/prova')).json.messaggio, 'spedizioni@bottega.example');
+    // l'indirizzo degli eventi: senza indirizzo né Libreria un errore chiaro; poi quello scritto, poi (vuoto) quello della Libreria
+    assert.match(JSON.stringify((await K.chiama('POST', '/api/connettori/packlink/azioni/eventi', { args: {} })).json), /indirizzo pubblico https di Kubo/);
+    assert.equal((await K.chiama('POST', '/api/connettori/packlink/azioni/eventi', { args: { indirizzo: 'https://kubo.bottega.example/' } })).json.ok, true);
+    assert.equal((await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: 'https://pubblico.bottega.example' })).stato, 200);
+    assert.equal((await K.chiama('POST', '/api/connettori/packlink/azioni/eventi', { args: {} })).json.ok, true);
+    assert.deepEqual(richiami, [`https://kubo.bottega.example/api/connettori/packlink/in/${codice}`, `https://pubblico.bottega.example/api/connettori/packlink/in/${codice}`]);
     const v = await venditaConCliente(K, { nome: 'Luca De Santis', indirizzo: 'Borgo Parmigianino 7, 43121 Parma (PR)' });
     const r = await K.chiama('POST', '/api/connettori/packlink/azioni/bozza', { args: { vendita: v.numero, peso: 3 } });
     assert.equal(r.json.riferimento, 'IT2026PRO0001', JSON.stringify(r.json));

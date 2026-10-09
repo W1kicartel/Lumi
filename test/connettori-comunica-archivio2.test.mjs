@@ -45,6 +45,8 @@ test('Box: cartelle per id (il 409 dà quella che c\'è), fattura multipart, nuo
   });
   try {
     await accendi(K, 'box', { base: S.url, segreti: { client_id: 'cid', client_secret: 'sec' }, impostazioni: { tieni: 2 } });
+    const ub = new URL((await K.chiama('POST', '/api/connettori/box/oauth/inizio', { base: K.base })).json.url);   // Box non ha PKCE
+    assert.equal(ub.origin + ub.pathname, 'https://account.box.com/api/oauth2/authorize'); assert.equal(ub.searchParams.get('code_challenge'), null);
     assert.equal((await K.chiama('POST', '/api/connettori/box/prova')).json.ok, false);   // non ancora collegato
     collega(K, 'box');
     assert.equal((await K.chiama('POST', '/api/connettori/box/prova')).json.messaggio, 'titolare@bottega.example');
@@ -74,7 +76,13 @@ test('Box: cartelle per id (il 409 dà quella che c\'è), fattura multipart, nuo
 test('pCloud: regione UE/USA, codice scambiato su oauth2_token (token senza scadenza), cartelle create un livello alla volta, backup', async () => {
   // la regione decide l'host, anche per lo scambio del codice
   assert.equal(pcloud.oauth.token({ imp: {} }), 'https://eapi.pcloud.com/oauth2_token');
-  assert.equal(pcloud.oauth.token({ imp: { regione: 'api.pcloud.com' } }), 'https://api.pcloud.com/oauth2_token');
+  assert.equal(pcloud.oauth.token({ imp: { regione: 'api.pcloud.com' } }), 'https://api.pcloud.com/oauth2_token');   // un collegamento di prima
+  // l'host del ritorno dell'autorizzazione (hostname, in k.oauth.extra()) vince, ma solo se è uno dei due di pCloud
+  const conX = (hostname, regione) => ({ imp: regione ? { regione } : {}, oauth: { extra: () => ({ hostname }) } });
+  assert.equal(pcloud.oauth.token(conX('api.pcloud.com')), 'https://api.pcloud.com/oauth2_token');
+  assert.equal(pcloud.oauth.token(conX('eapi.pcloud.com', 'api.pcloud.com')), 'https://eapi.pcloud.com/oauth2_token');
+  assert.equal(pcloud.oauth.token(conX('evil.example')), 'https://eapi.pcloud.com/oauth2_token');
+  assert.equal(pcloud.oauth.pkce, false); assert.deepEqual(pcloud.oauth.conserva, ['hostname']); assert.ok(!pcloud.impostazioni.some(i => i.id === 'regione'));
   const K = await kubo(['negozio', 'fatture']);
   const cartelle = new Map([['/', 0], ['/Kubo', 11], ['/Kubo/Backup', 12]]), file = [...VECCHI, 'appunti.txt'].map((n, i) => ({ fileid: 500 + i, name: n, folderid: 12 }));
   let n = 100; const tolti = [];
@@ -99,7 +107,9 @@ test('pCloud: regione UE/USA, codice scambiato su oauth2_token (token senza scad
     assert.equal(u.origin + u.pathname, 'https://my.pcloud.com/oauth2/authorize'); assert.equal(u.searchParams.get('client_id'), 'cid');
     const rit = await K.chiama('GET', `/api/connettori/pcloud/oauth/ritorno?code=codice-1&state=${u.searchParams.get('state')}&locationid=2&hostname=eapi.pcloud.com`);
     assert.equal(rit.stato, 302); assert.match(rit.intestazioni.get('location'), /oauth=ok$/);
-    assert.deepEqual((await K.chiama('GET', '/api/connettori/pcloud')).json.oauth, { tipo: 'codice', collegato: true, scade: null, rinnovo: false });
+    assert.equal(u.searchParams.get('code_challenge'), null); assert.equal(S.chiamate.find(c => c.percorso === '/oauth2_token').corpo.code_verifier, undefined);   // niente PKCE
+    assert.deepEqual(K.nucleo.k('pcloud').oauth.extra(), { hostname: 'eapi.pcloud.com' });
+    const { tipo, collegato, scade, rinnovo } = (await K.chiama('GET', '/api/connettori/pcloud')).json.oauth; assert.deepEqual({ tipo, collegato, scade, rinnovo }, { tipo: 'codice', collegato: true, scade: null, rinnovo: false });
     assert.equal((await K.chiama('POST', '/api/connettori/pcloud/prova')).json.messaggio, 'titolare@bottega.example');
     const f = await fattura(K);
     const r = await K.chiama('POST', '/api/connettori/pcloud/azioni/salva_documento', { args: { fattura: f.id } });

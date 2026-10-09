@@ -1,6 +1,8 @@
 // Zoho CRM: i clienti di Kubo e i contatti di Zoho allineati nei due sensi.
-// - accesso: OAuth «codice» sul data center dell'account (impostazione «regione»: accounts.zoho.eu per l'UE, .com, .in, …),
-//   scope ZohoCRM.modules.contacts.ALL e ZohoCRM.modules.accounts.ALL; l'API sta su www.zohoapis.<regione>, «Zoho-oauthtoken»;
+// - accesso: OAuth «codice» sul data center scelto (impostazione «regione»: accounts.zoho.eu per l'UE, .com, .in, …), scope
+//   ZohoCRM.modules.contacts.ALL e ZohoCRM.modules.accounts.ALL, «Zoho-oauthtoken». Zoho dice nel ritorno dove sta davvero
+//   l'account («accounts-server», «location») e nel token dove sta l'API («api_domain»): il nucleo li conserva
+//   (oauth.conserva) e si usano solo se sono domini di Zoho (accounts.zoho.<dc> / www.zohoapis.<dc>), altrimenti la regione;
 // - Kubo → Zoho: ogni cliente nuovo o cambiato è un Contact (upsert con duplicate_check_fields Email: mai doppioni);
 //   chi ha la partita IVA è anche un Account (upsert per Account_Name) e il contatto ci viene collegato;
 // - Zoho → Kubo: ogni 15 minuti i Contacts cambiati dopo l'ultimo giro (If-Modified-Since) creano o aggiornano i clienti.
@@ -8,8 +10,13 @@
 import { spezza, lotti } from '../_comunica/tabelle.js';
 const REGIONI = ['eu', 'com', 'in', 'com.au', 'jp', 'ca', 'sa', 'com.cn'];
 const reg = k => (REGIONI.includes(k.imp.regione) ? k.imp.regione : 'eu');
-const zbase = k => `${k.base || `https://www.zohoapis.${reg(k)}`}/crm/v8`;
 const conti = k => (k.base ? `${k.base}/oauth/v2` : `https://accounts.${reg(k) === 'ca' ? 'zohocloud' : 'zoho'}.${reg(k)}/oauth/v2`);
+// i valori di Zoho dal ritorno e dal token, solo se sono suoi domini: mai un host qualsiasi arrivato nella query
+const DC = '(?:eu|com|in|com\\.au|jp|ca|sa|com\\.cn|uk)';
+const SERVER = new RegExp(`^https://accounts\\.zoho(?:cloud)?\\.${DC}$`), API = new RegExp(`^https://www\\.zohoapis\\.${DC}$`);
+const extra = k => k.oauth?.extra?.() || {};
+const contiToken = k => (!k.base && SERVER.test(extra(k)['accounts-server'] || '') ? `${extra(k)['accounts-server']}/oauth/v2` : conti(k));
+export const zbase = k => `${k.base || (API.test(extra(k).api_domain || '') ? extra(k).api_domain : `https://www.zohoapis.${reg(k)}`)}/crm/v8`;
 const opz = async (k, json, extra = {}) => ({ intestazioni: { Authorization: `Zoho-oauthtoken ${await k.oauth.token()}`, ...extra }, ...(json ? { json } : {}) });
 const no = (r, cosa) => new Error(`Zoho CRM ha risposto ${r.stato} a ${cosa}${r.json?.message || r.json?.data?.[0]?.message ? ': ' + (r.json.message || r.json.data[0].message) : ''}`);
 const CAMPI = 'Email,First_Name,Last_Name,Phone,Mobile,Modified_Time';
@@ -72,7 +79,7 @@ export default {
   richiede: { clienti: { nome: {}, email: { tipo: ['email'] }, telefono: { tipo: ['telefono', 'testo'], facoltativo: true }, piva: { tipo: ['testo'], facoltativo: true }, indirizzo: { tipo: ['indirizzo', 'testo'], facoltativo: true } } },
   permessi: { clienti: { leggi: true, crea: true, modifica: true } },
   mappe: { contatti: { entita: 'clienti', id: 'id', chiave: ['email', 'email'], campi: [{ kubo: 'nome', remoto: 'nome' }, { kubo: 'email', remoto: 'email' }, { kubo: 'telefono', remoto: 'telefono' }] } },
-  oauth: { tipo: 'codice', autorizza: k => `${conti(k)}/auth`, token: k => `${conti(k)}/token`, scope: 'ZohoCRM.modules.contacts.ALL,ZohoCRM.modules.accounts.ALL', extra: { access_type: 'offline', prompt: 'consent' } },
+  oauth: { tipo: 'codice', autorizza: k => `${conti(k)}/auth`, token: k => `${contiToken(k)}/token`, conserva: ['accounts-server', 'location', 'api_domain'], scope: 'ZohoCRM.modules.contacts.ALL,ZohoCRM.modules.accounts.ALL', extra: { access_type: 'offline', prompt: 'consent' } },
   prova: async k => { const r = await k.http.get(`${zbase(k)}/Contacts?fields=Email&per_page=1`, await opz(k)); return { ok: r.ok || r.stato === 204, messaggio: r.ok || r.stato === 204 ? `Collegato a Zoho CRM (${reg(k)})` : `HTTP ${r.stato}` }; },
   uscita: { clienti: { campi: ['nome', 'email', 'telefono', 'piva'], quando: (r, k) => !!k.valore(r, 'clienti', 'email'), invia: async (riga, k) => { await invia(k, [riga]); } } },
   pianificati: { contatti: { nome: 'Contatti modificati in Zoho CRM', ogni: '15m', giro: k => ricevi(k) } },

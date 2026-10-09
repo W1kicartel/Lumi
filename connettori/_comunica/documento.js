@@ -7,7 +7,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { stampa } from '../../server/moduli/documenti.js';
-import { xmlDi } from '../openapi-sdi/connettore.js';
+import { copiaXmlDi } from '../openapi-sdi/connettore.js';
 
 const meta = { leggi: (db, c) => db.prepare('SELECT valore FROM _meta WHERE chiave = ?').get(c)?.valore ?? null };
 // un nome di file che va bene ovunque (Windows, Drive, S3): niente / \ : * ? " < > |
@@ -15,13 +15,13 @@ export const nomeFile = s => String(s ?? '').replace(/[\\/:*?"<>|\x00-\x1f]+/g, 
 const fermo = s => s === 'bozza' || s === 'annullata';
 
 // → [{ nome, tipo, contenuto: Buffer }]: la stampa HTML e, per una fattura non in bozza, l'XML FatturaPA (se è valida)
-// (xml: false per un'anteprima: l'XML prende un progressivo d'invio, si genera solo quando si salva davvero)
+// (xml: false per un'anteprima). L'XML è una copia: riusa il progressivo dell'invio allo SDI, non ne consuma uno nuovo
 export function documentoDi(k, sezione, riga, { xml = true } = {}) {
   const s = stampa(k.db, { S: k.S, D: k.D, meta }, k.entita(sezione), riga.id, k.ctx), base = nomeFile(s.titolo);
   const out = [{ nome: `${base}.html`, tipo: 'text/html; charset=utf-8', contenuto: Buffer.from(s.html, 'utf8') }];
   if (xml && sezione === 'fatture' && k.valore(riga, 'fatture', 'stato') !== 'bozza') {
     // stesso nome della stampa: un nuovo salvataggio sovrascrive invece di lasciare doppioni
-    try { const x = xmlDi(k, riga); out.push({ nome: `${base}.xml`, tipo: 'application/xml', contenuto: Buffer.from(x.xml, 'utf8') }); } catch { /* fattura incompleta per lo SDI: solo la stampa */ }
+    try { const x = copiaXmlDi(k, riga); out.push({ nome: `${base}.xml`, tipo: 'application/xml', contenuto: Buffer.from(x.xml, 'utf8') }); } catch { /* fattura incompleta per lo SDI: solo la stampa */ }
   }
   return out;
 }
