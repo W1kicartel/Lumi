@@ -71,9 +71,15 @@ async function conte(dove, k, s, id) {
     catch (e) { toast(e.message, true); }
   } } });
   const cerca = h('input.campo', { type: 'search', placeholder: t('magazzino.cerca'), on: { input: () => disegna() } });
-  const corpoTab = h('div');
+  const corpoTab = h('div'), riassunto = h('div.magazzino-cifre');
+  // i numeri in alto si rifanno a ogni conta, senza tornare al server
+  const riassumi = () => {
+    const c = inv.righe.filter(r => r.contata != null), d = c.filter(r => r.contata !== r.attesa), v = c.reduce((x, r) => x + Math.round((r.contata - r.attesa) * r.costo * 100), 0) / 100;
+    metti(riassunto, cifra(k, t('magazzino.contati'), `${numero(c.length)} / ${numero(inv.righe.length)}`), cifra(k, t('magazzino.differenze'), numero(d.length)), cifra(k, t('magazzino.valore-differenze'), soldi(v), null, v < 0 ? 'attenzione' : ''));
+  };
   const salva = async (r, v) => { try { await api('POST', `/magazzino/inventari/${id}/conta`, { conte: [{ articolo: r.articolo, contata: v === '' ? null : Number(v) }] }); r.contata = v === '' ? null : Number(v); disegna(); } catch (e) { toast(e.message, true); } };
   function disegna() {
+    riassumi();
     const q = cerca.value.trim().toLowerCase(), l = inv.righe.filter(r => !q || `${r.nome} ${r.codice} ${r.barcode}`.toLowerCase().includes(q));
     metti(corpoTab, tabella(k, [t('magazzino.codice'), t('magazzino.articolo'), t('magazzino.attesa'), t('magazzino.contata'), t('magazzino.differenza')],
       l.slice(0, 500).map(r => { const d = r.contata == null ? null : r.contata - r.attesa;
@@ -86,8 +92,7 @@ async function conte(dove, k, s, id) {
     try { const x = await api('POST', `/magazzino/inventari/${id}/chiudi`); toast(t('magazzino.chiuso', { n: x.rettifiche, importo: soldi(x.valore) })); ridisegna(); } catch (e) { toast(e.message, true); ev.target.disabled = false; }
   };
   metti(dove,
-    h('div.magazzino-cifre', cifra(k, t('magazzino.contati'), `${numero(inv.contate)} / ${numero(inv.righe.length)}`), cifra(k, t('magazzino.differenze'), numero(inv.differenze)),
-      cifra(k, t('magazzino.valore-differenze'), soldi(inv.valoreDifferenze), null, inv.valoreDifferenze < 0 ? 'attenzione' : '')),
+    riassunto,
     sezione(k, inv.nome, aperto ? h('div.magazzino-filtri', lettore, cerca) : h('p.nota', t('magazzino.chiuso-il', { data: dataOra(inv.chiuso) })), corpoTab,
       aperto ? h('div.magazzino-azioni', h('button.btn.pieno', { testo: t('magazzino.chiudi'), on: { click: chiudi } }), h('span.nota', t('magazzino.chiudi-nota'))) : null));
   disegna();

@@ -86,6 +86,17 @@ Subito dopo vengono il ciclo degli acquisti e il magazzino vero: depositi, lotti
 
 Poi vengono la contabilità analitica per centri di costo, le presenze e le note spese, il portale clienti, la distinta base con la produzione, l'helpdesk con gli SLA, la fidelity e la gestione di più aziende.
 
-## Cosa si costruisce in questo giro (giro 4, squadra «confronto»)
+## Cosa è stato costruito in questo giro (giro 4, squadra «confronto»)
 
-I numeri 1-4 sono un modulo solo, la **Tesoreria** (`docs/TESORERIA.md`): condividono i dati, cioè le scadenze e i movimenti. Poi, se resta tempo, il numero 5, gli **Acquisti**. Il resto va al giro dopo, nell'ordine dell'elenco.
+La matrice qui sopra descrive Kubo **prima** di questo giro. Questo giro ha chiuso le lacune dalla 1 alla 5 e una parte della 6:
+
+| lacuna | modulo | adesso |
+|---|---|---|
+| 1. Scadenzario, termini, solleciti | Tesoreria ([TESORERIA.md](../TESORERIA.md)) | **c'è**: scadenze attive e passive dalle fatture, termini all'italiana (30/60/90 DFFM, +10), acconti, solleciti a tre livelli con il testo pronto |
+| 2. Ri.Ba., SDD, bonifici | Tesoreria | **c'è**: Ri.Ba. CBI a 120 caratteri, pain.008.001.02, pain.001.001.03, con i controlli dei dati prima del file |
+| 3. Estratto conto e riconciliazione | Tesoreria | **c'è**: CAMT.053, CBI «RH», CSV/Excel; proposte per importo, numero, IBAN, nome, data, somme di più fatture e accrediti di distinta; la sezione dei movimenti è la stessa dell'open banking |
+| 4. Previsione di cassa | Tesoreria | **c'è**: settimane o mesi, ritardo medio di ogni cliente, previsioni ricorrenti a mano, F24 del modulo fisco |
+| 5. Acquisti | Acquisti ([ACQUISTI.md](../ACQUISTI.md)) | **c'è**: riordino sotto scorta, ordini per fornitore, ricevimenti parziali con costo medio ponderato, confronto ordinato/ricevuto/fatturato |
+| 6. Magazzino avanzato | Magazzino ([MAGAZZINO.md](../MAGAZZINO.md)) | **parziale**: registro dei movimenti, valore al costo, inventario fisico con lettore e rettifiche. Mancano più depositi, lotti/seriali/scadenze e FIFO |
+
+Per il giro dopo, nell'ordine: il resto della 6 (depositi, lotti), poi la 7 (ordine cliente → DDT → fattura riepilogativa), la 8 (contratti ricorrenti), la 9 (pipeline CRM) e la 10 (cassa con registratore telematico).

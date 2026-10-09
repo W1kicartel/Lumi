@@ -93,7 +93,7 @@ export function inventario(k, ctx, id) {
   const def = S.leggi(db, i.sezione), t = S.campoTitolo(def)?.id || 'nome', ha = c => def.campi.some(x => x.id === c && !x.archiviato);
   const sel = [`a.${S.colonna(t)} AS nome`, ha('codice') ? `a.${S.colonna('codice')} AS codice` : "'' AS codice", ha('barcode') ? `a.${S.colonna('barcode')} AS barcode` : "'' AS barcode", `a.${S.colonna('giacenza')} AS giacenza`];
   const righe = db.prepare(`SELECT c.articolo, c.attesa, c.contata, c.costo, ${sel.join(', ')} FROM _magazzino_conte c LEFT JOIN ${S.tabella(i.sezione)} a ON a.id = c.articolo WHERE c.inventario = ? ORDER BY nome`).all(i.id)
-    .map(r => ({ articolo: r.articolo, nome: String(r.nome ?? ''), codice: r.codice || '', barcode: r.barcode || '', attesa: r.attesa, contata: r.contata, giacenza: num(r.giacenza),
+    .map(r => ({ articolo: r.articolo, nome: String(r.nome ?? ''), codice: r.codice || '', barcode: r.barcode || '', attesa: r.attesa, contata: r.contata, giacenza: num(r.giacenza), costo: euro(r.costo || 0),
       differenza: r.contata == null ? null : r.contata - r.attesa, valore: r.contata == null ? null : euro(Math.round((r.contata - r.attesa) * (r.costo || 0))) }));
   const contate = righe.filter(r => r.contata != null);
   return { ...i, righe, contate: contate.length, differenze: contate.filter(r => r.differenza).length, valoreDifferenze: euro(contate.reduce((s, r) => s + cent(r.valore), 0)) };
