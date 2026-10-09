@@ -49,7 +49,7 @@ npm run dist:win     # dist/Kubo-x.y.z-windows.exe (NSIS, senza diritti di ammin
 npm run dist:linux   # dist/Kubo-x.y.z-linux.AppImage e .deb
 ```
 
-`dist:*` disegna prima l'icona (`npm run icona`). Gli installatori vanno pubblicati come «release» su GitHub (W1kicartel/kubo).
+`dist:*` disegna prima l'icona (`npm run icona`). Sul Mac, prima di `dist:mac`, compila la voce locale con `bash voce-mac/compila.sh`: `desktop/bin/kubo-voce` (solo arm64) entra nel pacchetto in `Resources/kubo/bin`, e `x64ArchFiles` lo lascia com'è nell'app universale. Se manca, l'app si costruisce lo stesso, senza voce locale. Il microfono ha la sua frase in `NSMicrophoneUsageDescription`. Nell'app per Windows e Linux sherpa-onnx non c'è ancora: lì Lumi ascolta con Deepgram o con la voce del browser ([LUMI.md](LUMI.md#la-voce)). Gli installatori vanno pubblicati come «release» su GitHub (W1kicartel/kubo).
 
 Prima di distribuirli bisogna firmarli:
 

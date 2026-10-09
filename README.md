@@ -6,10 +6,10 @@
 
 - **Lo monti tu.** Sezioni, campi, stati, formule alla Excel in italiano, automazioni e permessi si cambiano da **Personalizza**. Nessuna modifica perde dati: un campo tolto si archivia, un cambio di tipo che perderebbe valori si ferma e ti dice quali.
 - **I dati stanno da te.** Un solo file SQLite su un PC o un piccolo server in ufficio; gli altri entrano dal browser della rete locale, anche dal telefono. Funziona senza internet.
-- **C'è Lumi.** Chiedi a parole: «quanto ho incassato questa settimana?», «aggiungi la taglia agli articoli». Lumi legge con i tuoi permessi e propone; ogni modifica la confermi tu.
+- **C'è Lumi.** Chiedi a parole: «quanto ho incassato questa settimana?», «aggiungi la taglia agli articoli». Lumi legge con i tuoi permessi e propone; ogni modifica la confermi tu. A voce ti capisce in 25 lingue europee con Parakeet, sul tuo computer: l'audio non esce.
 - **In sei lingue.** Italiano, inglese, spagnolo, francese, tedesco e portoghese del Brasile: ognuno sceglie la sua, l'azienda sceglie la valuta ([docs/LINGUE.md](docs/LINGUE.md)).
 
-Gratis, licenza MIT, zero dipendenze: basta Node ≥ 22.5.
+Gratis, licenza MIT, zero dipendenze obbligatorie: basta Node ≥ 22.5.
 
 ## Provalo in due minuti
 
@@ -68,6 +68,15 @@ Il disegno completo è in [docs/PROGETTO.md](docs/PROGETTO.md).
 ## Kubo non fa per te se…
 
 …vuoi un numero di telefono da chiamare quando qualcosa non va e non hai nessuno che sappia installare un programma, oppure ti serve la contabilità completa (prima nota, bilancio, F24): quella resta al commercialista.
+
+## La voce di Lumi
+
+Tieni premuto ⌥ Spazio (Ctrl ⇧ Spazio su Windows e Linux) e parla. Se il computer che tiene Kubo ha la **voce locale**, la trascrive [Parakeet TDT 0.6B v3](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3) di NVIDIA, gratis e senza mandare l'audio fuori. Riconosce da sola una delle 25 lingue europee del modello: bulgaro, ceco, croato, danese, estone, finlandese, francese, greco, inglese, italiano, lettone, lituano, maltese, olandese, polacco, portoghese, rumeno, russo, slovacco, sloveno, spagnolo, svedese, tedesco, ucraino e ungherese. Lumi risponde nella lingua in cui gli hai parlato.
+
+- **Mac con chip Apple:** `bash desktop/voce-mac/compila.sh` una volta (servono gli strumenti di Apple). Al primo uso si scarica il modello, circa 460 MB.
+- **Windows, Linux, Mac Intel:** `npm install` aggiunge `sherpa-onnx-node`, l'unica dipendenza ed è facoltativa. Al primo uso scarica il modello ONNX: 640 MB, controllati con le impronte.
+
+Senza, Kubo funziona lo stesso: Lumi ascolta con Deepgram (se c'è la chiave) o con la voce del browser. Tutto in [docs/LUMI.md](docs/LUMI.md#la-voce).
 
 ## Sicurezza e prestazioni
 
