@@ -34,3 +34,53 @@ test('Fogli Google: la sezione scelta nella scheda (intestazioni = nomi dei camp
     assert.equal(a.righe, 2); assert.equal(S.chiamate.filter(c => c.corpo?.requests).length, 1);
   } finally { await K.chiudi(); await S.chiudi(); }
 });
+
+test('Airtable: upsert a lotti da 10 su «Kubo ID», solo i campi con lo stesso nome, poi solo le righe cambiate', async () => {
+  const K = await kubo(['studio']); const lotti = [];
+  const S = await finto({
+    'GET /v0/meta/bases/:base/tables': () => ({ tables: [{ id: 'tblClienti', name: 'Clienti', fields: [{ name: 'Kubo ID' }, { name: 'Nome' }, { name: 'Email' }, { name: 'Consenso al trattamento' }] }] }),
+    'PATCH /v0/:base/:tabella': (p, c) => { lotti.push(c); return { records: c.records.map((r, i) => ({ id: `rec${lotti.length}_${i}`, fields: r.fields })), createdRecords: c.records.map((r, i) => `rec${lotti.length}_${i}`), updatedRecords: [] }; },
+  });
+  try {
+    for (let i = 1; i <= 12; i++) await K.chiama('POST', '/api/dati/clienti', { nome: `Cliente ${i}`, email: `c${i}@esempio.it`, consenso: i % 2 === 0 });
+    await accendi(K, 'airtable', { base: S.url, segreti: { token: 'patFINTO.0123456789abcdef' }, impostazioni: { base: 'appFINTO12345678', tabella: 'clienti', sezione: 'Clienti' } });
+    assert.equal((await K.chiama('POST', '/api/connettori/airtable/prova')).json.messaggio, 'Clienti: 4 campi');
+    const g = (await K.chiama('POST', '/api/connettori/airtable/giri/sincronizza')).json;
+    assert.equal(g.esito, 'ok', JSON.stringify(g)); assert.deepEqual(g.risultato, { tabella: 'Clienti', creati: 12, aggiornati: 0, campi: 3 });
+    assert.deepEqual(lotti.map(l => l.records.length), [10, 2]);
+    assert.deepEqual(lotti[0].performUpsert, { fieldsToMergeOn: ['Kubo ID'] }); assert.equal(lotti[0].typecast, true);
+    assert.deepEqual(Object.keys(lotti[0].records[0].fields).sort(), ['Consenso al trattamento', 'Email', 'Kubo ID', 'Nome']);   // «Telefono» non c'è in Airtable: non passa
+    assert.equal(S.chiamate.find(c => c.metodo === 'PATCH').intestazioni.authorization, 'Bearer patFINTO.0123456789abcdef');
+    assert.equal((await K.chiama('POST', '/api/connettori/airtable/giri/sincronizza')).json.risultato.creati, 0);   // niente di nuovo
+    const uno = (await K.chiama('GET', '/api/dati/clienti?perPagina=1')).json.righe[0];
+    await pausa(5); await K.chiama('PATCH', `/api/dati/clienti/${uno.id}`, { note: 'cambiato' });
+    await K.chiama('POST', '/api/connettori/airtable/giri/sincronizza');
+    assert.equal(lotti.at(-1).records.length, 1); assert.equal(lotti.at(-1).records[0].fields['Kubo ID'], uno.id);
+    assert.equal(K.nucleo.k('airtable').sincro.remoto('clienti', uno.id) != null, true);
+  } finally { await K.chiudi(); await S.chiudi(); }
+});
+
+test('Notion: una pagina per riga con le proprietà del database, la seconda volta PATCH della stessa pagina', async () => {
+  const K = await kubo(['studio']); let n = 0;
+  const S = await finto({
+    'GET /v1/databases/:id': () => ({ title: [{ plain_text: 'Clienti' }], properties: { Nome: { id: 'title', name: 'Nome', type: 'title' }, Email: { id: 'e', name: 'Email', type: 'email' }, Telefono: { id: 't', name: 'Telefono', type: 'phone_number' }, 'Data di nascita': { id: 'd', name: 'Data di nascita', type: 'date' }, Consenso: { id: 'c', name: 'consenso', type: 'checkbox' }, Totale: { id: 'f', name: 'Totale', type: 'formula' } } }),
+    'POST /v1/pages': (p, c) => ({ id: `pag-${++n}`, properties: c.properties }),
+    'PATCH /v1/pages/:id': (p, c) => ({ id: p.id }),
+  });
+  try {
+    const a = (await K.chiama('POST', '/api/dati/clienti', { nome: 'Anna Bianchi', email: 'anna@esempio.it', telefono: '+39 333 1111111', nascita: '1990-05-04', consenso: true })).json;
+    await accendi(K, 'notion', { base: S.url, segreti: { token: 'ntn_finto0123456789abcdefghij' }, impostazioni: { database: 'https://www.notion.so/bottega/0123456789abcdef0123456789abcdef?v=1', sezione: 'clienti' } });
+    const g = (await K.chiama('POST', '/api/connettori/notion/giri/sincronizza')).json;
+    assert.equal(g.esito, 'ok', JSON.stringify(g)); assert.equal(g.risultato.creati, 1);
+    const post = S.chiamate.find(c => c.metodo === 'POST');
+    assert.equal(post.intestazioni['notion-version'], '2022-06-28'); assert.equal(post.intestazioni.authorization, 'Bearer ntn_finto0123456789abcdefghij');
+    assert.deepEqual(post.corpo.parent, { database_id: '0123456789abcdef0123456789abcdef' });
+    assert.deepEqual(post.corpo.properties.Nome, { title: [{ type: 'text', text: { content: 'Anna Bianchi' } }] });
+    assert.deepEqual(post.corpo.properties.Email, { email: 'anna@esempio.it' }); assert.deepEqual(post.corpo.properties['Data di nascita'], { date: { start: '1990-05-04' } });
+    assert.deepEqual(post.corpo.properties.Telefono, { phone_number: '+39 333 1111111' }); assert.equal(post.corpo.properties.Totale, undefined);
+    await pausa(5); await K.chiama('PATCH', `/api/dati/clienti/${a.id}`, { email: 'anna.b@esempio.it' });
+    const g2 = (await K.chiama('POST', '/api/connettori/notion/giri/sincronizza')).json.risultato;
+    assert.deepEqual([g2.creati, g2.aggiornati], [0, 1]);
+    const patch = S.chiamate.find(c => c.metodo === 'PATCH'); assert.equal(patch.percorso, '/v1/pages/pag-1'); assert.deepEqual(patch.corpo.properties.Email, { email: 'anna.b@esempio.it' });
+  } finally { await K.chiudi(); await S.chiudi(); }
+});
