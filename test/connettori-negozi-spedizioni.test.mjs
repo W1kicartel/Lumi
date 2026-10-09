@@ -15,11 +15,13 @@ test('Sendcloud: etichetta dalla vendita (indirizzo scomposto), webhook firmato 
   let stato = { id: 1000, message: 'Ready to send' };
   const S = await finto({
     'GET /api/v2/user': () => ({ user: { company_name: 'Bottega' } }),
-    'POST /api/v2/parcels': (p, c) => { pacchi.push(c.parcel); return { parcel: { id: 555, tracking_number: '3SABC123', tracking_url: 'https://tracking.example/3SABC123', carrier: { code: 'brt' }, status: stato, label: { label_printer: 'https://panel.example/labels/555' } } }; },
+    'POST /api/v3/shipments/announce': (p, c) => { pacchi.push(c); return pacchi.filter(x => x.external_reference_id === c.external_reference_id).length > 1
+      ? { stato: 409, corpo: { data: { id: 'sh1', carrier: { code: 'brt' }, parcels: [{ id: 555, tracking_number: '3SABC123', status: { code: 'READY_TO_SEND', message: 'Ready to send' } }] } } }
+      : { stato: 201, corpo: { data: { id: 'sh1', carrier: { code: 'brt', name: 'BRT' }, parcels: [{ id: 555, tracking_number: '3SABC123', tracking_url: 'https://tracking.example/3SABC123', status: { code: 'READY_TO_SEND', message: 'Ready to send' }, documents: [{ type: 'label', link: 'https://panel.example/documents/555' }] }] } } }; },
     'GET /api/v2/parcels/:id': p => ({ parcel: { id: Number(p.id), tracking_number: '3SABC123', carrier: { code: 'brt' }, status: stato, tracking_url: 'https://tracking.example/3SABC123' } }),
   });
   try {
-    await accendi(K, 'sendcloud', { base: S.url, segreti: { chiave_pubblica: 'pub', chiave_segreta: 'sec' }, impostazioni: { metodo: 8 } });
+    await accendi(K, 'sendcloud', { base: S.url, segreti: { chiave_pubblica: 'pub', chiave_segreta: 'sec' }, impostazioni: { mittente: 42, opzione: 'brt:standard' } });
     assert.equal((await K.chiama('POST', '/api/connettori/sendcloud/prova')).json.ok, true);
     assert.equal(S.chiamate[0].intestazioni.authorization, 'Basic ' + Buffer.from('pub:sec').toString('base64'));
     const v = await venditaConCliente(K);
@@ -27,8 +29,9 @@ test('Sendcloud: etichetta dalla vendita (indirizzo scomposto), webhook firmato 
     assert.equal(ant.json.righe[1][1], 'Mario Rossi, Via Roma 12, 20121 Milano', JSON.stringify(ant.json));
     const r = await K.chiama('POST', '/api/connettori/sendcloud/azioni/etichetta', { args: { vendita: v.numero, peso: 2.5 } });
     assert.equal(r.json.tracking, '3SABC123', JSON.stringify(r.json));
-    assert.deepEqual({ ...pacchi[0], email: undefined }, { name: 'Mario Rossi', address: 'Via Roma', house_number: '12', city: 'Milano', postal_code: '20121', country: 'IT', country_state: 'MI', telephone: '3330000000', email: undefined,
-      order_number: String(v.numero), weight: '2.500', request_label: true, total_order_value: '40', total_order_value_currency: 'EUR', shipment: { id: 8 } });
+    assert.equal(r.json.etichetta, 'https://panel.example/documents/555');
+    assert.deepEqual(pacchi[0], { from_address: { sender_address_id: 42 }, to_address: { name: 'Mario Rossi', address_line_1: 'Via Roma', house_number: '12', postal_code: '20121', city: 'Milano', country_code: 'IT', state_province_code: 'IT-MI', phone_number: '3330000000', email: 'mario.rossi@esempio.it' },
+      ship_with: { type: 'shipping_option_code', properties: { shipping_option_code: 'brt:standard' } }, parcels: [{ weight: { value: '2.5', unit: 'kg' } }], order_number: String(v.numero), total_order_price: { value: '40', currency: 'EUR' }, external_reference_id: `kubo-${v.id}-0` });
     assert.match((await K.chiama('GET', `/api/dati/vendite/${v.id}`)).json.note, /Spedizione BRT 3SABC123: Ready to send/);
     // il corriere consegna: Sendcloud avvisa con il webhook firmato
     const ev = JSON.stringify({ action: 'parcel_status_changed', timestamp: 1760000000, parcel: { id: 555, tracking_number: '3SABC123', status: { id: 11, message: 'Delivered' }, carrier: { code: 'brt' } } });

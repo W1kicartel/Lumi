@@ -5,12 +5,15 @@
 // AWS SigV4 e i ruoli IAM non servono più (https://developer-docs.amazon.com/sp-api/docs/connecting-to-the-selling-partner-api).
 // Ordini: Orders API v0 (getOrders con LastUpdatedAfter e NextToken, getOrderItems); giacenze: Listings Items 2021-08-01,
 // patch di /attributes/fulfillment_availability. I limiti sono bassi (getOrders 0,0167 richieste/s): il nucleo riprova i 429.
+// Da fare entro il 27 marzo 2027: Orders v0 è deprecata e va sostituita da Orders 2026-01-01 (searchOrders, getOrder con
+// le righe) (https://developer-docs.amazon.com/sp-api/docs/orders-api-migration-guide).
 import { importaOrdine, venditaDa, tondo, RICHIEDE_NEGOZI } from '../_negozi/comune.js';
 import { token } from '../_negozi/token.js';
 
 const HOST = { eu: 'https://sellingpartnerapi-eu.amazon.com', na: 'https://sellingpartnerapi-na.amazon.com', fe: 'https://sellingpartnerapi-fe.amazon.com' };
 const host = k => (k.base || HOST[k.imp.regione] || HOST.eu).replace(/\/$/, '');
-const accesso = async k => ({ intestazioni: { 'x-amz-access-token': await token(k, { url: k.base ? `${host(k)}/auth/o2/token` : 'https://api.amazon.com/auth/o2/token',
+const adesso = () => new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
+const accesso = async k => ({ intestazioni: { 'x-amz-date': adesso(), 'x-amz-access-token': await token(k, { url: k.base ? `${host(k)}/auth/o2/token` : 'https://api.amazon.com/auth/o2/token',
   form: { grant_type: 'refresh_token', refresh_token: k.segreti.refresh_token, client_id: k.segreti.client_id, client_secret: k.segreti.client_secret } }) } });
 const errore = r => new Error(`Amazon ha risposto ${r.stato}${r.json?.errors?.[0] ? ': ' + r.json.errors[0].code + ' ' + (r.json.errors[0].message || '') : ''}`);
 async function chiama(k, metodo, p, q = {}, json) {
@@ -115,7 +118,7 @@ export default {
       'Da qui gli ordini arrivano ogni 15 minuti e la giacenza delle offerte non FBA segue Kubo.',
     ],
     difficolta: 'difficile', zone: ['IT', 'UE', 'mondo'],
-    fonti: ['https://developer-docs.amazon.com/sp-api/docs/connecting-to-the-selling-partner-api', 'https://developer-docs.amazon.com/sp-api/docs/orders-api-v0-reference', 'https://developer-docs.amazon.com/sp-api/docs/listings-items-api-v2021-08-01-reference', 'https://developer-docs.amazon.com/sp-api/docs/marketplace-ids'],
+    fonti: ['https://developer-docs.amazon.com/sp-api/docs/connecting-to-the-selling-partner-api', 'https://developer-docs.amazon.com/sp-api/docs/orders-api-v0-reference', 'https://developer-docs.amazon.com/sp-api/docs/listings-items-api-v2021-08-01-reference', 'https://developer-docs.amazon.com/sp-api/docs/marketplace-ids', 'https://developer-docs.amazon.com/sp-api/changelog/sp-api-will-no-longer-require-aws-iam-or-aws-signature-version-4', 'https://developer-docs.amazon.com/sp-api/docs/self-authorization'],
     prova: 'finto', parole: ['amazon', 'seller central', 'sp-api', 'selling partner', 'marketplace', 'ordini', 'giacenze', 'fba', 'orders', 'inventory'],
   },
   testi: {

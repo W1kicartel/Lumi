@@ -1,6 +1,7 @@
 // I connettori dei marketplace (Amazon, eBay, Etsy) contro finti servizi locali.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { createHmac } from 'node:crypto';
 import { finto, kubo, accendi, manda, firmaHmacDi } from './connettori-finto.mjs';
 
 const aspetta = async K => { await new Promise(r => setTimeout(r, 50)); await K.nucleo.lavora(); };
@@ -45,8 +46,9 @@ test('Amazon SP-API: LWA con refresh token (niente SigV4), offerte collegate per
 test('eBay: refresh token con Basic, inventario collegato per SKU con «next», ordini pagati → vendite, bulkUpdatePriceQuantity, spedizione', async () => {
   const K = await kubo(), qta = [], spediti = [];
   const S = await finto({
-    'POST /identity/v1/oauth2/token': (p, c, { intestazioni }) => (intestazioni.authorization === 'Basic ' + Buffer.from('app-id:cert-id').toString('base64') && c.grant_type === 'refresh_token' && c.scope.includes('sell.inventory')
-      ? { access_token: 'v^1.1#utente', expires_in: 7200, token_type: 'User Access Token' } : { stato: 401, corpo: { error: 'invalid_client' } }),
+    'POST /identity/v1/oauth2/token': (p, c, { intestazioni }) => (intestazioni.authorization !== 'Basic ' + Buffer.from('app-id:cert-id').toString('base64') ? { stato: 401, corpo: { error: 'invalid_client' } }
+      : c.grant_type === 'authorization_code' && c.code === 'v^1.1#codice' && c.redirect_uri === 'Bottega-Kubo-PRD-runame' ? { access_token: 'v^1.1#breve', refresh_token: 'v^1.1#refresh', refresh_token_expires_in: 47304000, expires_in: 7200 }
+      : c.grant_type === 'refresh_token' && c.refresh_token === 'v^1.1#refresh' && c.scope.includes('sell.inventory') ? { access_token: 'v^1.1#utente', expires_in: 7200, token_type: 'User Access Token' } : { stato: 400, corpo: { error: 'invalid_grant' } }),
     'GET /sell/inventory/v1/inventory_item': (p, c, { q }) => (q.get('offset') === '0' ? { inventoryItems: [{ sku: 'EB-LAMPADA' }], next: 'https://api.ebay.com/sell/inventory/v1/inventory_item?limit=100&offset=100', total: 2 } : { inventoryItems: [{ sku: 'EB-ALTRO' }], total: 2 }),
     'POST /sell/inventory/v1/bulk_update_price_quantity': (p, c) => { qta.push(c); return { responses: [{ statusCode: 200, sku: c.requests[0].sku }] }; },
     'GET /sell/fulfillment/v1/order': (p, c, { q }) => (q.get('limit') === '1' ? { total: 2, orders: [] } : { total: 2, orders: [
@@ -58,7 +60,13 @@ test('eBay: refresh token con Basic, inventario collegato per SKU con «next», 
   });
   try {
     const lampada = await nuovoArticolo(K, 'EB-LAMPADA', 6, 30);
-    await accendi(K, 'ebay', { base: S.url, segreti: { client_id: 'app-id', client_secret: 'cert-id', refresh_token: 'v^1.1#refresh' } });
+    await accendi(K, 'ebay', { base: S.url, segreti: { client_id: 'app-id', client_secret: 'cert-id' }, impostazioni: { runame: 'Bottega-Kubo-PRD-runame' } });
+    // consenso con il RuName: Kubo dà l'indirizzo, eBay rimanda su /pub/ritorno con code e state
+    const u = new URL((await K.chiama('POST', '/api/connettori/ebay/azioni/collega', { args: {} })).json.indirizzo);
+    assert.equal(u.pathname, '/oauth2/authorize'); assert.equal(u.searchParams.get('redirect_uri'), 'Bottega-Kubo-PRD-runame');
+    assert.match(await (await fetch(`${K.base}/api/connettori/ebay/pub/ritorno?code=${encodeURIComponent('v^1.1#codice')}`)).text(), /non riuscito/);   // senza state no
+    assert.match(await (await fetch(`${K.base}/api/connettori/ebay/pub/ritorno?code=${encodeURIComponent('v^1.1#codice')}&state=altro`)).text(), /non riuscito/);
+    assert.match(await (await fetch(`${K.base}/api/connettori/ebay/pub/ritorno?code=${encodeURIComponent('v^1.1#codice')}&state=${u.searchParams.get('state')}&expires_in=299`)).text(), /collegato/);
     assert.equal((await K.chiama('POST', '/api/connettori/ebay/prova')).json.ok, true);
     const c = S.chiamate.find(x => x.percorso === '/sell/fulfillment/v1/order');
     assert.equal(c.intestazioni.authorization, 'Bearer v^1.1#utente'); assert.equal(c.intestazioni['x-ebay-c-marketplace-id'], 'EBAY_IT');
@@ -88,11 +96,14 @@ test('Etsy: OAuth PKCE del nucleo, x-api-key con il segreto condiviso, ricevute 
     'PUT /v3/application/listings/777/inventory': (p, c) => { inventari.push(c); return inventario; },
     'GET /v3/application/shops/456/receipts': () => ({ count: 1, results: [{ receipt_id: 3001, name: 'Lucia Bruni', first_line: 'Via Garibaldi 5', zip: '50123', city: 'Firenze', state: 'FI', is_paid: true, status: 'Paid', updated_timestamp: 1760000000,
       transactions: [{ sku: 'ET-COLLANA', title: 'Collana', quantity: 1, price: { amount: 2500, divisor: 100 } }] }] }),
+    'GET /v3/application/shops/456/receipts/:id': p => ({ receipt_id: Number(p.id), name: 'Paolo Gallo', first_line: 'Via Manzoni 1', zip: '20121', city: 'Milano', is_paid: true, status: 'Paid',
+      transactions: [{ sku: 'ET-COLLANA', title: 'Collana', quantity: 2, price: { amount: 2500, divisor: 100 } }] }),
     'POST /v3/application/shops/456/receipts/:id/tracking': (p, c) => { tracking.push([p.id, c]); return { receipt_id: Number(p.id) }; },
   });
   try {
     const collana = await nuovoArticolo(K, 'ET-COLLANA', 4, 25);
-    await accendi(K, 'etsy', { base: S.url, segreti: { keystring: 'kstr', shared_secret: 'ssec' } });
+    const whsec = 'whsec_' + Buffer.from('segreto-webhook-etsy').toString('base64');
+    await accendi(K, 'etsy', { base: S.url, segreti: { keystring: 'kstr', shared_secret: 'ssec', webhook: whsec } });
     const u = new URL((await K.chiama('POST', '/api/connettori/etsy/oauth/inizio', { base: K.base })).json.url);
     assert.equal(u.origin + u.pathname, 'https://www.etsy.com/oauth/connect'); assert.equal(u.searchParams.get('client_id'), 'kstr'); assert.equal(u.searchParams.get('code_challenge_method'), 'S256');
     assert.match(u.searchParams.get('scope'), /listings_w/);
@@ -110,5 +121,13 @@ test('Etsy: OAuth PKCE del nucleo, x-api-key con il segreto condiviso, ricevute 
     const v = (await K.chiama('GET', '/api/dati/vendite')).json.righe[0]; assert.equal(v.totale, 25); assert.equal(v.cliente.titolo, 'Lucia Bruni');
     const r = await K.chiama('POST', '/api/connettori/etsy/azioni/spedito', { args: { vendita: v.numero, tracking: 'SDA555', corriere: 'SDA' } });
     assert.equal(r.json.ok, true, JSON.stringify(r.json)); assert.deepEqual(tracking[0], ['3001', { tracking_code: 'SDA555', carrier_name: 'SDA' }]);
+    // webhook order.paid firmato alla Standard Webhooks: la ricevuta si rilegge dall'API
+    const corpo = JSON.stringify({ event_type: 'order.paid', resource_url: 'https://api.etsy.com/v3/application/shops/456/receipts/3002', shop_id: 456 }), t = Math.floor(Date.now() / 1000);
+    const firma = createHmac('sha256', Buffer.from('segreto-webhook-etsy')).update(`msg_1.${t}.${corpo}`).digest('base64');
+    assert.equal((await manda(K, '/api/connettori/etsy/in', corpo, { 'webhook-id': 'msg_1', 'webhook-timestamp': String(t), 'webhook-signature': 'v1,sbagliata' })).stato, 401);
+    assert.equal((await manda(K, '/api/connettori/etsy/in', corpo, { 'webhook-id': 'msg_1', 'webhook-timestamp': String(t - 600), 'webhook-signature': `v1,${firma}` })).stato, 401);   // troppo vecchio
+    const w = await manda(K, '/api/connettori/etsy/in', corpo, { 'webhook-id': 'msg_1', 'webhook-timestamp': String(t), 'webhook-signature': `v1,altra v1,${firma}` });
+    assert.equal(w.json.esito, 'vendita creata', JSON.stringify(w.json));
+    assert.equal((await K.chiama('GET', '/api/dati/vendite')).json.righe.length, 2);
   } finally { await K.chiudi(); await S.chiudi(); }
 });
