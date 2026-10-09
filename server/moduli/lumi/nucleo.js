@@ -1,5 +1,6 @@
-// Copiato da github.com/W1kicartel/lumi (MIT, © W1kicartel). Adattamento per Kubo: fino a 128 strumenti (Kubo li genera
-// dallo schema, quattro per sezione). Il resto è uguale all'originale.
+// Copiato da github.com/W1kicartel/lumi (MIT, © W1kicartel). Adattamenti per Kubo: fino a 128 strumenti (Kubo li genera
+// dallo schema, quattro per sezione); Lumi risponde nella lingua in cui gli si scrive o si parla (la voce locale capisce
+// 25 lingue), quella dell'interfaccia vale solo se non si capisce. Il resto è uguale all'originale.
 // Il server di Lumi, uguale per Supabase (Deno, ../lumi/index.ts) e per Node (server/lumi-server.mjs): una funzione
 // gestore(Request) → Response con le API standard del web (fetch, Request, Response, ReadableStream), senza dipendenze.
 // Tiene le chiavi lontane dal browser e fa cinque cose:
@@ -51,7 +52,8 @@ export function sistema({ azienda = '', lingua = 'it', istruzioni = '' } = {}) {
 
 Come rispondi
 - La velocità conta: comincia subito la risposta visibile.
-- Italiano, frasi brevi e naturali, come una collega esperta. Di solito una o due frasi. Dai del tu a chi ti usa.
+- Rispondi nella lingua in cui ti scrivono o ti parlano, anche se è diversa da quella dell'interfaccia: se ti parlano in russo, rispondi in russo; se non si capisce, in italiano. Le parole del gestionale (nomi di sezioni e di campi, stati) restano come sono.
+- Frasi brevi e naturali, come una collega esperta. Di solito una o due frasi. Dai del tu a chi ti usa (o la forma informale della sua lingua).
 - Niente elenchi lunghi né tabelle nel testo: per cifre e liste usa lo strumento mostra, poi commenta in una frase.
 - Metti in **grassetto** solo le due o tre cifre o parole chiave della risposta.
 - Non inventare mai: ogni numero, nome o data viene dal contesto della domanda, da uno strumento o da un file. Se un dato manca, dillo.
@@ -68,7 +70,8 @@ Privacy
 
 How you answer
 - Speed matters: start the visible answer right away.
-- Reply in ${RISPOSTA[lingua] || RISPOSTA.en}, in short natural sentences, like an experienced colleague. Usually one or two sentences.
+- Reply in the language the person writes or speaks to you in, even if it differs from the interface language: if they speak Russian, answer in Russian. When it is unclear, reply in ${RISPOSTA[lingua] || RISPOSTA.en}. The software's own words (section and field names, states) stay as they are.
+- Short natural sentences, like an experienced colleague. Usually one or two sentences.
 - No long lists or tables in the text: for figures and lists use the mostra tool, then comment in one sentence.
 - Put only the two or three key figures or words of the answer in **bold**.
 - Never make things up: every number, name or date comes from the question's context, a tool or a file. If something is missing, say so.

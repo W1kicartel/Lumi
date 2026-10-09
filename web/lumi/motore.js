@@ -1,4 +1,5 @@
-// Copiato da github.com/W1kicartel/lumi (MIT, © W1kicartel). Adattamento per Kubo: «strumenti» può essere una funzione,
+// Copiato da github.com/W1kicartel/lumi (MIT, © W1kicartel). Adattamenti per Kubo: trascriviVoce manda l'audio alla voce
+// locale del server (Parakeet, <server>/voce/trascrivi); «strumenti» può essere una funzione,
 // riletta a ogni giro (lo schema cambia mentre si parla: una sezione nuova porta i suoi strumenti); la proposta può avere
 // «avvisi» (i controlli prima della conferma, per esempio quelli dello SDI su una fattura), mostrati nella scheda.
 // Il motore di Lumi, senza DOM: la conversazione con Claude (in streaming, attraverso il server dell'azienda), gli
@@ -348,6 +349,14 @@ export function creaMotore(op, ui = {}) {
   return {
     M, strumenti, chiedi, conferma, annulla, interrompi, ricomincia, servizio, aggiungiFile, togliAllegato, eliminaFile,
     gettoneVoce: () => chiamaJson({ azione: 'voce' }),
+    // la voce locale: Float32Array mono 16 kHz → { testo } (l'audio va solo al server dell'azienda)
+    async trascriviVoce(audio) {
+      const extra = typeof op.intestazioni === 'function' ? await op.intestazioni() : op.intestazioni || {};
+      const r = await f(op.voceLocale || `${String(op.server).replace(/\/$/, '')}/voce/trascrivi`, { method: 'POST', headers: { ...extra, 'Content-Type': 'application/octet-stream' }, body: audio });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.errore || `HTTP ${r.status}`);
+      return j;
+    },
     pubblico, pubblicoSubito, schermoCondiviso,
     impostaSchermoCondiviso(v) { condiviso = !!v; U.schermo?.(condiviso); },
     puoChattare, strumento,

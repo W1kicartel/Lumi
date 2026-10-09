@@ -33,6 +33,7 @@ export default {
   'moduli.lumi-modello': "Modèle : {modello}.",
   'moduli.lumi-voce-accesa': "Voix en temps réel activée.",
   'moduli.lumi-voce-browser': "Voix : celle du navigateur, quand elle existe.",
+  'moduli.lumi-voce-locale': "Voix locale : Parakeet, sur cet ordinateur, comprend 25 langues européennes et l'audio ne quitte pas l'entreprise.",
   'moduli.ag-adesso': "à l'instant",
   'moduli.ag-agenda': "Agenda",
   'moduli.ag-calendario': "Calendrier",

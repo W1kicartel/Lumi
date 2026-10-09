@@ -114,7 +114,7 @@ async function impostazioni(contenuto, k) {
       h('div.foglio', { stile: { marginTop: '16px' } },
         h('div.etichetta', t('moduli.lumi-da-provare')),
         h('ul.kubo-lumi-esempi', [1, 2, 3, 4, 5].map(i => h('li', t('moduli.lumi-esempio-' + i)))),
-        h('p.nota', t('moduli.lumi-modello', { modello: st.modello }), ' ', st.voce ? t('moduli.lumi-voce-accesa') : t('moduli.lumi-voce-browser')))));
+        h('p.nota', t('moduli.lumi-modello', { modello: st.modello }), ' ', st.voceLocale ? t('moduli.lumi-voce-locale') : st.voce ? t('moduli.lumi-voce-accesa') : t('moduli.lumi-voce-browser')))));
 }
 
 export default {

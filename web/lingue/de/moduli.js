@@ -33,6 +33,7 @@ export default {
   'moduli.lumi-modello': "Modell: {modello}.",
   'moduli.lumi-voce-accesa': "Echtzeit-Sprache an.",
   'moduli.lumi-voce-browser': "Sprache: die des Browsers, wo vorhanden.",
+  'moduli.lumi-voce-locale': "Lokale Spracherkennung: Parakeet versteht auf diesem Computer 25 europäische Sprachen, und das Audio verlässt das Unternehmen nicht.",
   'moduli.ag-adesso': "gerade eben",
   'moduli.ag-agenda': "Kalender",
   'moduli.ag-calendario': "Kalenderansicht",
