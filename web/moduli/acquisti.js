@@ -35,7 +35,7 @@ function prepara(dove, k, imp, dopo) {
   if (!imp.puo.prepara) return metti(dove, sezione(k, null, h('p', t('acquisti.non-pronti')), h('p.nota', t('acquisti.chiedi-titolare'))));
   const scelta = h('select.campo', { 'aria-label': t('acquisti.magazzino') }, imp.magazzini.map(m => h('option', { value: m.id, testo: m.nome, selected: m.id === imp.articoliProposti })));
   metti(dove, sezione(k, t('acquisti.prepara-titolo'), h('p', t('acquisti.prepara-nota')), h('label.acquisti-campo', h('span', t('acquisti.magazzino')), scelta),
-    h('div.acquisti-azioni', h('button.btn.primario', { testo: t('acquisti.prepara'), on: { click: async () => {
+    h('div.acquisti-azioni', h('button.btn.pieno', { testo: t('acquisti.prepara'), on: { click: async () => {
       try { const x = await api('POST', '/acquisti/prepara', { articoli: scelta.value }); await k.ricaricaSchema(); toast(t('acquisti.preparati', { n: x.fatto.length })); dopo(); } catch (e) { toast(e.message, true); }
     } } }))));
 }
@@ -65,7 +65,7 @@ async function riordino(dove, k) {
     if (!righe.length) return toast(t('acquisti.niente-scelto'), true);
     try { const o = await api('POST', '/acquisti/ordini', { righe }); toast(t('acquisti.ordini-creati', { n: o.length })); riordino(dove, k); } catch (e) { toast(e.message, true); }
   };
-  metti(dove, h('p.nota', t('acquisti.riordino-nota')), blocchi, h('div.acquisti-azioni', h('button.btn.primario', { testo: t('acquisti.crea-ordini'), on: { click: crea } }), h('span.nota', t('acquisti.crea-nota'))));
+  metti(dove, h('p.nota', t('acquisti.riordino-nota')), blocchi, h('div.acquisti-azioni', h('button.btn.pieno', { testo: t('acquisti.crea-ordini'), on: { click: crea } }), h('span.nota', t('acquisti.crea-nota'))));
 }
 
 // ---------- in arrivo ----------
@@ -75,7 +75,7 @@ async function arrivo(dove, k, imp) {
   metti(dove, l.length ? l.map(o => sezione(k, null,
     h('div.acquisti-testa', h('a', { href: `#/e/${imp.ordini}/${o.id}`, testo: o.numero || '—' }), h('b', o.fornitore.nome), h('span.acquisti-segno', { class: o.stato === 'parziale' ? 'giallo' : '' }, t('acquisti.stato-' + o.stato)),
       o.in_ritardo ? h('span.acquisti-segno.rosso', t('acquisti.in-ritardo', { data: data(o.consegna_prevista) })) : o.consegna_prevista ? h('span.nota', t('acquisti.previsto', { data: data(o.consegna_prevista) })) : null,
-      h('span.acquisti-spazio'), h('a.btn.primario.piccolo', { href: `#/acquisti/ricevi/${o.id}`, testo: t('acquisti.ricevi') })),
+      h('span.acquisti-spazio'), h('a.btn.pieno.piccolo', { href: `#/acquisti/ricevi/${o.id}`, testo: t('acquisti.ricevi') })),
     h('ul.acquisti-righe', o.righe.map(r => h('li', h('span', r.articolo.nome), h('span.acquisti-barretta', h('i', { style: `width:${r.quantita ? Math.min(100, (r.ricevuta / r.quantita) * 100) : 0}%` })),
       h('small', t('acquisti.ricevute-di', { ricevuta: numero(r.ricevuta), quantita: numero(r.quantita) }))))))) : sezione(k, null, h('p.nota', t('acquisti.niente-arrivo'))));
 }
@@ -96,7 +96,7 @@ async function ricevi(dove, k, id) {
     h('div.acquisti-modulo', h('label.acquisti-campo', h('span', t('acquisti.ddt')), ddt), h('label.acquisti-campo', h('span', t('acquisti.data')), quando)),
     tabella(k, [t('acquisti.articolo'), t('acquisti.ordinate'), t('acquisti.gia-ricevute'), t('acquisti.arrivate-ora')], campi.map(x => [x.r.articolo, numero(x.r.quantita), numero(x.r.ricevuta), x.input]), { destra: [1, 2, 3] }),
     h('p.nota', t('acquisti.ricevi-nota')),
-    h('div.acquisti-azioni', h('button.btn.primario', { testo: t('acquisti.carica'), on: { click: conferma } }), h('a.btn', { href: '#/acquisti/arrivo', testo: t('acquisti.annulla') }))));
+    h('div.acquisti-azioni', h('button.btn.pieno', { testo: t('acquisti.carica'), on: { click: conferma } }), h('a.btn', { href: '#/acquisti/arrivo', testo: t('acquisti.annulla') }))));
 }
 
 // ---------- fatture dei fornitori ----------

@@ -10,7 +10,7 @@
 .acquisti-tabella .tabella { border: 0; border-radius: 0; }
 .acquisti-tabella .tabella th { cursor: default; }
 .acquisti-tabella td.num, .acquisti-tabella th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.acquisti-q { width: 90px; text-align: right; }
+input.campo.acquisti-q { width: 96px; text-align: right; }
 .acquisti-azioni { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px; }
 .acquisti-testa { display: flex; flex-wrap: wrap; gap: 12px; align-items: baseline; margin-bottom: 8px; }
 .acquisti-spazio { flex: 1; }

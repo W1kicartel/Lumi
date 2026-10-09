@@ -75,7 +75,7 @@ async function scadenze(dove, k, imp) {
   const aggiornaAzioni = () => {
     const tot = r.scadenze.filter(s => scelte.has(s.chiave)).reduce((x, s) => x + Math.round(s.residuo * 100), 0) / 100;
     metti(azioni, scelte.size ? [h('span', t('tesoreria.scelte', { n: scelte.size, importo: soldi(tot) })),
-      h('button.btn.primario', { testo: att ? t('tesoreria.segna-incassate') : t('tesoreria.segna-pagate'), on: { click: () => pagaChiavi([...scelte]) } }),
+      h('button.btn.pieno', { testo: att ? t('tesoreria.segna-incassate') : t('tesoreria.segna-pagate'), on: { click: () => pagaChiavi([...scelte]) } }),
       ...(att ? [h('button.btn', { testo: t('tesoreria.distinta-riba'), on: { click: () => distinta('riba') } }), h('button.btn', { testo: t('tesoreria.distinta-sdd'), on: { click: () => distinta('sdd') } })]
         : [h('button.btn', { testo: t('tesoreria.distinta-sct'), on: { click: () => distinta('sct') } })])] : [h('span.nota', t('tesoreria.scegli-nota'))]);
   };
@@ -154,7 +154,7 @@ async function banca(dove, k, imp) {
 function prepara(k, imp, dopo) {
   const { h, api, toast } = k;
   if (!imp.puo.impostazioni) return h('p.nota', t('tesoreria.chiedi-titolare'));
-  return h('button.btn.primario', { testo: t('tesoreria.prepara'), on: { click: async () => {
+  return h('button.btn.pieno', { testo: t('tesoreria.prepara'), on: { click: async () => {
     try { const x = await api('POST', '/tesoreria/prepara'); await k.ricaricaSchema(); toast(t('tesoreria.preparata', { n: x.fatto.length })); imp.sezioni.movimenti = true; imp.sezioni.previsioni = true; dopo(); }
     catch (e) { toast(e.message, true); }
   } } });
@@ -210,7 +210,7 @@ async function solleciti(dove, k) {
     s.livello > 0 ? [h('textarea.campo.tesoreria-lettera', { readonly: true, rows: 9, value: s.testo, 'aria-label': t('tesoreria.lettera') }),
       h('div.tesoreria-azioni', h('button.btn', { testo: t('tesoreria.copia'), on: { click: async () => { try { await navigator.clipboard.writeText(s.testo); toast(t('tesoreria.copiato')); } catch { toast(t('tesoreria.copia-no'), true); } } } }),
         s.email ? h('a.btn', { href: `mailto:${encodeURIComponent(s.email)}?subject=${encodeURIComponent(t('tesoreria.oggetto-sollecito'))}&body=${encodeURIComponent(s.testo)}`, testo: t('tesoreria.scrivi-email') }) : null,
-        h('button.btn.primario', { testo: t('tesoreria.segna-mandato'), on: { click: () => segna(s) } }))] : null)) : sezione(k, null, h('p.nota', t('tesoreria.niente-solleciti'))));
+        h('button.btn.pieno', { testo: t('tesoreria.segna-mandato'), on: { click: () => segna(s) } }))] : null)) : sezione(k, null, h('p.nota', t('tesoreria.niente-solleciti'))));
 }
 
 // ---------- distinte ----------
@@ -243,7 +243,7 @@ async function impostazioni(dove, k, imp) {
     h('label.tesoreria-campo', h('span', t('tesoreria.sequenza-sdd')), h('select.campo', { name: 'sequenzaSdd' }, ['RCUR', 'FRST', 'OOFF'].map(x => h('option', { value: x, testo: t('tesoreria.seq-' + x.toLowerCase()), selected: x === imp.sequenzaSdd })))),
     campo('sezioneMovimenti', t('tesoreria.sezione-movimenti'), imp.sezioneMovimenti),
     h('label.tesoreria-spunta', h('input', { type: 'checkbox', name: 'ritardoClienti', checked: imp.ritardoClienti }), t('tesoreria.ritardo-clienti')),
-    imp.puo.impostazioni ? h('div.tesoreria-azioni', h('button.btn.primario', { type: 'submit', testo: t('tesoreria.salva') })) : h('p.nota', t('tesoreria.chiedi-titolare')));
+    imp.puo.impostazioni ? h('div.tesoreria-azioni', h('button.btn.pieno', { type: 'submit', testo: t('tesoreria.salva') })) : h('p.nota', t('tesoreria.chiedi-titolare')));
   const manca = ['movimenti', 'previsioni'].filter(x => !imp.sezioni[x]);
   metti(dove,
     sezione(k, t('tesoreria.banca-azienda'), h('p', imp.azienda.iban ? t('tesoreria.iban-azienda', { iban: imp.azienda.iban }) : t('tesoreria.manca-iban')), h('p.nota', h('a', { href: '#/documenti', testo: t('tesoreria.dati-azienda') }))),
@@ -254,6 +254,6 @@ async function impostazioni(dove, k, imp) {
 
 export default {
   nome: 'tesoreria',
-  lato: k => (k.schema.some(e => ['fatture', 'fatture_ricevute'].includes(e.id)) ? [{ href: '#/tesoreria', icona: 'cassa', nome: t('tesoreria.titolo') }] : []),
+  lato: k => (k.schema.some(e => ['fatture', 'fatture_ricevute'].includes(e.id)) ? [{ href: '#/tesoreria', icona: 'cassa', nome: t('tesoreria.titolo'), inCima: true }] : []),
   rotte: { tesoreria: (contenuto, k, a) => pagina(contenuto, k, a || '') },
 };
