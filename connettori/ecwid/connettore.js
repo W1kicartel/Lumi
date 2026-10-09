@@ -21,8 +21,8 @@ function importa(k, o) {
   const p = o.shippingPerson || o.billingPerson || {};
   return importaOrdine(k, { id: o.internalId || o.id, numero: o.id, canale: 'Ecwid',
     cliente: { nome: p.name, email: o.email, telefono: p.phone, via: p.street, cap: p.postalCode, comune: p.city, provincia: p.stateOrProvinceCode },
-    // price è il prezzo a pezzo dopo le opzioni; lo sconto dell'ordine distribuito sulle righe è in discount (se c'è)
-    linee: (o.items || []).map(x => { const q = Number(x.quantity) || 1; return { sku: x.sku, nome: x.name, q, prezzo: Number(x.price || 0) - Number(x.couponAmount || 0) / q - Number(x.discounts?.reduce?.((t, d) => t + Number(d.total || 0), 0) || 0) / q }; }) });
+    // price è il prezzo a pezzo con le opzioni; il coupon assegnato alla riga (couponAmount) si toglie
+    linee: (o.items || []).map(x => { const q = Number(x.quantity) || 1; return { sku: x.sku, nome: x.name, q, prezzo: Number(x.price || 0) - Number(x.couponAmount || 0) / q }; }) });
 }
 
 export default {
@@ -48,7 +48,7 @@ export default {
     ordini: { nome: 'Ordini dal negozio', ogni: '15m', async giro(k) {
       const da = Number(k.stato.leggi('ordini') || Math.floor(Date.now() / 1000) - 7 * 86400), conti = { vendite: 0, ignorati: 0 }; let ultimo = da;
       for await (const l of pagine(k, `/orders?updatedFrom=${da}&paymentStatus=PAID`)) for (const o of l) {
-        ultimo = Math.max(ultimo, Math.floor(Date.parse(o.updateDate?.replace(' ', 'T').replace(/ ?([+-]\d{2})(\d{2})$/, '$1:$2') || 0) / 1000) || 0);
+        ultimo = Math.max(ultimo, Number(o.updateTimestamp) || Math.floor(Date.parse(String(o.updateDate || '').replace(' ', 'T').replace(/ ?([+-]\d{2})(\d{2})$/, '$1:$2')) / 1000) || 0);
         if (importa(k, o) === 'vendita creata') conti.vendite++; else conti.ignorati++;
       }
       k.stato.scrivi('ordini', ultimo);
