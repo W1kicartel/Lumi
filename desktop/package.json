@@ -1,8 +1,8 @@
 {
-  "name": "kubo-desktop",
-  "productName": "Kubo",
+  "name": "lumi-desktop",
+  "productName": "Lumi",
   "version": "0.1.0",
-  "description": "Kubo, il gestionale open source: l'app per il PC che tiene i dati o che si collega a un Kubo in rete",
+  "description": "Lumi, il gestionale open source: l'app per il PC che tiene i dati o che si collega a Lumi in rete",
   "license": "MIT",
   "author": "W1kicartel",
   "private": true,
@@ -21,24 +21,24 @@
     "electron-builder": "26.15.3"
   },
   "build": {
-    "appId": "it.kubo.gestionale",
-    "productName": "Kubo",
+    "appId": "it.lumi.gestionale",
+    "productName": "Lumi",
     "directories": { "output": "dist", "buildResources": "build" },
-    "files": ["main.mjs", "kubo.mjs", "icona.mjs", "preload.cjs", "scelta.html", "scelta.js", "package.json"],
+    "files": ["main.mjs", "server.mjs", "icona.mjs", "preload.cjs", "scelta.html", "scelta.js", "package.json"],
     "extraResources": [
-      { "from": "../server", "to": "kubo/server" },
-      { "from": "../web", "to": "kubo/web" },
-      { "from": "../modelli", "to": "kubo/modelli" },
-      { "from": "../package.json", "to": "kubo/package.json" },
-      { "from": "../LICENSE", "to": "kubo/LICENSE" }
+      { "from": "../server", "to": "lumi/server" },
+      { "from": "../web", "to": "lumi/web" },
+      { "from": "../modelli", "to": "lumi/modelli" },
+      { "from": "../package.json", "to": "lumi/package.json" },
+      { "from": "../LICENSE", "to": "lumi/LICENSE" }
     ],
     "electronFuses": { "runAsNode": false, "enableNodeOptionsEnvironmentVariable": false, "enableNodeCliInspectArguments": false },
-    "mac": { "category": "public.app-category.business", "target": [{ "target": "dmg", "arch": ["universal"] }], "artifactName": "Kubo-${version}-mac.${ext}",
-      "extraResources": [{ "from": "bin", "to": "kubo/bin", "filter": ["kubo-voce"] }],
-      "x64ArchFiles": "Contents/Resources/kubo/bin/kubo-voce",
-      "extendInfo": { "NSMicrophoneUsageDescription": "Kubo usa il microfono solo mentre parli con Lumi. Con la voce locale l'audio resta su questo computer." } },
-    "win": { "target": "nsis", "artifactName": "Kubo-${version}-windows.${ext}" },
+    "mac": { "category": "public.app-category.business", "target": [{ "target": "dmg", "arch": ["universal"] }], "artifactName": "Lumi-${version}-mac.${ext}",
+      "extraResources": [{ "from": "bin", "to": "lumi/bin", "filter": ["lumi-voce"] }],
+      "x64ArchFiles": "Contents/Resources/lumi/bin/lumi-voce",
+      "extendInfo": { "NSMicrophoneUsageDescription": "Lumi usa il microfono solo mentre parli con l'assistente. Con la voce locale l'audio resta su questo computer." } },
+    "win": { "target": "nsis", "artifactName": "Lumi-${version}-windows.${ext}" },
     "nsis": { "oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": true, "runAfterFinish": true },
-    "linux": { "target": ["AppImage", "deb"], "category": "Office", "artifactName": "Kubo-${version}-linux.${ext}" }
+    "linux": { "target": ["AppImage", "deb"], "category": "Office", "artifactName": "Lumi-${version}-linux.${ext}" }
   }
 }

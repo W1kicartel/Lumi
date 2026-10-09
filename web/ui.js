@@ -4,7 +4,7 @@ import { t, numero, soldi, data, dataOra } from './lingua.js';
 export class ErroreApi extends Error { constructor(stato, corpo) { super(corpo?.errore || t('comune.errore-n', { stato })); this.stato = stato; this.corpo = corpo || {}; } }
 export async function api(metodo, percorso, corpo) {
   const r = await fetch('/api' + percorso, { method: metodo, credentials: 'same-origin',
-    headers: { 'X-Kubo': '1', ...(corpo !== undefined ? { 'Content-Type': 'application/json' } : {}) }, body: corpo !== undefined ? JSON.stringify(corpo) : undefined });
+    headers: { 'X-Lumi': '1', ...(corpo !== undefined ? { 'Content-Type': 'application/json' } : {}) }, body: corpo !== undefined ? JSON.stringify(corpo) : undefined });
   const j = await r.json().catch(() => null);
   if (!r.ok) { if (r.status === 401 && !percorso.startsWith('/accedi')) location.hash = '#/accedi'; throw new ErroreApi(r.status, j); }
   return j;

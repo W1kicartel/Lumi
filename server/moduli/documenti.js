@@ -3,7 +3,7 @@
 //   - i modelli di stampa per ogni entità con righe (in _meta «documenti.stampa.<entità>», altrimenti quello predefinito);
 //   - le fatture: numero assegnato all'emissione (per anno e serie, dalla data della fattura), IVA calcolata per aliquota,
 //     «crea fattura da» vendita/preventivo/commessa, controlli ed esportazione FatturaPA (FPR12).
-// Il logo sta nella cartella dei dati (documenti/logo.png|jpg accanto a kubo.db); con il database in memoria resta in _meta.
+// Il logo sta nella cartella dei dati (documenti/logo.png|jpg accanto a lumi.db); con il database in memoria resta in _meta.
 import { mkdirSync, writeFileSync, readFileSync, rmSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { VALIDATORI } from './documenti-italia.js';

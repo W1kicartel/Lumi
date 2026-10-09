@@ -1,6 +1,6 @@
 // L'avvio guidato (il server è in server/moduli/avvio*.js): il nome dell'azienda, una domanda per schermata, il titolare,
-// poi Kubo si prepara da solo. Dopo il primo accesso: un giro di quattro tappe sopra l'interfaccia vera e, finché ci sono,
-// un promemoria per togliere i dati d'esempio. primoAvvio() lo chiama app.js quando Kubo non è ancora configurato.
+// poi Lumi si prepara da solo. Dopo il primo accesso: un giro di quattro tappe sopra l'interfaccia vera e, finché ci sono,
+// un promemoria per togliere i dati d'esempio. primoAvvio() lo chiama app.js quando Lumi non è ancora configurato.
 import { h, api, get, toast } from '../ui.js';
 import { t, esiste, minuscole, LINGUE, lingua, VALUTE, valutaProposta } from '/lingua.js';
 
@@ -10,9 +10,9 @@ const aiutoDi = d => (!d.aiuto ? null : esiste('avvio.a-' + d.id) ? t('avvio.a-'
 const opzioneDi = (d, o) => { const k = typeof o.id === 'boolean' ? (o.id ? 'si' : 'no') : `${d.id}-${o.id}`; return esiste('avvio.o-' + k) ? t('avvio.o-' + k) : o.nome; };
 const descrizioneDi = o => (!o.descrizione ? null : esiste('avvio.sd-' + o.id) ? t('avvio.sd-' + o.id) : o.descrizione);
 // il nome, la lingua e la valuta della prima schermata sopravvivono al ricaricamento quando si cambia lingua
-const ricordo = () => { try { return JSON.parse(sessionStorage.getItem('kubo.avvio') || '{}'); } catch { return {}; } };
+const ricordo = () => { try { return JSON.parse(sessionStorage.getItem('lumi.avvio') || '{}'); } catch { return {}; } };
 
-const foglio = () => { if (!document.querySelector('link[data-kubo-avvio]')) document.head.append(h('link', { rel: 'stylesheet', href: '/moduli/avvio.css', 'data-kubo-avvio': '' })); };
+const foglio = () => { if (!document.querySelector('link[data-foglio-avvio]')) document.head.append(h('link', { rel: 'stylesheet', href: '/moduli/avvio.css', 'data-foglio-avvio': '' })); };
 
 // ---------- primo avvio ----------
 export async function primoAvvio(app) {
@@ -35,7 +35,7 @@ export async function primoAvvio(app) {
   const salvaLingua = () => { linguaSalvata = api('PUT', '/lingua/azienda', { lingua, valuta: valutaScelta }).catch(() => {}); };
 
   const scatola = h('div.avvio-scatola'), barra = h('div.avvio-barra', h('i'));
-  app.replaceChildren(h('div.avvio', h('div.avvio-cima', h('span.avvio-marca', 'Kubo'), barra), scatola));
+  app.replaceChildren(h('div.avvio', h('div.avvio-cima', h('span.avvio-marca', 'Lumi'), barra), scatola));
   const piede = (avanti, testo = t('avvio.avanti')) => h('div.avvio-piede',
     i >= 0 ? h('button.btn.nudo', { type: 'button', on: { click: () => vai(-1) } }, t('avvio.indietro')) : h('span'),
     avanti ? h('button.btn.pieno', { type: 'submit' }, testo) : null);
@@ -50,7 +50,7 @@ export async function primoAvvio(app) {
     if (i === -1) {
       const nome = h('input.campo.avvio-grande', { value: azienda, placeholder: t('avvio.azienda-es'), required: true, autocomplete: 'organization', on: { input: () => { azienda = nome.value; } } });
       const sLingua = h('select.campo', { on: { change: ev => {
-        try { localStorage.setItem('kubo.lingua', ev.target.value); sessionStorage.setItem('kubo.avvio', JSON.stringify({ azienda, valuta: valutaScelta })); } catch { }
+        try { localStorage.setItem('lumi.lingua', ev.target.value); sessionStorage.setItem('lumi.avvio', JSON.stringify({ azienda, valuta: valutaScelta })); } catch { }
         location.reload();
       } } }, Object.entries(LINGUE).map(([c, l]) => h('option', { value: c, testo: l.nome, selected: c === lingua })));
       const sValuta = h('select.campo', { on: { change: ev => { valutaScelta = ev.target.value; } } }, VALUTE.map(v => h('option', { value: v, testo: v, selected: v === valutaScelta })));
@@ -113,7 +113,7 @@ export async function primoAvvio(app) {
         // la lingua e la valuta di nuovo, con il codice di avvio (da un altro computer la prima volta non è passata)
         await api('PUT', '/lingua/azienda', { lingua, valuta: valutaScelta, codice: codice.value });
         const x = await api('POST', '/avvio/configura', { azienda: azienda.trim(), nome: account.nome, email: account.email, password: account.password, risposte: r, codice: codice.value });
-        try { sessionStorage.removeItem('kubo.avvio'); } catch { }
+        try { sessionStorage.removeItem('lumi.avvio'); } catch { }
         if (x.persone?.length) return consegne(x.persone);
         location.hash = ''; location.reload();
       } catch (e) { err.replaceChildren(h('div.avviso', e.message)); bottone.disabled = false; bottone.textContent = t('avvio.prepara'); invio = false; }

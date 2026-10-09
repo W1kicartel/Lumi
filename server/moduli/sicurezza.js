@@ -22,7 +22,7 @@ const MINUTI_INATTIVITA = 720, TENTATIVI = 5, FINESTRA = 15 * 6e4;
 const VIETATE = new Set(['.exe', '.msi', '.bat', '.cmd', '.com', '.scr', '.pif', '.cpl', '.vbs', '.vbe', '.js', '.jse', '.mjs', '.wsf', '.wsh', '.ps1', '.psm1',
   '.hta', '.html', '.htm', '.xhtml', '.shtml', '.svg', '.svgz', '.xml', '.php', '.jsp', '.asp', '.aspx', '.sh', '.bash', '.command', '.app', '.dll', '.jar', '.lnk', '.reg', '.dmg', '.pkg', '.deb', '.rpm', '.apk']);
 const PAROLE_COMUNI = new Set(['password', 'password1', 'password123', '12345678', '123456789', '1234567890', 'qwertyuiop', 'qwerty123', 'iloveyou', 'abc12345', 'admin123',
-  'administrator', 'benvenuto', 'benvenuto1', 'ciao1234', 'cambiami', 'passw0rd', 'letmein1', 'kubo1234', 'kubokubo', 'gestionale', '11111111', '00000000', 'juventus', 'forzainter', 'forzamilan']);
+  'administrator', 'benvenuto', 'benvenuto1', 'ciao1234', 'cambiami', 'passw0rd', 'letmein1', 'lumi1234', 'lumilumi', 'gestionale', '11111111', '00000000', 'juventus', 'forzainter', 'forzamilan']);
 const decodifica = x => { try { return decodeURIComponent(x); } catch { return ''; } };
 export const impronta = t => createHash('sha256').update(String(t)).digest('hex').slice(0, 24);
 
@@ -176,7 +176,7 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, c
     U.modificaUtente(db, ctx.utente.id, { password: corpo.nuova }, { utente: ctx.utente.id });   // chiude tutte le sessioni
     db.prepare('DELETE FROM _sicurezza_utenti WHERE utente = ?').run(ctx.utente.id);
     const s = U.accedi(db, { email: ctx.utente.email, password: corpo.nuova }, 'cambio password');   // questa resta aperta
-    risposta.intestazioni['Set-Cookie'] = `kubo=${s.token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${30 * 86400}`;
+    risposta.intestazioni['Set-Cookie'] = `lumi=${s.token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${30 * 86400}`;
     return { ok: true };
   });
   const sessioniDi = (utente, token) => db.prepare('SELECT token, agente, inizio, ultimo, ip, scade FROM _sessioni WHERE utente = ? AND scade > ? ORDER BY COALESCE(ultimo, inizio) DESC')

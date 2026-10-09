@@ -23,7 +23,7 @@ const cartelle = new WeakMap();
 export function cartellaFile(db) {
   if (!cartelle.has(db)) {
     const f = db.prepare('PRAGMA database_list').all().find(x => x.name === 'main')?.file;
-    cartelle.set(db, resolve(f ? join(dirname(f), 'file') : join(tmpdir(), `kubo-file-${process.pid}-${randomBytes(4).toString('hex')}`)));
+    cartelle.set(db, resolve(f ? join(dirname(f), 'file') : join(tmpdir(), `lumi-file-${process.pid}-${randomBytes(4).toString('hex')}`)));
   }
   return cartelle.get(db);
 }

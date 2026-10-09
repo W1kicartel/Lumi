@@ -1,4 +1,4 @@
-// WhatsApp in Kubo: la posta in arrivo per cliente, il registro dei consensi, i modelli, le automazioni pronte, i costi
+// WhatsApp in Lumi: la posta in arrivo per cliente, il registro dei consensi, i modelli, le automazioni pronte, i costi
 // e gli strumenti di Lumi. Solo la WhatsApp Business Platform ufficiale, attraverso uno dei tre connettori (uno acceso alla
 // volta): «whatsapp» (Meta Cloud API), «twilio-whatsapp», «dialog360» (360dialog). Il modulo non sa quale c'è sotto: usa
 // l'interfaccia comune man.whatsapp (testo, modello, documento, modelli, creaModello). Guida: docs/WHATSAPP.md.

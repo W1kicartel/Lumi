@@ -20,7 +20,7 @@ export const TESTI = {
     'non-supportato': 'Il servizio WhatsApp attivo non permette questa operazione', 'solo-titolare': 'Solo il titolare cambia le impostazioni di WhatsApp',
     'ricetta-sconosciuta': 'Automazione WhatsApp sconosciuta', 'invio-fallito': 'Il servizio WhatsApp ha rifiutato il messaggio: {dettaglio}',
     'modello-nome': 'Nome del modello non valido: solo lettere minuscole, numeri e trattini bassi', documento: 'Documento non trovato',
-    indirizzo: 'Per mandare un file con Twilio serve l\'indirizzo pubblico di Kubo nella pagina del connettore',
+    indirizzo: 'Per mandare un file con Twilio serve l\'indirizzo pubblico di Lumi nella pagina del connettore',
     'nessun-modello': 'Nessun modello approvato adatto: creane uno o sincronizza i modelli', 'senza-rubrica': 'Non c\'è una sezione clienti con il telefono',
   },
   en: {
@@ -41,7 +41,7 @@ export const TESTI = {
     'non-supportato': 'The active WhatsApp service does not allow this', 'solo-titolare': 'Only the owner changes the WhatsApp settings',
     'ricetta-sconosciuta': 'Unknown WhatsApp automation', 'invio-fallito': 'The WhatsApp service rejected the message: {dettaglio}',
     'modello-nome': 'Invalid template name: lowercase letters, numbers and underscores only', documento: 'Document not found',
-    indirizzo: 'To send a file with Twilio, set Kubo\'s public address on the connector page',
+    indirizzo: 'To send a file with Twilio, set Lumi\'s public address on the connector page',
     'nessun-modello': 'No suitable approved template: create one or sync the templates', 'senza-rubrica': 'There is no customer section with a phone field',
   },
   es: {
@@ -62,7 +62,7 @@ export const TESTI = {
     'non-supportato': 'El servicio de WhatsApp activo no permite esta operación', 'solo-titolare': 'Solo el titular cambia los ajustes de WhatsApp',
     'ricetta-sconosciuta': 'Automatización de WhatsApp desconocida', 'invio-fallito': 'El servicio de WhatsApp rechazó el mensaje: {dettaglio}',
     'modello-nome': 'Nombre de plantilla no válido: solo minúsculas, números y guiones bajos', documento: 'Documento no encontrado',
-    indirizzo: 'Para enviar un archivo con Twilio indica la dirección pública de Kubo en la página del conector',
+    indirizzo: 'Para enviar un archivo con Twilio indica la dirección pública de Lumi en la página del conector',
     'nessun-modello': 'Ninguna plantilla aprobada adecuada: crea una o sincroniza las plantillas', 'senza-rubrica': 'No hay una sección de clientes con teléfono',
   },
   fr: {
@@ -83,7 +83,7 @@ export const TESTI = {
     'non-supportato': 'Le service WhatsApp actif ne permet pas cette opération', 'solo-titolare': 'Seul le titulaire modifie les réglages WhatsApp',
     'ricetta-sconosciuta': 'Automatisation WhatsApp inconnue', 'invio-fallito': 'Le service WhatsApp a refusé le message : {dettaglio}',
     'modello-nome': 'Nom de modèle non valide : minuscules, chiffres et tirets bas uniquement', documento: 'Document introuvable',
-    indirizzo: 'Pour envoyer un fichier avec Twilio, indiquez l\'adresse publique de Kubo sur la page du connecteur',
+    indirizzo: 'Pour envoyer un fichier avec Twilio, indiquez l\'adresse publique de Lumi sur la page du connecteur',
     'nessun-modello': 'Aucun modèle approuvé adapté : créez-en un ou synchronisez les modèles', 'senza-rubrica': 'Aucune section clients avec un téléphone',
   },
   de: {
@@ -104,7 +104,7 @@ export const TESTI = {
     'non-supportato': 'Der aktive WhatsApp-Dienst erlaubt das nicht', 'solo-titolare': 'Nur der Inhaber ändert die WhatsApp-Einstellungen',
     'ricetta-sconosciuta': 'Unbekannte WhatsApp-Automation', 'invio-fallito': 'Der WhatsApp-Dienst hat die Nachricht abgelehnt: {dettaglio}',
     'modello-nome': 'Ungültiger Vorlagenname: nur Kleinbuchstaben, Ziffern und Unterstriche', documento: 'Dokument nicht gefunden',
-    indirizzo: 'Um mit Twilio eine Datei zu senden, trage die öffentliche Adresse von Kubo auf der Connector-Seite ein',
+    indirizzo: 'Um mit Twilio eine Datei zu senden, trage die öffentliche Adresse von Lumi auf der Connector-Seite ein',
     'nessun-modello': 'Keine passende genehmigte Vorlage: erstelle eine oder synchronisiere die Vorlagen', 'senza-rubrica': 'Es gibt keinen Kundenbereich mit Telefon',
   },
   pt: {
@@ -125,7 +125,7 @@ export const TESTI = {
     'non-supportato': 'O serviço WhatsApp ativo não permite esta operação', 'solo-titolare': 'Só o titular altera as configurações do WhatsApp',
     'ricetta-sconosciuta': 'Automação de WhatsApp desconhecida', 'invio-fallito': 'O serviço WhatsApp recusou a mensagem: {dettaglio}',
     'modello-nome': 'Nome de modelo inválido: só minúsculas, números e sublinhados', documento: 'Documento não encontrado',
-    indirizzo: 'Para enviar um arquivo com o Twilio, informe o endereço público do Kubo na página do conector',
+    indirizzo: 'Para enviar um arquivo com o Twilio, informe o endereço público do Lumi na página do conector',
     'nessun-modello': 'Nenhum modelo aprovado adequado: crie um ou sincronize os modelos', 'senza-rubrica': 'Não há uma seção de clientes com telefone',
   },
 };

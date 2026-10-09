@@ -1,6 +1,6 @@
 // Le versioni nuove: un controllo facoltativo (lo accende il titolare) dell'ultima versione pubblicata su GitHub
-// (W1kicartel/Lumi). Kubo avvisa e basta: non scarica e non installa mai niente da solo. Si manda solo la richiesta
-// della pagina pubblica delle versioni, nessun dato dell'azienda. KUBO_AGGIORNAMENTI_URL cambia l'indirizzo (i test usano
+// (W1kicartel/Lumi). Lumi avvisa e basta: non scarica e non installa mai niente da solo. Si manda solo la richiesta
+// della pagina pubblica delle versioni, nessun dato dell'azienda. LUMI_AGGIORNAMENTI_URL cambia l'indirizzo (i test usano
 // un finto server locale).
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -19,8 +19,8 @@ export function confronta(a, b) {
 }
 
 // chiede l'ultima versione; { versione, nome, url, note, data } oppure lancia (rete assente, risposta strana)
-export async function ultimaVersione({ url = process.env.KUBO_AGGIORNAMENTI_URL || URL_VERSIONI, attesa = 8000 } = {}) {
-  const r = await fetch(url, { headers: { Accept: 'application/vnd.github+json', 'User-Agent': `Kubo/${VERSIONE}` }, signal: AbortSignal.timeout(attesa), redirect: 'follow' });
+export async function ultimaVersione({ url = process.env.LUMI_AGGIORNAMENTI_URL || URL_VERSIONI, attesa = 8000 } = {}) {
+  const r = await fetch(url, { headers: { Accept: 'application/vnd.github+json', 'User-Agent': `Lumi/${VERSIONE}` }, signal: AbortSignal.timeout(attesa), redirect: 'follow' });
   if (!r.ok) throw new Error(`Il controllo delle versioni ha risposto ${r.status}`);
   const j = await r.json();
   if (!j || typeof j.tag_name !== 'string' || j.draft || j.prerelease) throw new Error('Risposta inattesa');

@@ -11,7 +11,7 @@
 // Nel percorso i valori si codificano per l'indirizzo; nel corpo JSON "{campo}" da solo tiene il tipo (numero, sì/no, oggetto).
 // Tutto passa da k.http (protezione SSRF), i segreti restano cifrati, le scritture risultano fatte dall'identità del connettore.
 import { stessoSegreto, firmaHmac } from './connettori-rete.js';
-import { firma as firmaKubo } from './import-api.js';
+import { firma as firmaWebhook } from './import-api.js';
 import { transazione } from '../db.js';
 import { controllaUrl } from './sicurezza-rete.js';
 import { normalizza } from '../../web/libreria.js';
@@ -141,8 +141,8 @@ export async function prepara(k, r, v, { anteprima = false } = {}) {
     else { corpoTesto = c.testo; opz.intestazioni['Content-Type'] ||= 'text/plain; charset=utf-8'; }
     opz.testo = corpoTesto;
   }
-  // la firma come i webhook di Kubo (X-Kubo-Firma: sha256=HMAC(segreto, "<tempo>.<corpo>")), se c'è il segreto
-  if (s.firma_uscita) { const t = String(Math.floor(Date.now() / 1000)); opz.intestazioni['X-Kubo-Tempo'] = t; opz.intestazioni['X-Kubo-Firma'] = firmaKubo(s.firma_uscita, t, corpoTesto); }
+  // la firma come i webhook di Lumi (X-Lumi-Firma: sha256=HMAC(segreto, "<tempo>.<corpo>")), se c'è il segreto
+  if (s.firma_uscita) { const t = String(Math.floor(Date.now() / 1000)); opz.intestazioni['X-Lumi-Tempo'] = t; opz.intestazioni['X-Lumi-Firma'] = firmaWebhook(s.firma_uscita, t, corpoTesto); }
   return { metodo: r.metodo, url: u.href, visibile, opz, corpoTesto };
 }
 export async function chiama(k, r, v) {
@@ -175,7 +175,7 @@ export function manifestoRicette({ accesso = true } = {}) {
     { id: 'codice', nome: 'Codice segreto delle ricette in entrata (va in fondo all\'indirizzo)', segreto: true, generato: true },
     { id: 'firma_entrata', nome: 'Segreto HMAC delle richieste in entrata (facoltativo)', segreto: true, obbligatorio: false },
     { id: 'intestazione_firma', nome: 'Intestazione con la firma HMAC in entrata', predefinito: 'X-Signature', schema: /^[A-Za-z0-9-]{1,64}$/ },
-    { id: 'firma_uscita', nome: 'Segreto per firmare le richieste in uscita (X-Kubo-Firma, facoltativo)', segreto: true, obbligatorio: false },
+    { id: 'firma_uscita', nome: 'Segreto per firmare le richieste in uscita (X-Lumi-Firma, facoltativo)', segreto: true, obbligatorio: false },
   ];
   const scegli = (k, q) => { const e = attive(k.imp, 'entrata'), x = q?.get?.('ricetta'); return x ? e.find(r => r.id === x) : e.length === 1 ? e[0] : null; };
   return {
@@ -277,7 +277,7 @@ const ETICHETTE = {
   'imp.codice': L('Secret code for incoming recipes (goes at the end of the address)', 'Código secreto de las recetas de entrada (va al final de la dirección)', 'Code secret des recettes entrantes (à la fin de l\'adresse)', 'Geheimcode der eingehenden Rezepte (am Ende der Adresse)', 'Código secreto das receitas de entrada (vai no fim do endereço)'),
   'imp.firma_entrata': L('HMAC secret of incoming requests (optional)', 'Secreto HMAC de las peticiones entrantes (opcional)', 'Secret HMAC des requêtes entrantes (facultatif)', 'HMAC-Geheimnis eingehender Anfragen (optional)', 'Segredo HMAC das requisições de entrada (opcional)'),
   'imp.intestazione_firma': L('Header with the incoming HMAC signature', 'Cabecera con la firma HMAC de entrada', 'En-tête avec la signature HMAC entrante', 'Header mit der eingehenden HMAC-Signatur', 'Cabeçalho com a assinatura HMAC de entrada'),
-  'imp.firma_uscita': L('Secret to sign outgoing requests (X-Kubo-Firma, optional)', 'Secreto para firmar las peticiones salientes (X-Kubo-Firma, opcional)', 'Secret pour signer les requêtes sortantes (X-Kubo-Firma, facultatif)', 'Geheimnis zum Signieren ausgehender Anfragen (X-Kubo-Firma, optional)', 'Segredo para assinar as requisições de saída (X-Kubo-Firma, opcional)'),
+  'imp.firma_uscita': L('Secret to sign outgoing requests (X-Lumi-Firma, optional)', 'Secreto para firmar las peticiones salientes (X-Lumi-Firma, opcional)', 'Secret pour signer les requêtes sortantes (X-Lumi-Firma, facultatif)', 'Geheimnis zum Signieren ausgehender Anfragen (X-Lumi-Firma, optional)', 'Segredo para assinar as requisições de saída (X-Lumi-Firma, opcional)'),
 };
 // unisce le etichette del motore ai testi del connettore (quelli del connettore vincono)
 export function testiRicette(testi = {}) {

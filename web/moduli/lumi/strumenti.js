@@ -9,7 +9,7 @@
 //   (un risultato con «entita» ridisegna la vista aperta, come i crea_ generati qui)
 //   strumenti({ schema, api, poteri, dopoSchema, moduli, scarica, lingua }) → [{ nome, descrizione, schema, leggi | proponi + esegui }]
 
-const ID_RIGA = /^[0-9A-HJKMNP-TV-Z]{17}$/;   // gli id di Kubo (db.js: 9 caratteri di tempo + 8 casuali, base 32)
+const ID_RIGA = /^[0-9A-HJKMNP-TV-Z]{17}$/;   // gli id di Lumi (db.js: 9 caratteri di tempo + 8 casuali, base 32)
 const NON_SCRIVIBILI = ['calcolato', 'contatore', 'immagine', 'file'];
 const TIPI_CAMPO = ['testo', 'testo_lungo', 'numero', 'valuta', 'percentuale', 'data', 'data_ora', 'si_no', 'scelta', 'scelta_multipla', 'stato',
   'relazione', 'calcolato', 'contatore', 'email', 'telefono', 'url', 'indirizzo', 'codice_a_barre', 'durata'];
@@ -399,10 +399,10 @@ function automazione({ schema, api, errore }) {
   };
 }
 
-// ---------- le istruzioni per il modello: come è fatto Kubo ----------
+// ---------- le istruzioni per il modello: come è fatto Lumi ----------
 export function istruzioni({ poteri = {}, moduli = null } = {}) {
   return [
-    'Sei dentro Kubo, un gestionale fatto di sezioni (entità) e campi. Gli strumenti si chiamano cerca_<sezione>, leggi_<sezione>, crea_<sezione>, modifica_<sezione>: gli id delle sezioni e dei campi sono quelli negli schemi.',
+    'Sei dentro Lumi, un gestionale fatto di sezioni (entità) e campi. Gli strumenti si chiamano cerca_<sezione>, leggi_<sezione>, crea_<sezione>, modifica_<sezione>: gli id delle sezioni e dei campi sono quelli negli schemi.',
     'Importi in euro con il punto decimale; date AAAA-MM-GG. Per i collegamenti puoi dare il nome: se è ambiguo lo strumento ti dice quali ci sono, e allora chiedi alla persona.',
     'Per totali, conteggi e confronti usa riepilogo (non sommare tu a mano). Per «cosa devo fare», «cosa c\'è di urgente» usa da_vedere.',
     'Se la persona guarda una scheda (nel contesto), «questo», «questa» si riferiscono a quella: leggila con leggi_<sezione>.',

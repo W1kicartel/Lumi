@@ -176,12 +176,12 @@ async function paginaApi(contenuto, k) {
   const doc = schema.filter(e => !e.nascosta).map(e => h('details.import-doc', h('summary', h('b', e.nome), h('span.mono.nota', ` /api/dati/${e.id}`)),
     h('table.righe', h('thead', h('tr', h('th', t('moduli.ag-campo')), h('th', 'id'), h('th', t('moduli.api-valore')))), h('tbody', e.campi.filter(c => !c.archiviato).map(c => h('tr', h('td', { testo: c.nome }), h('td.mono', c.id), h('td.nota', { testo: formato(c) + (c.obbligatorio ? ' · obbligatorio' : '') })))) ),
     h('div.etichetta', t('moduli.api-elenco')),
-    codice(`curl -H "Authorization: Bearer $KUBO_TOKEN" "${base}/api/dati/${e.id}?q=&n=50&p=1"`),
-    h('div.etichetta', t('moduli.api-una-riga')), codice(`curl -H "Authorization: Bearer $KUBO_TOKEN" ${base}/api/dati/${e.id}/<id>`),
-    e.puo.crea ? [h('div.etichetta', t('viste.crea')), codice(`curl -X POST -H "Authorization: Bearer $KUBO_TOKEN" -H "Content-Type: application/json" \\\n  -d '${esempioDi(e).replace(/'/g, "'\\''")}' ${base}/api/dati/${e.id}`)] : null,
-    e.puo.modifica ? [h('div.etichetta', t('moduli.api-modifica')), codice(`curl -X PATCH -H "Authorization: Bearer $KUBO_TOKEN" -H "Content-Type: application/json" \\\n  -d '{"${e.campi.find(c => !c.archiviato)?.id}": ${JSON.stringify(esempio(e.campi.find(c => !c.archiviato) || {}))}}' ${base}/api/dati/${e.id}/<id>`)] : null,
-    e.puo.elimina ? [h('div.etichetta', t('viste.archivia')), codice(`curl -X DELETE -H "Authorization: Bearer $KUBO_TOKEN" ${base}/api/dati/${e.id}/<id>`)] : null,
-    h('div.etichetta', t('moduli.api-esporta')), codice(`curl -H "Authorization: Bearer $KUBO_TOKEN" -o ${e.id}.xlsx "${base}/api/import/esporta/${e.id}?formato=xlsx"`)));
+    codice(`curl -H "Authorization: Bearer $LUMI_TOKEN" "${base}/api/dati/${e.id}?q=&n=50&p=1"`),
+    h('div.etichetta', t('moduli.api-una-riga')), codice(`curl -H "Authorization: Bearer $LUMI_TOKEN" ${base}/api/dati/${e.id}/<id>`),
+    e.puo.crea ? [h('div.etichetta', t('viste.crea')), codice(`curl -X POST -H "Authorization: Bearer $LUMI_TOKEN" -H "Content-Type: application/json" \\\n  -d '${esempioDi(e).replace(/'/g, "'\\''")}' ${base}/api/dati/${e.id}`)] : null,
+    e.puo.modifica ? [h('div.etichetta', t('moduli.api-modifica')), codice(`curl -X PATCH -H "Authorization: Bearer $LUMI_TOKEN" -H "Content-Type: application/json" \\\n  -d '{"${e.campi.find(c => !c.archiviato)?.id}": ${JSON.stringify(esempio(e.campi.find(c => !c.archiviato) || {}))}}' ${base}/api/dati/${e.id}/<id>`)] : null,
+    e.puo.elimina ? [h('div.etichetta', t('viste.archivia')), codice(`curl -X DELETE -H "Authorization: Bearer $LUMI_TOKEN" ${base}/api/dati/${e.id}/<id>`)] : null,
+    h('div.etichetta', t('moduli.api-esporta')), codice(`curl -H "Authorization: Bearer $LUMI_TOKEN" -o ${e.id}.xlsx "${base}/api/import/esporta/${e.id}?formato=xlsx"`)));
 
   // webhook
   const webBox = h('div');
@@ -217,13 +217,13 @@ async function paginaApi(contenuto, k) {
     try { await api('PUT', '/webhook/nuovo', { nome: wNome.value, url: wUrl.value, entita: entita.length ? entita : '*', eventi }); wNome.value = wUrl.value = ''; toast(t('moduli.api-wh-aggiunto')); disegnaWebhook(); }
     catch (e) { toast(e.message, true); }
   } } });
-  const verifica = `// Node: verifica la firma di Kubo prima di fidarti del corpo
+  const verifica = `// Node: verifica la firma di Lumi prima di fidarti del corpo
 import { createHmac, timingSafeEqual } from 'node:crypto';
-const atteso = 'sha256=' + createHmac('sha256', process.env.KUBO_SEGRETO)
-  .update(req.headers['x-kubo-tempo'] + '.' + corpoGrezzo).digest('hex');
-const arrivata = Buffer.from(req.headers['x-kubo-firma'] || '');
+const atteso = 'sha256=' + createHmac('sha256', process.env.LUMI_SEGRETO)
+  .update(req.headers['x-lumi-tempo'] + '.' + corpoGrezzo).digest('hex');
+const arrivata = Buffer.from(req.headers['x-lumi-firma'] || '');
 const buona = arrivata.length === atteso.length && timingSafeEqual(Buffer.from(atteso), arrivata);
-// e scarta i messaggi con x-kubo-tempo vecchio di più di 5 minuti`;
+// e scarta i messaggi con x-lumi-tempo vecchio di più di 5 minuti`;
 
   contenuto.replaceChildren(h('div.testa', h('h1', t('moduli.im-api'))),
     h('div.corpo.import-api',
@@ -231,7 +231,7 @@ const buona = arrivata.length === atteso.length && timingSafeEqual(Buffer.from(a
       h('h2', t('moduli.api-tuoi-token')), h('div.foglio', h('div.import-riga', nomeT, durata, creaT), nuovoBox, tokenBox),
       h('h2', t('moduli.api-documentazione')),
       h('div.foglio', h('p', t('moduli.api-doc-1'), h('code.mono', 'Authorization: Bearer <token>'), t('moduli.api-doc-2'), h('code.mono', '{ "errore": "…" }'), t('moduli.api-doc-3')),
-        codice(`export KUBO_TOKEN=kubo_…\ncurl -H "Authorization: Bearer $KUBO_TOKEN" ${base}/api/schema`),
+        codice(`export LUMI_TOKEN=lumi_…\ncurl -H "Authorization: Bearer $LUMI_TOKEN" ${base}/api/schema`),
         h('p.nota', t('moduli.api-openapi-1'), h('a', { href: '/api/openapi.json', target: '_blank', testo: '/api/openapi.json' }), t('moduli.api-openapi-2')),
         h('p.nota', t('moduli.api-allegati')),
         doc),

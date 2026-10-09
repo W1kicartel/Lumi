@@ -206,10 +206,10 @@ export default {
     const f = fattureDi(k.schema), cl = f && k.schema.find(e => e.id === f.campi.find(c => c.id === 'cliente')?.entita);
     // (e il vecchio campo libero «Indirizzo» si unifica con via, CAP e comune: server/moduli/sicurezza-migrazioni.js)
     // è una modifica dello schema: si chiede prima (una volta per sessione, se la risposta è «no»)
-    let chiesto = false; try { chiesto = sessionStorage.getItem('kubo.documenti.prepara') === 'no'; } catch {}
+    let chiesto = false; try { chiesto = sessionStorage.getItem('lumi.documenti.prepara') === 'no'; } catch {}
     if (cl && (!cl.campi.some(c => c.id === 'codice_destinatario') || cl.campi.some(c => c.id === 'indirizzo')) && k.stato.poteri?.schema && !chiesto) {
       const ok = confirm(t('moduli.doc-prepara-chiedi', { nome: cl.nome }));
-      if (!ok) { try { sessionStorage.setItem('kubo.documenti.prepara', 'no'); } catch {} return; }
+      if (!ok) { try { sessionStorage.setItem('lumi.documenti.prepara', 'no'); } catch {} return; }
       try { const r = await k.api('POST', '/documenti/prepara'); await k.ricaricaSchema(); if (r.aggiunti?.length) k.toast(t('moduli.doc-prepara-fatto')); } catch { /* si riprova al prossimo avvio */ }
     }
   },

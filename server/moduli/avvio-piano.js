@@ -44,10 +44,10 @@ export const DOMANDE = [
   { id: 'appuntamenti', testo: 'Prendi appuntamenti o prenotazioni?', aiuto: 'Un\'agenda per persona o per risorsa.', tipo: 'si_no', opzioni: SI_NO },
   { id: 'fornitori', testo: 'Compri da fornitori?', aiuto: 'Anagrafica dei fornitori e, se hai un magazzino, gli ordini con il carico.', tipo: 'si_no', opzioni: SI_NO },
   { id: 'fatture', testo: 'Emetti fatture?', aiuto: 'Numerate per anno, con IVA, scadenze e il file della fattura elettronica.', tipo: 'si_no', opzioni: SI_NO },
-  { id: 'persone', testo: 'Quante persone useranno Kubo?', tipo: 'scelta', opzioni: [{ id: 'solo', nome: 'Solo io' }, { id: 'poche', nome: 'Da 2 a 5' }, { id: 'molte', nome: 'Più di 5' }] },
+  { id: 'persone', testo: 'Quante persone useranno Lumi?', tipo: 'scelta', opzioni: [{ id: 'solo', nome: 'Solo io' }, { id: 'poche', nome: 'Da 2 a 5' }, { id: 'molte', nome: 'Più di 5' }] },
   { id: 'squadra', testo: 'Chi lavora con te?', aiuto: 'Ognuno entra con la sua email e vede quello che serve al suo ruolo. Si può fare anche dopo.', tipo: 'persone', se: { persone: ['poche', 'molte'] } },
   { id: 'lumi', testo: 'Vuoi Lumi, l\'assistente?', aiuto: 'Gli chiedi le cose a parole: «quanto ho incassato questa settimana?», «aggiungi la taglia agli articoli». Lui propone, tu confermi.', tipo: 'si_no', opzioni: SI_NO },
-  { id: 'esempi', testo: 'Vuoi vedere Kubo con dei dati d\'esempio?', aiuto: 'Clienti, vendite e appuntamenti finti ma credibili, per provare tutto. Si cancellano con un clic.', tipo: 'si_no', opzioni: SI_NO },
+  { id: 'esempi', testo: 'Vuoi vedere Lumi con dei dati d\'esempio?', aiuto: 'Clienti, vendite e appuntamenti finti ma credibili, per provare tutto. Si cancellano con un clic.', tipo: 'si_no', opzioni: SI_NO },
 ];
 // le risposte predefinite per un settore (per l'interfaccia e per chi salta le domande)
 export const tipiche = settore => ({ settore, persone: 'solo', lumi: true, esempi: true, ...(SETTORI.find(s => s.id === settore) || SETTORI.at(-1)).tipico });
@@ -164,7 +164,7 @@ export function installaPiano(db, pl, { utente = null } = {}) {
     for (const r of pl.ruoli || []) P.salvaRuolo(db, r);
     const persone = [];
     for (const p of pl.persone || []) {
-      const password = 'kubo-' + randomBytes(6).toString('base64url');   // provvisoria: il titolare la vede una volta sola, alla fine dell'avvio
+      const password = 'lumi-' + randomBytes(6).toString('base64url');   // provvisoria: il titolare la vede una volta sola, alla fine dell'avvio
       try { persone.push({ ...U.creaUtente(db, { ...p, password }, { utente }), password }); }
       catch (e) { if (e instanceof U.ErroreAccesso) persone.push({ ...p, errore: e.message }); else throw e; }
     }

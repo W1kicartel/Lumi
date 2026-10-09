@@ -1,4 +1,4 @@
-// Lingua e valuta (#/lingua): la lingua di chi usa Kubo (sua, salvata sul server) e, per chi personalizza, la lingua dei
+// Lingua e valuta (#/lingua): la lingua di chi usa Lumi (sua, salvata sul server) e, per chi personalizza, la lingua dei
 // modelli nuovi e la valuta dell'azienda. Il selettore rapido della lingua sta anche nel piede della barra laterale.
 import { t, LINGUE, VALUTE, lingua, valuta, linguaAzienda, imposta, numero, soldi, data, giorniSettimana, locale } from '../lingua.js';
 

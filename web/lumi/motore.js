@@ -1,4 +1,4 @@
-// Copiato da github.com/W1kicartel/lumi (MIT, © W1kicartel). Adattamenti per Kubo: trascriviVoce manda l'audio alla voce
+// Il motore dell'assistente viene dal progetto Lumi per le aziende (MIT, © W1kicartel). Adattamenti per il gestionale: trascriviVoce manda l'audio alla voce
 // locale del server (Parakeet, <server>/voce/trascrivi); «strumenti» può essere una funzione,
 // riletta a ogni giro (lo schema cambia mentre si parla: una sezione nuova porta i suoi strumenti); la proposta può avere
 // «avvisi» (i controlli prima della conferma, per esempio quelli dello SDI su una fattura), mostrati nella scheda.
@@ -29,7 +29,7 @@ export const MOSTRA = {
 const NOME_OK = /^[a-zA-Z0-9_-]{1,64}$/;
 
 // una conferma è SOLO una di queste risposte, intera (punteggiatura a parte): «manda solo a Maria» non conferma niente
-// anche in spagnolo, francese, tedesco e portoghese (le lingue di Kubo): sí, oui, ja, sim… / non, nein, não…
+// anche in spagnolo, francese, tedesco e portoghese (le lingue di Lumi): sí, oui, ja, sim… / non, nein, não…
 const SI = /^(s[iìí]|ok(ay)?|conferm[aoi]|confermo|vai|procedi|certo|fallo|esatto|d'accordo|yes|yep|yeah|sure|confirm|go ahead|do it|vale|claro|confirmo|confirmar|confirme|oui|confirmer|d’accord|ja|genau|bestätigen|sim|pode)( pure)?[\s,.!]*$/i;
 const NO = /^(no|annulla|lascia (stare|perdere)|aspetta|stop|fermati|ferma|non farlo|niente|meglio di no|cancel|nope|don'?t|wait|never ?mind|cancelar|mejor no|non|annuler|nein|abbrechen|lieber nicht|não|nao|melhor não)[\s,.!]*$/i;
 export const eSi = t => SI.test(String(t).trim());

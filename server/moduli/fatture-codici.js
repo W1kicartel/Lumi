@@ -15,7 +15,7 @@ export const TIPI_CASSA = {
 export const TIPI_RITENUTA = { RT01: 'Ritenuta persone fisiche', RT02: 'Ritenuta persone giuridiche', RT03: 'Contributo INPS', RT04: 'Contributo ENASARCO', RT05: 'Contributo ENPAM', RT06: 'Altro contributo previdenziale' };
 // CausalePagamentoType (XSD 1.2.2): le causali del modello 770 / Certificazione Unica
 export const CAUSALI_RITENUTA = ['A', 'B', 'C', 'D', 'E', 'G', 'H', 'I', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'L1', 'M1', 'M2', 'O1', 'V1', 'ZO'];
-// TipoDocumentoType (XSD 1.2.2): quelli che Kubo emette. TD29 non c'è nello schema 1.2.2 che validiamo: si aggiungerà con lo schema nuovo.
+// TipoDocumentoType (XSD 1.2.2): quelli che Lumi emette. TD29 non c'è nello schema 1.2.2 che validiamo: si aggiungerà con lo schema nuovo.
 export const TIPI_DOCUMENTO = {
   TD01: 'Fattura', TD02: 'Acconto o anticipo su fattura', TD03: 'Acconto o anticipo su parcella', TD04: 'Nota di credito', TD05: 'Nota di debito', TD06: 'Parcella',
   TD16: 'Integrazione reverse charge interno', TD17: 'Integrazione/autofattura servizi dall\'estero', TD18: 'Integrazione beni intracomunitari',

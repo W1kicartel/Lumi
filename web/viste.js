@@ -6,7 +6,7 @@ import { t, minuscole, dataOra } from './lingua.js';
 
 const COLONNE_MAX = 7;
 const visibile = c => !c.archiviato && !c.nascosto_in_lista && !['righe', 'testo_lungo', 'file', 'indirizzo'].includes(c.tipo);
-const prefs = (k, v) => { try { if (v === undefined) return JSON.parse(localStorage.getItem('kubo.' + k) || 'null'); localStorage.setItem('kubo.' + k, JSON.stringify(v)); } catch { return null; } };
+const prefs = (k, v) => { try { if (v === undefined) return JSON.parse(localStorage.getItem('lumi.' + k) || 'null'); localStorage.setItem('lumi.' + k, JSON.stringify(v)); } catch { return null; } };
 
 // ---------- lista ----------
 // Stato della lista: ricerca, filtri (costruttore in filtri.js), colonne scelte e ordinate, raggruppamento con i totali
@@ -181,7 +181,7 @@ export async function scheda(def, id, contenitore, { schema, azioni: azioniModul
   // nuovo: i valori predefiniti dello schema (@oggi = oggi; @utente lo mette il server)
   let riga = nuovo ? Object.fromEntries(def.campi.filter(c => c.predefinito !== undefined && c.predefinito !== '@utente').map(c => [c.id, c.predefinito === '@oggi' ? new Date().toISOString().slice(0, 10) : c.predefinito])) : {};
   // valori messi da un'altra vista (es. il calendario: la data dello spazio cliccato), una volta sola
-  if (nuovo) { try { const k = 'kubo.precompila.' + def.id, x = JSON.parse(sessionStorage.getItem(k) || 'null'); sessionStorage.removeItem(k); if (x) riga = { ...riga, ...x }; } catch {} }
+  if (nuovo) { try { const k = 'lumi.precompila.' + def.id, x = JSON.parse(sessionStorage.getItem(k) || 'null'); sessionStorage.removeItem(k); if (x) riga = { ...riga, ...x }; } catch {} }
   if (!nuovo) { try { riga = await get(`/dati/${def.id}/${id}`); } catch (e) { contenitore.replaceChildren(h('div.corpo', h('div.avviso', e.message))); return; } }
   let sporco = false;
   const editori = {}, errori = {};

@@ -6,7 +6,7 @@ import { costruttore, risolvi, apriPop, etichetta, urlLista } from '../filtri.js
 import { t, locale, minuscole, soldi, soldiCorto, numero as numeroL, numeroCorto, giorniSettimana, primoGiorno } from '../lingua.js';
 
 let h, api, get, toast, icona;
-const prefs = (k, v) => { try { if (v === undefined) return JSON.parse(localStorage.getItem('kubo.agenda.' + k) || 'null'); localStorage.setItem('kubo.agenda.' + k, JSON.stringify(v)); } catch { return null; } };
+const prefs = (k, v) => { try { if (v === undefined) return JSON.parse(localStorage.getItem('lumi.agenda.' + k) || 'null'); localStorage.setItem('lumi.agenda.' + k, JSON.stringify(v)); } catch { return null; } };
 const conData = e => !e.nascosta && e.campi.some(c => !c.archiviato && ['data', 'data_ora'].includes(c.tipo));
 
 // ---------- date locali ----------
@@ -66,8 +66,8 @@ async function calendario(contenuto, k, entita, vistaUrl) {
   // frecce ← → per spostarsi, «t» per oggi; e quando un collega cambia qualcosa in questa sezione, si ricarica
   const tasti = ev => { if (ev.target.closest?.('input,select,textarea') || ev.metaKey || ev.ctrlKey || document.querySelector('.pop')) return; if (ev.key === 'ArrowLeft') vai(-1); if (ev.key === 'ArrowRight') vai(1); if (ev.key === 't') { centro = oggi(); ricorda(); carica(); } };
   let tRic; const altrui = ev => { if (ev.detail.entita === def.id) { clearTimeout(tRic); tRic = setTimeout(carica, 300); } };
-  window.addEventListener('keydown', tasti); window.addEventListener('kubo:evento', altrui);
-  window.addEventListener('hashchange', () => { window.removeEventListener('keydown', tasti); window.removeEventListener('kubo:evento', altrui); }, { once: true });
+  window.addEventListener('keydown', tasti); window.addEventListener('gestionale:evento', altrui);
+  window.addEventListener('hashchange', () => { window.removeEventListener('keydown', tasti); window.removeEventListener('gestionale:evento', altrui); }, { once: true });
 
   function intervallo() {
     if (vista === 'giorno') return [centro, centro];
@@ -108,7 +108,7 @@ async function calendario(contenuto, k, entita, vistaUrl) {
   const testoOra = e => (dati.tipoData === 'data' ? '' : ora(minutiDi(new Date(e.inizio))));
   function carta(e, { compatta = false } = {}) {
     const el = h('a.ag-ev', { href: `#/e/${def.id}/${e.id}`, draggable: dati.puo.modifica, title: [testoOra(e), e.titolo, e.sotto, e.stato?.nome].filter(Boolean).join(' · '),
-      stile: { '--c': `var(--${e.colore || 'grigio'})` }, on: { dragstart: ev => { ev.dataTransfer.setData('text/kubo-evento', e.id); ev.dataTransfer.effectAllowed = 'move'; el.classList.add('ag-trascina'); }, dragend: () => el.classList.remove('ag-trascina') } },
+      stile: { '--c': `var(--${e.colore || 'grigio'})` }, on: { dragstart: ev => { ev.dataTransfer.setData('text/lumi-evento', e.id); ev.dataTransfer.effectAllowed = 'move'; el.classList.add('ag-trascina'); }, dragend: () => el.classList.remove('ag-trascina') } },
       compatta ? [testoOra(e) ? h('span.ag-ora', testoOra(e)) : null, h('span.ag-t', e.titolo)] : [h('span.ag-t', e.titolo), h('span.ag-s', [testoOra(e) && `${testoOra(e)}–${ora(Math.min(24 * 60, minutiDi(new Date(e.inizio)) + e.durata))}`, e.sotto].filter(Boolean).join(' · '))]);
     if (e.stato?.id && ['annullato', 'non_venuto'].includes(e.stato.id)) el.classList.add('ag-spento');
     return el;
@@ -120,7 +120,7 @@ async function calendario(contenuto, k, entita, vistaUrl) {
   function crea(quando, extra = {}) {
     if (!def.puo.crea) return;
     const v = { [campo || dati?.campoData]: quando instanceof Date ? quando.toISOString() : quando, ...extra };
-    try { sessionStorage.setItem('kubo.precompila.' + def.id, JSON.stringify(v)); } catch {}
+    try { sessionStorage.setItem('lumi.precompila.' + def.id, JSON.stringify(v)); } catch {}
     location.hash = `#/e/${def.id}/nuovo`;
   }
 
@@ -133,8 +133,8 @@ async function calendario(contenuto, k, entita, vistaUrl) {
       const g = piu(da, i), qui = per.get(g) || [], fuori = giorno(g).getMonth() !== meseAttuale;
       const cella = h('div.ag-cella', { class: [fuori ? 'fuori' : '', g === oggi() ? 'oggi' : ''].join(' '), on: {
         click: ev => { if (ev.target === cella || ev.target.classList.contains('ag-num-riga')) crea(dati.tipoData === 'data' ? g : ora9(g)); },
-        dragover: ev => { if (ev.dataTransfer.types.includes('text/kubo-evento')) { ev.preventDefault(); cella.classList.add('sopra'); } }, dragleave: () => cella.classList.remove('sopra'),
-        drop: ev => { ev.preventDefault(); cella.classList.remove('sopra'); const id = ev.dataTransfer.getData('text/kubo-evento'), e = dati.eventi.find(x => x.id === id); if (!e || giornoEv(e) === g) return;
+        dragover: ev => { if (ev.dataTransfer.types.includes('text/lumi-evento')) { ev.preventDefault(); cella.classList.add('sopra'); } }, dragleave: () => cella.classList.remove('sopra'),
+        drop: ev => { ev.preventDefault(); cella.classList.remove('sopra'); const id = ev.dataTransfer.getData('text/lumi-evento'), e = dati.eventi.find(x => x.id === id); if (!e || giornoEv(e) === g) return;
           if (dati.tipoData === 'data') return sposta(id, { [dati.campoData]: g });
           const d = new Date(e.inizio), n = giorno(g); n.setHours(d.getHours(), d.getMinutes(), 0, 0); sposta(id, { [dati.campoData]: n.toISOString() }); } } },
         h('div.ag-num-riga', h('button.ag-num', { testo: String(giorno(g).getDate()), title: t('moduli.ag-vedi-giorno'), on: { click: ev => { ev.stopPropagation(); centro = g; vista = 'giorno'; ricorda(); carica(); } } })),
@@ -168,7 +168,7 @@ async function calendario(contenuto, k, entita, vistaUrl) {
       return h('div.ag-ore', { stile: { '--colonne': colonne.length } }, h('div.ag-righello'), intest, h('div.ag-righello'),
         colonne.map(col => {
           const z = h('div.ag-tuttogiorno', { on: { click: ev => { if (ev.target === z) crea(col.g); }, dragover: ev => { ev.preventDefault(); z.classList.add('sopra'); }, dragleave: () => z.classList.remove('sopra'),
-            drop: ev => { ev.preventDefault(); z.classList.remove('sopra'); const id = ev.dataTransfer.getData('text/kubo-evento'); if (id) sposta(id, { [dati.campoData]: col.g }); } } }, dellaColonna(col).map(e => carta(e)));
+            drop: ev => { ev.preventDefault(); z.classList.remove('sopra'); const id = ev.dataTransfer.getData('text/lumi-evento'); if (id) sposta(id, { [dati.campoData]: col.g }); } } }, dellaColonna(col).map(e => carta(e)));
           return z;
         }));
     }
@@ -180,10 +180,10 @@ async function calendario(contenuto, k, entita, vistaUrl) {
       const extra = () => (c && col.chiave ? { [c.id]: c.tipo === 'relazione' ? { id: col.chiave, titolo: col.nome } : col.chiave } : {});
       z.addEventListener('click', ev => { if (ev.target === z) crea(quando(Math.floor(minutiDa(ev) / 30) * 30), extra()); });
       z.addEventListener('mousemove', ev => { if (ev.target === z) z.dataset.ora = ora(Math.floor(minutiDa(ev) / 30) * 30); });
-      z.addEventListener('dragover', ev => { if (!ev.dataTransfer.types.includes('text/kubo-evento')) return; ev.preventDefault(); z.classList.add('sopra'); segno.style.top = (minutiDa(ev) - inizio) / 60 * PX_ORA + 'px'; segno.textContent = ora(minutiDa(ev)); });
+      z.addEventListener('dragover', ev => { if (!ev.dataTransfer.types.includes('text/lumi-evento')) return; ev.preventDefault(); z.classList.add('sopra'); segno.style.top = (minutiDa(ev) - inizio) / 60 * PX_ORA + 'px'; segno.textContent = ora(minutiDa(ev)); });
       z.addEventListener('dragleave', () => z.classList.remove('sopra'));
       z.addEventListener('drop', ev => {
-        ev.preventDefault(); z.classList.remove('sopra'); const id = ev.dataTransfer.getData('text/kubo-evento'), e = dati.eventi.find(x => x.id === id); if (!e) return;
+        ev.preventDefault(); z.classList.remove('sopra'); const id = ev.dataTransfer.getData('text/lumi-evento'), e = dati.eventi.find(x => x.id === id); if (!e) return;
         const nuovo = quando(minutiDa(ev)), valori = {};
         if (nuovo.getTime() !== new Date(e.inizio).getTime()) valori[dati.campoData] = nuovo.toISOString();
         if (c && (e.colonne[c.id] || '') !== col.chiave) valori[c.id] = col.chiave || null;
@@ -241,7 +241,7 @@ async function cruscotto(contenuto, k) {
     h('div.corpo', griglia));
   // le modifiche dei colleghi aggiornano i numeri (al massimo una volta ogni 2 secondi), finché si resta qui
   let tRic; const altrui = () => { if (modifica) return; clearTimeout(tRic); tRic = setTimeout(carica, 2000); };
-  window.addEventListener('kubo:evento', altrui); window.addEventListener('hashchange', () => window.removeEventListener('kubo:evento', altrui), { once: true });
+  window.addEventListener('gestionale:evento', altrui); window.addEventListener('hashchange', () => window.removeEventListener('gestionale:evento', altrui), { once: true });
   async function carica() {
     try { c = await get('/cruscotto'); } catch (e) { griglia.replaceChildren(h('div.avviso', e.message)); return; }
     disegna();
@@ -395,7 +395,7 @@ function apriLista(entita, filtri = [], periodo = null) {
     const g = giornoRel(f.valore); if (!g) return [];
     return f.op === '<' ? [{ campo: f.campo, op: 'prima', valore: g }] : f.op === '>=' ? [{ campo: f.campo, op: 'dopo', valore: g }] : [];
   }).map(f => (f.op === '=' && f.valore === true ? { campo: f.campo, op: 'si' } : f.op === '=' && f.valore === false ? { campo: f.campo, op: 'no' } : f)), ...(periodo?.campo ? [periodo] : [])];
-  try { const k = 'kubo.lista.' + entita, s = JSON.parse(localStorage.getItem(k) || '{}'); localStorage.setItem(k, JSON.stringify({ ...s, filtri: l, vista: null, raggruppa: null })); } catch {}
+  try { const k = 'lumi.lista.' + entita, s = JSON.parse(localStorage.getItem(k) || '{}'); localStorage.setItem(k, JSON.stringify({ ...s, filtri: l, vista: null, raggruppa: null })); } catch {}
 }
 function ultime(d) {
   if (!d.voci?.length) return h('div.nota', t('moduli.ag-nessuna-modifica'));

@@ -18,7 +18,7 @@ export function richiesta(url, { metodo = 'GET', intestazioni = {}, json, form, 
   return new Promise((ok, ko) => {
     const no = controllaUrl(url, { interni }); if (no) { ko(new ErroreRete(no, { code: 'INDIRIZZO' })); return; }
     const u = new URL(url), f = u.protocol === 'https:' ? richiestaHttps : richiestaHttp;
-    const h = { 'User-Agent': 'Kubo-connettori/1', Accept: 'application/json', ...intestazioni };
+    const h = { 'User-Agent': 'Lumi-connettori/1', Accept: 'application/json', ...intestazioni };
     let corpo = '';
     if (json !== undefined) { corpo = JSON.stringify(json); h['Content-Type'] ||= 'application/json'; }
     else if (form !== undefined) { corpo = new URLSearchParams(Object.entries(form).filter(([, v]) => v != null).map(([k, v]) => [k, String(v)])).toString(); h['Content-Type'] ||= 'application/x-www-form-urlencoded'; }
@@ -115,6 +115,6 @@ export function leggiMultipart(grezzo, tipo = '') {
   return out;
 }
 // la verifica GET dei webhook di Meta (WhatsApp, Lead Ads, Instagram): hub.mode=subscribe, hub.verify_token = il token che
-// Kubo ha generato, risposta = hub.challenge (solo cifre e poco altro). Per entrata.verificaGet.
+// Lumi ha generato, risposta = hub.challenge (solo cifre e poco altro). Per entrata.verificaGet.
 export const sfidaMeta = (q, token) => (q.get('hub.mode') === 'subscribe' && !!token && uguali(String(q.get('hub.verify_token') || ''), token)
   ? { testo: String(q.get('hub.challenge') || '').replace(/[^\w.-]/g, '').slice(0, 200) } : { stato: 403, testo: '' });

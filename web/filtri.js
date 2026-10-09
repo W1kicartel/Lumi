@@ -111,7 +111,7 @@ export function filtriDaIndirizzo(entita) {
   const [via, q] = location.hash.split('?'); if (!q) return;
   try {
     const f = JSON.parse(new URLSearchParams(q).get('f') || '[]');
-    if (Array.isArray(f)) { const k = 'kubo.lista.' + entita, s = JSON.parse(localStorage.getItem(k) || '{}'); localStorage.setItem(k, JSON.stringify({ ...s, filtri: f.slice(0, 30), vista: null, raggruppa: null })); }
+    if (Array.isArray(f)) { const k = 'lumi.lista.' + entita, s = JSON.parse(localStorage.getItem(k) || '{}'); localStorage.setItem(k, JSON.stringify({ ...s, filtri: f.slice(0, 30), vista: null, raggruppa: null })); }
   } catch { /* un indirizzo rovinato: la lista si apre senza filtri */ }
   history.replaceState(null, '', via);
 }

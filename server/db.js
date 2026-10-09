@@ -27,7 +27,7 @@ export function apri(percorso = ':memory:') {
   // prima di migrare un database che ha già dati: una copia in backup/ (la vede la pagina Backup, server/moduli/desktop.js)
   if (v > 0 && v < MIGRAZIONI.length && percorso !== ':memory:') {
     const d = new Date(), z = n => String(n).padStart(2, '0'), cartella = join(dirname(percorso), 'backup'); mkdirSync(cartella, { recursive: true });
-    db.exec(`VACUUM INTO '${join(cartella, `kubo-${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}-${z(d.getHours())}-${z(d.getMinutes())}-${z(d.getSeconds())}-modifica.db`).replaceAll("'", "''")}'`);
+    db.exec(`VACUUM INTO '${join(cartella, `lumi-${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}-${z(d.getHours())}-${z(d.getMinutes())}-${z(d.getSeconds())}-modifica.db`).replaceAll("'", "''")}'`);
   }
   for (let i = v; i < MIGRAZIONI.length; i++) {
     transazione(db, () => { db.exec(MIGRAZIONI[i]); db.exec(`PRAGMA user_version = ${i + 1}`); });

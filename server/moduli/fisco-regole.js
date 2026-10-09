@@ -1,7 +1,7 @@
-// Le regole fiscali italiane di Kubo, senza database: date delle scadenze, codici tributo, soglie e conti del forfettario,
+// Le regole fiscali italiane di Lumi, senza database: date delle scadenze, codici tributo, soglie e conti del forfettario,
 // liquidazione IVA, acconti, bollo virtuale, ritenute. Ogni costante ha la sua fonte accanto; dove la fonte non è un testo
 // ufficiale lo diciamo («verifica»). Importi in euro, conti in centesimi interi (cent/euro di documenti-calcoli.js).
-// Kubo calcola e prepara: la responsabilità dei versamenti e delle dichiarazioni resta del contribuente.
+// Lumi calcola e prepara: la responsabilità dei versamenti e delle dichiarazioni resta del contribuente.
 import { cent, euro, intero } from './documenti-calcoli.js';
 
 // ---------- date ----------

@@ -151,8 +151,8 @@ export default {
     const f = k.schema.find(e => e.id === 'fatture'); if (!f || !k.stato.poteri?.schema) return;
     const prezzo = k.schema.find(e => e.id === 'righe_fattura')?.campi.find(c => c.id === 'prezzo');
     if (prezzo?.tipo !== 'valuta' && f.campi.some(c => c.id === 'esigibilita') && k.schema.some(e => e.id === RICEVUTE)) return;
-    try { if (sessionStorage.getItem('kubo.fatture.aggiorna') === 'no') return; } catch { /* niente */ }
-    if (!confirm(t('fatture.aggiorna-chiedi'))) { try { sessionStorage.setItem('kubo.fatture.aggiorna', 'no'); } catch { /* niente */ } return; }
+    try { if (sessionStorage.getItem('lumi.fatture.aggiorna') === 'no') return; } catch { /* niente */ }
+    if (!confirm(t('fatture.aggiorna-chiedi'))) { try { sessionStorage.setItem('lumi.fatture.aggiorna', 'no'); } catch { /* niente */ } return; }
     try { await k.api('POST', '/fatture/aggiorna'); await k.ricaricaSchema(); k.toast(t('fatture.aggiornato')); } catch (e) { k.toast(e.message, true); }
   },
   lato: k => (k.schema.some(e => e.id === RICEVUTE) && k.schema.find(e => e.id === 'fatture')?.puo?.leggi !== false ? [{ href: '#/fatture', icona: 'documento', nome: t('fatture.titolo') }] : []),

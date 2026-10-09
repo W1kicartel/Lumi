@@ -9,7 +9,7 @@
 //   POST /api/backup/carica { nome, dimensione } → { id } · POST /api/backup/carica/:id { da, pezzo }   carica un backup da fuori
 //   GET/PUT /api/aggiornamenti { attivo } · POST /api/aggiornamenti/controlla
 // Ogni giorno un backup «giornaliero» con la rotazione; prima di cambiare lo schema o di un import, un backup «modifica».
-// KUBO_BACKUP=0 spegne i backup automatici (per chi li fa già con altri strumenti).
+// LUMI_BACKUP=0 spegne i backup automatici (per chi li fa già con altri strumenti).
 import { createReadStream, mkdirSync, appendFileSync, rmSync, renameSync, statSync, openSync, readSync, closeSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomBytes } from 'node:crypto';
@@ -42,7 +42,7 @@ export default function registra({ r, prima, db, P, meta, serve, ErroreHttp, man
     // i caricamenti lasciati a metà (pagina chiusa) da più di un giorno se ne vanno
     for (const [k, c] of caricamenti) if (Date.now() - c.inizio > 864e5) { rmSync(c.percorso, { force: true }); caricamenti.delete(k); }
     const oggi = B.nomePer(new Date(), 'x').slice(5, 15);
-    if (process.env.KUBO_BACKUP !== '0' && !B.elenco(cartella()).some(b => b.tipo === 'giornaliero' && b.nome.slice(5, 15) === oggi)) {
+    if (process.env.LUMI_BACKUP !== '0' && !B.elenco(cartella()).some(b => b.tipo === 'giornaliero' && b.nome.slice(5, 15) === oggi)) {
       try { fai('giornaliero'); } catch (e) { console.error('backup:', e.message); }
     }
     if (meta.leggi(db, 'aggiornamenti.attivo') === '1' && Date.now() - Date.parse(meta.leggi(db, 'aggiornamenti.controllato') || 0) > 864e5) cercaVersioni().catch(() => {});
@@ -78,7 +78,7 @@ export default function registra({ r, prima, db, P, meta, serve, ErroreHttp, man
   // quando il disco esterno non rispondeva
   const cartelle = () => [...new Set([cartella(), B.cartellaPredefinita(db)].filter(Boolean))];
   const tutti = () => cartelle().flatMap((c, i) => B.elenco(c).map(b => (i ? { ...b, accanto: true } : b))).sort((a, b) => b.quando.localeCompare(a.quando) || b.nome.localeCompare(a.nome));
-  const stato = () => ({ cartella: cartella(), predefinita: B.cartellaPredefinita(db), esterna: !!meta.leggi(db, 'backup.cartella'), automatici: process.env.KUBO_BACKUP !== '0',
+  const stato = () => ({ cartella: cartella(), predefinita: B.cartellaPredefinita(db), esterna: !!meta.leggi(db, 'backup.cartella'), automatici: process.env.LUMI_BACKUP !== '0',
     elenco: tutti(), errore: JSON.parse(meta.leggi(db, 'backup.errore') || 'null'), limiti: B.TIENI, inMemoria: !B.fileDb(db) });
   const daNome = nome => {
     if (!B.NOME.test(String(nome))) throw new ErroreHttp(404, 'Backup sconosciuto');
@@ -110,7 +110,7 @@ export default function registra({ r, prima, db, P, meta, serve, ErroreHttp, man
       const esito = await B.ripristina(db, f, { cartella: cartella(), token });
       meta.scrivi(db, 'backup.ultimo_ripristino', JSON.stringify({ quando: new Date().toISOString(), da: corpo.nome, sicurezza: esito.sicurezza }));
       manda({ tipo: 'ripristinato', da: ctx.utente.id });
-      process.emit('kubo:ripristinato', { nome: corpo.nome, ...esito });   // l'app desktop ricarica le finestre
+      process.emit('gestionale:ripristinato', { nome: corpo.nome, ...esito });   // l'app desktop ricarica le finestre
       return esito;
     } catch (e) { throw e instanceof ErroreHttp ? e : new ErroreHttp(400, e.message); }
     finally { ripristinando = false; }
@@ -137,7 +137,7 @@ export default function registra({ r, prima, db, P, meta, serve, ErroreHttp, man
     caricamenti.delete(p.id);
     try {
       const h = Buffer.alloc(16), fd = openSync(c.percorso, 'r'); readSync(fd, h, 0, 16, 0); closeSync(fd);
-      if (h.toString('latin1') !== 'SQLite format 3\0') throw new Error('Il file non è un backup di Kubo (serve un file .db)');
+      if (h.toString('latin1') !== 'SQLite format 3\0') throw new Error('Il file non è un backup di Lumi (serve un file .db)');
       const info = B.verifica(c.percorso, { versioneMax: db.prepare('PRAGMA user_version').get().user_version });
       const nome = B.nomePer(new Date(), 'caricato'); renameSync(c.percorso, join(c.cartella, nome)); B.ruota(c.cartella);
       return { ricevuti: c.ricevuti, completo: true, nome, info };

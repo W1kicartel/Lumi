@@ -1,5 +1,5 @@
-// Copiato da github.com/W1kicartel/lumi (MIT, © W1kicartel). Adattamenti per Kubo: fino a 128 strumenti (Kubo li genera
-// dallo schema, quattro per sezione); Lumi risponde nella lingua in cui gli si scrive o si parla (la voce locale capisce
+// Il motore dell'assistente viene dal progetto Lumi per le aziende (MIT, © W1kicartel). Adattamenti per il gestionale: fino a
+// 128 strumenti (generati dallo schema, quattro per sezione); l'assistente risponde nella lingua in cui gli si scrive o si parla (la voce locale capisce
 // 25 lingue), quella dell'interfaccia vale solo se non si capisce. Il resto è uguale all'originale.
 // Il server di Lumi, uguale per Supabase (Deno, ../lumi/index.ts) e per Node (server/lumi-server.mjs): una funzione
 // gestore(Request) → Response con le API standard del web (fetch, Request, Response, ReadableStream), senza dipendenze.
@@ -40,7 +40,7 @@ const TESTI = {
     kAltro: 'Claude error ({s}): {m}', input: 'Could not read a tool input.',
   },
 };
-// le altre lingue di Kubo (es, fr, de, pt): le istruzioni sono quelle inglesi, con la lingua della risposta; i messaggi brevi in inglese
+// le altre lingue di Lumi (es, fr, de, pt): le istruzioni sono quelle inglesi, con la lingua della risposta; i messaggi brevi in inglese
 const RISPOSTA = { en: 'English', es: 'Spanish (Spain), addressing the user as «tú»', fr: 'French, addressing the user as «vous»', de: 'German, addressing the user as «du»', pt: 'Brazilian Portuguese, addressing the user as «você»' };
 export const LINGUE_LUMI = ['it', ...Object.keys(RISPOSTA)];
 const testo = (l, k, p = {}) => String((TESTI[l] || TESTI.en)[k] || k).replace(/\{(\w)\}/g, (x, c) => p[c] ?? x);

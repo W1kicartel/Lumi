@@ -100,7 +100,7 @@ export default function registra({ db, S, D, P, meta, lumi }) {
   const RIGA = { type: 'object', additionalProperties: false, properties: {
     descrizione: { type: 'string', maxLength: 1000, description: 'cosa (es. «Consulenza»)' }, quantita: { type: 'number', description: 'quantità (ore, pezzi); predefinito 1' },
     prezzo: { type: 'number', description: 'prezzo unitario in euro, SENZA IVA (salvo prezzi_ivati)' }, sconto: { type: 'number', minimum: 0, maximum: 100, description: 'sconto %' },
-    aliquota: { type: 'number', minimum: 0, maximum: 100, description: 'IVA %: solo se la persona la dice; altrimenti la decide Kubo' },
+    aliquota: { type: 'number', minimum: 0, maximum: 100, description: 'IVA %: solo se la persona la dice; altrimenti la decide Lumi' },
     natura: { type: 'string', enum: Object.keys(NATURE), description: 'perché è senza IVA: solo se la persona lo dice (mai sceglierla tu)' },
     no_ritenuta: { type: 'boolean', description: 'riga esclusa dalla ritenuta (spese anticipate)' } }, required: ['descrizione', 'prezzo'] };
   function storico(ctx, cliente) {
@@ -172,7 +172,7 @@ export default function registra({ db, S, D, P, meta, lumi }) {
 
   lumi.strumento({
     nome: 'fattura_nuova', tipo: 'scrivi', permesso: perFatture('crea'),
-    descrizione: 'Prepara una fattura nuova (in bozza) per un cliente, dalle parole della persona: «3 ore di consulenza a 80 euro più IVA» = una riga quantita 3, prezzo 80. IVA, natura, ritenuta, cassa e bollo li decide Kubo dalle impostazioni dell\'azienda, dal cliente e dalle fatture già emesse: passali solo se la persona li dice. La scheda mostra i conti e i controlli dello SDI.',
+    descrizione: 'Prepara una fattura nuova (in bozza) per un cliente, dalle parole della persona: «3 ore di consulenza a 80 euro più IVA» = una riga quantita 3, prezzo 80. IVA, natura, ritenuta, cassa e bollo li decide Lumi dalle impostazioni dell\'azienda, dal cliente e dalle fatture già emesse: passali solo se la persona li dice. La scheda mostra i conti e i controlli dello SDI.',
     schema: { type: 'object', additionalProperties: false, properties: {
       cliente: { type: 'string', maxLength: 200, description: 'il nome del cliente (o il suo id)' }, righe: { type: 'array', minItems: 1, maxItems: 100, items: RIGA },
       prezzi_ivati: { type: 'boolean', description: 'true se i prezzi detti comprendono già l\'IVA («IVA inclusa»)' },
@@ -360,7 +360,7 @@ export default function registra({ db, S, D, P, meta, lumi }) {
   }));
 
   lumi.istruzioni([
-    'Fatture e documenti: per una fattura nuova usa fattura_nuova con il cliente per nome e le righe come le dice la persona («3 ore di consulenza a 80 euro più IVA» = quantita 3, prezzo 80; «IVA inclusa» = prezzi_ivati). IVA, natura, ritenuta, cassa e bollo li decide Kubo dalle impostazioni dell\'azienda, dal cliente e dalle fatture già emesse: non passarli se la persona non li dice. La fattura nasce in bozza: dopo chiedi se emetterla (fattura_emetti).',
+    'Fatture e documenti: per una fattura nuova usa fattura_nuova con il cliente per nome e le righe come le dice la persona («3 ore di consulenza a 80 euro più IVA» = quantita 3, prezzo 80; «IVA inclusa» = prezzi_ivati). IVA, natura, ritenuta, cassa e bollo li decide Lumi dalle impostazioni dell\'azienda, dal cliente e dalle fatture già emesse: non passarli se la persona non li dice. La fattura nasce in bozza: dopo chiedi se emetterla (fattura_emetti).',
     'Non inventare mai partite IVA, codici fiscali, codici destinatario, PEC, aliquote, nature IVA, causali o codici tributo: se uno strumento dice che manca un dato, chiedilo alla persona. «Senza IVA» in regime ordinario vuole il motivo (la natura): chiedilo.',
     'Una fattura emessa non si cambia, nemmeno a parole: proponi la nota di credito (fattura_nota_di_credito, totale o con le righe da stornare). Per i controlli dello SDI usa fattura_controlla; per il file XML fattura_esporta_xml; per la stampa o il PDF fattura_stampa; per «quanto mi devono» fatture_da_incassare; per «quanto devo pagare» fatture_da_pagare. Per spedire la fattura al cliente o allo SDI non hai uno strumento: di\' alla persona di salvare il file e caricarlo dal suo canale (portale dell\'Agenzia delle Entrate o intermediario).',
     'Quando serve un professionista dillo con una frase chiara, senza giri: visto di conformità, dichiarazioni dei redditi o IVA presentate per conto di altri, scelta o cambio del regime fiscale, concordato, ravvedimenti, bilanci e ogni consulenza fiscale li fa un commercialista o un CAF. Tu puoi preparare i numeri da portargli.',

@@ -1,4 +1,4 @@
-// Lumi dentro Kubo: l'assistente che legge e propone con i permessi di chi è collegato.
+// L'assistente Lumi: legge e propone con i permessi di chi è collegato.
 //   POST /api/lumi                  il server di Lumi (stato, chat in streaming, voce, file): fa da tramite verso Claude
 //                                   con la chiave dell'azienda, che non arriva mai al browser
 //   GET  /api/lumi/impostazioni     acceso o spento, se c'è la chiave e da dove viene (mai la chiave)
@@ -9,7 +9,7 @@
 //   POST /api/lumi/voce/trascrivi   la voce locale (Parakeet v3 su questo computer, lumi/voce.js): corpo float32 little-endian
 //                                   mono 16 kHz (application/octet-stream), al massimo 60 secondi → { testo, motore }
 // La chiave sta in un file accanto al database (permessi 600) o, se il database è in memoria, nelle impostazioni; senza,
-// vale la variabile ANTHROPIC_API_KEY. Il motore di Lumi (lumi/nucleo.js) è quello del progetto Lumi, uguale.
+// vale la variabile ANTHROPIC_API_KEY. Il motore dell'assistente (lumi/nucleo.js) viene dal progetto Lumi per le aziende.
 import { readFileSync, writeFileSync, unlinkSync, chmodSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -17,7 +17,7 @@ import { creaGestore, MODELLO } from './lumi/nucleo.js';
 import { creaVoceLocale, scegliMotore, daByte, MAX_BYTE } from './lumi/voce.js';
 import { mezzanotte, piuGiorni, giornoDi } from './agenda-aggregati.js';   // i giorni nel fuso dell'azienda
 
-const ORIGINE = 'http://kubo.lumi';   // il nucleo vuole un'origine ammessa: la richiesta la costruiamo noi, dopo la sessione
+const ORIGINE = 'http://lumi.lumi';   // il nucleo vuole un'origine ammessa: la richiesta la costruiamo noi, dopo la sessione
 const CHIAVE = /^sk-[\w-]{10,300}$/;
 const SENZA_CHIAVE = 'Lumi non ha ancora la chiave di Claude: il titolare la aggiunge in Gestione → Lumi.';
 const GIORNO = 864e5;
@@ -41,12 +41,12 @@ export default function registra({ r, db, S, D, P, A, meta, serve, ErroreHttp })
   }
   const chiave = () => chiaveSalvata() || (process.env.ANTHROPIC_API_KEY || '').trim();
   const acceso = () => meta.leggi(db, 'lumi.attivo') !== '0';
-  const limite = () => Number(meta.leggi(db, 'lumi.limite') || process.env.KUBO_LUMI_LIMITE || 20);
+  const limite = () => Number(meta.leggi(db, 'lumi.limite') || process.env.LUMI_LUMI_LIMITE || 20);
   const titolare = ctx => { if (serve(ctx).r.id !== 'titolare') throw new P.ErrorePermesso('Solo il titolare cambia le impostazioni di Lumi'); return ctx; };
-  // la voce locale: il motore si sceglie una volta, all'avvio (kubo-voce sul Mac con chip Apple, sherpa-onnx altrove, o niente)
+  // la voce locale: il motore si sceglie una volta, all'avvio (lumi-voce sul Mac con chip Apple, sherpa-onnx altrove, o niente)
   const cartellaDati = () => { const l = db.location?.(); return l ? dirname(l) : null; };
-  const voce = creaVoceLocale({ scelta: scegliMotore({ radice: RADICE, cartellaModello: process.env.KUBO_VOCE_MODELLO || (cartellaDati() && join(cartellaDati(), 'voce-onnx')) }),
-    temp: process.env.KUBO_VOCE_TEMP || undefined });
+  const voce = creaVoceLocale({ scelta: scegliMotore({ radice: RADICE, cartellaModello: process.env.LUMI_VOCE_MODELLO || (cartellaDati() && join(cartellaDati(), 'voce-onnx')) }),
+    temp: process.env.LUMI_VOCE_TEMP || undefined });
   VOCI.add(voce);
   const impostazioni = () => ({ attivo: acceso(), chiave: !!chiave(), fonte: chiaveSalvata() ? 'impostazioni' : chiave() ? 'ambiente' : null,
     limite: limite(), modello: process.env.LUMI_MODELLO || MODELLO, voce: !!process.env.DEEPGRAM_API_KEY, voceLocale: voce.motore });
@@ -99,7 +99,7 @@ export default function registra({ r, db, S, D, P, A, meta, serve, ErroreHttp })
   });
 
   // ---------- la voce locale: l'audio resta su questo computer ----------
-  // stessa autenticazione di POST /api/lumi (sessione o token, X-Kubo), Lumi acceso, un limite al minuto per persona
+  // stessa autenticazione di POST /api/lumi (sessione o token, X-Lumi), Lumi acceso, un limite al minuto per persona
   // (lo stesso numero delle domande, contato a parte). Una trascrizione alla volta: le altre aspettano in fila.
   const contiVoce = new Map();
   r('POST', '/api/lumi/voce/trascrivi', async ({ ctx, grezzo }) => {

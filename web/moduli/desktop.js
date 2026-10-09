@@ -1,7 +1,7 @@
 // App desktop, rete, backup e aggiornamenti (lato interfaccia; il server è in server/moduli/desktop*.js).
 //   #/rete     «Collega altri dispositivi»: l'indirizzo in rete, il codice da dettare e il QR da inquadrare col telefono
 //   #/backup   le copie (scarica, ripristina, carica), la cartella dove vanno, il controllo delle versioni nuove
-// Nell'app desktop (Electron) window.kuboDesktop dà la scelta della cartella con la finestra del sistema.
+// Nell'app desktop (Electron) window.gestionaleDesktop dà la scelta della cartella con la finestra del sistema.
 import { peso } from '/campi.js';
 import { t, locale, fusoUi } from '/lingua.js';
 
@@ -75,9 +75,9 @@ async function paginaBackup(contenuto, k) {
   }
 
   function cartella() {
-    const campo = h('input.campo.mono', { value: s.esterna ? s.cartella : '', placeholder: t('desktop.cartella-esempio', { a: '/Volumes/Disco/Kubo', b: 'D:\\Backup\\Kubo' }) });
+    const campo = h('input.campo.mono', { value: s.esterna ? s.cartella : '', placeholder: t('desktop.cartella-esempio', { a: '/Volumes/Disco/Lumi', b: 'D:\\Backup\\Lumi' }) });
     const salva = async valore => { try { s = await api('PUT', '/backup/cartella', { cartella: valore }); toast(valore ? t('desktop.cartella-nuova') : t('desktop.cartella-tornata')); disegna(); } catch (e) { toast(e.message, true); } };
-    const scegli = window.kuboDesktop?.scegliCartella ? h('button.btn', { type: 'button', on: { click: async () => { const c = await window.kuboDesktop.scegliCartella(); if (c) salva(c); } } }, t('desktop.scegli-cartella')) : null;
+    const scegli = window.gestionaleDesktop?.scegliCartella ? h('button.btn', { type: 'button', on: { click: async () => { const c = await window.gestionaleDesktop.scegliCartella(); if (c) salva(c); } } }, t('desktop.scegli-cartella')) : null;
     return h('div.foglio', h('div.etichetta', t('desktop.dove')), h('div.desktop-cartella.mono', { testo: s.cartella || t('desktop.in-memoria') }),
       h('p.nota', s.esterna ? t('desktop.nota-esterna') : t('desktop.nota-accanto')),
       h('div.desktop-riga', scegli || campo, scegli ? null : h('button.btn', { type: 'button', on: { click: () => salva(campo.value) } }, t('desktop.usa-cartella')),
@@ -127,7 +127,7 @@ async function paginaBackup(contenuto, k) {
           ult = await api('POST', `/backup/carica/${a.id}`, { da, pezzo: b64 }); da += pezzo.size; avanza.value = da / file.size;
         }
         s = await get('/backup'); disegna();
-        toast(t('desktop.caricato', { azienda: ult.info.azienda || 'Kubo', persone: t('desktop.persone', { n: ult.info.utenti }), sezioni: t('desktop.sezioni', { n: ult.info.sezioni }) }));
+        toast(t('desktop.caricato', { azienda: ult.info.azienda || 'Lumi', persone: t('desktop.persone', { n: ult.info.utenti }), sezioni: t('desktop.sezioni', { n: ult.info.sezioni }) }));
       } catch (e) { avanza.hidden = true; esito.replaceChildren(h('div.avviso', e.message)); }
       input.value = '';
     }
@@ -153,8 +153,8 @@ async function avvisaVersione(k) {
   if (!titolare(k)) return;
   let v; try { v = await k.get('/aggiornamenti'); } catch { return; }
   const nuova = v.esito?.nuova && v.esito.ultima?.versione; if (!nuova) return;
-  try { if (localStorage.getItem('kubo.versione.vista') === nuova) return; } catch {}
-  const { h } = k, chiudi = () => { try { localStorage.setItem('kubo.versione.vista', nuova); } catch {} a.remove(); };
+  try { if (localStorage.getItem('lumi.versione.vista') === nuova) return; } catch {}
+  const { h } = k, chiudi = () => { try { localStorage.setItem('lumi.versione.vista', nuova); } catch {} a.remove(); };
   const a = h('div.desktop-avviso', h('span', t('desktop.avviso-versione') + ' ', h('b', { testo: nuova })), h('a', { href: '#/backup', on: { click: chiudi } }, t('desktop.dettagli')),
     h('button.btn.nudo.piccolo', { type: 'button', title: t('desktop.chiudi'), 'aria-label': t('desktop.chiudi'), on: { click: chiudi } }, '×'));
   document.body.append(a);
@@ -165,7 +165,7 @@ export default {
   avvio(k) {
     if (!document.querySelector('link[data-modulo=desktop]')) { const l = Object.assign(document.createElement('link'), { rel: 'stylesheet', href: '/moduli/desktop.css' }); l.dataset.modulo = 'desktop'; document.head.append(l); }
     // un ripristino fatto da un altro: i dati sotto sono cambiati, si ricarica
-    window.addEventListener('kubo:evento', ev => { if (ev.detail?.tipo === 'ripristinato' && ev.detail.da !== k.stato.utente.id) { k.toast(t('desktop.ripristinato-altro')); setTimeout(() => location.reload(), 1500); } });
+    window.addEventListener('gestionale:evento', ev => { if (ev.detail?.tipo === 'ripristinato' && ev.detail.da !== k.stato.utente.id) { k.toast(t('desktop.ripristinato-altro')); setTimeout(() => location.reload(), 1500); } });
     avvisaVersione(k);
   },
   lato(k) {

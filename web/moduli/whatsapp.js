@@ -5,7 +5,7 @@
 //   #/whatsapp/automazioni     le automazioni pronte: accendi, scegli il modello e i tempi, anteprima
 //   #/whatsapp/impostazioni    silenzio, limiti, orari, sconosciuti, tariffe, costi del mese, webhook, registro
 // Nella scheda di un cliente il bottone «WhatsApp» apre la sua storia e i consensi. Gli eventi in tempo reale (SSE,
-// «kubo:evento» con tipo «whatsapp») ridisegnano la pagina aperta.
+// «gestionale:evento» con tipo «whatsapp») ridisegnano la pagina aperta.
 import { t, locale, fusoUi } from '/lingua.js';
 
 const ora = iso => { try { return new Date(iso).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit', timeZone: fusoUi.fuso }); } catch { return ''; } };
@@ -30,9 +30,9 @@ async function pagina(contenuto, k, a, b) {
     voce('modelli', t('whatsapp.modelli')), voce('automazioni', t('whatsapp.automazioni')), st.titolare ? voce('impostazioni', t('whatsapp.impostazioni')) : null)), corpo);
   const ridisegna = () => pagina(contenuto, k, a, b);
   // un messaggio nuovo ridisegna le conversazioni, ma non mentre si sta scrivendo una risposta
-  if (ascolto) window.removeEventListener('kubo:evento', ascolto);
+  if (ascolto) window.removeEventListener('gestionale:evento', ascolto);
   ascolto = e => { if (e.detail?.tipo === 'whatsapp' && location.hash.startsWith('#/whatsapp') && scheda === 'conversazioni' && !document.querySelector('.wa-testo')?.value) ridisegna(); };
-  window.addEventListener('kubo:evento', ascolto);
+  window.addEventListener('gestionale:evento', ascolto);
   try {
     if (scheda === 'conversazioni') await conversazioni(corpo, k, st, a === 'c' && b ? decodeURIComponent(b) : null, ridisegna);
     if (scheda === 'modelli') await modelli(corpo, k, st, ridisegna);

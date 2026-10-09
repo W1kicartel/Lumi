@@ -56,7 +56,7 @@ async function primoAvvio() {
 }
 // la lingua prima dell'accesso: si ricorda in questo browser (lingua.js) e la pagina si ricarica nella lingua scelta
 function sceltaLingua() {
-  return h('select.campo.piccolo', { title: t('comune.lingua'), 'aria-label': t('comune.lingua'), stile: { ...STILE_LINGUA, float: 'right', marginBottom: '6px' }, on: { change: ev => { try { localStorage.setItem('kubo.lingua', ev.target.value); } catch { } location.reload(); } } },
+  return h('select.campo.piccolo', { title: t('comune.lingua'), 'aria-label': t('comune.lingua'), stile: { ...STILE_LINGUA, float: 'right', marginBottom: '6px' }, on: { change: ev => { try { localStorage.setItem('lumi.lingua', ev.target.value); } catch { } location.reload(); } } },
     Object.entries(LINGUE).map(([c, l]) => h('option', { value: c, testo: l.nome, selected: c === lingua })));
 }
 
@@ -68,7 +68,7 @@ function accesso() {
     ev.preventDefault(); err.replaceChildren();
     try { await api('POST', '/accedi', { email: email.value, password: pw.value }); location.hash = ''; location.reload(); }
     catch (e) { err.replaceChildren(h('div.avviso', e.message)); pw.select(); }
-  } } }, h('div.lingue-scegli', sceltaLingua()), h('h1', stato.azienda || 'Kubo'), h('p', t('comune.accedi-per')), err,
+  } } }, h('div.lingue-scegli', sceltaLingua()), h('h1', stato.azienda || 'Lumi'), h('p', t('comune.accedi-per')), err,
     h('div.riga', h('label.etichetta', t('comune.email')), email), h('div.riga', h('label.etichetta', t('comune.password')), pw),
     h('button.btn.pieno', { type: 'submit', stile: { width: '100%', justifyContent: 'center', padding: '11px' } }, t('comune.accedi')));
   app.replaceChildren(h('div.centro', form)); email.focus();
@@ -80,7 +80,7 @@ function disegnaLato() {
   if (!lato) { lato = h('aside.lato'); contenuto = h('main.contenuto'); app.replaceChildren(h('div.app', lato, contenuto)); }
   const voci = schema.filter(e => !e.nascosta);
   lato.replaceChildren(
-    h('div.marca', h('svg', { html: '' }), h('div', 'Kubo', h('small', stato.azienda || ''))),
+    h('div.marca', h('svg', { html: '' }), h('div', 'Lumi', h('small', stato.azienda || ''))),
     // le voci dei moduli con «inCima» (es. Cruscotto, Agenda) vanno sopra le sezioni
     h('nav', vociModuli().filter(v => v.inCima).map(v => h('a', { href: v.href }, icona(v.icona), v.nome)), voci.map(e => h('a', { href: `#/e/${e.id}`, 'data-e': e.id }, icona(e.icona), e.nome)),
       stato.poteri?.schema || stato.poteri?.utenti ? h('div.sez', t('comune.gestione')) : null,
@@ -134,7 +134,7 @@ function collegaEventi() {
     const ev = JSON.parse(m.data);
     // gli avvisi fissi dei moduli arrivano con una chiave e si mostrano nella lingua di chi guarda; gli altri come sono
     if (ev.tipo === 'avviso') return toast({ 'esempi-aggiunti': () => t('comune.avviso-esempi-aggiunti'), 'esempi-tolti': () => t('comune.avviso-esempi-tolti') }[ev.chiave]?.() ?? ev.testo);
-    window.dispatchEvent(new CustomEvent('kubo:evento', { detail: ev }));   // per i moduli (es. calendario e cruscotto)
+    window.dispatchEvent(new CustomEvent('gestionale:evento', { detail: ev }));   // per i moduli (es. calendario e cruscotto)
     if (ev.da === stato.utente.id) return;
     if (vistaAttiva?.entita === ev.entita) vistaAttiva.ricarica();
   };

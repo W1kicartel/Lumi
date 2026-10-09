@@ -105,7 +105,7 @@ export function pain008({ az, incassi, adesso = new Date(), sequenza = 'RCUR' })
   });
   if (errori.length) return { errori };
   const perData = new Map(); for (const x of incassi) (perData.get(x.data) || perData.set(x.data, []).get(x.data)).push(x);
-  const tot = incassi.reduce((s, x) => s + x.importo, 0), msg = idMsg('KUBO-SDD', adesso);
+  const tot = incassi.reduce((s, x) => s + x.importo, 0), msg = idMsg('LUMI-SDD', adesso);
   let k = 0;
   const blocchi = [...perData.entries()].sort().map(([data, l]) => {
     const sub = l.reduce((s, x) => s + x.importo, 0);
@@ -135,7 +135,7 @@ export function pain001({ az, bonifici, adesso = new Date() }) {
   });
   if (errori.length) return { errori };
   const perData = new Map(); for (const x of bonifici) (perData.get(x.data) || perData.set(x.data, []).get(x.data)).push(x);
-  const tot = bonifici.reduce((s, x) => s + x.importo, 0), msg = idMsg('KUBO-SCT', adesso);
+  const tot = bonifici.reduce((s, x) => s + x.importo, 0), msg = idMsg('LUMI-SCT', adesso);
   let k = 0;
   const blocchi = [...perData.entries()].sort().map(([data, l]) => {
     const sub = l.reduce((s, x) => s + x.importo, 0);

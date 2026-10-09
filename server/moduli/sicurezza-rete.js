@@ -1,8 +1,8 @@
-// Le richieste che Kubo fa verso fuori (i webhook): mai verso la rete interna, a meno di un'opzione esplicita.
+// Le richieste che Lumi fa verso fuori (i webhook): mai verso la rete interna, a meno di un'opzione esplicita.
 // Un webhook verso 127.0.0.1, 192.168.x.x, 169.254.169.254 (i metadati dei cloud) o un nome che si risolve lì
-// trasformerebbe Kubo in un ponte per raggiungere i servizi dell'ufficio (SSRF). Il controllo si fa sull'indirizzo vero
+// trasformerebbe Lumi in un ponte per raggiungere i servizi dell'ufficio (SSRF). Il controllo si fa sull'indirizzo vero
 // a cui ci si collega (nella «lookup» della connessione), così un DNS che cambia risposta fra il controllo e l'invio
-// (DNS rebinding) non passa. Opzione: impostazione «sicurezza.webhook_interni» = 1 o variabile KUBO_WEBHOOK_INTERNI=1.
+// (DNS rebinding) non passa. Opzione: impostazione «sicurezza.webhook_interni» = 1 o variabile LUMI_WEBHOOK_INTERNI=1.
 import { request as richiestaHttp } from 'node:http';
 import { request as richiestaHttps } from 'node:https';
 import { lookup } from 'node:dns';

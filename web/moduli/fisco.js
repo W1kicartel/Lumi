@@ -211,7 +211,7 @@ async function promemoria(k) {
   let l; try { l = await k.get('/fisco/promemoria'); } catch { return; }
   const vicine = l.filter(s => (Date.parse(s.data) - Date.parse(oggi())) / 864e5 <= 7);
   if (!vicine.length) return;
-  const chiave = 'kubo.fisco.promemoria', giorno = oggi();
+  const chiave = 'lumi.fisco.promemoria', giorno = oggi();
   try { if (localStorage.getItem(chiave) === giorno) return; localStorage.setItem(chiave, giorno); } catch { /* niente */ }
   const s = vicine[0];
   k.toast(t('fisco.promemoria', { cosa: nomeScadenza(s), data: data(s.data), n: vicine.length }));

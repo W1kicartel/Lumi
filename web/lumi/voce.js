@@ -1,7 +1,7 @@
 // La voce di Lumi, in due direzioni.
 // • Ascoltare: si tiene premuto ⌥ Spazio (Ctrl ⇧ Spazio su Windows e Linux) o si clicca il microfono. Tre modi, in
 //   quest'ordine:
-//   1. locale (adattamento per Kubo): se il server ha la voce locale pronta (Parakeet v3 sul suo computer, in una
+//   1. locale (adattamento per Lumi): se il server ha la voce locale pronta (Parakeet v3 sul suo computer, in una
 //      qualsiasi delle 25 lingue europee, riconosciuta da sola), il microfono si registra qui (AudioContext), si
 //      ricampiona a 16 kHz mono float32 e al rilascio va al server, che restituisce il testo. L'audio non esce
 //      dall'azienda. Se la voce locale non risponde, per il resto della pagina si passa al modo dopo;

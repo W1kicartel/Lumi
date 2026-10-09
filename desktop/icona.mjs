@@ -1,4 +1,4 @@
-// L'icona dell'app (build/icon.png, 1024×1024) disegnata qui, senza programmi di grafica: i quattro blocchi di Kubo,
+// L'icona dell'app (build/icon.png, 1024×1024) disegnata qui, senza programmi di grafica: quattro blocchi
 // bianchi su un quadrato nero arrotondato. Con node:zlib si scrive il PNG a mano. electron-builder ne ricava .icns e .ico.
 import { deflateSync } from 'node:zlib';
 import { writeFileSync, mkdirSync } from 'node:fs';

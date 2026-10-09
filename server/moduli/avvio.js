@@ -11,7 +11,7 @@ import { DOMANDE, SETTORI, tipiche, piano, installaPiano, mettiEsempi, togliEsem
 export default function registra({ r, db, U, P, meta, serve, ErroreHttp, manda, primoAvvio }) {
   tabelle(db);
   const titolare = ctx => { if (serve(ctx).r.id !== 'titolare') throw new P.ErrorePermesso('Solo il titolare può farlo'); return ctx; };
-  const cookie = token => `kubo=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${30 * 86400}`;
+  const cookie = token => `lumi=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${30 * 86400}`;
 
   r('GET', '/api/avvio/domande', () => ({ domande: DOMANDE, tipiche: Object.fromEntries(SETTORI.map(s => [s.id, tipiche(s.id)])) }));
   r('POST', '/api/avvio/piano', ({ corpo }) => { if (U.quanti(db) > 0) throw new ErroreHttp(409, 'Già configurato'); return piano(corpo?.risposte || {}, db); });

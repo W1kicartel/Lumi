@@ -1,9 +1,9 @@
-// La voce locale dove non c'è kubo-voce (Windows, Linux, Mac Intel): Parakeet TDT 0.6B v3 di NVIDIA in ONNX (int8) con
+// La voce locale dove non c'è lumi-voce (Windows, Linux, Mac Intel): Parakeet TDT 0.6B v3 di NVIDIA in ONNX (int8) con
 // sherpa-onnx (k2-fsa, Apache 2.0), sul processore. Viene da Lode (desktop/voce-onnx.mjs, MIT, stesso autore).
-// • sherpa-onnx-node è una dipendenza FACOLTATIVA di Kubo (optionalDependencies, versione esatta): senza, la voce locale
+// • sherpa-onnx-node è una dipendenza FACOLTATIVA di Lumi (optionalDependencies, versione esatta): senza, la voce locale
 //   non c'è e tutto il resto funziona. L'addon si carica SOLO in un processo a parte (voce-onnx-motore.js): se manca o va
-//   in crash, cade quel processo e non Kubo, e il server non si blocca mentre trascrive.
-// • Il modello (~640 MB, 4 file) si scarica la prima volta che serve in <dati>/voce-onnx (accanto a kubo.db), da un commit
+//   in crash, cade quel processo e non Lumi, e il server non si blocca mentre trascrive.
+// • Il modello (~640 MB, 4 file) si scarica la prima volta che serve in <dati>/voce-onnx (accanto a lumi.db), da un commit
 //   preciso di Hugging Face; ogni file si controlla con l'impronta SHA256 qui sotto mentre arriva, e di nuovo una volta
 //   per avvio prima di usarlo. Il download riprende da dove era rimasto (.parziale + Range) e controlla lo spazio.
 // • L'audio passa in memoria (Float32Array nel messaggio): niente file.
@@ -34,7 +34,7 @@ export const MODELLO = {
   ],
 };
 // il processo della voce arriva a ~1,5 GB mentre trascrive (misure di Lode su M2): sotto 5,5 GiB di memoria non si sceglie
-// da solo (KUBO_VOCE=onnx lo forza)
+// da solo (LUMI_VOCE=onnx lo forza)
 export const MEMORIA_MINIMA = 5.5 * 2 ** 30;
 const errore = (testo, codice) => Object.assign(new Error(testo), { codice });
 
@@ -50,7 +50,7 @@ export async function impronta(file) {
   for await (const pezzo of createReadStream(file, { highWaterMark: 1 << 20 })) h.update(pezzo);
   return h.digest('hex');
 }
-const SESSIONE = new Map();   // i file già controllati in questo avvio di Kubo: percorso → chi è (disco, inode, misura, date)
+const SESSIONE = new Map();   // i file già controllati in questo avvio di Lumi: percorso → chi è (disco, inode, misura, date)
 const chi = (st, f) => [st.dev, st.ino, st.size, st.mtimeMs, st.ctimeMs, f.sha256].join(':');
 const stat = file => { try { return statSync(file); } catch { return null; } };
 export const spazioLibero = cartella => { try { const s = statfsSync(cartella); return s.bavail * s.bsize; } catch { return Infinity; } };
@@ -76,7 +76,7 @@ export async function scaricaModello({ cartella, rete = fetch, modello = MODELLO
     const dest = join(cartella, f.nome), tmp = dest + '.parziale';
     let da = parte(f); if (da >= f.byte) { rmSync(tmp, { force: true }); da = 0; }
     let r;
-    try { r = await rete(modello.base + f.nome, { redirect: 'follow', headers: { 'User-Agent': 'Kubo', ...(da ? { Range: `bytes=${da}-` } : {}) } }); }
+    try { r = await rete(modello.base + f.nome, { redirect: 'follow', headers: { 'User-Agent': 'Lumi', ...(da ? { Range: `bytes=${da}-` } : {}) } }); }
     catch (e) { throw errore(`Modello della voce non scaricato: ${e.message}`, 'rete'); }
     if (r.status === 200) da = 0;
     else if (r.status !== 206 || !String(r.headers.get('content-range') || '').startsWith(`bytes ${da}-`)) {
@@ -103,7 +103,7 @@ export async function processoPredefinito() {
   if (process.versions.electron && process.type === 'browser') {
     const { utilityProcess } = await import('electron');
     return () => {
-      const p = utilityProcess.fork(MOTORE, [], { serviceName: 'Kubo voce', stdio: 'ignore' });
+      const p = utilityProcess.fork(MOTORE, [], { serviceName: 'Lumi voce', stdio: 'ignore' });
       return { manda: m => p.postMessage(m), su: (ev, fn) => p.on(ev === 'messaggio' ? 'message' : 'exit', fn), uccidi: () => p.kill() };
     };
   }

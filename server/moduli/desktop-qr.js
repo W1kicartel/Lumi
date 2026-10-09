@@ -1,6 +1,6 @@
 // Un piccolo codificatore di codici QR, senza librerie: modo byte (UTF-8), correzione M (circa il 15%), versioni 1-10
 // (fino a 213 byte: un indirizzo come http://192.168.1.20:4380/#/accedi ci sta largo). Serve alla pagina «Collega altri
-// dispositivi»: il telefono inquadra e si apre Kubo. Il risultato è una matrice di righe '0'/'1' (1 = modulo scuro),
+// dispositivi»: il telefono inquadra e si apre Lumi. Il risultato è una matrice di righe '0'/'1' (1 = modulo scuro),
 // senza la cornice bianca (che l'interfaccia aggiunge disegnando).
 // Riferimento: ISO/IEC 18004. Nessun file di questa cartella senza «registra»: il server lo salta (vedi api.js).
 

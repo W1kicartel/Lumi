@@ -274,7 +274,7 @@ export function creaDistinta(k, ctx, { tipo, chiavi, data = null, adesso = new D
       return { importo: s.residuo, scadenza: s.data < oggi ? oggi : s.data, fattura: { numero: s.numero, data: s.dataDoc },
         debitore: { nome: c.nome || s.controparte, cf: c.piva || c.codice_fiscale || '', via: c.via || (typeof c.indirizzo === 'string' ? c.indirizzo : c.indirizzo?.via) || '', cap: c.cap || '', comune: c.comune || '', provincia: c.provincia || '', iban: c.iban || '' } };
     });
-    f = F.riba({ az, sia: imp.sia, ricevute, supporto: `KUBO${adesso.toISOString().replace(/\D/g, '').slice(2, 14)}${createHash('sha1').update(String(Math.random())).digest('hex').slice(0, 4).toUpperCase()}`, oggi });
+    f = F.riba({ az, sia: imp.sia, ricevute, supporto: `LUMI${adesso.toISOString().replace(/\D/g, '').slice(2, 14)}${createHash('sha1').update(String(Math.random())).digest('hex').slice(0, 4).toUpperCase()}`, oggi });
   } else if (tipo === 'sdd') {
     f = F.pain008({ az, adesso, sequenza: imp.sequenzaSdd, incassi: scelte.map(s => {
       const c = anagrafica(k, ctx, 'clienti', s.controparteId);

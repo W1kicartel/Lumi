@@ -1,4 +1,4 @@
-// Lumi nell'interfaccia di Kubo: la pillola in alto (il motore è in /lumi/, copiato dal progetto Lumi), con gli strumenti
+// L'assistente nell'interfaccia: la pillola in alto (il motore è in /lumi/, dal progetto Lumi per le aziende), con gli strumenti
 // generati dallo schema (./lumi/strumenti.js), «Da vedere» dal server e le azioni rapide. Senza la chiave di Claude la
 // pillola resta, mostra «Da vedere» e dice con garbo come accenderla. Le impostazioni (#/lumi) sono del titolare.
 import { urlLista } from '../filtri.js';
@@ -22,13 +22,13 @@ const titolare = () => K?.stato.utente?.ruolo === 'titolare';
 
 async function accendi(k) {
   K = k; schema = k.schema;
-  if (!document.querySelector('link[data-kubo-lumi]')) document.head.append(k.h('link', { rel: 'stylesheet', href: '/moduli/lumi.css', 'data-kubo-lumi': '' }));
+  if (!document.querySelector('link[data-foglio-lumi]')) document.head.append(k.h('link', { rel: 'stylesheet', href: '/moduli/lumi.css', 'data-foglio-lumi': '' }));
   const s = await k.api('POST', '/lumi', { azione: 'stato' }).catch(() => null), vero = !!s?.claude;
   await caricaModuli();
   document.documentElement.classList.add('con-lumi');
   lumi = Lumi.avvia({
     nome: k.stato.azienda || '', lingua, utente: k.stato.utente.nome,
-    server: vero ? '/api/lumi' : null, intestazioni: { 'X-Kubo': '1' },
+    server: vero ? '/api/lumi' : null, intestazioni: { 'X-Lumi': '1' },
     tema: matchMedia('(prefers-color-scheme: dark)').matches ? undefined : 'chiaro',
     strumenti: () => strumenti({ schema, api: k.api, poteri: k.stato.poteri || {}, dopoSchema, apri: aggiornaVista, moduli, scarica, lingua }),
     istruzioni: istruzioni({ poteri: k.stato.poteri || {}, moduli }),
@@ -98,22 +98,22 @@ async function impostazioni(contenuto, k) {
   const stato = !st.attivo ? [t('moduli.lumi-stato-spento'), 'grigio'] : st.chiave ? [t('moduli.lumi-stato-acceso'), 'verde'] : [t('moduli.lumi-stato-manca'), 'giallo'];
   contenuto.replaceChildren(
     h('div.testa', h('h1', 'Lumi')),
-    h('div.corpo.kubo-lumi',
+    h('div.corpo.modulo-lumi',
       h('div.foglio',
-        h('div.kubo-lumi-riga', colore(h('span.chip', { testo: stato[0] }), stato[1]),
+        h('div.modulo-lumi-riga', colore(h('span.chip', { testo: stato[0] }), stato[1]),
           h('span.nota', st.fonte === 'ambiente' ? t('moduli.lumi-fonte-ambiente') : st.fonte ? t('moduli.lumi-fonte-file') : '')),
         h('p', t('moduli.lumi-cos-e')),
         h('label.etichetta', t('moduli.lumi-chiave')),
-        h('div.kubo-lumi-riga', chiave, h('button.btn.pieno', { testo: t('moduli.lumi-salva-chiave'), on: { click: () => (chiave.value.trim() ? salva({ chiave: chiave.value.trim(), attivo: true }) : toast(t('moduli.lumi-incolla'), true)) } }),
+        h('div.modulo-lumi-riga', chiave, h('button.btn.pieno', { testo: t('moduli.lumi-salva-chiave'), on: { click: () => (chiave.value.trim() ? salva({ chiave: chiave.value.trim(), attivo: true }) : toast(t('moduli.lumi-incolla'), true)) } }),
           st.fonte === 'impostazioni' ? h('button.btn.pericolo', { testo: t('comune.togli'), on: { click: () => { if (confirm(t('moduli.lumi-togliere'))) salva({ togliChiave: true }); } } }) : null),
         h('p.nota', t('moduli.lumi-dove-chiave')),
-        h('div.kubo-lumi-riga', { stile: { marginTop: '18px' } },
-          h('label.kubo-lumi-interruttore', attivo, t('moduli.lumi-acceso')),
-          h('label.kubo-lumi-interruttore', t('moduli.lumi-limite'), limite),
+        h('div.modulo-lumi-riga', { stile: { marginTop: '18px' } },
+          h('label.modulo-lumi-interruttore', attivo, t('moduli.lumi-acceso')),
+          h('label.modulo-lumi-interruttore', t('moduli.lumi-limite'), limite),
           h('button.btn', { testo: t('viste.salva'), on: { click: () => salva({ attivo: attivo.checked, limite: Number(limite.value) }) } }))),
       h('div.foglio', { stile: { marginTop: '16px' } },
         h('div.etichetta', t('moduli.lumi-da-provare')),
-        h('ul.kubo-lumi-esempi', [1, 2, 3, 4, 5].map(i => h('li', t('moduli.lumi-esempio-' + i)))),
+        h('ul.modulo-lumi-esempi', [1, 2, 3, 4, 5].map(i => h('li', t('moduli.lumi-esempio-' + i)))),
         h('p.nota', t('moduli.lumi-modello', { modello: st.modello }), ' ', st.voceLocale ? t('moduli.lumi-voce-locale') : st.voce ? t('moduli.lumi-voce-accesa') : t('moduli.lumi-voce-browser')))));
 }
 

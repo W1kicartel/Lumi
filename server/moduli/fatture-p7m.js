@@ -1,7 +1,7 @@
 // Il contenuto di una fattura firmata (.xml.p7m, busta CAdES = CMS SignedData, RFC 5652) senza librerie: un piccolo
 // lettore ASN.1 BER/DER che segue ContentInfo → SignedData → encapContentInfo → eContent e restituisce i byte dell'XML.
 // Accetta lunghezze definite e indefinite, l'OCTET STRING spezzato in pezzi (BER) e il file in base64 (come lo danno alcuni
-// portali). La firma NON si verifica: Kubo legge la fattura, la validità della firma l'ha già controllata lo SDI.
+// portali). La firma NON si verifica: Lumi legge la fattura, la validità della firma l'ha già controllata lo SDI.
 // Il modulo non registra rotte.
 
 const OID_SIGNED_DATA = '1.2.840.113549.1.7.2', ROTTO = 'Il file .p7m è rovinato o incompleto';

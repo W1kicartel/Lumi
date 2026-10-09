@@ -1,4 +1,4 @@
-// Copiato da github.com/W1kicartel/lumi (MIT, © W1kicartel). Adattamento per Kubo: «testi» sostituisce alcune frasi
+// Il motore dell'assistente viene dal progetto Lumi per le aziende (MIT, © W1kicartel). Adattamento per il gestionale: «testi» sostituisce alcune frasi
 // dell'interfaccia (per esempio quelle della modalità senza chiave), «strumenti» può essere una funzione.
 // Lumi: l'assistente AI che vive in una pillola in cima allo schermo, per il gestionale, il CRM o il sito della tua
 // azienda. Un modulo ES, niente build, niente dipendenze:

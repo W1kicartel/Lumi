@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; img-src 'self' data:">
-<title>Kubo</title>
+<title>Lumi</title>
 <style>
   :root { --sfondo: #fafafa; --pannello: #fff; --testo: #0a0a0a; --tenue: #6b6b6b; --linea: #e6e6e6; --forte: #0a0a0a; --su-forte: #fff; --errore: #c62828; color-scheme: light; }
   @media (prefers-color-scheme: dark) { :root { --sfondo: #0a0a0a; --pannello: #121212; --testo: #f2f2f2; --tenue: #9a9a9a; --linea: #262626; --forte: #f2f2f2; --su-forte: #0a0a0a; --errore: #ff6b6b; color-scheme: dark; } }
@@ -34,7 +34,7 @@
 </head>
 <body>
 <main>
-  <h1>Benvenuto in Kubo</h1>
+  <h1>Benvenuto in Lumi</h1>
   <p class="sotto">Come usiamo questo computer?</p>
   <div class="scelte">
     <button class="scelta" id="server" type="button">
@@ -44,14 +44,14 @@
     </button>
     <button class="scelta" id="cliente" type="button">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18v11H3zM8 20h8M12 16v4"/></svg>
-      <b>Collegati a un Kubo in rete</b>
-      <span>Kubo è già acceso su un altro computer dell'ufficio (o su un server): questo PC ci lavora sopra.</span>
+      <b>Collegati a Lumi in rete</b>
+      <span>Lumi è già acceso su un altro computer dell'ufficio (o su un server): questo PC ci lavora sopra.</span>
     </button>
   </div>
   <form id="collega" hidden>
-    <label for="indirizzo">Indirizzo o codice del Kubo dell'ufficio</label>
+    <label for="indirizzo">Indirizzo o codice del computer dell'ufficio</label>
     <div class="riga"><input id="indirizzo" autocomplete="off" spellcheck="false" placeholder="Per esempio R8M0-0A1C-4W oppure 192.168.1.20"><button class="vai" type="submit">Collegati</button></div>
-    <p class="nota">Li trovi sul computer con i dati, in Kubo → «Collega dispositivi».</p>
+    <p class="nota">Li trovi sul computer con i dati, in Lumi → «Collega dispositivi».</p>
     <p class="errore" id="errore" role="alert"></p>
   </form>
   <p class="errore" id="errore-server" role="alert"></p>

@@ -15,7 +15,7 @@ export function lipe({ cf, piva, anno, periodicita, trimestre, periodi, metodoAc
   righe.push('<?xml version="1.0" encoding="UTF-8"?>', `<iv:Fornitura xmlns:iv="${NS_LIPE}" xmlns:ds="http://www.w3.org/2000/09/xmldsig#">`,
     '  <iv:Intestazione>', '    <iv:CodiceFornitura>IVP18</iv:CodiceFornitura>', '  </iv:Intestazione>',
     `  <iv:Comunicazione identificativo="${String(identificativo).padStart(5, '0')}">`, '    <iv:Frontespizio>');
-  el('CodiceFiscale', cf); el('AnnoImposta', anno); el('PartitaIVA', piva); el('FirmaDichiarazione', firma ? 1 : 0); el('IdentificativoProdSoftware', 'KUBO');
+  el('CodiceFiscale', cf); el('AnnoImposta', anno); el('PartitaIVA', piva); el('FirmaDichiarazione', firma ? 1 : 0); el('IdentificativoProdSoftware', 'LUMI');
   righe.push('    </iv:Frontespizio>', '    <iv:DatiContabili>');
   periodi.forEach((p, i) => {
     const r = '        ', q5 = periodicita === 'trimestrale' && trimestre === 4;
@@ -69,7 +69,7 @@ function winAnsi(s) {
   return Buffer.from(b).toString('latin1').replace(/[\\()]/g, m => '\\' + m);
 }
 // righe: [{ testo, grande?, grassetto? }] o stringhe
-export function pdfTesto(righe, { titolo = 'Kubo' } = {}) {
+export function pdfTesto(righe, { titolo = 'Lumi' } = {}) {
   const pagine = [[]], A4 = [595, 842], margine = 50, max = 92;
   let y = A4[1] - margine;
   for (const r0 of righe) {
@@ -92,7 +92,7 @@ export function pdfTesto(righe, { titolo = 'Kubo' } = {}) {
   });
   ogg[catalogo - 1] = `<< /Type /Catalog /Pages ${radice} 0 R >>`;
   ogg[radice - 1] = `<< /Type /Pages /Kids [${figli.map(f => `${f} 0 R`).join(' ')}] /Count ${figli.length} >>`;
-  const info = aggiungi(`<< /Title (${winAnsi(titolo)}) /Producer (Kubo) >>`);
+  const info = aggiungi(`<< /Title (${winAnsi(titolo)}) /Producer (Lumi) >>`);
   let out = '%PDF-1.4\n%\xe2\xe3\xcf\xd3\n'; const pos = [];
   ogg.forEach((o, i) => { pos.push(Buffer.byteLength(out, 'latin1')); out += `${i + 1} 0 obj\n${o}\nendobj\n`; });
   const xref = Buffer.byteLength(out, 'latin1');

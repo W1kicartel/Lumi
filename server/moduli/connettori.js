@@ -1,4 +1,4 @@
-// Il nucleo dei connettori: collegare un servizio a Kubo con una cartella e un manifesto (docs/CONNETTORI.md).
+// Il nucleo dei connettori: collegare un servizio a Lumi con una cartella e un manifesto (docs/CONNETTORI.md).
 // Un connettore è connettori/<id>/connettore.js (quelli ufficiali, nel repository) o <dati>/connettori/<id>/connettore.js
 // (quelli dell'azienda o di terzi: il titolare li attiva vedendo la somma SHA-256, e se il file cambia si fermano finché
 // non li riapprova). Il connettore dichiara; il nucleo fa: segreti cifrati, impostazioni, identità di servizio con
@@ -33,7 +33,7 @@ export const CARTELLA_UFFICIALI = join(dirname(fileURLToPath(import.meta.url)), 
 const somma = f => createHash('sha256').update(readFileSync(f)).digest('hex');
 const ID = /^[a-z][a-z0-9-]{1,40}$/;
 
-// legge le cartelle dei connettori: { man, file, somma, origine }. Un manifesto rotto non ferma Kubo (si segna l'errore).
+// legge le cartelle dei connettori: { man, file, somma, origine }. Un manifesto rotto non ferma Lumi (si segna l'errore).
 // «approvata(id, somma)»: un connettore di terzi si importa (cioè il suo codice gira) solo se il titolare ha approvato
 // QUELLA somma; altrimenti resta { inattesa: true } con la sola somma da mostrare, e il file non viene eseguito.
 export async function carica(cartella, origine, approvata = () => true, solo = null) {
@@ -168,7 +168,7 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
   function ctxServizio(id) {
     const { man } = conn(id), uid = `servizio:${id}`;
     if (!db.prepare('SELECT 1 FROM _utenti WHERE id = ?').get(uid))
-      db.prepare("INSERT INTO _utenti (id, nome, email, hash, ruolo, attivo, creato) VALUES (?, ?, ?, '!', ?, 0, ?)").run(uid, man.nome, `${id}@connettori.kubo.invalid`, uid, new Date().toISOString());
+      db.prepare("INSERT INTO _utenti (id, nome, email, hash, ruolo, attivo, creato) VALUES (?, ?, ?, '!', ?, 0, ?)").run(uid, man.nome, `${id}@connettori.lumi.invalid`, uid, new Date().toISOString());
     const entita = {};
     for (const [sem, p] of Object.entries(permessiDi(id))) {
       const e = entitaDi(id, sem), regola = { leggi: !!p.leggi, crea: !!p.crea, modifica: !!p.modifica, elimina: !!p.elimina }; entita[e] = regola;
@@ -210,9 +210,9 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
   const mancanti = id => statoMappe(id).flatMap(m => !m.entita ? (m.campi.every(c => c.facoltativo) ? [] : [m.sem]) : m.campi.filter(c => !c.campo && !c.facoltativo).map(c => `${m.sem}.${c.sem}`));
   const prendi = (o, via) => String(via).split('.').reduce((x, k) => x?.[k], o);
 
-  // ---------- l'indirizzo pubblico di Kubo (uno per tutti): impostazione del titolare, o KUBO_PUBBLICO ----------
+  // ---------- l'indirizzo pubblico di Lumi (uno per tutti): impostazione del titolare, o LUMI_PUBBLICO ----------
   const PUBBLICO = /^https?:\/\/[^\s/?#@]+(\/[^\s?#]*)?$/i;
-  const pubblico = () => { const v = String(meta.leggi(db, 'connettori.pubblico') || process.env.KUBO_PUBBLICO || '').trim().replace(/\/+$/, ''); return PUBBLICO.test(v) ? v : ''; };
+  const pubblico = () => { const v = String(meta.leggi(db, 'connettori.pubblico') || process.env.LUMI_PUBBLICO || '').trim().replace(/\/+$/, ''); return PUBBLICO.test(v) ? v : ''; };
 
   // ---------- il k di un connettore ----------
   const kCache = new Map();
@@ -233,10 +233,10 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
       get imp() { return impPiene(id); },
       get segreti() { return Object.fromEntries((man.impostazioni || []).filter(i => i.segreto).map(i => [i.id, segreto(id, i.id)])); },
       get base() { return impDi(id)._base || man.base || ''; },
-      // l'indirizzo pubblico di Kubo («https://kubo.bottega.it», senza barra finale) o '' se il titolare non l'ha dato
+      // l'indirizzo pubblico di Lumi («https://lumi.bottega.it», senza barra finale) o '' se il titolare non l'ha dato
       get pubblico() { return pubblico(); },
-      interni: () => process.env.KUBO_CONNETTORI_INTERNI === '1' || !!riga(id)?.interni,
-      http: client({ interni: () => process.env.KUBO_CONNETTORI_INTERNI === '1' || !!riga(id)?.interni }),
+      interni: () => process.env.LUMI_CONNETTORI_INTERNI === '1' || !!riga(id)?.interni,
+      http: client({ interni: () => process.env.LUMI_CONNETTORI_INTERNI === '1' || !!riga(id)?.interni }),
       campo: (sem, c) => campoDi(id, sem, c), entita: vero,
       annota: (verso, esito, titolo, dett) => annota(id, verso, esito, titolo, dett),
       avvisa: t => { annota(id, 'sistema', 'avviso', t); manda?.({ tipo: 'avviso', testo: `${man.nome}: ${t}` }); return t; },
@@ -246,7 +246,7 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
       euro: n => `${Number(n || 0).toFixed(2).replace('.', ',')} €`,
       oauth: { token: () => tokenOAuth(id), collegato: () => !!tokenSalvato(id)?.access_token, extra: () => ({ ...(tokenSalvato(id)?.extra || {}) }) },
       sincro: {
-        // gli oggetti del servizio entrano in Kubo: abbinati per id remoto o per la chiave, solo i campi con comanda ≠ 'kubo'
+        // gli oggetti del servizio entrano in Lumi: abbinati per id remoto o per la chiave, solo i campi con comanda ≠ 'locale'
         async daRemoto(nome, oggetti) {
           const mp = man.mappe[nome], sem = mp.entita || nome, e = vero(sem), conti = { creati: 0, aggiornati: 0, uguali: 0 };
           for (const o of [].concat(oggetti || [])) {
@@ -254,10 +254,10 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
             let rigaId = noto?.riga && db.prepare(`SELECT id FROM ${S.tabella(e)} WHERE id = ? AND archiviato = 0`).get(noto.riga) ? noto.riga : null;
             if (!rigaId && mp.chiave) { const v = prendi(o, mp.chiave[1]); if (v != null && v !== '') rigaId = dati.trova(sem, mp.chiave[0], String(v))?.id || null; }
             const valori = {};
-            for (const c of mp.campi) { if (rigaId && c.comanda === 'kubo') continue; const v = prendi(o, c.remoto); if (v !== undefined) valori[c.kubo] = c.da ? c.da(v) : v; }
+            for (const c of mp.campi) { if (rigaId && c.comanda === 'locale') continue; const v = prendi(o, c.remoto); if (v !== undefined) valori[c.locale] = c.da ? c.da(v) : v; }
             if (!rigaId && mp.chiave) valori[mp.chiave[0]] ??= prendi(o, mp.chiave[1]);
             // l'impronta guarda solo i campi che comanda il servizio: così un giro senza novità non riscrive niente
-            const impronta = createHash('sha256').update(JSON.stringify(mp.campi.filter(c => c.comanda !== 'kubo').map(c => prendi(o, c.remoto)))).digest('hex').slice(0, 32);
+            const impronta = createHash('sha256').update(JSON.stringify(mp.campi.filter(c => c.comanda !== 'locale').map(c => prendi(o, c.remoto)))).digest('hex').slice(0, 32);
             if (rigaId && noto?.impronta === impronta) { conti.uguali++; continue; }
             if (rigaId) { dati.modifica(sem, rigaId, valori); conti.aggiornati++; } else { rigaId = dati.crea(sem, valori).id; conti.creati++; }
             db.prepare('INSERT INTO _connettori_mappa (connettore, entita, riga, remoto, impronta, aggiornato) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(connettore, entita, remoto) DO UPDATE SET riga = excluded.riga, impronta = excluded.impronta, aggiornato = excluded.aggiornato')
@@ -515,7 +515,7 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
       if (d.su && P.puo(ctx, entitaDi(id, d.su), d.scrive ? 'modifica' : 'leggi')) out.push({ connettore: id, nomeConnettore: c.man.nome, azione: a, nome: tr(c.man, l, `az.${a}`, d.nome), su: entitaDi(id, d.su), scrive: !!d.scrive, input: Object.keys(d.input || {}) });
     return out;
   });
-  // l'indirizzo pubblico di Kubo, per i webhook e i ritorni: uno solo, del titolare (vuoto = si toglie)
+  // l'indirizzo pubblico di Lumi, per i webhook e i ritorni: uno solo, del titolare (vuoto = si toglie)
   r('GET', '/api/connettori/impostazioni', ({ ctx }) => { titolare(ctx); return { pubblico: pubblico(), daAmbiente: !meta.leggi(db, 'connettori.pubblico') && !!pubblico() }; });
   r('PUT', '/api/connettori/impostazioni', ({ ctx, corpo }) => {
     titolare(ctx); const v = String(corpo.pubblico ?? '').trim().replace(/\/+$/, '').slice(0, 300);
@@ -575,7 +575,7 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
     if (corpo.attivo === true) await man.attiva?.(kPer(p.id));
     return scheda(p.id, linguaDi(req, ctx), true);
   });
-  // i codici che un servizio mette in fondo all'indirizzo (o che Kubo genera): se li sceglie il titolare, almeno 16 caratteri
+  // i codici che un servizio mette in fondo all'indirizzo (o che Lumi genera): se li sceglie il titolare, almeno 16 caratteri
   const minimo = (man, def) => Math.max(def.minimo || 0, def.segreto && (def.generato || (man.entrata?.firma?.segreto === def.id && (man.entrata.firma.tipo === 'token' || man.entrata.firma.nelPercorso))) ? 16 : 0);
   function convalida(id, def, v) {
     if (v == null || v === '') return null;
@@ -586,12 +586,12 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
     if (def.tipo === 'ricette' || def.tipo === 'json') {
       let x = v; if (typeof x === 'string') { try { x = JSON.parse(x); } catch { throw errore(400, 'valore-non-valido', { nome: def.nome }); } }
       if (JSON.stringify(x).length > 200000) throw errore(400, 'valore-non-valido', { nome: def.nome });
-      if (typeof def.controlla === 'function') { try { x = def.controlla(x, { interni: process.env.KUBO_CONNETTORI_INTERNI === '1' || !!riga(id)?.interni, S, db }); } catch (e) { const x = tradotto(e); throw x !== e ? x : new ErroreHttp(400, String(e.message).slice(0, 300)); } }
+      if (typeof def.controlla === 'function') { try { x = def.controlla(x, { interni: process.env.LUMI_CONNETTORI_INTERNI === '1' || !!riga(id)?.interni, S, db }); } catch (e) { const x = tradotto(e); throw x !== e ? x : new ErroreHttp(400, String(e.message).slice(0, 300)); } }
       return x;
     }
     const t = String(v).trim().slice(0, 4000);
     if (def.tipo === 'scelta' && !(def.opzioni || []).some(o => (o.id ?? o) === t)) throw errore(400, 'valore-non-valido', { nome: def.nome });
-    if (def.tipo === 'url') { const no = controllaUrl(t, { interni: process.env.KUBO_CONNETTORI_INTERNI === '1' || !!riga(id)?.interni }); if (no) throw errore(400, 'indirizzo-non-valido', { nome: def.nome }); }
+    if (def.tipo === 'url') { const no = controllaUrl(t, { interni: process.env.LUMI_CONNETTORI_INTERNI === '1' || !!riga(id)?.interni }); if (no) throw errore(400, 'indirizzo-non-valido', { nome: def.nome }); }
     if (def.schema && !def.schema.test(t)) throw errore(400, 'valore-non-valido', { nome: def.nome });
     return t;
   }

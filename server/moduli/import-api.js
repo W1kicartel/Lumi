@@ -1,9 +1,9 @@
 // API pubblica e webhook.
 // Token personali: ogni persona ne crea per sé (nome, scadenza); il token si vede una volta sola, nel database c'è solo
-// l'impronta SHA-256. Con «Authorization: Bearer kubo_…» si usano tutte le /api/* con gli stessi permessi del ruolo di chi
+// l'impronta SHA-256. Con «Authorization: Bearer lumi_…» si usano tutte le /api/* con gli stessi permessi del ruolo di chi
 // l'ha creato. Un token non può creare altri token né gestire i webhook.
 // Webhook (solo il titolare): su crea / modifica / elimina / ripristina di una sezione, POST JSON a un indirizzo scelto,
-// firmato con HMAC-SHA256 («X-Kubo-Firma: sha256=…» su «<X-Kubo-Tempo>.<corpo>»). Le consegne si scrivono nella stessa
+// firmato con HMAC-SHA256 («X-Lumi-Firma: sha256=…» su «<X-Lumi-Tempo>.<corpo>»). Le consegne si scrivono nella stessa
 // transazione della modifica (se la modifica si annulla, non parte niente), poi si spediscono fuori; se il server non
 // risponde 2xx si riprova con attese crescenti (ATTESE). Il registro delle consegne resta consultabile.
 import { createHash, createHmac, randomBytes } from 'node:crypto';
@@ -18,7 +18,7 @@ let verificatoreAggiunto = false;
 
 export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp }) {
   // verso la rete interna solo se il titolare l'ha permesso (server/moduli/sicurezza-rete.js)
-  const interni = () => process.env.KUBO_WEBHOOK_INTERNI === '1' || meta?.leggi(db, 'sicurezza.webhook_interni') === '1';
+  const interni = () => process.env.LUMI_WEBHOOK_INTERNI === '1' || meta?.leggi(db, 'sicurezza.webhook_interni') === '1';
   db.exec(`CREATE TABLE IF NOT EXISTS _import_token (id TEXT PRIMARY KEY, utente TEXT NOT NULL, nome TEXT NOT NULL, impronta TEXT NOT NULL UNIQUE,
       inizio TEXT NOT NULL, creato TEXT NOT NULL, scade TEXT, usato TEXT, revocato INTEGER NOT NULL DEFAULT 0);
     CREATE TABLE IF NOT EXISTS _import_webhook (id TEXT PRIMARY KEY, def TEXT NOT NULL, segreto TEXT NOT NULL, creato TEXT NOT NULL);
@@ -30,7 +30,7 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp })
   if (!verificatoreAggiunto) {
     verificatoreAggiunto = true;
     U.aggiungiVerificatore((dbT, token) => {
-      if (!token.startsWith('kubo_')) return null;
+      if (!/^(lumi|kubo)_/.test(token)) return null;   // kubo_…: i token creati quando si chiamava Kubo valgono ancora
       let u; try { u = dbT.prepare(`SELECT t.usato AS t_usato, u.* FROM _import_token t JOIN _utenti u ON u.id = t.utente WHERE t.impronta = ? AND t.revocato = 0 AND u.attivo = 1 AND (t.scade IS NULL OR t.scade > ?)`).get(impronta(token), new Date().toISOString()); } catch { return null; }
       if (!u) return null;
       if (!u.t_usato || Date.now() - Date.parse(u.t_usato) > 6e4) dbT.prepare('UPDATE _import_token SET usato = ? WHERE impronta = ?').run(new Date().toISOString(), impronta(token));
@@ -46,7 +46,7 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp })
     const nome = String(corpo.nome || '').trim().slice(0, 80); if (!nome) throw new ErroreHttp(400, 'Dai un nome al token (es. «Sito», «Contabilità»)');
     const giorni = corpo.giorni == null || corpo.giorni === '' ? 90 : Number(corpo.giorni);
     if (!Number.isFinite(giorni) || giorni < 0 || giorni > 3650) throw new ErroreHttp(400, 'Scadenza non valida');
-    const token = 'kubo_' + randomBytes(24).toString('base64url'), id = nuovoId(), ora = new Date();
+    const token = 'lumi_' + randomBytes(24).toString('base64url'), id = nuovoId(), ora = new Date();
     const scade = giorni ? new Date(ora.getTime() + giorni * 864e5).toISOString() : null;
     db.prepare('INSERT INTO _import_token (id, utente, nome, impronta, inizio, creato, scade) VALUES (?, ?, ?, ?, ?, ?, ?)').run(id, ctx.utente.id, nome, impronta(token), token.slice(0, 9), ora.toISOString(), scade);
     return { ...pubblicoToken(db.prepare('SELECT * FROM _import_token WHERE id = ?').get(id)), token };
@@ -90,7 +90,7 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp })
         ...(P.puo(ctx, e.id, 'elimina') ? { delete: { tags: [e.nome], summary: 'Archivia (si ripristina)', responses: { 200: { description: 'OK' }, default: errore } } } : {}),
       };
     }
-    return { openapi: '3.0.3', info: { title: 'Kubo', version: '1', description: 'API del gestionale, generate dallo schema. Autenticazione: Authorization: Bearer <token personale>.' },
+    return { openapi: '3.0.3', info: { title: 'Lumi', version: '1', description: 'API del gestionale, generate dallo schema. Autenticazione: Authorization: Bearer <token personale>.' },
       servers: [{ url: `http://${String(req.headers.host || 'localhost').replace(/[^\w.:-]/g, '')}` }], security: [{ token: [] }],
       components: { securitySchemes: { token: { type: 'http', scheme: 'bearer' } }, schemas }, paths };
   });
@@ -126,7 +126,7 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp })
   });
   r('POST', '/api/webhook/:id/prova', ({ ctx, p }) => {
     soloTitolare(ctx); const w = leggiWebhook().find(w => w.id === p.id); if (!w) throw new ErroreHttp(404, 'Webhook sconosciuto');
-    accoda(w, 'prova', { evento: 'prova', quando: new Date().toISOString(), messaggio: 'Prova da Kubo' }); spedisciPresto(); return { ok: true };
+    accoda(w, 'prova', { evento: 'prova', quando: new Date().toISOString(), messaggio: 'Prova da Lumi' }); spedisciPresto(); return { ok: true };
   });
   r('POST', '/api/webhook/consegne/:n/riprova', ({ ctx, p }) => {
     soloTitolare(ctx); db.prepare(`UPDATE _import_consegne SET stato = 'attesa', prossimo = ? WHERE id = ?`).run(new Date().toISOString(), Number(p.n)); spedisciPresto(); return { ok: true };
@@ -159,7 +159,7 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp })
         let codice = null, risposta = '';
         try {
           const rr = await invia(def.url, { corpo, interni: interni(), ms: 10000,   // niente redirect seguiti, niente rete interna
-            intestazioni: { 'Content-Type': 'application/json', 'User-Agent': 'Kubo-Webhook/1', 'X-Kubo-Evento': c.evento, 'X-Kubo-Consegna': String(c.id), 'X-Kubo-Tempo': tempo, 'X-Kubo-Firma': firma(c.segreto, tempo, corpo) } });
+            intestazioni: { 'Content-Type': 'application/json', 'User-Agent': 'Lumi-Webhook/1', 'X-Lumi-Evento': c.evento, 'X-Lumi-Consegna': String(c.id), 'X-Lumi-Tempo': tempo, 'X-Lumi-Firma': firma(c.segreto, tempo, corpo) } });
           codice = rr.status; risposta = rr.testo.slice(0, 500);
         } catch (e) { risposta = String(e?.code === 'INDIRIZZO_INTERNO' ? e.message : e?.cause?.code || e?.code || e?.name || e?.message || e).slice(0, 500); }
         const ok = codice >= 200 && codice < 300, tentativi = c.tentativi + 1, fine = ok || tentativi > ATTESE.length;

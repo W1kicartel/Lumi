@@ -1,6 +1,6 @@
 // I backup: una copia coerente del database (VACUUM INTO: si prende anche mentre si lavora, senza fermare niente) in una
 // cartella backup/ accanto ai dati, oppure in una cartella scelta dal titolare (un disco esterno, una cartella sincronizzata).
-//   kubo-2026-10-07-21-50-03-giornaliero.db   tipi: giornaliero, modifica (prima di schema o import), manuale, sicurezza
+//   lumi-2026-10-07-21-50-03-giornaliero.db   tipi: giornaliero, modifica (prima di schema o import), manuale, sicurezza
 //                                              (prima di un ripristino), caricato (portato da fuori)
 // Gli allegati (<dati>/file) vanno in <backup>/allegati in modo incrementale: si copia solo quello che manca o è cambiato,
 // e non si cancella mai niente, così anche un backup vecchio ritrova i suoi file.
@@ -12,12 +12,12 @@ import { randomBytes } from 'node:crypto';
 import { cartellaFile } from './import-file.js';
 import { apri } from '../db.js';
 
-export const NOME = /^kubo-(\d{4})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(giornaliero|modifica|manuale|sicurezza|caricato)\.db$/;
+export const NOME = /^lumi-(\d{4})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(giornaliero|modifica|manuale|sicurezza|caricato)\.db$/;
 export const TIENI = { giornalieri: 7, settimanali: 4, mensili: 12, modifica: 10, sicurezza: 5, caricato: 5 };
 
 export const fileDb = db => db.prepare('PRAGMA database_list').all().find(x => x.name === 'main')?.file || '';
 const due = n => String(n).padStart(2, '0');
-export const nomePer = (d, tipo) => `kubo-${d.getFullYear()}-${due(d.getMonth() + 1)}-${due(d.getDate())}-${due(d.getHours())}-${due(d.getMinutes())}-${due(d.getSeconds())}-${tipo}.db`;
+export const nomePer = (d, tipo) => `lumi-${d.getFullYear()}-${due(d.getMonth() + 1)}-${due(d.getDate())}-${due(d.getHours())}-${due(d.getMinutes())}-${due(d.getSeconds())}-${tipo}.db`;
 const giorno = d => `${d.getFullYear()}-${due(d.getMonth() + 1)}-${due(d.getDate())}`;
 // la settimana ISO (lunedì-domenica) come «anno-numero»
 function settimana(d) { const t = new Date(d.getFullYear(), d.getMonth(), d.getDate()); t.setDate(t.getDate() + 3 - ((t.getDay() + 6) % 7));
@@ -30,10 +30,10 @@ export const cartellaBackup = (db, meta) => meta.leggi(db, 'backup.cartella') ||
 // una cartella scelta dal titolare: percorso assoluto, normalizzato, scrivibile, e mai dentro la cartella dei dati
 export function validaCartella(db, testo) {
   const t = String(testo || '').trim(); if (!t) return '';
-  if (!isAbsolute(t)) throw new Error(`Scrivi il percorso completo della cartella (per esempio ${'/Volumes/Disco/Kubo'} o ${'D:\\Backup\\Kubo'})`);
+  if (!isAbsolute(t)) throw new Error(`Scrivi il percorso completo della cartella (per esempio ${'/Volumes/Disco/Lumi'} o ${'D:\\Backup\\Lumi'})`);
   const c = resolve(t), dati = dirname(fileDb(db) || '.');
   if ((c + sep).startsWith(dati + sep) && c !== join(dati, 'backup')) throw new Error('Scegli una cartella fuori da quella dei dati');
-  try { mkdirSync(c, { recursive: true }); const prova = join(c, `.kubo-prova-${randomBytes(4).toString('hex')}`); writeFileSync(prova, 'ok'); rmSync(prova); }
+  try { mkdirSync(c, { recursive: true }); const prova = join(c, `.lumi-prova-${randomBytes(4).toString('hex')}`); writeFileSync(prova, 'ok'); rmSync(prova); }
   catch { throw new Error('In quella cartella non si riesce a scrivere: controlla che il disco sia collegato'); }
   return c;
 }
@@ -92,16 +92,16 @@ export function copia(db, cartella, tipo = 'manuale', ora = new Date()) {
   return { ...elenco(cartella).find(b => b.nome === nome), allegati };
 }
 
-// un file è un backup di Kubo sano? (integrità, tabelle del motore, almeno un titolare attivo)
+// un file è un backup di Lumi sano? (integrità, tabelle del motore, almeno un titolare attivo)
 export function verifica(percorso, { versioneMax = Infinity } = {}) {
-  let d; try { d = new DatabaseSync(percorso, { readOnly: true }); } catch { throw new Error('Il file non è un database di Kubo'); }
+  let d; try { d = new DatabaseSync(percorso, { readOnly: true }); } catch { throw new Error('Il file non è un database di Lumi'); }
   try {
-    let ok; try { ok = d.prepare('PRAGMA integrity_check').get(); } catch { throw new Error('Il file non è un database di Kubo'); }
+    let ok; try { ok = d.prepare('PRAGMA integrity_check').get(); } catch { throw new Error('Il file non è un database di Lumi'); }
     if (Object.values(ok)[0] !== 'ok') throw new Error('Il backup è rovinato: scegline un altro');
     const tab = new Set(d.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all().map(x => x.name));
-    if (!['_meta', '_entita', '_utenti', '_sessioni', '_registro'].every(t => tab.has(t))) throw new Error('Il file non è un database di Kubo');
+    if (!['_meta', '_entita', '_utenti', '_sessioni', '_registro'].every(t => tab.has(t))) throw new Error('Il file non è un database di Lumi');
     const v = d.prepare('PRAGMA user_version').get().user_version;
-    if (v > versioneMax) throw new Error('Il backup viene da una versione di Kubo più nuova: aggiorna Kubo prima di ripristinarlo');
+    if (v > versioneMax) throw new Error('Il backup viene da una versione di Lumi più nuova: aggiorna Lumi prima di ripristinarlo');
     const titolari = d.prepare("SELECT COUNT(*) n FROM _utenti WHERE ruolo = 'titolare' AND attivo = 1").get().n;
     if (!titolari) throw new Error('Nel backup non c\'è un titolare attivo: non si potrebbe più entrare');
     return { azienda: d.prepare("SELECT valore FROM _meta WHERE chiave = 'azienda'").get()?.valore ?? null,
@@ -120,7 +120,7 @@ export async function ripristina(db, percorso, { cartella, token = null } = {}) 
   const sicurezza = copia(db, cartella, 'sicurezza');
   // il file preparato sta in una cartella provvisoria: apri() di db.js gli fa le migrazioni del motore che mancano (un backup
   // di una versione vecchia) e la sua copia «prima di migrare» resta lì dentro e se ne va con lei
-  const tmp = join(dirname(vivo), `.ripristino-${randomBytes(6).toString('hex')}`), prep = join(tmp, 'kubo.db');
+  const tmp = join(dirname(vivo), `.ripristino-${randomBytes(6).toString('hex')}`), prep = join(tmp, 'lumi.db');
   try {
     mkdirSync(tmp);
     const src = new DatabaseSync(percorso, { readOnly: true });

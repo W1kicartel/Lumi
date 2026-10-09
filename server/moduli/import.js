@@ -197,18 +197,18 @@ export default function registra({ r, db, S, D, P, serve, ErroreHttp, manda }) {
   // ---------- backup completo ----------
   r('GET', '/api/import/backup', ({ ctx, res }) => {
     if (serve(ctx).r.id !== 'titolare' || ctx.viaToken) throw new P.ErrorePermesso('Solo il titolare scarica il backup, dall\'interfaccia');
-    const cartella = join(tmpdir(), `kubo-backup-${randomBytes(6).toString('hex')}`); mkdirSync(cartella, { recursive: true });
-    const copia = join(cartella, 'kubo.db');
+    const cartella = join(tmpdir(), `lumi-backup-${randomBytes(6).toString('hex')}`); mkdirSync(cartella, { recursive: true });
+    const copia = join(cartella, 'lumi.db');
     try {
       db.exec(`VACUUM INTO '${copia.replace(/'/g, "''")}'`);   // copia coerente anche mentre altri scrivono
       // chi trova lo zip non deve poter entrare con le sessioni aperte né riprendere i caricamenti a metà
       { const c = new DatabaseSync(copia); c.exec('DELETE FROM _sessioni; DROP TABLE IF EXISTS _import_caricamenti; VACUUM'); c.close(); }
       const allegati = fileDaSalvare(db), peso = allegati.reduce((s, f) => s + f.dimensione, 0), conAllegati = peso <= 1024 * 1024 * 1024;
       const ora = new Date(), d = n => String(n).padStart(2, '0');   // nel nome l'ora di qui, non quella UTC
-      const nome = `kubo-backup-${ora.getFullYear()}-${d(ora.getMonth() + 1)}-${d(ora.getDate())}-${d(ora.getHours())}-${d(ora.getMinutes())}.zip`;
+      const nome = `lumi-backup-${ora.getFullYear()}-${d(ora.getMonth() + 1)}-${d(ora.getDate())}-${d(ora.getHours())}-${d(ora.getMinutes())}.zip`;
       const zip = scriviZip([
-        { nome: 'kubo.db', dati: readFileSync(copia) },
-        { nome: 'LEGGIMI.txt', dati: `Backup di Kubo del ${ora.toLocaleString('it-IT')}.\r\n\r\nPer ripristinarlo: ferma Kubo, metti kubo.db${conAllegati ? ' e la cartella file' : ''} nella cartella dei dati (quella di --dati, di solito ./dati) al posto di quelli che ci sono, poi riaccendi.\r\n${conAllegati ? '' : '\r\nGli allegati superano 1 GB e non sono nello zip: copia a mano la cartella dati/file.\r\n'}` },
+        { nome: 'lumi.db', dati: readFileSync(copia) },
+        { nome: 'LEGGIMI.txt', dati: `Backup di Lumi del ${ora.toLocaleString('it-IT')}.\r\n\r\nPer ripristinarlo: ferma Lumi, metti lumi.db${conAllegati ? ' e la cartella file' : ''} nella cartella dei dati (quella di --dati, di solito ./dati) al posto di quelli che ci sono, poi riaccendi.\r\n${conAllegati ? '' : '\r\nGli allegati superano 1 GB e non sono nello zip: copia a mano la cartella dati/file.\r\n'}` },
         ...(conAllegati ? allegati.map(f => ({ nome: f.nome, dati: readFileSync(f.percorso), comprimi: false })) : []),
       ]);
       res.writeHead(200, { 'Content-Type': 'application/zip', 'Content-Disposition': intestazioneNome(nome), 'Content-Length': zip.length, 'Cache-Control': 'no-store' }).end(zip);

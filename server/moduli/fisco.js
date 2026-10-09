@@ -1,6 +1,6 @@
 // Il fisco: quanto pagare, quando e con che codice, e i file pronti da caricare da soli con SPID. Il modulo aggiunge:
 //   GET/PUT /api/fisco/impostazioni   regime, periodicità IVA, ATECO e coefficiente, gestione INPS, riduzione 35%, 5% del forfettario…
-//   POST /api/fisco/prepara           aggiunge «Fatture ricevute» (la sezione del modello fatture, una sola per tutto Kubo) e, se serve, «Corrispettivi»
+//   POST /api/fisco/prepara           aggiunge «Fatture ricevute» (la sezione del modello fatture, una sola per tutto Lumi) e, se serve, «Corrispettivi»
 //   GET  /api/fisco/registri?anno&da&a      registri IVA vendite e acquisti (dalle fatture emesse, ricevute e dai corrispettivi)
 //   GET  /api/fisco/liquidazione?anno       liquidazioni periodiche, acconto di dicembre, credito riportato
 //   GET  /api/fisco/lipe?anno&trimestre     il file XML della Comunicazione liquidazioni periodiche IVA
@@ -11,7 +11,7 @@
 //   GET  /api/fisco/scadenze?anno · GET /api/fisco/promemoria   lo scadenzario del regime dell'azienda e le prossime scadenze
 //   GET  /api/fisco/pacchetto?da&a          lo zip per il commercialista
 // Le letture passano da dati.js con il ctx di chi chiede: chi non vede le fatture non vede nemmeno i conti che ne vengono.
-// Kubo calcola e prepara; dichiarazioni, visto di conformità e consulenza restano del contribuente o di un professionista.
+// Lumi calcola e prepara; dichiarazioni, visto di conformità e consulenza restano del contribuente o di un professionista.
 import * as R from './fisco-regole.js';
 import { lipe, f24Html, pdfTesto } from './fisco-file.js';
 import { cent, euro, intero } from './documenti-calcoli.js';
@@ -42,7 +42,7 @@ const PREDEFINITE = { regime: null, periodicita: 'trimestrale', ateco: '', coeff
   annoInizio: null, creditoAnnoPrecedente: 0, accontoIvaStorico: null, accontoIvaPrevisto: null, impostaAnnoPrecedente: null, accontiVersatiAnnoPrecedente: null,
   contributiVersati: null, sedeInps: '', matricolaInps: '', camerale: null, provinciaCciaa: '', sostituto: false, bollo: false, annoRiferimento: null };
 // i valori «dell'anno scorso» (crediti, acconti, imposta, contributi versati) valgono solo per l'anno in cui sono stati inseriti:
-// per gli altri anni Kubo li ricava dai dati, così un'impostazione del 2026 non finisce nei conti del 2027
+// per gli altri anni Lumi li ricava dai dati, così un'impostazione del 2026 non finisce nei conti del 2027
 const DELL_ANNO = ['creditoAnnoPrecedente', 'accontoIvaStorico', 'accontoIvaPrevisto', 'impostaAnnoPrecedente', 'accontiVersatiAnnoPrecedente', 'contributiVersati'];
 export function perAnno(imp, anno) {
   if (!imp.annoRiferimento || Number(imp.annoRiferimento) === Number(anno)) return imp;
@@ -164,7 +164,7 @@ export function liquidazione(k, ctx, anno, imp0 = impostazioni(k.db, k.meta)) {
     periodi.push({ ivaVendite: euro(cent(t.vendite.imposta) + cent(t.corrispettivi.imposta)), ivaAcquisti: t.acquisti.detraibile,
       attive: euro(cent(t.vendite.imponibile) + cent(t.corrispettivi.imponibile)), passive: t.acquisti.imponibile });
   }
-  // l'acconto di dicembre: storico (dalle impostazioni) o previsionale. Il previsionale lo dà chi lo prevede; Kubo usa il
+  // l'acconto di dicembre: storico (dalle impostazioni) o previsionale. Il previsionale lo dà chi lo prevede; Lumi usa il
   // calcolo dell'ultimo periodo solo a periodo chiuso, perché con il periodo in corso i dati sono parziali e l'acconto verrebbe basso
   const prova = R.liquida({ periodicita: imp.periodicita, anno, periodi, creditoAnnoPrecedente: imp.creditoAnnoPrecedente });
   const ultimo = prova.periodi.at(-1), chiuso = new Date().toISOString().slice(0, 10) > ultimo.a;
@@ -313,7 +313,7 @@ const TESTI_F24 = { 'f24-titolo': 'Modello F24 — da ricopiare in F24 web o nel
   'f24-erario': 'Sezione Erario', 'f24-inps': 'Sezione INPS', 'f24-locali': 'Sezione IMU e altri tributi locali', 'f24-codice': 'Codice tributo', 'f24-rateazione': 'Rateazione / mese rif.',
   'f24-anno': 'Anno di riferimento', 'f24-debito': 'Importi a debito', 'f24-credito': 'Importi a credito', 'f24-sede': 'Codice sede', 'f24-causale': 'Causale contributo',
   'f24-matricola': 'Matricola / codice INPS', 'f24-da': 'Periodo da (mm/aaaa)', 'f24-a': 'Periodo a (mm/aaaa)', 'f24-ente': 'Codice ente', 'f24-totale': 'Totale', 'f24-saldo': 'Saldo finale',
-  'f24-nota': 'Preparato da Kubo: controlla gli importi prima di pagare, la responsabilità del versamento è del contribuente. Con un saldo a debito senza compensazioni puoi pagare dall\'home banking; se compensi un credito (o il saldo è zero) devi usare i servizi dell\'Agenzia delle Entrate (F24 web, F24 online). Per compensare crediti IVA oltre 5.000 € serve il visto di conformità di un professionista.' };
+  'f24-nota': 'Preparato da Lumi: controlla gli importi prima di pagare, la responsabilità del versamento è del contribuente. Con un saldo a debito senza compensazioni puoi pagare dall\'home banking; se compensi un credito (o il saldo è zero) devi usare i servizi dell\'Agenzia delle Entrate (F24 web, F24 online). Per compensare crediti IVA oltre 5.000 € serve il visto di conformità di un professionista.' };
 export function f24(k, ctx, anno, data) {
   const v = versamenti(k, ctx, anno), g = v.f24.find(x => x.data === data); if (!g) throw new k.ErroreHttp(404, 'Nessun versamento in questa data');
   const az = azienda(k.db, k.meta), dataIt = data.split('-').reverse().join('/');
@@ -360,11 +360,11 @@ export function pacchetto(k, ctx, da, a) {
     const v = versamenti(k, ctx, y).voci.filter(x => x.data >= da && x.data <= a);
     if (v.length) { righe.push({ testo: `Versamenti con scadenza nel periodo (${y})`, grassetto: true }); for (const x of v) righe.push(`${x.data.split('-').reverse().join('/')}  ${x.codice || x.causale}  anno ${x.anno}  ${fmt(x.importo)}`); righe.push(''); }
   }
-  righe.push({ testo: 'Nota', grassetto: true }, 'Preparato con Kubo dai dati del gestionale. Gli importi sono calcolati e vanno controllati: la responsabilità di versamenti e dichiarazioni resta del contribuente.',
+  righe.push({ testo: 'Nota', grassetto: true }, 'Preparato con Lumi dai dati del gestionale. Gli importi sono calcolati e vanno controllati: la responsabilità di versamenti e dichiarazioni resta del contribuente.',
     'Gli XML delle fatture emesse sono copie generate ora dai dati: il file inviato allo SDI e le ricevute stanno in «Fatture e Corrispettivi».');
   file.push({ nome: 'riepilogo.pdf', dati: pdfTesto(righe, { titolo: 'Riepilogo fiscale' }) });
   file.push({ nome: 'LEGGIMI.txt', dati: `Pacchetto per il commercialista - ${az.ragione_sociale || ''}\r\nPeriodo ${da} - ${a}\r\n\r\nfatture-emesse/  copie XML FatturaPA delle fatture emesse\r\nregistro-iva-*.csv/.xlsx  registri IVA\r\nliquidazioni-iva  liquidazioni periodiche (se in regime ordinario o semplificato)\r\nprima-nota  incassi e pagamenti\r\nritenute  ritenute operate come sostituto d'imposta\r\nriepilogo.pdf  riepilogo stampabile\r\n` });
-  return { nome: `kubo-commercialista_${da}_${a}.zip`, dati: scriviZip(file) };
+  return { nome: `lumi-commercialista_${da}_${a}.zip`, dati: scriviZip(file) };
 }
 function S_cliente(k, ctx, f) {
   if (!f.cliente?.id) return {};
@@ -377,7 +377,7 @@ export const PROFESSIONISTA = {
   dichiarazioni: 'Le dichiarazioni (Redditi, IVA annuale, 770) le puoi inviare da solo con SPID; un software non può inviarle per conto tuo: se vuoi che lo faccia qualcuno serve un intermediario abilitato (commercialista, CAF).',
   visto: 'Per compensare in F24 un credito IVA oltre 5.000 € serve il visto di conformità di un professionista.',
   consulenza: 'Scelte come il regime, la riduzione INPS del 35% o le rateazioni sono consulenza: chiedi a un commercialista.',
-  redditi: 'IRPEF, IRES e IRAP del regime ordinario o semplificato non le calcola Kubo: le prepara il commercialista o la precompilata.',
+  redditi: 'IRPEF, IRES e IRAP del regime ordinario o semplificato non le calcola Lumi: le prepara il commercialista o la precompilata.',
 };
 const mese2 = (anno, mese) => `${anno}-${String(mese).padStart(2, '0')}`;
 export function strumentiLumi(k) {
@@ -417,7 +417,7 @@ export function strumentiLumi(k) {
         return { anno: a, mese: m, f24: f.map(g => ({ data: g.data, totale: g.totale, righe: g.voci.map(({ chiave, ...v }) => v), stampa: `#/fisco/f24/${g.data}` })),
           come: 'Con saldo a debito senza compensazioni paghi dall\'home banking o da F24 web; se compensi crediti usa i servizi dell\'Agenzia delle Entrate.', professionista: avvisiDi(impostazioni(k.db, k.meta).regime) };
       } },
-    { nome: 'fisco_scadenze_mese', descrizione: 'Le scadenze fiscali di un mese che riguardano il regime dell\'azienda (IVA, LIPE, imposte, INPS, bollo, ritenute, dichiarazioni), con l\'importo quando Kubo lo conosce.', tipo: 'leggi', permesso: puo,
+    { nome: 'fisco_scadenze_mese', descrizione: 'Le scadenze fiscali di un mese che riguardano il regime dell\'azienda (IVA, LIPE, imposte, INPS, bollo, ritenute, dichiarazioni), con l\'importo quando Lumi lo conosce.', tipo: 'leggi', permesso: puo,
       schema: { type: 'object', properties: { anno, mese: { type: 'integer', minimum: 1, maximum: 12 } } },
       esegui: async ({ ctx, args = {} }) => {
         const a = Number(args.anno) || annoOggi(), m = Number(args.mese) || Number(oggi().slice(5, 7));

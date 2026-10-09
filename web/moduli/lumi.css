@@ -1,12 +1,12 @@
-/* Lumi dentro Kubo (classi kubo-lumi-*, perché lumi-* sono del motore): le impostazioni (#/lumi) e lo spazio per la pillola in alto. La pillola ha il suo stile (/lumi/lumi.css). */
+/* L'assistente nel gestionale (classi modulo-lumi-*, perché lumi-* sono del motore): le impostazioni (#/lumi) e lo spazio per la pillola in alto. La pillola ha il suo stile (/lumi/lumi.css). */
 .con-lumi .testa { padding-top: 54px; }
-.kubo-lumi .foglio { max-width: 760px; }
-.kubo-lumi p { margin: 14px 0; }
-.kubo-lumi-riga { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-.kubo-lumi-riga input.campo.mono { flex: 1; min-width: 220px; }
-.kubo-lumi-interruttore { display: inline-flex; gap: 8px; align-items: center; font-size: 14px; margin-right: 14px; }
-.kubo-lumi-esempi { margin: 6px 0 0; padding-left: 18px; } .kubo-lumi-esempi li { margin: 4px 0; }
+.modulo-lumi .foglio { max-width: 760px; }
+.modulo-lumi p { margin: 14px 0; }
+.modulo-lumi-riga { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.modulo-lumi-riga input.campo.mono { flex: 1; min-width: 220px; }
+.modulo-lumi-interruttore { display: inline-flex; gap: 8px; align-items: center; font-size: 14px; margin-right: 14px; }
+.modulo-lumi-esempi { margin: 6px 0 0; padding-left: 18px; } .modulo-lumi-esempi li { margin: 4px 0; }
 @media (max-width: 860px) { .con-lumi .app { padding-top: 50px; } .con-lumi .testa { padding-top: 18px; } }
-/* due classi hanno lo stesso nome in Kubo (stile.css) e nel motore di Lumi: dentro Lumi valgono le sue */
+/* due classi hanno lo stesso nome nel gestionale (stile.css) e nel motore dell'assistente: dentro Lumi valgono le sue */
 .lumi-mascotte .corpo { padding: 0; }
 .lumi .cerca { max-width: none; }

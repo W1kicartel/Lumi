@@ -1,18 +1,18 @@
-// La voce locale di Lumi: Parakeet TDT 0.6B v3 di NVIDIA, sul computer che tiene Kubo. Gratis, senza mandare l'audio fuori,
+// La voce locale dell'assistente: Parakeet TDT 0.6B v3 di NVIDIA, sul computer dove gira Lumi. Gratis, senza mandare l'audio fuori,
 // e in una qualsiasi delle 25 lingue europee del modello, riconosciuta da sola (niente lingua fissa).
 // Due motori, con lo stesso contratto (trascrivi(Float32Array mono 16 kHz) → testo):
-//   • 'mac'  il programma kubo-voce (desktop/voce-mac, Swift + FluidAudio, sul Neural Engine), solo Mac con chip Apple.
-//            Si cerca in KUBO_VOCE_BINARIO, poi accanto al server (desktop/bin in sviluppo, Resources/kubo/bin nell'app).
-//   • 'lode' in ripiego il lode-voce di Lode (stesso protocollo), se Kubo non ha il suo. Attenzione: lode-voce filtra i
+//   • 'mac'  il programma lumi-voce (desktop/voce-mac, Swift + FluidAudio, sul Neural Engine), solo Mac con chip Apple.
+//            Si cerca in LUMI_VOCE_BINARIO, poi accanto al server (desktop/bin in sviluppo, Resources/lumi/bin nell'app).
+//   • 'lode' in ripiego il lode-voce di Lode (stesso protocollo), se Lumi non ha il suo. Attenzione: lode-voce filtra i
 //            token sull'alfabeto latino (è fatto per l'italiano): le lingue in cirillico e il greco escono storpiate.
 //   • 'onnx' altrove (Windows, Linux, Mac Intel): sherpa-onnx-node (dipendenza FACOLTATIVA, optionalDependencies) con il
 //            modello int8 ONNX, ~640 MB scaricati al primo uso con le impronte fissate (./voce-onnx.js).
 // Senza nessuno dei tre la voce locale semplicemente non c'è: il server parte lo stesso e il browser usa Deepgram o la
-// voce del browser. KUBO_VOCE=no la spegne del tutto.
+// voce del browser. LUMI_VOCE=no la spegne del tutto.
 // Regole (come in Lode): un processo solo, avviato al primo uso e chiuso dopo un po' di riposo; una trascrizione alla
-// volta, le altre in fila (al massimo maxCoda, poi «occupata»). Per kubo-voce l'audio passa da un file temporaneo 0600
+// volta, le altre in fila (al massimo maxCoda, poi «occupata»). Per lumi-voce l'audio passa da un file temporaneo 0600
 // che si cancella SEMPRE: alla risposta, all'errore, se il processo cade, all'uscita; all'avvio si tolgono quelli
-// lasciati da un Kubo chiuso di colpo.
+// lasciati da Lumi chiuso di colpo.
 import { spawn as spawnNode } from 'node:child_process';
 import { existsSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir, homedir, totalmem } from 'node:os';
@@ -21,39 +21,39 @@ import * as ONNX from './voce-onnx.js';
 
 export const SR = 16000;
 export const MAX_SECONDI = 60;
-export const MAX_BYTE = MAX_SECONDI * SR * 4;   // float32: 3.840.000 byte, sotto il limite di 5 MB dei corpi di Kubo
+export const MAX_BYTE = MAX_SECONDI * SR * 4;   // float32: 3.840.000 byte, sotto il limite di 5 MB dei corpi di Lumi
 
 const cancella = f => { try { rmSync(f, { force: true }); } catch { /* niente */ } };
 const errore = (messaggio, codice) => Object.assign(new Error(messaggio), { codice });
 
-// i file audio rimasti da un Kubo chiuso di colpo: solo quelli di processi che non ci sono più
+// i file audio rimasti quando Lumi si è chiuso di colpo: solo quelli di processi che non ci sono più
 export function pulisciRimasti(dir = tmpdir()) {
   let nomi = []; try { nomi = readdirSync(dir); } catch { return 0; }
   let tolti = 0;
   for (const nome of nomi) {
-    const m = nome.match(/^kubo-voce-(\d+)-\d+\.f32$/); if (!m) continue;
+    const m = nome.match(/^lumi-voce-(\d+)-\d+\.f32$/); if (!m) continue;
     let vivo = +m[1] === process.pid; if (!vivo) try { process.kill(+m[1], 0); vivo = true; } catch (e) { vivo = e.code === 'EPERM'; }
     if (!vivo) { cancella(join(dir, nome)); tolti++; }
   }
   return tolti;
 }
 
-// dove può essere il programma: prima quello indicato, poi quello di Kubo, poi quello di Lode
+// dove può essere il programma: prima quello indicato, poi quello di Lumi, poi quello di Lode
 export function candidati({ radice, env = process.env, casa = homedir() }) {
   const l = [];
-  if (env.KUBO_VOCE_BINARIO) l.push({ file: env.KUBO_VOCE_BINARIO, tipo: basename(env.KUBO_VOCE_BINARIO) === 'lode-voce' ? 'lode' : 'mac', indicato: true });
-  l.push({ file: join(radice, 'desktop', 'bin', 'kubo-voce'), tipo: 'mac' }, { file: join(radice, 'bin', 'kubo-voce'), tipo: 'mac' });
+  if (env.LUMI_VOCE_BINARIO) l.push({ file: env.LUMI_VOCE_BINARIO, tipo: basename(env.LUMI_VOCE_BINARIO) === 'lode-voce' ? 'lode' : 'mac', indicato: true });
+  l.push({ file: join(radice, 'desktop', 'bin', 'lumi-voce'), tipo: 'mac' }, { file: join(radice, 'bin', 'lumi-voce'), tipo: 'mac' });
   for (const app of ['/Applications/Lode.app', join(casa, 'Applications', 'Lode.app')]) l.push({ file: join(app, 'Contents', 'Resources', 'bin', 'lode-voce'), tipo: 'lode' });
   return l;
 }
 
 // quale motore: 'mac' | 'lode' (con il loro file) | 'onnx' | null
 export function scegliMotore({ piattaforma = process.platform, arch = process.arch, env = process.env, radice, esiste = existsSync, sherpa = ONNX.sherpaPresente(), memoria = totalmem(), cartellaModello }) {
-  const v = String(env.KUBO_VOCE || '').toLowerCase();
+  const v = String(env.LUMI_VOCE || '').toLowerCase();
   if (['no', '0', 'spenta', 'off'].includes(v)) return null;
   const mela = piattaforma === 'darwin' && arch === 'arm64';
-  // nelle prove (node --test) conta solo il programma indicato con KUBO_VOCE_BINARIO: mai il Parakeet vero di questo computer
-  if (env.NODE_TEST_CONTEXT && !env.KUBO_VOCE_BINARIO) return null;
+  // nelle prove (node --test) conta solo il programma indicato con LUMI_VOCE_BINARIO: mai il Parakeet vero di questo computer
+  if (env.NODE_TEST_CONTEXT && !env.LUMI_VOCE_BINARIO) return null;
   if (v !== 'onnx') for (const c of candidati({ radice, env })) {
     if (!esiste(c.file)) continue;
     if (c.indicato || mela) return { motore: c.tipo, binario: c.file };   // un programma indicato a mano vale ovunque (le prove)
@@ -62,7 +62,7 @@ export function scegliMotore({ piattaforma = process.platform, arch = process.ar
   return null;
 }
 
-// il processo kubo-voce (o lode-voce): righe JSON su stdin e stdout
+// il processo lumi-voce (o lode-voce): righe JSON su stdin e stdout
 export function creaHelper({ binario, temp = tmpdir(), spawn = spawnNode }) {
   let proc = null, pronto = null, n = 0, resto = '';
   const attese = new Map();   // id → { ok, ko, file }
@@ -90,7 +90,7 @@ export function creaHelper({ binario, temp = tmpdir(), spawn = spawnNode }) {
         }
       });
       p.on('exit', c => {
-        const e = errore(`kubo-voce si è chiuso (${c})`, 'crash'); ko(e);
+        const e = errore(`lumi-voce si è chiuso (${c})`, 'crash'); ko(e);
         if (proc !== p) return;   // chiuso a riposo: ne è già partito un altro
         chiudiTutte(e); proc = null; pronto = null; resto = '';
       });
@@ -100,15 +100,15 @@ export function creaHelper({ binario, temp = tmpdir(), spawn = spawnNode }) {
   }
   async function trascrivi(audio) {
     await avvia();
-    const id = String(++n), file = join(temp, `kubo-voce-${process.pid}-${id}.f32`);
+    const id = String(++n), file = join(temp, `lumi-voce-${process.pid}-${id}.f32`);
     try { writeFileSync(file, Buffer.from(audio.buffer, audio.byteOffset, audio.byteLength), { mode: 0o600 }); } catch (e) { cancella(file); throw e; }
     return new Promise((ok, ko) => {
       attese.set(id, { ok, ko, file });
-      if (!proc) return chiusa(id, errore('kubo-voce chiuso', 'crash'));
+      if (!proc) return chiusa(id, errore('lumi-voce chiuso', 'crash'));
       try { proc.stdin.write(JSON.stringify({ id, file }) + '\n'); } catch (e) { chiusa(id, errore(e.message, 'crash')); }
     });
   }
-  const chiudi = () => { const p = proc; proc = null; pronto = null; resto = ''; chiudiTutte(errore('kubo-voce chiuso', 'chiusa')); try { p?.stdin.end(); p?.kill(); } catch { /* niente */ } };
+  const chiudi = () => { const p = proc; proc = null; pronto = null; resto = ''; chiudiTutte(errore('lumi-voce chiuso', 'chiusa')); try { p?.stdin.end(); p?.kill(); } catch { /* niente */ } };
   return { avvia, trascrivi, chiudi, attivo: () => !!proc, attese: () => attese.size };
 }
 

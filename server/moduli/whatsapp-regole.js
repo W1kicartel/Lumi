@@ -69,7 +69,7 @@ export function aperto(ora, orari, fuso = 'Europe/Rome') {
   return da == null || a == null ? true : m >= da && m < a;
 }
 
-// ---------- parole di stop e di ripresa: il cliente le scrive e Kubo smette (o riprende) per tutti gli invii ----------
+// ---------- parole di stop e di ripresa: il cliente le scrive e Lumi smette (o riprende) per tutti gli invii ----------
 export const PAROLE_STOP = ['STOP', 'BASTA', 'ANNULLA', 'CANCELLAMI', 'DISISCRIVIMI', 'DISISCRIVI', 'NON SCRIVERMI', 'UNSUBSCRIBE', 'STOPP', 'ALTO', 'ARRET', 'ARRÊT', 'PARAR', 'SAIR'];
 export const PAROLE_RIPRESA = ['START', 'RIPRENDI', 'ISCRIVIMI', 'UNSTOP'];
 const pulita = s => String(s || '').normalize('NFC').toUpperCase().replace(/[^\p{L}\p{N} ]/gu, ' ').replace(/\s+/g, ' ').trim();

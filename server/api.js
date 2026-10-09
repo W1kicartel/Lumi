@@ -1,6 +1,7 @@
 // Il server HTTP: API JSON + i file dell'interfaccia (web/) + eventi in tempo reale (SSE), senza dipendenze.
 // Sicurezza: sessione in un cookie HttpOnly SameSite=Strict, e ogni richiesta che modifica deve avere l'intestazione
-// «X-Kubo: 1» (una pagina di un altro sito non può aggiungerla). In alternativa «Authorization: Bearer <token>».
+// «X-Lumi: 1» (una pagina di un altro sito non può aggiungerla). In alternativa «Authorization: Bearer <token>».
+import './ambiente.js';   // le variabili KUBO_* deprecate valgono come LUMI_*
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { join, dirname, extname, normalize, sep } from 'node:path';
@@ -32,8 +33,8 @@ const VERSIONE = '0.1.0';
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json',
   '.svg': 'image/svg+xml', '.png': 'image/png', '.woff2': 'font/woff2', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json' };
 
-// l'indirizzo di chi chiama: dietro un proxy fidato (KUBO_PROXY=1, es. Caddy) quello di X-Forwarded-For
-const indirizzo = req => (process.env.KUBO_PROXY === '1' && req.headers['x-forwarded-for'] ? String(req.headers['x-forwarded-for']).split(',')[0].trim() : req.socket.remoteAddress);
+// l'indirizzo di chi chiama: dietro un proxy fidato (LUMI_PROXY=1, es. Caddy) quello di X-Forwarded-For
+const indirizzo = req => (process.env.LUMI_PROXY === '1' && req.headers['x-forwarded-for'] ? String(req.headers['x-forwarded-for']).split(',')[0].trim() : req.socket.remoteAddress);
 const locale = ip => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(ip);
 
 // l'interfaccia è tutta in file nostri: niente script in linea, niente risorse da altri siti (la voce di Lumi parla con Deepgram)
@@ -48,7 +49,7 @@ export function creaServer(db) {
   // codice di avvio: finché non c'è un titolare, chi si collega da un altro computer deve conoscerlo
   const codiceAvvio = randomBytes(4).toString('hex').toUpperCase();
   if (U.quanti(db) === 0 && process.env.NODE_ENV !== 'test') console.log(`Primo avvio da un altro computer: codice ${codiceAvvio}`);
-  const primoAvvio = (ip, codice) => { if (!locale(ip) && String(codice || '').trim().toUpperCase() !== codiceAvvio) throw new ErroreHttp(403, 'Serve il codice di avvio: lo trovi nel terminale o nel log di Kubo'); };
+  const primoAvvio = (ip, codice) => { if (!locale(ip) && String(codice || '').trim().toUpperCase() !== codiceAvvio) throw new ErroreHttp(403, 'Serve il codice di avvio: lo trovi nel terminale o nel log di Lumi'); };
   const clienti = new Set();   // connessioni SSE: { res, ctx }
   // a ogni evento si rilegge la sessione: chi è uscito (o è stato scollegato, o ha cambiato ruolo) non riceve più niente
   const manda = (ev) => {
@@ -66,11 +67,12 @@ export function creaServer(db) {
 
   function ctxDi(req) {
     const auth = req.headers.authorization || '';
-    const token = auth.startsWith('Bearer ') ? auth.slice(7) : (req.headers.cookie || '').split(/;\s*/).find(x => x.startsWith('kubo='))?.slice(5);
+    const token = auth.startsWith('Bearer ') ? auth.slice(7) : (req.headers.cookie || '').split(/;\s*/).find(x => x.startsWith('lumi='))?.slice(5)
+      ?? (req.headers.cookie || '').split(/;\s*/).find(x => x.startsWith('kubo='))?.slice(5);   // il cookie di quando si chiamava Kubo
     return { token, ctx: U.contesto(db, token) };
   }
   const serve = ctx => { if (!ctx) throw new ErroreHttp(401, 'Accedi per continuare'); return ctx; };
-  const cookie = (token, durata = 30 * 86400) => `kubo=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${durata}`;
+  const cookie = (token, durata = 30 * 86400) => `lumi=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${durata}`;
 
   // schema visto da un utente: niente entità che non può leggere, niente campi nascosti
   function schemaPer(ctx) {
@@ -82,7 +84,7 @@ export function creaServer(db) {
 
   const rotte = [], controlli = [];
   const controllo = f => { controlli.push(f); };
-  // opz.pubblica: niente X-Kubo (un servizio esterno non può metterla: la rotta si protegge da sé, con la firma del webhook);
+  // opz.pubblica: niente X-Lumi (un servizio esterno non può metterla: la rotta si protegge da sé, con la firma del webhook);
   // opz.grezzo: la rotta riceve anche il corpo com'è arrivato (Buffer «grezzo»), e i corpi non JSON non si leggono come JSON
   const r = (metodo, percorso, f, opz = {}) => rotte.push({ metodo, re: new RegExp('^' + percorso.replace(/:(\w+)/g, '(?<$1>[^/]+)') + '$'), f, pubblica: !!opz.pubblica, grezzo: !!opz.grezzo });
   // «prima»: un modulo può agire prima di una rotta di un altro (es. il backup prima di cambiare lo schema o di un import)
@@ -193,7 +195,7 @@ export function creaServer(db) {
     const risposta = { intestazioni: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } };
     try {
       const rotta = rotte.find(x => x.metodo === req.method && x.re.test(percorso));
-      if (req.method !== 'GET' && !rotta?.pubblica && req.headers['x-kubo'] !== '1' && !String(req.headers.authorization || '').startsWith('Bearer ')) throw new ErroreHttp(403, 'Richiesta senza intestazione X-Kubo');
+      if (req.method !== 'GET' && !rotta?.pubblica && req.headers['x-lumi'] !== '1' && !String(req.headers.authorization || '').startsWith('Bearer ')) throw new ErroreHttp(403, 'Richiesta senza intestazione X-Lumi');
       let corpo = {}, grezzo = null;
       if (['POST', 'PUT', 'PATCH'].includes(req.method)) {
         let n = 0; const pezzi = [];

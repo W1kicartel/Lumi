@@ -158,9 +158,9 @@ function aggiornaMemo(ev, db) {
   }
 }
 
-// collega il percorso SQL a dati.js (KUBO_SENZA_SQL=1 lo spegne: serve a misurare il prima e dopo in test/carico.mjs)
+// collega il percorso SQL a dati.js (LUMI_SENZA_SQL=1 lo spegne: serve a misurare il prima e dopo in test/carico.mjs)
 export function installaSql(db, { D }) {
-  if (!D.estensioni || process.env.KUBO_SENZA_SQL === '1') return;
+  if (!D.estensioni || process.env.LUMI_SENZA_SQL === '1') return;
   db.exec('CREATE TABLE IF NOT EXISTS _sicurezza_memo (entita TEXT NOT NULL, campo TEXT NOT NULL, espressione TEXT NOT NULL, PRIMARY KEY (entita, campo))');
   D.estensioni.sqlCalcolato = (dbx, def, c) => {
     const sq = traduci(dbx, def, c.formula || '');

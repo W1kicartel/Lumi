@@ -11,7 +11,7 @@ const quando = v => (v ? dataOra(v) : '—');
 // «Mozilla/5.0 (Macintosh…) … Chrome/130» → «Chrome su Mac»
 function dispositivo(a) {
   const s = String(a || ''); if (!s) return t('sicurezza.dispositivo-sconosciuto');
-  const b = /Edg\//.test(s) ? 'Edge' : /Firefox\//.test(s) ? 'Firefox' : /Chrome\//.test(s) ? 'Chrome' : /Safari\//.test(s) ? 'Safari' : /Electron|Kubo/.test(s) ? t('sicurezza.app-kubo') : s.slice(0, 40);
+  const b = /Edg\//.test(s) ? 'Edge' : /Firefox\//.test(s) ? 'Firefox' : /Chrome\//.test(s) ? 'Chrome' : /Safari\//.test(s) ? 'Safari' : /Electron|Lumi/.test(s) ? t('sicurezza.app-lumi') : s.slice(0, 40);
   const o = /iPhone|iPad/.test(s) ? t('sicurezza.iphone-ipad') : /Android/.test(s) ? 'Android' : /Mac OS X|Macintosh/.test(s) ? 'Mac' : /Windows/.test(s) ? 'Windows' : /Linux/.test(s) ? 'Linux' : '';
   return o ? t('sicurezza.dispositivo', { browser: b, sistema: o }) : b;
 }

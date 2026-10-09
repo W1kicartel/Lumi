@@ -1,4 +1,4 @@
-// Le lingue di Kubo. Ogni testo dell'interfaccia sta in un catalogo (web/lingue/<codice>/<area>.js): il codice chiama
+// Le lingue di Lumi. Ogni testo dell'interfaccia sta in un catalogo (web/lingue/<codice>/<area>.js): il codice chiama
 // t('area.chiave', { parametri }) e mai una frase scritta a mano. L'italiano è la lingua di partenza e di riserva: ogni
 // chiave c'è sempre in italiano; se una traduzione manca si vede l'italiano (e test/lingue.test.mjs lo segnala).
 // La lingua si legge PRIMA di tutto il resto (await in cima al modulo): chi importa lingua.js (ui.js, quindi tutti) trova
@@ -17,11 +17,11 @@ export const LINGUE = {
   pt: { nome: 'Português (Brasil)', locale: 'pt-BR', zeroPlurale: true },
 };
 export const VALUTE = ['EUR', 'USD', 'GBP', 'CHF', 'BRL', 'MXN', 'ARS', 'CLP', 'COP', 'CAD', 'AUD', 'JPY', 'CNY', 'SEK', 'NOK', 'DKK', 'PLN', 'CZK', 'HUF', 'RON', 'TRY', 'MAD', 'INR'];
-const CHIAVE = 'kubo.lingua';
+const CHIAVE = 'lumi.lingua';
 const nodo = typeof window === 'undefined';
 
 // La lingua all'avvio, senza window (per le prove): quella dell'utente (sul server), poi l'ultima usata in questo browser
-// (serve prima dell'accesso), poi la prima lingua del browser che Kubo conosce, poi l'italiano.
+// (serve prima dell'accesso), poi la prima lingua del browser che Lumi conosce, poi l'italiano.
 export function iniziale({ utente = null, salvata = null, browser = [] } = {}) {
   for (const c of [utente, salvata]) if (typeof c === 'string' && Object.hasOwn(LINGUE, c)) return c;
   for (const b of browser) { const c = String(b || '').slice(0, 2).toLowerCase(); if (Object.hasOwn(LINGUE, c)) return c; }
@@ -37,7 +37,7 @@ let info = { lingua: null, azienda: { lingua: 'it', valuta: 'EUR' } };
 if (!nodo) { try { info = await fetch('/api/lingua', { credentials: 'same-origin' }).then(r => (r.ok ? r.json() : info)); } catch { } }
 const browser = nodo ? [] : [...(navigator.languages || []), navigator.language].filter(Boolean);
 let salvata = null; if (!nodo) try { salvata = localStorage.getItem(CHIAVE); } catch { }
-export let lingua = nodo ? (LINGUE[globalThis.process?.env?.KUBO_LINGUA] ? globalThis.process.env.KUBO_LINGUA : 'it') : iniziale({ utente: info.lingua, salvata, browser });
+export let lingua = nodo ? (LINGUE[globalThis.process?.env?.LUMI_LINGUA] ? globalThis.process.env.LUMI_LINGUA : 'it') : iniziale({ utente: info.lingua, salvata, browser });
 export let valuta = VALUTE.includes(info.azienda?.valuta) ? info.azienda.valuta : 'EUR';
 export const linguaAzienda = () => info.azienda?.lingua || 'it';
 // la valuta da proporre al primo avvio, dal paese del browser (en-US → USD, pt-BR → BRL, de-CH → CHF…); se no l'euro
@@ -47,7 +47,7 @@ let loc = localeDi(lingua, browser);
 export const locale = () => loc;
 if (!nodo) { try { localStorage.setItem(CHIAVE, lingua); } catch { } document.documentElement.lang = lingua; }
 // chi entra la prima volta senza una lingua salvata: si salva quella scelta adesso (dal browser o dalla pagina d'accesso)
-if (!nodo && info.accesso && !info.lingua) fetch('/api/lingua', { method: 'PUT', credentials: 'same-origin', headers: { 'X-Kubo': '1', 'Content-Type': 'application/json' }, body: JSON.stringify({ lingua }) }).catch(() => null);
+if (!nodo && info.accesso && !info.lingua) fetch('/api/lingua', { method: 'PUT', credentials: 'same-origin', headers: { 'X-Lumi': '1', 'Content-Type': 'application/json' }, body: JSON.stringify({ lingua }) }).catch(() => null);
 
 const CAT = {};
 async function carica(cod) {
@@ -66,7 +66,7 @@ export async function usa(cod, { valuta: v } = {}) {
 export async function imposta(cod) {
   if (!Object.hasOwn(LINGUE, cod)) return false;
   try { localStorage.setItem(CHIAVE, cod); } catch { }
-  await fetch('/api/lingua', { method: 'PUT', credentials: 'same-origin', headers: { 'X-Kubo': '1', 'Content-Type': 'application/json' }, body: JSON.stringify({ lingua: cod }) }).catch(() => null);
+  await fetch('/api/lingua', { method: 'PUT', credentials: 'same-origin', headers: { 'X-Lumi': '1', 'Content-Type': 'application/json' }, body: JSON.stringify({ lingua: cod }) }).catch(() => null);
   location.reload(); return true;
 }
 

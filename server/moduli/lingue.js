@@ -23,7 +23,7 @@ export const VALUTE = ['EUR', 'USD', 'GBP', 'CHF', 'BRL', 'MXN', 'ARS', 'CLP', '
 export const CATALOGHI = { it, en, es, fr, de, pt };
 const CARTELLA_MODELLI = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'modelli', 'lingue');
 
-// Accept-Language → la prima lingua che Kubo conosce (con il peso q), altrimenti null
+// Accept-Language → la prima lingua che Lumi conosce (con il peso q), altrimenti null
 export function daIntestazione(s) {
   const l = String(s || '').split(',').map((x, i) => { const [t, ...p] = x.trim().split(';'); const q = Number((p.find(y => y.trim().startsWith('q=')) || 'q=1').trim().slice(2)); return { c: t.slice(0, 2).toLowerCase(), q: Number.isFinite(q) ? q : 0, i }; })
     .filter(x => x.q > 0).sort((a, b) => b.q - a.q || a.i - b.i);

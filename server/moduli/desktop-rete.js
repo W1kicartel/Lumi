@@ -1,6 +1,6 @@
-// La rete locale: gli indirizzi a cui gli altri PC e i telefoni trovano questo Kubo, e il «codice» da dettare a voce
+// La rete locale: gli indirizzi a cui gli altri PC e i telefoni trovano questo Lumi, e il «codice» da dettare a voce
 // (es. «R8M0-0A1C-4W»): l'indirizzo IPv4 e la porta in 10 lettere e cifre (base 32 senza I, L, O, U, che si confondono).
-// L'app desktop, in «Collegati a un Kubo in rete», accetta il codice oppure un indirizzo scritto come capita.
+// L'app desktop, in «Collegati a Lumi in rete», accetta il codice oppure un indirizzo scritto come capita.
 import { networkInterfaces } from 'node:os';
 
 const B32 = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
@@ -28,7 +28,7 @@ export function daCodice(codice) {
   return { ip: b.slice(0, 4).join('.'), porta: (b[4] << 8) | b[5] };
 }
 
-// quello che la persona scrive («192.168.1.20», «ufficio.local:4380», «https://kubo.miazienda.it», un codice) → un URL pulito
+// quello che la persona scrive («192.168.1.20», «ufficio.local:4380», «https://lumi.miazienda.it», un codice) → un URL pulito
 export function indirizzoDa(testo, portaPredefinita = 4380) {
   const t = String(testo || '').trim(); if (!t) throw new Error('Scrivi un indirizzo o un codice');
   const c = daCodice(t); if (c && !/[.:/]/.test(t)) return `http://${c.ip}:${c.porta}`;

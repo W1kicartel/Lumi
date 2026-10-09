@@ -7,7 +7,7 @@
 export const LINGUE = {
   it: { nome: 'Italiano', locale: 'it-IT', voce: 'it-IT' },
   en: { nome: 'English', locale: 'en-GB', voce: 'en-US' },
-  // le altre lingue di Kubo (web/lingue): stesse chiavi dell'italiano
+  // le altre lingue di Lumi (web/lingue): stesse chiavi dell'italiano
   es: { nome: 'Español', locale: 'es-ES', voce: 'es-ES' },
   fr: { nome: 'Français', locale: 'fr-FR', voce: 'fr-FR' },
   de: { nome: 'Deutsch', locale: 'de-DE', voce: 'de-DE' },
