@@ -178,7 +178,10 @@ test('Revolut Business: consenso, codice → token con client_assertion JWT, rin
     f = await fattura(K);
     await accendi(K, 'revolut-business', { base: S.url, segreti: { chiave_privata: PEM }, impostazioni: { client_id: 'cli-prova', ambiente: 'sandbox' } });
     assert.equal((await K.chiama('POST', '/api/connettori/revolut-business/giri/movimenti')).json.risultato, 'conto non collegato');
-    const c = await K.chiama('POST', '/api/connettori/revolut-business/azioni/collega', { args: { indirizzo: K.base } });
+    // senza indirizzo vale quello pubblico della Libreria (k.pubblico)
+    assert.equal((await K.chiama('POST', '/api/connettori/revolut-business/azioni/collega', { args: {} })).stato, 502);
+    await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: K.base });
+    const c = await K.chiama('POST', '/api/connettori/revolut-business/azioni/collega', { args: {} });
     assert.equal(c.stato, 200, JSON.stringify(c.json));
     const u = new URL(c.json.url); assert.equal(u.origin + u.pathname, 'https://sandbox-business.revolut.com/app-confirm');
     assert.equal(u.searchParams.get('client_id'), 'cli-prova'); assert.equal(u.searchParams.get('redirect_uri'), `${K.base}/api/connettori/revolut-business/pub/ritorno`); assert.equal(u.searchParams.get('response_type'), 'code');

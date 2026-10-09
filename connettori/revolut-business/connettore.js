@@ -60,9 +60,9 @@ export default {
     // senza «su»: solo il titolare
     collega: {
       nome: 'Collega il conto', descrizione: 'Apre il consenso su Revolut Business',
-      input: { indirizzo: { tipo: 'testo', nome: 'L\'indirizzo di Kubo nel browser (es. https://kubo.esempio.it)' } },
+      input: { indirizzo: { tipo: 'testo', nome: 'L\'indirizzo di Kubo nel browser (vuoto: l\'indirizzo pubblico della Libreria)', facoltativo: true } },
       async esegui({ indirizzo }, k) {
-        const b = String(indirizzo || '').replace(/\/+$/, '');
+        const b = String(indirizzo || k.pubblico || '').replace(/\/+$/, '');   // vuoto: l'indirizzo pubblico di Kubo (k.pubblico)
         if (!/^https?:\/\/[^/\s]+$/.test(b)) throw new Error('Indirizzo di Kubo non valido');
         if (!k.imp.client_id) throw new Error('Manca il Client ID');
         const state = randomBytes(24).toString('base64url'), ritorno = `${b}/api/connettori/revolut-business/pub/ritorno`, u = new URL(consenso(k));

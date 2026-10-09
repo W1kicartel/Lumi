@@ -57,9 +57,9 @@ export default {
     },
     collega: {
       nome: 'Collega il conto', descrizione: 'Apre il consenso sul sito della banca',
-      input: { indirizzo: { tipo: 'testo', nome: 'L\'indirizzo di Kubo nel browser (es. https://kubo.esempio.it)' } },
+      input: { indirizzo: { tipo: 'testo', nome: 'L\'indirizzo di Kubo nel browser (vuoto: l\'indirizzo pubblico della Libreria)', facoltativo: true } },
       async esegui({ indirizzo }, k) {
-        const base = String(indirizzo || '').replace(/\/+$/, '');
+        const base = String(indirizzo || k.pubblico || '').replace(/\/+$/, '');   // vuoto: l'indirizzo pubblico di Kubo (k.pubblico)
         if (!/^https?:\/\/[^/\s]+$/.test(base)) throw new Error('Indirizzo di Kubo non valido');
         if (!k.imp.banca) throw new Error('Scegli prima la banca nelle impostazioni');
         // il consenso più lungo che la banca permette (maximum_consent_validity, in secondi), al massimo 180 giorni
