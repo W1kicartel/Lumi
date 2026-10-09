@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { manifesti, generaCatalogo } from '../strumenti/catalogo.mjs';
-import { controllaCatalogo, vistaCatalogo } from '../server/moduli/connettori-catalogo.js';
+import { controllaCatalogo, vistaCatalogo, testoRicerca } from '../server/moduli/connettori-catalogo.js';
 
 const lista = await manifesti();
 
@@ -23,6 +23,12 @@ test('il controllo del catalogo trova quello che manca, e la vista ripiega lingu
   assert.ok(controllaCatalogo({ ...man, catalogo: { ...man.catalogo, categoria: 'boh', passi: ['uno'] } }).some(p => /categoria «boh»/.test(p)));
   assert.ok(controllaCatalogo({ ...man, testi: { ...man.testi, en: { descrizione: 'Test' } } }).some(p => /cat\.passi/.test(p)));
   assert.ok(controllaCatalogo({ ...man, testi: { en: man.testi.en } }).some(p => /testi\.es\.descrizione/.test(p)));
+  // una chiave delle traduzioni scritta male non si perde in silenzio; le voci tradotte sono testi
+  const storto = controllaCatalogo({ ...man, testi: { ...man.testi, es: { descrizione: 'Prueba', 'cat.pasi': ['a'], 'cat.serve': [{ cosa: 'Clave' }] }, de: { descrizione: 'Test', cat: { passi: [] } } } });
+  assert.ok(storto.some(p => /testi\.es\['cat\.pasi'\]: chiave sconosciuta/.test(p)) && storto.some(p => /testi\.de\['cat'\]/.test(p)) && storto.some(p => /testi\.es\['cat\.serve'\]/.test(p)), storto.join(' | '));
+  // un manifesto di terzi con il blocco storto non rompe la vista né la ricerca della libreria
+  assert.deepEqual(vistaCatalogo({ catalogo: { serve: 'x', passi: 3, zone: 'IT', parole: 5, fonti: 'f' } }, 'it', true).serve, []);
+  assert.equal(testoRicerca({ catalogo: { parole: 5 } }, 'x'), 'x');
   const de = vistaCatalogo(man, 'de', true), it = vistaCatalogo(man, 'it', true);
   assert.equal(de.passi[0], 'One'); assert.deepEqual(de.serve[0], { cosa: 'Key', dove: 'Settings', link: 'https://esempio.it/chiavi' });
   assert.equal(it.passi[0], 'Uno');

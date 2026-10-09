@@ -5,28 +5,31 @@
 import { CATEGORIE, COSTI, DIFFICOLTA, ZONE, normalizza } from '../../web/libreria.js';
 export { CATEGORIE, COSTI, DIFFICOLTA, ZONE };
 export const LINGUE = ['it', 'en', 'es', 'fr', 'de', 'pt'];
+export const CHIAVI_TESTI = ['cat.costoNota', 'cat.passi', 'cat.serve'];
 
 const tr = (man, l, c, d) => man.testi?.[l]?.[c] ?? man.testi?.en?.[c] ?? d;
 const trIt = (man, l, c, d) => (l === 'it' ? d : tr(man, l, c, d));
+// un manifesto di terzi (connettori/ accanto ai dati) non passa dal test: un campo storto non deve rompere la libreria
+const elenco = x => (Array.isArray(x) ? x : []);
 
 // la vista: leggera per le carte, completa (guida, credenziali, fonti) per la pagina del connettore
 export function vistaCatalogo(man, l = 'it', completa = false) {
   const c = man?.catalogo; if (!c) return null;
-  const base = { categoria: c.categoria || null, costo: c.costo || null, difficolta: c.difficolta || null, zone: c.zone || [], prova: c.prova || 'finto', sito: c.sito || null, parole: c.parole || [] };
+  const base = { categoria: c.categoria || null, costo: c.costo || null, difficolta: c.difficolta || null, zone: elenco(c.zone), prova: c.prova || 'finto', sito: c.sito || null, parole: elenco(c.parole) };
   if (!completa) return base;
   const serveT = trIt(man, l, 'cat.serve', null);
   return { ...base,
     costoNota: trIt(man, l, 'cat.costoNota', c.costoNota || null),
-    passi: trIt(man, l, 'cat.passi', c.passi || []),
+    passi: elenco(trIt(man, l, 'cat.passi', c.passi)),
     // «link» non si traduce: viene sempre dal blocco italiano, voce per voce
-    serve: (c.serve || []).map((s, i) => ({ cosa: serveT?.[i]?.cosa || s.cosa, dove: serveT?.[i]?.dove || s.dove, link: s.link || null })),
-    fonti: c.fonti || [] };
+    serve: elenco(c.serve).map((s, i) => ({ cosa: serveT?.[i]?.cosa || s?.cosa, dove: serveT?.[i]?.dove || s?.dove, link: s?.link || null })),
+    fonti: elenco(c.fonti) };
 }
 
 // il testo in cui cerca la libreria: id, nomi e descrizioni in italiano, inglese e nella lingua di chi guarda, parole chiave
 export function testoRicerca(man, id, l = 'it') {
   const ls = [...new Set(['it', 'en', l])];
-  return normalizza([id, man?.nome, man?.descrizione, man?.catalogo?.categoria, ...(man?.catalogo?.parole || []),
+  return normalizza([id, man?.nome, man?.descrizione, man?.catalogo?.categoria, ...elenco(man?.catalogo?.parole),
     ...ls.flatMap(x => [man?.testi?.[x]?.nome, man?.testi?.[x]?.descrizione])].filter(Boolean).join(' '));
 }
 
@@ -59,8 +62,12 @@ export function controllaCatalogo(man) {
   if (c.costoNota && !testoPieno(en['cat.costoNota'])) p.push('testi.en[\'cat.costoNota\']: la nota sul costo in inglese');
   for (const l of LINGUE.slice(2)) {   // le altre lingue sono facoltative, ma se ci sono devono tornare
     const x = man.testi?.[l] || {};
-    if (x['cat.passi'] != null && (!Array.isArray(x['cat.passi']) || x['cat.passi'].length !== (c.passi || []).length)) p.push(`testi.${l}['cat.passi']: tanti passi quanti in italiano`);
-    if (x['cat.serve'] != null && (!Array.isArray(x['cat.serve']) || x['cat.serve'].length !== (c.serve || []).length)) p.push(`testi.${l}['cat.serve']: tante voci quante in italiano`);
+    if (x['cat.passi'] != null && (!Array.isArray(x['cat.passi']) || x['cat.passi'].length !== (c.passi || []).length || !x['cat.passi'].every(testoPieno))) p.push(`testi.${l}['cat.passi']: tanti passi quanti in italiano, ognuno un testo`);
+    if (x['cat.serve'] != null && (!Array.isArray(x['cat.serve']) || x['cat.serve'].length !== (c.serve || []).length || !x['cat.serve'].every(s => testoPieno(s?.cosa) && testoPieno(s?.dove)))) p.push(`testi.${l}['cat.serve']: tante voci quante in italiano, ognuna { cosa, dove }`);
+    if (x['cat.costoNota'] != null && !testoPieno(x['cat.costoNota'])) p.push(`testi.${l}['cat.costoNota']: un testo`);
   }
+  // una chiave scritta male (« cat.pasi », o « cat: { passi } » annidato) si perderebbe in silenzio: la guida resterebbe in inglese
+  for (const l of LINGUE.slice(1)) for (const x of Object.keys(man.testi?.[l] || {}))
+    if ((x === 'cat' || x.startsWith('cat.')) && !CHIAVI_TESTI.includes(x)) p.push(`testi.${l}['${x}']: chiave sconosciuta, le chiavi sono ${CHIAVI_TESTI.join(', ')}`);
   return p;
 }
