@@ -61,7 +61,8 @@ export default {
       ora.add(e.uid); const prima = noti[e.uid]; noti[e.uid] = { u: e.url, e: e.etag, f: true };
       if (prima?.e && prima.e === e.etag) { conti.uguali++; continue; }
       if (e.stato === 'CANCELLED') { if (annulla(k, e.uid) === 'annullato') conti.annullati++; continue; }
-      if (e.tutto || !e.inizio || (!k.sincro.locale(SEM, e.uid) && k.imp.importa === false)) continue;
+      // gli eventi ripetuti (RRULE) non diventano appuntamenti: un appuntamento è una volta sola
+      if (e.tutto || e.ripetuto || !e.inizio || (!k.sincro.locale(SEM, e.uid) && k.imp.importa === false)) continue;
       const p = e.partecipanti[0];
       const x = ricevi(k, { remoto: e.uid, quando: e.inizio, note: [e.titolo, e.descrizione].filter(Boolean).join('\n'), cliente: p ? { email: p.email, nome: p.nome } : null, creaClienti: k.imp.clienti !== false });
       conta(conti, x);

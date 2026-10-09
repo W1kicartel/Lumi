@@ -69,6 +69,9 @@ export default {
       if (!r.ok) throw new Error(`Outlook ha risposto ${r.stato}`);
       const chiavi = k.stato.leggi('chiavi') || {}, nuove = {};
       for (const e of r.json?.value || []) {
+        // «@removed» vale anche per un evento uscito dalla finestra: si chiede a Graph se c'è ancora
+        if (e['@removed']) { if (!k.sincro.locale(SEM, e.id)) continue; const g = await k.http.get(`${graph(k)}/me/events/${encodeURIComponent(e.id)}`, { bearer: tok, intestazioni: PREFER });
+          if (g.stato !== 404 && !g.json?.isCancelled) { if (g.ok) conta(conti, ricevi(k, { remoto: e.id, quando: daGraph(g.json.start, k.fuso()) })); continue; } }
         if (e['@removed'] || e.isCancelled) { if (annulla(k, e.id) === 'annullato') conti.annullati++; continue; }
         if (chiavi[e.id] && chiavi[e.id] === e.changeKey) { conti.uguali++; continue; }
         if (e.isAllDay || (!k.sincro.locale(SEM, e.id) && k.imp.importa === false)) continue;

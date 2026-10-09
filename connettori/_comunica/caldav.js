@@ -68,6 +68,7 @@ export function leggiIcs(testo, fuso = 'Europe/Rome') {
     else if (r.nome === 'DESCRIPTION') ev.descrizione = desc(r.valore);
     else if (r.nome === 'STATUS') ev.stato = r.valore.toUpperCase();
     else if (r.nome === 'RECURRENCE-ID') ev.ricorrenza = r.valore;
+    else if (r.nome === 'RRULE' || r.nome === 'RDATE') ev.ripetuto = true;
     else if (r.nome === 'DTSTART') { const d = dataIcs(r.valore, r.param, fuso); ev.inizio = d.iso; ev.tutto = d.tutto; }
     else if (r.nome === 'DTEND') ev.fine = dataIcs(r.valore, r.param, fuso).iso;
     else if (r.nome === 'ATTENDEE') { const email = r.valore.replace(/^mailto:/i, '').trim(); if (email.includes('@')) ev.partecipanti.push({ email: email.toLowerCase(), nome: r.param.CN || null }); }

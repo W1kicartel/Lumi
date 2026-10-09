@@ -113,6 +113,7 @@ test('Outlook: codice del dispositivo sul tenant scelto, appuntamenti → eventi
     'POST /v1.0/me/events': (p, c) => { const id = `AAMk-${++n}`; eventi.set(id, { ...c, id, changeKey: `ck-${id}-1` }); return { stato: 201, corpo: eventi.get(id) }; },
     'PATCH /v1.0/me/events/:id': (p, c) => { const e = eventi.get(p.id); if (!e) return { stato: 404, corpo: {} }; Object.assign(e, c, { changeKey: e.changeKey + '+' }); return e; },
     'DELETE /v1.0/me/events/:id': p => { eventi.delete(p.id); return { stato: 204, corpo: '' }; },
+    'GET /v1.0/me/events/:id': p => (eventi.has(p.id) ? eventi.get(p.id) : { stato: 404, corpo: { error: { code: 'ErrorItemNotFound' } } }),
     'GET /v1.0/me/calendarView/delta': (p, c, { q }) => {
       giro++;
       if (q.get('$skiptoken') === 'pag2') return { value: [...eventi.values()], '@odata.deltaLink': `${S.url}/v1.0/me/calendarView/delta?$deltatoken=d1` };
@@ -172,6 +173,7 @@ test('CalDAV: scoperta del calendario (principal → home → calendari), PUT co
   const metti = (nome, ics) => cal.set(nome, { ics, etag: `"e${++v}"` });
   metti('esterno.ics', ['BEGIN:VCALENDAR', 'VERSION:2.0', 'BEGIN:VEVENT', 'UID:ext-1@icloud', 'DTSTART;TZID=Europe/Rome:20261020T100000', 'DTEND;TZID=Europe/Rome:20261020T110000', 'SUMMARY:Controllo Sara',
     'ATTENDEE;CN=Sara Viola:mailto:sara.viola@esempio.it', 'BEGIN:VALARM', 'TRIGGER:-PT30M', 'END:VALARM', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n'));
+  metti('pilates.ics', ['BEGIN:VCALENDAR', 'BEGIN:VEVENT', 'UID:rip-1', 'DTSTART:20261005T170000Z', 'DTEND:20261005T180000Z', 'RRULE:FREQ=WEEKLY', 'SUMMARY:Pilates', 'ATTENDEE:mailto:io@esempio.it', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n'));
   const S = await finto({
     'PROPFIND /': () => ms('<d:response><d:href>/</d:href><d:propstat><d:prop><d:current-user-principal><d:href>/123/principal/</d:href></d:current-user-principal></d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response>'),
     'PROPFIND /123/principal/': () => ms('<d:response><d:href>/123/principal/</d:href><d:propstat><d:prop><cal:calendar-home-set><d:href>/123/calendars/</d:href></cal:calendar-home-set></d:prop></d:propstat></d:response>'),
@@ -195,18 +197,18 @@ test('CalDAV: scoperta del calendario (principal → home → calendari), PUT co
     assert.equal(S.chiamate[0].intestazioni.depth, '0'); assert.match(S.chiamate[0].corpo, /current-user-principal/);
     // calendario → Kubo: l'evento esterno diventa un appuntamento con il cliente dall'invitato
     const g = await K.chiama('POST', '/api/connettori/caldav/giri/sincronizza'); assert.equal(g.json.esito, 'ok', JSON.stringify(g.json));
-    assert.deepEqual(g.json.risultato, { creati: 1, spostati: 0, annullati: 0, uguali: 0, saltati: 0 });
+    assert.deepEqual(g.json.risultato, { creati: 1, spostati: 0, annullati: 0, uguali: 0, saltati: 0 });   // Pilates si ripete ogni settimana: non è un appuntamento
     const rep = S.chiamate.find(c => c.metodo === 'REPORT'); assert.equal(rep.intestazioni.depth, '1'); assert.match(rep.corpo, /<c:time-range start="\d{8}T\d{6}Z" end="\d{8}T\d{6}Z"\/>/);
     let [est] = await appuntamenti(K); assert.equal(est.quando, '2026-10-20T08:00:00.000Z'); assert.match(est.note, /Controllo Sara/);
     assert.equal((await clienti(K)).find(c => c.nome === 'Sara Viola')?.email, 'sara.viola@esempio.it');
-    assert.deepEqual((await K.chiama('POST', '/api/connettori/caldav/giri/sincronizza')).json.risultato, { creati: 0, spostati: 0, annullati: 0, uguali: 1, saltati: 0 });
+    assert.deepEqual((await K.chiama('POST', '/api/connettori/caldav/giri/sincronizza')).json.risultato, { creati: 0, spostati: 0, annullati: 0, uguali: 2, saltati: 0 });
     // Kubo → calendario: un appuntamento nuovo è un PUT con If-None-Match: *; il giro dopo lo rivede con lo stesso ETag (niente eco)
     const ugo = (await K.chiama('POST', '/api/dati/clienti', { nome: 'Ugo Rosa' })).json;
     const a = (await K.chiama('POST', '/api/dati/appuntamenti', { quando: '2026-10-21T07:30:00.000Z', cliente: ugo.id, note: 'Prima visita' })).json; await coda(K);
     const put = S.chiamate.filter(c => c.metodo === 'PUT').at(-1); assert.ok(put, JSON.stringify((await K.chiama('GET', '/api/connettori/caldav')).json.registro.slice(0, 3))); assert.equal(put.percorso, `/123/calendars/casa/kubo-${a.id}.ics`); assert.equal(put.intestazioni['if-none-match'], '*');
     assert.match(put.intestazioni['content-type'], /text\/calendar/); const [mio] = leggiIcs(put.corpo);
     assert.equal(mio.uid, `kubo-${a.id}@kubo`); assert.equal(mio.inizio, '2026-10-21T07:30:00.000Z'); assert.equal(mio.fine, '2026-10-21T08:30:00.000Z'); assert.equal(mio.descrizione, 'Prima visita'); assert.equal(mio.titolo, 'Ugo Rosa');
-    assert.deepEqual((await K.chiama('POST', '/api/connettori/caldav/giri/sincronizza')).json.risultato, { creati: 0, spostati: 0, annullati: 0, uguali: 2, saltati: 0 });
+    assert.deepEqual((await K.chiama('POST', '/api/connettori/caldav/giri/sincronizza')).json.risultato, { creati: 0, spostati: 0, annullati: 0, uguali: 3, saltati: 0 });
     assert.equal((await appuntamenti(K)).length, 2);
     // spostato in Kubo un evento nato nel calendario: cambia solo DTSTART/DTEND, con If-Match; invitato e promemoria restano
     const etagPrima = cal.get('esterno.ics').etag;
@@ -215,15 +217,15 @@ test('CalDAV: scoperta del calendario (principal → home → calendari), PUT co
     const [sp] = leggiIcs(cal.get('esterno.ics').ics); assert.equal(sp.inizio, '2026-10-20T09:00:00.000Z'); assert.equal(sp.partecipanti[0].email, 'sara.viola@esempio.it'); assert.match(cal.get('esterno.ics').ics, /TRIGGER:-PT30M/);
     // spostato nel calendario (nuovo ETag) → spostato in Kubo; cancellato nel calendario (404) → annullato
     metti('esterno.ics', cal.get('esterno.ics').ics.replace('DTSTART:20261020T090000Z', 'DTSTART:20261027T090000Z'));
-    assert.deepEqual((await K.chiama('POST', '/api/connettori/caldav/giri/sincronizza')).json.risultato, { creati: 0, spostati: 1, annullati: 0, uguali: 1, saltati: 0 });
+    assert.deepEqual((await K.chiama('POST', '/api/connettori/caldav/giri/sincronizza')).json.risultato, { creati: 0, spostati: 1, annullati: 0, uguali: 2, saltati: 0 });
     assert.equal((await K.chiama('GET', `/api/dati/appuntamenti/${est.id}`)).json.quando, '2026-10-27T09:00:00.000Z');
     await coda(K); assert.equal(S.chiamate.filter(c => c.metodo === 'PUT').length, 2);   // lo spostamento arrivato dal calendario non riparte
     cal.delete('esterno.ics');
-    assert.deepEqual((await K.chiama('POST', '/api/connettori/caldav/giri/sincronizza')).json.risultato, { creati: 0, spostati: 0, annullati: 1, uguali: 1, saltati: 0 });
+    assert.deepEqual((await K.chiama('POST', '/api/connettori/caldav/giri/sincronizza')).json.risultato, { creati: 0, spostati: 0, annullati: 1, uguali: 2, saltati: 0 });
     assert.equal((await K.chiama('GET', `/api/dati/appuntamenti/${est.id}`)).json.stato, 'annullato');
     // annullato in Kubo → DELETE con If-Match
     await K.chiama('PATCH', `/api/dati/appuntamenti/${a.id}`, { stato: 'annullato' }); await coda(K);
-    const del = S.chiamate.filter(c => c.metodo === 'DELETE').at(-1); assert.equal(del.percorso, `/123/calendars/casa/kubo-${a.id}.ics`); assert.ok(del.intestazioni['if-match']); assert.equal(cal.size, 0);
+    const del = S.chiamate.filter(c => c.metodo === 'DELETE').at(-1); assert.equal(del.percorso, `/123/calendars/casa/kubo-${a.id}.ics`); assert.ok(del.intestazioni['if-match']); assert.deepEqual([...cal.keys()], ['pilates.ics']);
     const l = await K.chiama('POST', '/api/connettori/caldav/azioni/calendari', { args: {} }); assert.deepEqual(l.json.calendari.map(c => c.nome), ['Studio & casa']);
   } finally { await K.chiudi(); await S.chiudi(); }
 });
