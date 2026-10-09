@@ -82,3 +82,38 @@ test('PayPal: token client credentials, ordine con custom_id, webhook verificato
     assert.match((await manda(K, '/api/connettori/paypal/in', ev2, h('firma-buona'))).json.esito, /già pagata/);
   } finally { await K.chiudi(); await S.chiudi(); }
 });
+
+const AZ = { ragione_sociale: 'Bottega Prova srl', piva: '12345678903', codice_fiscale: '12345678903', regime: 'RF01', via: 'Via dei Mille 10', cap: '20121', comune: 'Milano', provincia: 'MI', email: 'info@bottega.example', iban: 'IT60X0542811101000000123456', aliquota: 22 };
+async function fattura(K, prezzo = 100) {
+  assert.equal((await K.chiama('PUT', '/api/documenti/azienda', AZ)).stato, 200);
+  await K.chiama('POST', '/api/documenti/prepara');
+  const cl = (await K.chiama('POST', '/api/dati/clienti', { nome: 'Rossi srl', piva: '00743110157', via: 'Corso Italia 5', cap: '10121', comune: 'Torino', provincia: 'TO', codice_destinatario: 'ABC1234' })).json;
+  const f = (await K.chiama('POST', '/api/dati/fatture', { cliente: cl.id, data: '2026-09-01', righe: [{ descrizione: 'Riparazione', quantita: 1, prezzo, aliquota: 22 }] })).json;
+  const e = await K.chiama('PATCH', `/api/dati/fatture/${f.id}`, { stato: 'emessa' }); assert.equal(e.stato, 200, JSON.stringify(e.json));
+  return e.json;
+}
+
+test('Nexi XPay: link con il MAC, esito server-to-server con MAC verificato → fattura pagata con la data, ritorno del cliente', async () => {
+  const { macEsito } = await import('../connettori/nexi-xpay/connettore.js');
+  const K = await kubo(['fatture']);
+  try {
+    const f = await fattura(K);
+    await accendi(K, 'nexi-xpay', { segreti: { chiave: 'chiave-mac-prova' }, impostazioni: { alias: 'ALIAS_WEB_00012345', indirizzo: 'https://kubo.esempio.it' } });
+    const l = await K.chiama('POST', '/api/connettori/nexi-xpay/azioni/link_fattura', { args: { fattura: f.id } });
+    assert.equal(l.stato, 200, JSON.stringify(l.json));
+    const u = new URL(l.json.url), p = Object.fromEntries(u.searchParams);
+    assert.equal(u.origin + u.pathname, 'https://int-ecommerce.nexi.it/ecomm/ecomm/DispatcherServlet');
+    assert.equal(p.importo, '12200'); assert.equal(p.divisa, 'EUR'); assert.equal(p.urlpost, 'https://kubo.esempio.it/api/connettori/nexi-xpay/in');
+    assert.equal(p.mac, createHash('sha1').update(`codTrans=${p.codTrans}divisa=EUR` + `importo=12200chiave-mac-prova`).digest('hex'));
+    const es = { alias: p.alias, importo: '12200', divisa: 'EUR', codTrans: p.codTrans, esito: 'OK', data: '20260915', orario: '101500', codAut: 'TESTOK' };
+    const corpo = m => new URLSearchParams({ ...es, mac: m }).toString(), form = { 'Content-Type': 'application/x-www-form-urlencoded' };
+    assert.equal((await manda(K, '/api/connettori/nexi-xpay/in', corpo('0'.repeat(40)), form)).stato, 401);
+    const r = await manda(K, '/api/connettori/nexi-xpay/in', corpo(macEsito(es, 'chiave-mac-prova')), form);
+    assert.equal(r.stato, 200, JSON.stringify(r.json)); assert.equal(r.json.esito, 'pagata');
+    const dopo = (await K.chiama('GET', `/api/dati/fatture/${f.id}`)).json; assert.equal(dopo.stato, 'pagata'); assert.equal(dopo.pagata_il, '2026-09-15');
+    assert.equal((await manda(K, '/api/connettori/nexi-xpay/in', corpo(macEsito(es, 'chiave-mac-prova')), form)).json.doppione, true);
+    // il cliente torna sulla pagina di cortesia con gli stessi parametri: niente doppio incasso
+    const g = await fetch(`${K.base}/api/connettori/nexi-xpay/pub/esito?${new URLSearchParams({ ...es, mac: macEsito(es, 'chiave-mac-prova') })}`);
+    assert.equal(g.status, 200); assert.match(await g.text(), /Pagamento ricevuto/);
+  } finally { await K.chiudi(); }
+});
