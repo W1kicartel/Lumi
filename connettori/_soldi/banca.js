@@ -46,7 +46,7 @@ export function candidate(k, m) {
 // i movimenti arrivati dalla banca: scritti (se c'è la sezione), confrontati, ricordati. → { nuovi, proposte }
 export function registraMovimenti(k, movimenti) {
   const visti = new Set(k.stato.leggi('visti') || []), proposte = k.stato.leggi('proposte') || [], sez = c(k, 'movimenti');
-  let nuovi = 0;
+  let nuovi = 0, aggiunte = 0;
   for (const m of movimenti) {
     const chiave = String(m.id); if (!m.id || visti.has(chiave)) continue;
     visti.add(chiave); nuovi++;
@@ -56,12 +56,13 @@ export function registraMovimenti(k, movimenti) {
       const riga = k.dati.crea('movimenti', v); k.sincro.collega('movimenti', riga.id, chiave);
     }
     const cand = candidate(k, m);
-    if (cand.length && (cand.length === 1 || cand[0].punti > cand[1].punti))
+    if (cand.length && (cand.length === 1 || cand[0].punti > cand[1].punti) && ++aggiunte)
       proposte.push({ movimento: chiave, data: m.data, importo: Number(m.importo), descrizione: String(m.descrizione || '').slice(0, 140), ...cand[0] });
   }
   k.stato.scrivi('visti', [...visti].slice(-3000));
   k.stato.scrivi('proposte', proposte.slice(-300));
-  if (proposte.length) k.avvisa(`${proposte.length} movimenti sembrano pagare delle fatture: controlla «Riconcilia»`);
+  // l'avviso solo per le proposte nuove di questo giro: quelle vecchie restano nell'elenco senza ripetersi
+  if (aggiunte) k.avvisa(`${aggiunte} movimenti sembrano pagare delle fatture: controlla «Bonifici da abbinare»`);
   return { nuovi, proposte: proposte.length };
 }
 
