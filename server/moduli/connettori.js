@@ -476,7 +476,7 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
       if (!x || x.inattesa) throw errore(409, 'somma-diversa');
       tutti.set(p.id, x); if (x.rotto) throw errore(404, 'sconosciuto');
     }
-    const c = conn(p.id), { man } = c;
+    const c = conn(p.id), { man } = c, impPrima = JSON.stringify(impDi(p.id));
     transazione(db, () => {
       if (corpo.interni != null) scriviRiga(p.id, { interni: corpo.interni ? 1 : 0 });
       if (corpo.impostazioni) {
@@ -508,6 +508,9 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
         for (const i of man.impostazioni || []) if (i.generato && !segreto(p.id, i.id)) salvaSegreto(p.id, i.id, randomBytes(24).toString('base64url'));
       }
       if (corpo.attivo === false) scriviRiga(p.id, { attivo: 0 });
+      // client credentials: il token in memoria vale per l'indirizzo e le credenziali di prima. Cambiati quelli (un altro
+      // servizio, un altro negozio), non deve partire verso il nuovo indirizzo: se ne chiede uno nuovo alla prossima chiamata
+      if (man.oauth?.tipo === 'client' && (JSON.stringify(impDi(p.id)) !== impPrima || Object.keys(corpo.segreti || {}).length)) salvaSegreto(p.id, '_oauth', null);
     });
     kCache.delete(p.id); registraLumi(p.id);
     if (corpo.attivo != null) annota(p.id, 'sistema', 'ok', corpo.attivo ? 'acceso' : 'spento', { chi: ctx.utente.nome });

@@ -78,6 +78,10 @@ test('ricette: segnaposto nel percorso e nel corpo, tipi conservati, controllo d
   assert.throws(() => controllaRicette([{ tipo: 'uscita', sezione: 'clienti', percorso: '/x' }], { assoluti: true }), /indirizzo completo/);
   assert.throws(() => controllaRicette([{ tipo: 'entrata', sezione: 'clienti', modo: 'aggiorna' }]), /campo chiave/);
   assert.throws(() => controllaRicette([{ tipo: 'boh', sezione: 'clienti' }]), /tipo/);
+  // il sito non lo sceglie una riga: niente segnaposto prima del percorso (chiavi e dati andrebbero dove dice il campo)
+  for (const u of ['https://{a}.{b}/x', 'https://{negozio}.com/x', 'https://api.esempio.it:{porta}/x'])
+    assert.throws(() => controllaRicette([{ tipo: 'uscita', sezione: 'clienti', percorso: u }]), /segnaposto nel nome del sito/, u);
+  assert.equal(controllaRicette([{ tipo: 'uscita', sezione: 'clienti', percorso: 'https://hooks.esempio.it/{id}?e={email}' }])[0].percorso, 'https://hooks.esempio.it/{id}?e={email}');
   assert.deepEqual(permessiRicette({ ricette: [{ tipo: 'uscita', sezione: 'clienti' }, { tipo: 'entrata', sezione: 'articoli', modo: 'aggiorna' }, { tipo: 'entrata', sezione: 'fornitori', attiva: false }] }),
     { clienti: { leggi: true }, articoli: { leggi: true, modifica: true } });
 });
@@ -96,6 +100,8 @@ test('HTTP / API REST: ricette in uscita (coda), azione con anteprima, entrata c
     // una ricetta verso la rete interna senza il permesso: rifiutata al salvataggio
     const no = await K.chiama('PUT', '/api/connettori/http', { impostazioni: { ricette: [{ tipo: 'uscita', sezione: 'clienti', percorso: 'http://127.0.0.1:9/x' }] } });
     assert.equal(no.stato, 400); assert.match(no.json.errore, /Ricetta 1/);
+    // il percorso di prova è relativo all'indirizzo base: «.altro.example/» porterebbe la chiave su un altro sito
+    assert.equal((await K.chiama('PUT', '/api/connettori/http', { impostazioni: { prova_percorso: '.altro.example/' } })).stato, 400);
     const pag = await accendi(K, 'http', { segreti: { chiave: 'chiave-segreta-1', firma_entrata: 'segreto-hmac' },
       impostazioni: { base: S.url + '/v1', accesso: 'intestazione', accesso_nome: 'X-Api-Key', prova_percorso: '/me', intestazioni: '{"Accept-Language":"it"}', ricette } });
     // l'identità del connettore: legge e scrive i clienti (per le ricette), non tocca il resto
@@ -108,6 +114,8 @@ test('HTTP / API REST: ricette in uscita (coda), azione con anteprima, entrata c
     const c = (await K.chiama('POST', '/api/dati/clienti', { nome: 'Anna Bianchi', email: 'anna@esempio.it', consenso: true })).json;
     const post = await aspetta(() => S.chiamate.find(x => x.percorso === '/v1/contatti'));
     assert.deepEqual(post.corpo, { name: 'Anna Bianchi', email: 'anna@esempio.it', vip: true });
+    // in coda (che resta nel database) va l'id, non la riga: si rilegge quando parte
+    assert.ok(!K.db.prepare("SELECT corpo FROM _connettori_coda WHERE connettore = 'http'").all().some(x => x.corpo.includes('anna@esempio.it')));
     await K.chiama('PATCH', `/api/dati/clienti/${c.id}`, { telefono: '333 1234567' });
     const put = await aspetta(() => S.chiamate.find(x => x.metodo === 'PUT'));
     assert.equal(put.percorso, '/v1/contatti/anna%40esempio.it'); assert.equal(put.corpo.dati?.telefono ?? put.corpo.telefono, '333 1234567');
@@ -163,6 +171,10 @@ test('HTTP / API REST: OAuth2 client credentials, chiave nella query, Basic', as
     assert.equal(n, 1);   // il token si riusa finché vale
     assert.equal(S.chiamate.find(x => x.percorso === '/me').intestazioni.authorization, 'Bearer tok-cid-leggi');
     assert.equal((await K.chiama('GET', '/api/connettori/http')).json.oauth.collegato, true);
+    // cambiato lo scope (o l'indirizzo del token, o le credenziali), il token di prima non parte più: se ne chiede uno nuovo
+    await K.chiama('PUT', '/api/connettori/http', { impostazioni: { scope: 'scrivi' } });
+    assert.equal((await K.chiama('POST', '/api/connettori/http/prova')).json.ok, true);
+    assert.equal(n, 2); assert.equal(S.chiamate.filter(x => x.percorso === '/me').at(-1).intestazioni.authorization, 'Bearer tok-cid-scrivi');
     await K.chiama('PUT', '/api/connettori/http', { impostazioni: { accesso: 'query', accesso_nome: 'apikey' }, segreti: { chiave: 'q-123' } });
     await K.chiama('POST', '/api/connettori/http/prova');
     assert.equal(S.chiamate.at(-1).q.apikey, 'q-123');
@@ -194,6 +206,10 @@ test('ponti: Zapier riceve gli eventi della sezione e scrive in Kubo; il webhook
     const r = await manda(K, `/api/connettori/zapier/in/${codice}`, JSON.stringify({ codice: 'P1', Nome: 'Piatto', prezzo: 9.5, ignoto: 1 }));
     assert.equal(r.json.esito, 'creati 1, aggiornati 0', JSON.stringify(r.json));
     const p = (await K.chiama('GET', '/api/dati/articoli?q=Piatto')).json.righe[0]; assert.equal(p.prezzo, 9.5); assert.equal(p.creato_da, 'servizio:zapier');
+    // una chiave che non è un valore semplice: 422 chiaro (non un errore interno), niente di scritto
+    const strano = await manda(K, `/api/connettori/zapier/in/${codice}`, JSON.stringify({ codice: { x: 1 }, nome: 'Strano' }));
+    assert.equal(strano.stato, 422, JSON.stringify(strano.json)); assert.match(strano.json.errore, /codice/);
+    assert.equal((await K.chiama('GET', '/api/dati/articoli?q=Strano')).json.righe.length, 0);
     // webhook generico: X-Kubo-Firma come i webhook di Kubo (sha256 su «tempo.corpo»)
     await accendi(K, 'webhook', { segreti: { firma_uscita: 'whsec_prova' }, impostazioni: { ricette: [{ id: 'cli', tipo: 'uscita', sezione: 'clienti', eventi: ['crea'], percorso: Z.url + '/ricevi', corpo: '{"chi":"{nome}"}' }] } });
     await K.chiama('POST', '/api/dati/clienti', { nome: 'Gianni' });

@@ -265,7 +265,9 @@ Nel percorso i valori si codificano per l'indirizzo. Il corpo può essere:
 - **altro**: si manda come testo.
 
 Il percorso è relativo all'indirizzo base (`/contatti/{id}`) oppure è un indirizzo completo. Passa dal controllo SSRF
-quando si salva e di nuovo quando parte.
+quando si salva e di nuovo quando parte. In un indirizzo completo i segnaposto vanno solo nel percorso e nella query, mai
+nel nome del sito o nella porta (`https://{negozio}.com/` è rifiutato): il sito lo sceglie il titolare, non una riga,
+altrimenti chi scrive quel campo deciderebbe dove partono la chiave e i dati.
 
 **In entrata.** L'indirizzo ha in fondo un codice segreto generato da Kubo. La pagina lo mostra sotto ogni ricetta.
 - **Firma.** Con il «segreto HMAC in entrata», la richiesta deve portare anche la firma HMAC-SHA256 del corpo grezzo,

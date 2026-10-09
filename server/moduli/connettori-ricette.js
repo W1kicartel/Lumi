@@ -28,6 +28,8 @@ export const MODI = ['crea-o-aggiorna', 'crea', 'aggiorna'];
 export const ACCESSI = ['nessuno', 'intestazione', 'query', 'bearer', 'basic', 'oauth2'];
 const ID = /^[a-z0-9][a-z0-9_-]{0,39}$/, PERCORSO = /^[\w.$-]+(\.[\w$-]+)*$/;
 
+// «https://{x}.esempio.it/…»: un segnaposto prima del percorso (nel nome del sito, nella porta)
+const origineConSegnaposto = u => /\{/.test(/^[a-z][a-z0-9+.-]*:\/*[^/?#]*/i.exec(String(u))?.[0] || '');
 export const prendi = (o, via) => String(via ?? '').split('.').filter(Boolean).reduce((x, k) => (x == null ? undefined : x[k]), o);
 const testo = (v, max) => String(v ?? '').trim().slice(0, max);
 
@@ -61,6 +63,8 @@ export function controllaRicette(lista, { S, db, interni = false, tipi = TIPI, a
     if (/^[a-z][a-z0-9+.-]*:/i.test(percorso)) {
       const prova = percorso.replace(/\{[^{}]*\}/g, 'x');
       if (!/^https?:\/\//i.test(prova)) sbaglia('ricetta-http', { n });
+      // il sito lo sceglie il titolare, non i dati: «https://{dominio}.com/» manderebbe chiavi e righe dove dice una riga
+      if (origineConSegnaposto(percorso)) sbaglia('ricetta-host', { n });
       if (controllaUrl(prova, { interni })) sbaglia('ricetta-rete', { n });
     } else if (assoluti) sbaglia('ricetta-assoluto', { n });
     else if (!percorso.startsWith('/')) sbaglia('ricetta-barra', { n });
@@ -117,6 +121,7 @@ export async function prepara(k, r, v, { anteprima = false } = {}) {
   const def = k.S.leggi(k.db, r.sezione), campi = def ? k.S.campiAttivi(def) : [];
   const assoluto = /^https?:\/\//i.test(r.percorso), base = String(k.imp.base || k.base || '').replace(/\/+$/, '');
   if (!assoluto && !base) sbaglia('ricette-base');
+  if (assoluto && origineConSegnaposto(r.percorso)) sbaglia('ricetta-host', { n: r.nome || r.id });
   const u = new URL(assoluto ? riempi(r.percorso, v, campi, true) : base + riempi(r.percorso, v, campi, true));
   const opz = { intestazioni: intestazioniExtra(k.imp) }, a = k.imp.accesso || 'nessuno', s = k.segreti, nome = k.imp.accesso_nome;
   let visibile = u.href;
@@ -158,7 +163,8 @@ export function manifestoRicette({ accesso = true } = {}) {
       { id: 'scope', nome: 'OAuth2: scope (facoltativo)' },
       { id: 'client_id', nome: 'OAuth2: client ID', segreto: true, obbligatorio: false },
       { id: 'client_secret', nome: 'OAuth2: client secret', segreto: true, obbligatorio: false },
-      { id: 'prova_percorso', nome: 'Percorso per provare la connessione (es. /me)' },
+      // relativo all'indirizzo base, come le ricette: «.altro.it/» o un indirizzo completo porterebbero la chiave altrove
+      { id: 'prova_percorso', nome: 'Percorso per provare la connessione (es. /me)', schema: /^\/[^\s{}]{0,500}$/ },
     ] : []),
     { id: 'intestazioni', nome: 'Intestazioni in più (JSON, es. {"Accept-Language":"it"})', tipo: 'json', controlla: v => { if (v == null || v === '') return null; if (typeof v !== 'object' || Array.isArray(v)) sbaglia('ricette-intestazioni'); return Object.fromEntries(Object.entries(v).slice(0, 30).map(([a, b]) => { if (!/^[A-Za-z0-9-]{1,64}$/.test(a)) sbaglia('ricette-intestazioni'); return [a, String(b).slice(0, 2000)]; })); } },
     { id: 'ricette', nome: 'Ricette', tipo: 'ricette', predefinito: [], assoluti: !accesso, controlla: (v, x) => controllaRicette(v, { ...x, assoluti: !accesso }) },
@@ -182,12 +188,14 @@ export function manifestoRicette({ accesso = true } = {}) {
     // in uscita: ogni scrittura della sezione (che non viene da questo connettore) mette in coda le ricette che la riguardano
     eventi(ev, k) {
       for (const r of attive(k.imp, 'uscita')) if (r.sezione === ev.entita && r.eventi.includes(ev.tipo))
-        k.accoda('ricetta', `${r.id}:${ev.id}`, { ricetta: r.id, evento: ev.tipo, id: ev.id, dati: ev.dopo ?? ev.prima ?? null });
+        // la riga si rilegge quando parte: in coda (che resta nel database) solo l'id, e la riga intera solo per «elimina»
+        k.accoda('ricetta', `${r.id}:${ev.id}`, { ricetta: r.id, evento: ev.tipo, id: ev.id, dati: ev.tipo === 'elimina' ? ev.dopo ?? ev.prima ?? null : null });
     },
     lavori: {
       async ricetta(c, k) {
         const r = attive(k.imp, 'uscita').find(x => x.id === c.ricetta); if (!r) return;   // tolta o spenta nel frattempo: niente
         let riga = c.dati; if (c.evento !== 'elimina') { try { riga = k.dati.leggi(r.sezione, c.id); } catch { /* sparita: si manda quella dell'evento */ } }
+        if (!riga) return;   // tolta prima della partenza (o un evento vecchio senza riga): ci pensa la ricetta di «elimina»
         const x = await chiama(k, r, valoriDi(k, r, riga, { id: c.id, evento: c.evento }));
         if (!x.ok) sbaglia('ricette-risposta', { stato: x.stato, dettaglio: `${r.nome}${x.testo ? ` · ${x.testo.slice(0, 200)}` : ''}` }, 502);
       },
@@ -231,7 +239,10 @@ export function manifestoRicette({ accesso = true } = {}) {
         transazione(k.db, () => {
           for (const o of voci) {
             const valori = r.campi.length ? Object.fromEntries(r.campi.map(c => [c.a, prendi(o, c.da)]).filter(([, b]) => b !== undefined)) : diretti(o);
-            const kv = r.chiave ? valori[r.chiave] : undefined, c = r.chiave && kv != null && kv !== '' ? k.dati.trova(r.sezione, r.chiave, kv) : null;
+            const kv = r.chiave ? valori[r.chiave] : undefined;
+            // la chiave è un valore semplice: un oggetto finirebbe nella query come parametri con nome (errore interno)
+            if (kv != null && typeof kv === 'object') sbaglia('valore-non-valido', { nome: r.chiave }, 422);
+            const c = r.chiave && kv != null && kv !== '' ? k.dati.trova(r.sezione, r.chiave, kv) : null;
             if (c) { if (r.modo === 'crea') { conti.saltati++; continue; } k.dati.modifica(r.sezione, c.id, valori); conti.aggiornati++; }
             else { if (r.modo === 'aggiorna') { conti.saltati++; continue; } k.dati.crea(r.sezione, valori); conti.creati++; }
           }
