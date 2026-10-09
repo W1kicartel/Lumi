@@ -87,3 +87,4 @@
 .conn-abbinamenti > .btn { justify-self: start; }
 .conn-indirizzo { display: grid; gap: 4px; }
 @media (max-width: 640px) { .conn-cerca { flex-basis: 100%; } .conn-mono.grande { width: 40px; height: 40px; } }
+.conn-campi label.conn-spunta { display: flex; align-items: center; gap: 8px; } .conn-campi label.conn-spunta input { margin: 0; }

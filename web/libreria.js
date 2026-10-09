@@ -42,7 +42,7 @@ export function iniziali(nome) {
   return (p.length > 1 ? p[0][0] + p[1][0] : p[0].slice(0, 2)).toUpperCase();
 }
 // la tinta della carta: sempre la stessa per lo stesso id (0–359)
-export function tinta(id) { let h = 0; for (const ch of String(id)) h = (h * 31 + ch.codePointAt(0)) >>> 0; return h % 360; }
+export function tinta(id) { let h = 2166136261; for (const ch of String(id)) { h ^= ch.codePointAt(0); h = Math.imul(h, 16777619) >>> 0; } return h % 360; }   // FNV-1a: tinte ben sparse
 
 // lo stato della carta: acceso, spento, da configurare, cambiato, rotto; e se è stato provato solo con un servizio finto
 export function statoVoce(v) {

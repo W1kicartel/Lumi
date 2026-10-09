@@ -119,6 +119,12 @@ test('HTTP / API REST: ricette in uscita (coda), azione con anteprima, entrata c
     const az = (await K.chiama('POST', '/api/connettori/http/azioni/link', { args: { riga: c.id } })).json;
     assert.equal(az.url, `https://pay.esempio.it/${c.id}`);
     assert.ok((await K.chiama('GET', '/api/connettori/azioni')).json.some(a => a.connettore === 'http' && a.azione === 'link' && a.su === 'clienti'));
+    // la stessa ricetta è uno strumento di Lumi: scheda di conferma, poi l'esecuzione con il gettone
+    const lumi = (await K.chiama('GET', '/api/lumi/strumenti')).json.strumenti.find(x => x.nome === 'connettore_http_link');
+    assert.ok(lumi && lumi.tipo === 'scrivi', 'strumento di Lumi della ricetta');
+    const sch = (await K.chiama('POST', '/api/lumi/strumenti/connettore_http_link/anteprima', { args: { riga: c.id } })).json;
+    assert.equal(sch.titolo, 'Crea il link');
+    assert.equal((await K.chiama('POST', '/api/lumi/strumenti/connettore_http_link/esegui', { args: { riga: c.id }, gettone: sch.gettone })).json.url, `https://pay.esempio.it/${c.id}`);
     // entrata: codice nell'indirizzo + HMAC; aggiorna per email, crea se non c'è, idempotente per id
     const codice = pag.impostazioni.find(i => i.id === 'codice').valore;
     const corpo = JSON.stringify({ id: 'ev1', cliente: { mail: 'anna@esempio.it', nome: 'Anna Bianchi Rossi', tel: '06 123' } });
@@ -143,6 +149,7 @@ test('HTTP / API REST: ricette in uscita (coda), azione con anteprima, entrata c
     await K.chiama('PUT', '/api/connettori/http', { impostazioni: { ricette: ricette.filter(x => x.id !== 'link') } });
     assert.equal((await K.chiama('POST', '/api/connettori/http/azioni/link', { args: { riga: c.id } })).stato, 404);
     assert.ok(!(await K.chiama('GET', '/api/connettori/azioni')).json.some(a => a.azione === 'link'));
+    assert.ok(!(await K.chiama('GET', '/api/lumi/strumenti')).json.strumenti.some(x => x.nome === 'connettore_http_link'));
   } finally { await K.chiudi(); await S.chiudi(); }
 });
 
