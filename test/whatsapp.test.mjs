@@ -226,7 +226,8 @@ test('automazioni: promemoria 24 h dal giro, conferma dal motore, azione «whats
     await K.chiama('PUT', '/api/whatsapp/impostazioni', { orari: { apre: '00:00', chiude: '00:01', giorni: [] } });
     await K.chiama('PUT', '/api/whatsapp/ricette/fuori_orario', { attiva: true, opzioni: { testo: 'Siamo chiusi, rispondiamo domani.' } });
     for (const testo of ['Ciao?', 'C\'è qualcuno?']) { const b = entrata('393331234567', testo); await manda(K, '/api/connettori/whatsapp/in', b, { 'X-Hub-Signature-256': firmaMeta('app-segreta', b) }); }
-    assert.equal(S.chiamate.filter(x => x.corpo?.text?.body === 'Siamo chiusi, rispondiamo domani.').length, 1);
+    assert.ok(await aspetta(() => S.chiamate.some(x => x.corpo?.text?.body === 'Siamo chiusi, rispondiamo domani.')));
+    await new Promise(r => setTimeout(r, 100)); assert.equal(S.chiamate.filter(x => x.corpo?.text?.body === 'Siamo chiusi, rispondiamo domani.').length, 1);
   } finally { await chiudi(); }
 });
 

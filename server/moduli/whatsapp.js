@@ -280,7 +280,8 @@ export default function registra({ r, prima, db, S, D, P, A, meta, serve, Errore
         if (parola === 'stop') for (const c of ['servizio', 'marketing']) scriviConsenso({ numero, cliente, categoria: c, stato: 'no', fonte: `parola:${String(ev.testo).trim().slice(0, 30)}`, testo: ev.testo, chi: 'cliente' });
         if (parola === 'ripresa') scriviConsenso({ numero, cliente, categoria: 'servizio', stato: 'si', fonte: `parola:${String(ev.testo).trim().slice(0, 30)}`, testo: ev.testo, chi: 'cliente' });
         avvisa(numero); n++;
-        if (!parola) await fuoriOrario(numero, cliente).catch(e => nucleo()?.annota(pid, 'uscita', 'errore', 'fuori_orario', String(e.message).slice(0, 200)));
+        // la risposta fuori orario non fa aspettare il webhook (Meta vuole il 200 in pochi secondi): la riga si scrive subito, l'invio dopo
+        if (!parola) fuoriOrario(numero, cliente).catch(e => nucleo()?.annota(pid, 'uscita', 'errore', 'fuori_orario', String(e.message).slice(0, 200)));
       }
     }
     return n ? `${n} eventi` : 'ignorato';
@@ -468,7 +469,8 @@ export default function registra({ r, prima, db, S, D, P, A, meta, serve, Errore
   }
   function conversazione(numero) {
     const c = leggiCliente(clienteDi(numero)), cs = consenso(numero);
-    return { numero, cliente: c ? { id: c.id, nome: nomeDi(c), entita: rubrica()?.e } : null, finestra: R.finestra(ultimoIn(numero)), consenso: cs,
+    const profilo = db.prepare("SELECT nome FROM _whatsapp_messaggi WHERE numero = ? AND verso = 'in' AND nome IS NOT NULL ORDER BY id DESC LIMIT 1").get(numero)?.nome || null;
+    return { numero, cliente: c ? { id: c.id, nome: nomeDi(c), entita: rubrica()?.e } : null, profilo, finestra: R.finestra(ultimoIn(numero)), consenso: cs,
       messaggi: db.prepare('SELECT * FROM _whatsapp_messaggi WHERE numero = ? ORDER BY id DESC LIMIT 200').all(numero).reverse() };
   }
   const costiMese = (adesso = Date.now()) => {

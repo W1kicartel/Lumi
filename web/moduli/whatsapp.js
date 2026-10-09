@@ -64,7 +64,7 @@ async function chat(dove, k, st, numero, ridisegna) {
     const testo = stato === 'si' ? prompt(t('whatsapp.testo-chiedi'), t('whatsapp.testo-predefinito')) : null; if (stato === 'si' && testo === null) return;
     try { await api('POST', '/whatsapp/consensi', { numero, categoria, stato, fonte, testo }); ridisegna(); } catch (e) { toast(e.message, true); }
   };
-  const testa = h('div.wa-testa', h('div', h('b', { testo: c.cliente?.nome || numero }), ' ', h('span.nota.mono', { testo: numero })),
+  const testa = h('div.wa-testa', h('div', h('b', { testo: c.cliente?.nome || c.profilo || numero }), ' ', h('span.nota.mono', { testo: numero })),
     h(`div.wa-finestra${c.finestra.aperta ? '.aperta' : ''}`, { testo: finestra(c.finestra) }),
     h('div.wa-consensi', voceCons('servizio', cs.servizio), voceCons('marketing', cs.marketing),
       h('span.wa-bottoni', h('button.btn.piccolo', { type: 'button', on: { click: registraCons('servizio', 'si') } }, t('whatsapp.ok-servizio')),
