@@ -16,9 +16,10 @@ async function metti(k, x) {
     k.sincro.collega('clienti', x.id, r.json.resourceName); salva(r.json.etag); return;
   }
   for (let i = 0, e = etag; i < 2; i++) {
-    if (!e) { const g = await k.http.get(`${api(k)}/${rn}?personFields=metadata`, { bearer: tok }); if (g.stato === 404) { k.sincro.collega('clienti', `vecchio-${x.id}-${Date.now()}`, rn); return metti(k, x); } e = g.json?.etag; }
+    if (!e) { const g = await k.http.get(`${api(k)}/${rn}?personFields=metadata`, { bearer: tok }); if (g.stato === 404) { k.sincro.scollega('clienti', { remoto: rn }); return metti(k, x); } e = g.json?.etag; }
     const r = await k.http.patch(`${api(k)}/${rn}:updateContact?updatePersonFields=${CAMPI}`, { bearer: tok, json: { etag: e, ...persona(x) } });
     if (r.ok) { salva(r.json?.etag); return; }
+    if (r.stato === 404) { k.sincro.scollega('clienti', { remoto: rn }); return metti(k, x); }   // tolto dalla rubrica: si ricrea
     if (r.stato === 400 && /FAILED_PRECONDITION|etag/i.test(JSON.stringify(r.json || ''))) { e = null; continue; }   // cambiato sul telefono: si rilegge
     throw new Error(`Google Contatti: ${r.json?.error?.message || `HTTP ${r.stato}`}`);
   }

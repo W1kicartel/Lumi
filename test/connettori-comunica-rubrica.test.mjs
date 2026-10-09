@@ -49,7 +49,7 @@ test('Google Contatti: crea il contatto, aggiorna con l\'etag, rilegge se è cam
     },
     'GET /v1/people/:rn': p => (contatti[`people/${p.rn}`] ? { resourceName: `people/${p.rn}`, etag: contatti[`people/${p.rn}`].etag } : { stato: 404, corpo: {} }),
     'PATCH /v1/people/:rn': (p, c, { q }) => {
-      const rn = `people/${p.rn.replace(/:updateContact$/, '')}`, x = contatti[rn];
+      const rn = `people/${p.rn.replace(/:updateContact$/, '')}`, x = contatti[rn]; if (!x) return { stato: 404, corpo: {} };
       if (c.etag !== x.etag) return { stato: 400, corpo: { error: { code: 400, status: 'FAILED_PRECONDITION', message: 'Request person.etag is different than the current person.etag.' } } };
       contatti[rn] = { ...c, etag: x.etag.replace(/-(\d+)$/, (_, d) => `-${Number(d) + 1}`), campi: q.get('updatePersonFields') }; return { resourceName: rn, etag: contatti[rn].etag };
     },
@@ -65,5 +65,10 @@ test('Google Contatti: crea il contatto, aggiorna con l\'etag, rilegge se è cam
     await K.chiama('PATCH', `/api/dati/clienti/${cl.id}`, { email: 'marta.riva@esempio.it' }); await coda(K);
     assert.equal(contatti['people/c1'].emailAddresses[0].value, 'marta.riva@esempio.it'); assert.equal(contatti['people/c1'].etag, 'e1-10');
     assert.equal(n, 1);   // sempre lo stesso contatto
+    // tolto dalla rubrica sul telefono: il legame si scioglie (k.sincro.scollega) e il contatto si ricrea, senza righe finte
+    delete contatti['people/c1'];
+    await K.chiama('PATCH', `/api/dati/clienti/${cl.id}`, { telefono: '3200003333' }); await coda(K);
+    assert.equal(n, 2); assert.equal(contatti['people/c2'].phoneNumbers[0].value, '+393200003333');
+    assert.deepEqual(K.db.prepare("SELECT riga, remoto FROM _connettori_mappa WHERE connettore = 'google-contatti'").all().map(x => ({ ...x })), [{ riga: String(cl.id), remoto: 'people/c2' }]);
   } finally { await K.chiudi(); await S.chiudi(); }
 });
