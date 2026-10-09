@@ -41,3 +41,36 @@ test('Amazon SP-API: LWA con refresh token (niente SigV4), offerte collegate per
     assert.equal(conferme[0][1].packageDetail.trackingNumber, 'GLS777');
   } finally { await K.chiudi(); await S.chiudi(); }
 });
+
+test('eBay: refresh token con Basic, inventario collegato per SKU con «next», ordini pagati → vendite, bulkUpdatePriceQuantity, spedizione', async () => {
+  const K = await kubo(), qta = [], spediti = [];
+  const S = await finto({
+    'POST /identity/v1/oauth2/token': (p, c, { intestazioni }) => (intestazioni.authorization === 'Basic ' + Buffer.from('app-id:cert-id').toString('base64') && c.grant_type === 'refresh_token' && c.scope.includes('sell.inventory')
+      ? { access_token: 'v^1.1#utente', expires_in: 7200, token_type: 'User Access Token' } : { stato: 401, corpo: { error: 'invalid_client' } }),
+    'GET /sell/inventory/v1/inventory_item': (p, c, { q }) => (q.get('offset') === '0' ? { inventoryItems: [{ sku: 'EB-LAMPADA' }], next: 'https://api.ebay.com/sell/inventory/v1/inventory_item?limit=100&offset=100', total: 2 } : { inventoryItems: [{ sku: 'EB-ALTRO' }], total: 2 }),
+    'POST /sell/inventory/v1/bulk_update_price_quantity': (p, c) => { qta.push(c); return { responses: [{ statusCode: 200, sku: c.requests[0].sku }] }; },
+    'GET /sell/fulfillment/v1/order': (p, c, { q }) => (q.get('limit') === '1' ? { total: 2, orders: [] } : { total: 2, orders: [
+      { orderId: '12-34567-89012', orderPaymentStatus: 'PAID', lastModifiedDate: '2026-10-09T08:00:00.000Z', lineItems: [{ lineItemId: 'li1', sku: 'EB-LAMPADA', title: 'Lampada', quantity: 1, lineItemCost: { value: '35.00' }, appliedPromotions: [{ discountAmount: { value: '5.00' } }] }] },
+      { orderId: '12-00000-00000', orderPaymentStatus: 'PENDING', lastModifiedDate: '2026-10-09T08:10:00.000Z', lineItems: [] },
+    ] }),
+    'GET /sell/fulfillment/v1/order/:id': p => ({ orderId: p.id, lineItems: [{ lineItemId: 'li1', quantity: 1 }] }),
+    'POST /sell/fulfillment/v1/order/:id/shipping_fulfillment': (p, c) => { spediti.push([p.id, c]); return { stato: 201, corpo: {} }; },
+  });
+  try {
+    const lampada = await nuovoArticolo(K, 'EB-LAMPADA', 6, 30);
+    await accendi(K, 'ebay', { base: S.url, segreti: { client_id: 'app-id', client_secret: 'cert-id', refresh_token: 'v^1.1#refresh' } });
+    assert.equal((await K.chiama('POST', '/api/connettori/ebay/prova')).json.ok, true);
+    const c = S.chiamate.find(x => x.percorso === '/sell/fulfillment/v1/order');
+    assert.equal(c.intestazioni.authorization, 'Bearer v^1.1#utente'); assert.equal(c.intestazioni['x-ebay-c-marketplace-id'], 'EBAY_IT');
+    assert.deepEqual((await K.chiama('POST', '/api/connettori/ebay/giri/offerte')).json.risultato, { collegati: 1, sconosciuti: 1 });
+    await K.chiama('PATCH', `/api/dati/articoli/${lampada.id}`, { giacenza: 2 }); await aspetta(K);
+    assert.deepEqual(qta.at(-1), { requests: [{ sku: 'EB-LAMPADA', shipToLocationAvailability: { quantity: 2 } }] });
+    const o = await K.chiama('POST', '/api/connettori/ebay/giri/ordini');
+    assert.deepEqual(o.json.risultato, { vendite: 1, ignorati: 1 }, JSON.stringify(o.json));
+    assert.match(S.chiamate.filter(x => x.percorso === '/sell/fulfillment/v1/order').at(-1).q.filter, /^lastmodifieddate:\[.+\.\.\]$/);
+    const v = (await K.chiama('GET', '/api/dati/vendite')).json.righe[0]; assert.equal(v.totale, 30);
+    const r = await K.chiama('POST', '/api/connettori/ebay/azioni/spedito', { args: { vendita: v.numero, tracking: 'POS123', corriere: 'Poste Italiane' } });
+    assert.equal(r.json.ok, true, JSON.stringify(r.json));
+    assert.deepEqual(spediti[0][1].lineItems, [{ lineItemId: 'li1', quantity: 1 }]); assert.equal(spediti[0][1].shippingCarrierCode, 'POSTE_ITALIANE');
+  } finally { await K.chiudi(); await S.chiudi(); }
+});
