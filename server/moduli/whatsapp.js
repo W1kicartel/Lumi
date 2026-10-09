@@ -532,7 +532,7 @@ export default function registra({ r, prima, db, S, D, P, A, meta, serve, Errore
   });
   r('POST', '/api/whatsapp/invia', async ({ ctx, corpo }) => {
     scrive(ctx);
-    if (corpo.cliente && !leggiCliente(corpo.cliente, ctx)) throw new P.ErrorePermesso();
+    if (corpo.cliente && leggiCliente(corpo.cliente) && !leggiCliente(corpo.cliente, ctx)) throw new P.ErrorePermesso();   // esiste ma non è suo («soloPropri»)
     if (corpo.numero) vedeONo(ctx, numeroDa(corpo.numero));
     if (corpo.documento) { const def = S.leggi(db, String(corpo.documento.entita || '')); if (!def || !P.puo(ctx, def.id, 'leggi')) throw new P.ErrorePermesso(); D.leggi(db, def.id, String(corpo.documento.id), ctx); }
     const pl = prepara({ numero: corpo.numero, cliente: corpo.cliente, testo: corpo.testo, modello: corpo.modello, variabili: corpo.variabili, documento: corpo.documento || null });
