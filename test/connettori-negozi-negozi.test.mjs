@@ -50,3 +50,42 @@ test('PrestaShop: prodotti e combinazioni a pagine, giacenza in XML con l\'ogget
     assert.equal(S.chiamate.filter(c => c.percorso === '/api/orders').at(-1).q['filter[date_upd]'], '[2026-10-09 11:00:00,2999-12-31 23:59:59]');
   } finally { await K.chiudi(); await S.chiudi(); }
 });
+
+test('Magento: searchCriteria a pagine fino a total_count, giacenze MSI nei due sensi, ordini pagati → vendite, spedizione con tracking', async () => {
+  const K = await kubo(), su = [], spedizioni = [];
+  const S = await finto({
+    'GET /rest/V1/store/storeConfigs': () => [{ base_url: 'https://negozio.example/' }],
+    'GET /rest/V1/inventory/source-items': () => ({ items: [{ sku: 'MG-TAZZA', source_code: 'default', quantity: 12, status: 1 }], total_count: 1 }),
+    'GET /rest/V1/products': (p, c, { q }) => q.get('searchCriteria[currentPage]') === '1'
+      ? { items: [{ sku: 'MG-TAZZA', name: 'Tazza', price: 9.5 }, ...Array.from({ length: 99 }, () => ({ sku: '', name: 'x' }))], total_count: 101 }
+      : q.get('searchCriteria[currentPage]') === '2' ? { items: [{ sku: 'MG-PIATTO', name: 'Piatto', price: 14, extension_attributes: { stock_item: { qty: 3 } } }], total_count: 101 } : { items: [{ sku: 'RIPETUTO' }], total_count: 101 },
+    'POST /rest/V1/inventory/source-items': (p, c) => { su.push(c); return []; },
+    'GET /rest/V1/orders': (p, c, { q }) => (q.get('searchCriteria[filter_groups][0][filters][0][condition_type]') === 'gteq' ? { total_count: 2, items: [
+      { entity_id: 41, increment_id: '000000041', state: 'processing', updated_at: '2026-10-09 09:00:00', customer_email: 'marco@esempio.it', customer_firstname: 'Marco', customer_lastname: 'Neri',
+        extension_attributes: { shipping_assignments: [{ shipping: { address: { street: ['Corso Italia 3'], postcode: '10121', city: 'Torino', region_code: 'TO', telephone: '0110000000' } } }] },
+        items: [{ item_id: 1, sku: 'MG-TAZZA', name: 'Tazza', qty_ordered: 2, row_total_incl_tax: 19, discount_amount: 1, product_type: 'configurable' }, { item_id: 2, parent_item_id: 1, sku: 'MG-TAZZA', qty_ordered: 2, row_total_incl_tax: 0 }] },
+      { entity_id: 42, increment_id: '000000042', state: 'pending_payment', updated_at: '2026-10-09 09:30:00', items: [] },
+    ] } : { items: [], total_count: 0 }),
+    'POST /rest/V1/order/:id/ship': (p, c) => { spedizioni.push([p.id, c]); return 77; },
+  });
+  try {
+    await accendi(K, 'magento', { base: S.url, segreti: { token: 'tok-integrazione' } });
+    assert.equal((await K.chiama('POST', '/api/connettori/magento/prova')).json.ok, true);
+    assert.equal(S.chiamate[0].intestazioni.authorization, 'Bearer tok-integrazione');
+    const g = await K.chiama('POST', '/api/connettori/magento/giri/prodotti');
+    assert.deepEqual(g.json.risultato, { creati: 2, aggiornati: 0, uguali: 0 }, JSON.stringify(g.json));
+    assert.equal(S.chiamate.filter(c => c.percorso === '/rest/V1/products').length, 2);   // si ferma con total_count, non legge la pagina ripetuta
+    const tazza = await articolo(K, 'MG-TAZZA'); assert.equal(tazza.giacenza, 12); assert.equal(tazza.prezzo, 9.5);
+    assert.equal((await articolo(K, 'MG-PIATTO')).giacenza, 3);
+    await aspetta(K); assert.equal(su.length, 0);
+    await K.chiama('PATCH', `/api/dati/articoli/${tazza.id}`, { giacenza: 0 }); await aspetta(K);
+    assert.deepEqual(su.at(-1), { sourceItems: [{ sku: 'MG-TAZZA', source_code: 'default', quantity: 0, status: 0 }] });
+    const o = await K.chiama('POST', '/api/connettori/magento/giri/ordini');
+    assert.deepEqual(o.json.risultato, { vendite: 1, ignorati: 1 }, JSON.stringify(o.json));
+    const v = (await K.chiama('GET', '/api/dati/vendite')).json.righe[0]; assert.equal(v.totale, 18); assert.equal(v.pezzi, 2);
+    const ant = await K.chiama('POST', '/api/connettori/magento/azioni/spedito', { args: { vendita: v.numero, tracking: 'BRT123', corriere: 'BRT' }, anteprima: true });
+    assert.equal(ant.json.righe[1][1], '41', JSON.stringify(ant.json));
+    const r = await K.chiama('POST', '/api/connettori/magento/azioni/spedito', { args: { vendita: v.id, tracking: 'BRT123', corriere: 'BRT' } });
+    assert.equal(r.json.ok, true, JSON.stringify(r.json)); assert.equal(spedizioni[0][0], '41'); assert.equal(spedizioni[0][1].tracks[0].track_number, 'BRT123');
+  } finally { await K.chiudi(); await S.chiudi(); }
+});
