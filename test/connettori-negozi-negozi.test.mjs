@@ -148,3 +148,28 @@ test('Ecwid: prodotti con offset/total, giacenza in uscita, webhook firmato su Â
     const v = (await K.chiama('GET', '/api/dati/vendite')).json.righe; assert.equal(v.length, 1); assert.equal(v[0].totale, 24);
   } finally { await K.chiudi(); await S.chiudi(); }
 });
+
+test('Squarespace: prodotti a cursore, giacenza con setFiniteOperations e Idempotency-Key, ordini a finestra â†’ vendite', async () => {
+  const K = await kubo(), aggiust = [];
+  const S = await finto({
+    'GET /1.0/commerce/inventory': () => ({ inventory: [], pagination: { hasNextPage: false } }),
+    'GET /1.0/commerce/products': (p, c, { q }) => (q.get('cursor') === 'c2'
+      ? { products: [{ id: 'p2', name: 'Candela', variants: [{ id: 'v2', sku: 'SQ-CANDELA', pricing: { basePrice: { value: '12.00' } }, stock: { quantity: 6 } }] }], pagination: { hasNextPage: false } }
+      : { products: [{ id: 'p1', name: 'Diffusore', variants: [{ id: 'v1', sku: 'SQ-DIFF', attributes: { Profumo: 'Agrumi' }, pricing: { basePrice: { value: '30.00' }, onSale: true, salePrice: { value: '25.00' } }, stock: { quantity: 3 } }] }], pagination: { hasNextPage: true, nextPageCursor: 'c2' } }),
+    'POST /1.0/commerce/inventory/adjustments': (p, c, { intestazioni }) => { aggiust.push({ c, chiave: intestazioni['idempotency-key'] }); return { stato: 204, corpo: '' }; },
+    'GET /1.0/commerce/orders': (p, c, { q }) => (q.get('modifiedAfter') && q.get('modifiedBefore') ? { result: [
+      { id: 'o1', orderNumber: '1001', customerEmail: 'teo@esempio.it', fulfillmentStatus: 'PENDING', shippingAddress: { firstName: 'Teo', lastName: 'Sala', address1: 'Via Mazzini 2', city: 'Verona', postalCode: '37121' }, lineItems: [{ sku: 'SQ-CANDELA', productName: 'Candela', quantity: 2, unitPricePaid: { value: '11.00' } }] },
+      { id: 'o2', orderNumber: '1002', fulfillmentStatus: 'CANCELED', lineItems: [] }], pagination: { hasNextPage: false } } : { stato: 400, corpo: { message: 'filtri' } }),
+  });
+  try {
+    await accendi(K, 'squarespace', { base: S.url, segreti: { chiave: 'sq-chiave' } });
+    assert.equal((await K.chiama('POST', '/api/connettori/squarespace/prova')).json.ok, true);
+    assert.equal(S.chiamate[0].intestazioni.authorization, 'Bearer sq-chiave'); assert.equal(S.chiamate[0].intestazioni['user-agent'], 'Kubo-connettori/1');
+    assert.deepEqual((await K.chiama('POST', '/api/connettori/squarespace/giri/prodotti')).json.risultato, { creati: 2, aggiornati: 0, uguali: 0 });
+    const d = await articolo(K, 'SQ-DIFF'); assert.equal(d.nome, 'Diffusore Agrumi'); assert.equal(d.prezzo, 25);
+    await K.chiama('PATCH', `/api/dati/articoli/${d.id}`, { giacenza: 1 }); await aspetta(K);
+    assert.deepEqual(aggiust[0].c, { setFiniteOperations: [{ variantId: 'v1', quantity: 1 }] }); assert.match(aggiust[0].chiave, /^[0-9a-f-]{36}$/);
+    assert.deepEqual((await K.chiama('POST', '/api/connettori/squarespace/giri/ordini')).json.risultato, { vendite: 1, ignorati: 1 });
+    assert.equal((await K.chiama('GET', '/api/dati/vendite')).json.righe[0].totale, 22);
+  } finally { await K.chiudi(); await S.chiudi(); }
+});
