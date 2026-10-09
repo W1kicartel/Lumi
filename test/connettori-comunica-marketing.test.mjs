@@ -84,3 +84,42 @@ test('Notion: una pagina per riga con le proprietà del database, la seconda vol
     const patch = S.chiamate.find(c => c.metodo === 'PATCH'); assert.equal(patch.percorso, '/v1/pages/pag-1'); assert.deepEqual(patch.corpo.properties.Email, { email: 'anna.b@esempio.it' });
   } finally { await K.chiudi(); await S.chiudi(); }
 });
+
+test('Mailchimp: solo i clienti con il consenso (PUT per hash md5, tag), uscita immediata, i disiscritti perdono il consenso', async () => {
+  const K = await kubo(['studio']); const membri = new Map(), tag = [];
+  const S = await finto({
+    'GET /3.0/lists/:lista': () => ({ name: 'Newsletter Bottega', stats: { member_count: 3 } }),
+    'PUT /3.0/lists/:lista/members/:h': (p, c) => { membri.set(p.h, c); return { id: p.h, email_address: c.email_address, status: c.status_if_new }; },
+    'POST /3.0/lists/:lista/members/:h/tags': (p, c) => { tag.push([p.h, c.tags]); return { stato: 204, corpo: '' }; },
+    'GET /3.0/lists/:lista/members': (p, c, { q }) => (q.get('status') === 'unsubscribed' ? { members: [{ email_address: 'anna@esempio.it', last_changed: '2026-10-01T10:00:00+00:00' }], total_items: 1 } : { members: [] }),
+  });
+  const md5 = s => createHash('md5').update(s).digest('hex');
+  try {
+    await K.chiama('POST', '/api/dati/clienti', { nome: 'Anna Maria Bianchi', email: 'Anna@Esempio.it', telefono: '+39 333 1111111', consenso: true });
+    await K.chiama('POST', '/api/dati/clienti', { nome: 'Luca Verdi', email: 'luca@esempio.it', consenso: false });
+    await K.chiama('POST', '/api/dati/clienti', { nome: 'Marta Neri', consenso: true });
+    await accendi(K, 'mailchimp', { base: S.url, segreti: { chiave: '' + '0123456789abcdef'.repeat(2) + '-us21' }, impostazioni: { lista: 'a1b2c3d4e5' } });
+    assert.equal((await K.chiama('POST', '/api/connettori/mailchimp/prova')).json.messaggio, 'Newsletter Bottega: 3 iscritti');
+    const g = (await K.chiama('POST', '/api/connettori/mailchimp/giri/sincronizza')).json;
+    assert.equal(g.esito, 'ok', JSON.stringify(g)); assert.deepEqual(g.risultato, { iscritti: 1, saltati: 2, disiscritti: 1 });
+    const h = md5('anna@esempio.it'); assert.deepEqual([...membri.keys()], [h]);
+    assert.deepEqual(membri.get(h), { email_address: 'anna@esempio.it', status_if_new: 'subscribed', merge_fields: { FNAME: 'Anna', LNAME: 'Maria Bianchi', PHONE: '+39 333 1111111' } });
+    assert.deepEqual(tag[0], [h, [{ name: 'Kubo', status: 'active' }]]);
+    const put = S.chiamate.find(c => c.metodo === 'PUT'); assert.equal(put.intestazioni.authorization, 'Basic ' + Buffer.from('kubo:' + '0123456789abcdef'.repeat(2) + '-us21').toString('base64'));
+    const dis = S.chiamate.find(c => c.q.status === 'unsubscribed'); assert.ok(dis.q.since_last_changed);
+    // Anna si è disiscritta in Mailchimp: in Kubo il consenso è «no» (e la modifica non riparte verso Mailchimp)
+    const cliente = async n => (await K.chiama('GET', '/api/dati/clienti?perPagina=100')).json.righe.find(r => r.nome.startsWith(n));
+    assert.equal((await cliente('Anna')).consenso, false);
+    await pausa(50); await K.nucleo.lavora(); assert.equal(S.chiamate.filter(c => c.metodo === 'PUT').length, 1);
+    // un cliente nuovo con il consenso va subito (uscita), con il tag dal campo scelto
+    await K.chiama('PUT', '/api/connettori/mailchimp', { impostazioni: { tag_campo: 'note' } });
+    await K.chiama('POST', '/api/dati/clienti', { nome: 'Sara Blu', email: 'sara@esempio.it', consenso: true, note: 'VIP' });
+    await pausa(50); await K.nucleo.lavora();
+    assert.ok(membri.has(md5('sara@esempio.it'))); assert.deepEqual(tag.at(-1)[1].map(t => t.name).sort(), ['Kubo', 'VIP']);
+    // l'azione per Lumi: un cliente senza consenso non si iscrive
+    const luca = await cliente('Luca');
+    const ant = (await K.chiama('POST', '/api/connettori/mailchimp/azioni/iscrivi', { args: { cliente: luca.id }, anteprima: true })).json;
+    assert.ok(ant.avvisi.some(a => /consenso/.test(a)));
+    assert.equal((await K.chiama('POST', '/api/connettori/mailchimp/azioni/iscrivi', { args: { cliente: luca.id } })).stato, 502);
+  } finally { await K.chiudi(); await S.chiudi(); }
+});
