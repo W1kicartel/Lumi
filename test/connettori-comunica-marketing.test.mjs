@@ -123,3 +123,45 @@ test('Mailchimp: solo i clienti con il consenso (PUT per hash md5, tag), uscita 
     assert.equal((await K.chiama('POST', '/api/connettori/mailchimp/azioni/iscrivi', { args: { cliente: luca.id } })).stato, 502);
   } finally { await K.chiudi(); await S.chiudi(); }
 });
+
+test('HubSpot: cliente → contatto (batch/upsert per email) e azienda con P.IVA, contatti cambiati → clienti, webhook v3 firmato', async () => {
+  const { firmaV3 } = await import('../connettori/hubspot/connettore.js');
+  const K = await kubo(['negozio']); const upsert = [], aziende = [];
+  const contatti = [{ id: '501', properties: { email: 'giulia@esempio.it', firstname: 'Giulia', lastname: 'Rossi', phone: '+39 347 2222222', lastmodifieddate: '2026-10-01T09:00:00.000Z' } }];
+  const S = await finto({
+    'GET /crm/v3/objects/contacts': () => ({ results: [] }),
+    'POST /crm/v3/objects/contacts/batch/upsert': (p, c) => { upsert.push(c); return { status: 'COMPLETE', results: c.inputs.map((x, i) => ({ id: `90${upsert.length}${i}`, properties: { email: x.id }, new: true })) }; },
+    'POST /crm/v3/objects/companies': (p, c) => { aziende.push(c); return { id: 'co1', properties: c.properties }; },
+    'PATCH /crm/v3/objects/companies/:id': (p, c) => { aziende.push({ ...c, id: p.id }); return { id: p.id }; },
+    'POST /crm/v3/objects/contacts/search': (p, c) => ({ total: 1, results: contatti.filter(x => Date.parse(x.properties.lastmodifieddate) > Number(c.filterGroups[0].filters[0].value)) }),
+    'POST /crm/v3/objects/contacts/batch/read': (p, c) => ({ results: c.inputs.map(x => ({ id: x.id, properties: { email: 'piero@esempio.it', firstname: 'Piero', lastname: 'Gialli' } })) }),
+  });
+  try {
+    await accendi(K, 'hubspot', { base: S.url, segreti: { token: 'pat-eu1-' + '00000000-1111-2222-3333-444444444444', firma: 'segreto-app' }, impostazioni: { pubblico: 'https://kubo.esempio.it' } });
+    assert.equal((await K.chiama('POST', '/api/connettori/hubspot/prova')).json.ok, true);
+    // un cliente con la P.IVA: contatto (upsert per email) e azienda
+    const c = (await K.chiama('POST', '/api/dati/clienti', { nome: 'Ferramenta Bassi', email: 'Info@Bassi.it', telefono: '+39 02 123456', tipo: 'azienda', piva: '01234567890' })).json;
+    await pausa(50); await K.nucleo.lavora();
+    assert.deepEqual(upsert[0].inputs[0], { idProperty: 'email', id: 'info@bassi.it', properties: { email: 'info@bassi.it', firstname: 'Ferramenta', lastname: 'Bassi', phone: '+39 02 123456' } });
+    assert.equal(S.chiamate.find(x => x.percorso.endsWith('/batch/upsert')).intestazioni.authorization, 'Bearer pat-eu1-' + '00000000-1111-2222-3333-444444444444');
+    assert.equal(aziende[0].properties.name, 'Ferramenta Bassi'); assert.match(aziende[0].properties.description, /01234567890/);
+    assert.equal(K.nucleo.k('hubspot').sincro.remoto('clienti', c.id), '9010');
+    await K.chiama('PATCH', `/api/dati/clienti/${c.id}`, { telefono: '+39 02 654321' }); await pausa(50); await K.nucleo.lavora();
+    assert.equal(aziende.at(-1).id, 'co1');   // la seconda volta si aggiorna la stessa azienda
+    // HubSpot → Kubo: il contatto cambiato diventa un cliente, e il giro dopo non riscrive niente
+    const g = (await K.chiama('POST', '/api/connettori/hubspot/giri/contatti')).json;
+    assert.equal(g.esito, 'ok', JSON.stringify(g)); assert.deepEqual(g.risultato, { creati: 1, aggiornati: 0, uguali: 0 });
+    const giulia = (await K.chiama('GET', '/api/dati/clienti?perPagina=100')).json.righe.find(r => r.email === 'giulia@esempio.it');
+    assert.equal(giulia.nome, 'Giulia Rossi'); assert.equal(giulia.telefono, '+39 347 2222222');
+    assert.deepEqual((await K.chiama('POST', '/api/connettori/hubspot/giri/contatti')).json.risultato, { creati: 0, aggiornati: 0, uguali: 0 });
+    await pausa(50); await K.nucleo.lavora(); assert.equal(upsert.length, 2);   // quello che arriva da HubSpot non torna indietro
+    // webhook v3: firma giusta → il contatto si rilegge; firma sbagliata o vecchia → 401
+    const corpo = JSON.stringify([{ eventId: 77, subscriptionType: 'contact.creation', objectId: 601, occurredAt: Date.now() }]), ts = String(Date.now());
+    const firma = firmaV3('segreto-app', 'POST', 'https://kubo.esempio.it/api/connettori/hubspot/in', corpo, ts);
+    const ok = await manda(K, '/api/connettori/hubspot/in', corpo, { 'X-HubSpot-Signature-v3': firma, 'X-HubSpot-Request-Timestamp': ts });
+    assert.equal(ok.stato, 200, JSON.stringify(ok.json)); assert.match(ok.json.esito, /1 creati/);
+    assert.equal((await manda(K, '/api/connettori/hubspot/in', corpo, { 'X-HubSpot-Signature-v3': firma.replace(/^./, 'A'), 'X-HubSpot-Request-Timestamp': ts })).stato, 401);
+    const vecchio = String(Date.now() - 6 * 6e4);
+    assert.equal((await manda(K, '/api/connettori/hubspot/in', corpo, { 'X-HubSpot-Signature-v3': firmaV3('segreto-app', 'POST', 'https://kubo.esempio.it/api/connettori/hubspot/in', corpo, vecchio), 'X-HubSpot-Request-Timestamp': vecchio })).stato, 401);
+  } finally { await K.chiudi(); await S.chiudi(); }
+});
