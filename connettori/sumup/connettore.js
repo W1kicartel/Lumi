@@ -4,6 +4,7 @@
 export default {
   id: 'sumup', nome: 'SumUp', versione: 1, icona: 'cassa', base: 'https://api.sumup.com',
   descrizione: 'Il POS e i pagamenti SumUp riconciliano gli incassi con le vendite.',
+  catalogo: { categoria: 'cassa', sito: 'https://www.sumup.com/it-it/', costo: 'a-consumo', costoNota: 'Una commissione per transazione, senza canone: la tariffa dipende dal piano e dalla carta', serve: [{ cosa: 'Chiave API segreta (sup_sk_…)', dove: 'Dashboard SumUp → Impostazioni → Chiavi API', link: 'https://me.sumup.com/settings/api-keys' }, { cosa: 'Codice esercente (merchant code)', dove: 'Dashboard SumUp → Profilo: il codice che inizia con M', link: 'https://me.sumup.com' }], passi: ['Entra nella dashboard di SumUp', 'Apri Impostazioni → Chiavi API e crea una chiave segreta', 'Incolla la chiave qui e scrivi il codice esercente', 'Salva, prova la connessione e accendi', 'I checkout creati da Kubo avvisano Kubo da soli: non c\'è un webhook da configurare'], difficolta: 'facile', zone: ['IT', 'UE'], fonti: ['https://developer.sumup.com/api', 'https://developer.sumup.com/online-payments/webhooks/'], prova: 'finto', parole: ['pos', 'carta', 'lettore di carte', 'incassi', 'card reader'] },
   impostazioni: [{ id: 'chiave', nome: 'Chiave API (sup_sk_…)', segreto: true }, { id: 'merchant', nome: 'Codice esercente (merchant code)' }],
   richiede: { vendite: { stato: { tipo: 'stato' }, totale: {}, pagamento: { tipo: 'scelta', facoltativo: true } } },
   permessi: { vendite: { leggi: true, modifica: true } },
@@ -36,7 +37,8 @@ export default {
     },
   },
   testi: {
-    en: { descrizione: 'SumUp card reader and payments reconcile takings with sales.', 'imp.chiave': 'API key (sup_sk_…)', 'imp.merchant': 'Merchant code', 'az.checkout': 'SumUp checkout' },
+    en: { 'cat.costoNota': 'A fee per transaction, no monthly fee: the rate depends on the plan and the card', 'cat.serve': [{ cosa: 'Secret API key (sup_sk_…)', dove: 'SumUp dashboard → Settings → API keys' }, { cosa: 'Merchant code', dove: 'SumUp dashboard → Profile: the code starting with M' }], 'cat.passi': ['Sign in to the SumUp dashboard', 'Open Settings → API keys and create a secret key', 'Paste the key here and type your merchant code', 'Save, test the connection and switch it on', 'Checkouts created by Kubo notify Kubo on their own: there is no webhook to set up'],
+      descrizione: 'SumUp card reader and payments reconcile takings with sales.', 'imp.chiave': 'API key (sup_sk_…)', 'imp.merchant': 'Merchant code', 'az.checkout': 'SumUp checkout' },
     es: { descrizione: 'El TPV y los pagos de SumUp concilian los cobros con las ventas.', 'imp.chiave': 'Clave API (sup_sk_…)', 'imp.merchant': 'Código de comercio', 'az.checkout': 'Pago SumUp' },
     fr: { descrizione: 'Le TPE et les paiements SumUp rapprochent les encaissements des ventes.', 'imp.chiave': 'Clé API (sup_sk_…)', 'imp.merchant': 'Code marchand', 'az.checkout': 'Paiement SumUp' },
     de: { descrizione: 'SumUp-Kartenleser und -Zahlungen gleichen Einnahmen mit Verkäufen ab.', 'imp.chiave': 'API-Schlüssel (sup_sk_…)', 'imp.merchant': 'Händlercode', 'az.checkout': 'SumUp-Checkout' },
