@@ -55,6 +55,7 @@ export default {
   'tesoreria.err-importo': "{nome}: valor a receber inválido.",
   'tesoreria.err-id-creditore': "Falta o identificador de credor SEPA (o banco emite): configurações da tesouraria.",
   'tesoreria.err-iban-debitore': "{nome}: IBAN do cliente ausente ou errado.",
+  'tesoreria.err-mandato-id': "{nome}: a referência do mandato SDD tem caracteres não permitidos ou excede 35: corrige-a na ficha (deve ser idêntica ao mandato assinado).",
   'tesoreria.err-mandato': "{nome}: faltam a referência e a data do mandato SDD na ficha do cliente.",
   'tesoreria.err-iban-beneficiario': "{nome}: IBAN do fornecedor ausente ou errado.",
   'tesoreria.banca-titolo': "Extrato e conciliação",

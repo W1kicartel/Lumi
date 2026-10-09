@@ -409,3 +409,16 @@ test('verifica: termini scritti all\'uso comune, meno in fondo agli importi', as
   const { numeroIt } = await import('../server/moduli/import-formati.js');
   assert.equal(numeroIt('1.234,56-'), -1234.56); assert.equal(numeroIt('−12,50'), -12.5); assert.equal(numeroIt('-1.234,56'), -1234.56); assert.equal(numeroIt('(5,00)'), -5);
 });
+
+test('verifica SEPA: MsgId diversi nello stesso istante, codice del mandato mai ritoccato, incasso SDD mai oggi né nel fine settimana', () => {
+  const az = { ...AZ, idCreditore: F.idCreditore(AZ.codice_fiscale) }, adesso = new Date('2026-10-09T10:00:00Z');
+  const inc = id => ({ importo: 1000, data: '2026-11-02', debitore: { nome: 'Cliente', iban: IBAN_CL }, mandato: { id, data: '2025-01-10' }, e2e: 'FT1', causale: 'Fattura 1' });
+  const msg = f => /<MsgId>([^<]+)<\/MsgId>/.exec(f.testo)[1];
+  const a = F.pain008({ az, incassi: [inc('M-1')], adesso }), b = F.pain008({ az, incassi: [inc('M-1')], adesso });
+  assert.notEqual(msg(a), msg(b)); assert.ok(msg(a).length <= 35);
+  assert.equal(F.pain008({ az, incassi: [inc('MAND_001 x')], adesso }).errori?.[0]?.chiave, 'mandato-id');
+  assert.equal(T.primoIncasso('2026-10-01', '2026-10-09'), '2026-10-12');   // scaduta: non oggi (ven 9), il primo giorno aperto dopo
+  assert.equal(T.primoIncasso('2026-10-09', '2026-10-09'), '2026-10-12');
+  assert.equal(T.primoIncasso('2026-12-25', '2026-10-09'), '2026-12-28');   // Natale venerdì, Santo Stefano sabato
+  assert.equal(T.primoIncasso('2026-11-02', '2026-10-09'), '2026-11-02');
+});

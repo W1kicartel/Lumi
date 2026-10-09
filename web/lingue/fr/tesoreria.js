@@ -55,6 +55,7 @@ export default {
   'tesoreria.err-importo': "{nome} : montant à encaisser non valide.",
   'tesoreria.err-id-creditore': "L'identifiant créancier SEPA manque (la banque le délivre) : réglages de la trésorerie.",
   'tesoreria.err-iban-debitore': "{nome} : IBAN du client manquant ou erroné.",
+  'tesoreria.err-mandato-id': "{nome} : la référence du mandat SDD contient des caractères non autorisés ou dépasse 35 : corrige-la dans la fiche (elle doit rester identique au mandat signé).",
   'tesoreria.err-mandato': "{nome} : la référence et la date du mandat SDD manquent dans la fiche du client.",
   'tesoreria.err-iban-beneficiario': "{nome} : IBAN du fournisseur manquant ou erroné.",
   'tesoreria.banca-titolo': "Relevé et rapprochement",

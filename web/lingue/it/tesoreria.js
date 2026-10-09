@@ -55,6 +55,7 @@ export default {
   'tesoreria.err-importo': "{nome}: importo da incassare non valido.",
   'tesoreria.err-id-creditore': "Manca l'identificativo del creditore SEPA (lo rilascia la banca): impostazioni della tesoreria.",
   'tesoreria.err-iban-debitore': "{nome}: IBAN del cliente mancante o sbagliato.",
+  'tesoreria.err-mandato-id': "{nome}: il codice del mandato SDD ha caratteri non ammessi o è più lungo di 35: correggilo nella scheda (deve restare identico al mandato firmato).",
   'tesoreria.err-mandato': "{nome}: mancano codice e data del mandato SDD nella scheda del cliente.",
   'tesoreria.err-iban-beneficiario': "{nome}: IBAN del fornitore mancante o sbagliato.",
   'tesoreria.banca-titolo': "Estratto conto e riconciliazione",

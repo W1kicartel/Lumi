@@ -247,6 +247,10 @@ function anagrafica(k, ctx, entita, id) {
   if (!id) return {};
   try { return k.D.leggi(k.db, entita, id, ctx, { conRighe: false }); } catch { return {}; }
 }
+// l'incasso SDD Core: il file arriva in banca almeno un giorno lavorativo prima, quindi mai oggi o prima, e mai in un
+// giorno di chiusura di TARGET2 (sabato, domenica, 1/1, 1/5, 25 e 26/12; Venerdì santo e Lunedì dell'Angelo li sposta la banca)
+const chiusoTarget = d => { const g = new Date(d + 'T00:00:00Z').getUTCDay(); return g === 0 || g === 6 || ['01-01', '05-01', '12-25', '12-26'].includes(d.slice(5)); };
+export function primoIncasso(d, oggi) { let x = d > oggi ? d : R.piuGiorni(oggi, 1); while (chiusoTarget(x)) x = R.piuGiorni(x, 1); return x; }
 export function creaDistinta(k, ctx, { tipo, chiavi, data = null, adesso = new Date() }) {
   const { db, meta } = k; tabelle(db);
   if (!['riba', 'sdd', 'sct'].includes(tipo)) throw new Error('Tipo di distinta sconosciuto');
@@ -270,11 +274,11 @@ export function creaDistinta(k, ctx, { tipo, chiavi, data = null, adesso = new D
       return { importo: s.residuo, scadenza: s.data < oggi ? oggi : s.data, fattura: { numero: s.numero, data: s.dataDoc },
         debitore: { nome: c.nome || s.controparte, cf: c.piva || c.codice_fiscale || '', via: c.via || (typeof c.indirizzo === 'string' ? c.indirizzo : c.indirizzo?.via) || '', cap: c.cap || '', comune: c.comune || '', provincia: c.provincia || '', iban: c.iban || '' } };
     });
-    f = F.riba({ az, sia: imp.sia, ricevute, supporto: `KUBO${adesso.toISOString().replace(/\D/g, '').slice(2, 14)}`, oggi });
+    f = F.riba({ az, sia: imp.sia, ricevute, supporto: `KUBO${adesso.toISOString().replace(/\D/g, '').slice(2, 14)}${createHash('sha1').update(String(Math.random())).digest('hex').slice(0, 4).toUpperCase()}`, oggi });
   } else if (tipo === 'sdd') {
     f = F.pain008({ az, adesso, sequenza: imp.sequenzaSdd, incassi: scelte.map(s => {
       const c = anagrafica(k, ctx, 'clienti', s.controparteId);
-      return { importo: s.residuo, data: quando || (s.data < oggi ? oggi : s.data), debitore: { nome: c.nome || s.controparte, iban: c.iban || '' }, mandato: { id: c.mandato_sdd, data: c.data_mandato },
+      return { importo: s.residuo, data: primoIncasso(quando || s.data, oggi), debitore: { nome: c.nome || s.controparte, iban: c.iban || '' }, mandato: { id: c.mandato_sdd, data: c.data_mandato },
         e2e: `${s.numero}-${s.n}`.replace(/\//g, '-'), causale: s.descrizione };
     }) });
   } else {

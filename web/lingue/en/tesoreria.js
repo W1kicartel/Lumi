@@ -55,6 +55,7 @@ export default {
   'tesoreria.err-importo': "{nome}: invalid amount to collect.",
   'tesoreria.err-id-creditore': "The SEPA creditor identifier is missing (your bank issues it): treasury settings.",
   'tesoreria.err-iban-debitore': "{nome}: customer IBAN missing or wrong.",
+  'tesoreria.err-mandato-id': "{nome}: the SDD mandate reference has characters that aren't allowed or is longer than 35: fix it on the customer card (it must match the signed mandate exactly).",
   'tesoreria.err-mandato': "{nome}: the SDD mandate reference and date are missing from the customer record.",
   'tesoreria.err-iban-beneficiario': "{nome}: supplier IBAN missing or wrong.",
   'tesoreria.banca-titolo': "Bank statement and reconciliation",
