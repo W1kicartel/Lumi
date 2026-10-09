@@ -1,5 +1,6 @@
 // Xero: le fatture di Kubo nella contabilità Xero del commercialista (o dello studio estero). Solo verso Xero.
-// Accesso OAuth 2 con il codice (PKCE): login.xero.com/identity/connect/authorize → identity.xero.com/connect/token.
+// Accesso OAuth 2 con il codice (PKCE): login.xero.com/identity/connect/authorize → identity.xero.com/connect/token,
+// con client id e secret nell'intestazione Authorization: Basic come vuole Xero (oauth.basic del kit).
 // Scope granulari (obbligatori per le app create dal 2 marzo 2026): accounting.invoices e accounting.contacts, più
 // offline_access per il refresh token. L'organizzazione (tenant) si legge da GET /connections e va nell'intestazione
 // «xero-tenant-id». Una fattura attiva → POST /api.xro/2.0/Invoices con Type ACCREC, Status AUTHORISED; una passiva
@@ -92,7 +93,7 @@ export default {
   },
   permessi: { fatture: { leggi: true }, clienti: { leggi: true }, fatture_ricevute: { leggi: true }, fornitori: { leggi: true } },
   oauth: { tipo: 'codice', autorizza: 'https://login.xero.com/identity/connect/authorize', token: k => (k.base ? `${k.base}/connect/token` : 'https://identity.xero.com/connect/token'),
-    scope: 'offline_access accounting.invoices accounting.contacts' },
+    scope: 'offline_access accounting.invoices accounting.contacts', basic: true },
   prova: async k => { try { const r = await api(k, 'GET', '/Organisation'); return { ok: r.ok, messaggio: r.ok ? r.json?.Organisations?.[0]?.Name || null : `HTTP ${r.stato}` }; } catch (e) { return { ok: false, messaggio: e.message }; } },
   azioni: {
     esporta: {

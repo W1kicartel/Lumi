@@ -23,7 +23,8 @@ test('Scalapay: ordine con il cliente, conferma dal ritorno del cliente → catt
   });
   try {
     const f = await fattura(K), f2 = await fattura(K, { prezzo: 50 });
-    await accendi(K, 'scalapay', { base: S.url, segreti: { chiave: 'chiave-test' }, impostazioni: { indirizzo: 'https://kubo.esempio.it', rate: '4' } });
+    assert.equal((await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: 'https://kubo.esempio.it' })).stato, 200);   // l'indirizzo pubblico della Libreria: il connettore non ha il suo
+    await accendi(K, 'scalapay', { base: S.url, segreti: { chiave: 'chiave-test' }, impostazioni: { rate: '4' } });
     assert.equal((await K.chiama('POST', '/api/connettori/scalapay/prova')).json.ok, true);
     const pre = await K.chiama('POST', '/api/connettori/scalapay/azioni/link_fattura', { args: { fattura: f.id }, anteprima: true });
     assert.equal(pre.stato, 200, JSON.stringify(pre.json)); assert.deepEqual(pre.json.righe[1], ['Importo', '122,00 €']);
@@ -52,10 +53,10 @@ test('Scalapay: ordine con il cliente, conferma dal ritorno del cliente → catt
   } finally { await K.chiudi(); await S.chiudi(); }
 });
 
-test('Xero: OAuth con il kit (PKCE, ritorno, token), organizzazione da /connections, fattura esportata ACCREC e collegata; il giro porta le nuove', async () => {
+test('Xero: OAuth con il kit (PKCE, ritorno, token con Basic), organizzazione da /connections, fattura esportata ACCREC e collegata; il giro porta le nuove', async () => {
   const K = await kubo(['fatture']); const scambi = [], fatture = [];
   const S = await finto({
-    'POST /connect/token': (p, c) => { scambi.push(c); return { access_token: 'xero-at', refresh_token: 'xero-rt', expires_in: 1800, token_type: 'Bearer' }; },
+    'POST /connect/token': (p, c, { intestazioni }) => { scambi.push({ ...c, auth: intestazioni.authorization }); return { access_token: 'xero-at', refresh_token: 'xero-rt', expires_in: 1800, token_type: 'Bearer' }; },
     'GET /connections': (p, c, { intestazioni }) => { assert.equal(intestazioni.authorization, 'Bearer xero-at'); return [{ id: 'c1', tenantId: 'tenant-123', tenantType: 'ORGANISATION', tenantName: 'Studio Prova' }]; },
     'GET /api.xro/2.0/Organisation': () => ({ Organisations: [{ Name: 'Studio Prova' }] }),
     'POST /api.xro/2.0/Invoices': (p, c, { intestazioni }) => {
@@ -72,7 +73,9 @@ test('Xero: OAuth con il kit (PKCE, ritorno, token), organizzazione da /connecti
     assert.equal(u.searchParams.get('scope'), 'offline_access accounting.invoices accounting.contacts'); assert.equal(u.searchParams.get('code_challenge_method'), 'S256');
     const rit = await fetch(`${K.base}/api/connettori/xero/oauth/ritorno?code=codice-1&state=${u.searchParams.get('state')}`, { redirect: 'manual' });
     assert.match(rit.headers.get('location'), /oauth=ok/);
-    assert.equal(scambi[0].grant_type, 'authorization_code'); assert.equal(scambi[0].client_id, 'xid'); assert.equal(scambi[0].client_secret, 'xsec'); assert.equal(scambi[0].code, 'codice-1');
+    assert.equal(scambi[0].grant_type, 'authorization_code'); assert.equal(scambi[0].code, 'codice-1'); assert.ok(scambi[0].code_verifier);
+    // client_secret_basic: id e segreto nell'intestazione, non nel corpo
+    assert.equal(scambi[0].auth, 'Basic ' + Buffer.from('xid:xsec').toString('base64')); assert.equal(scambi[0].client_id, undefined); assert.equal(scambi[0].client_secret, undefined);
     assert.equal((await K.chiama('POST', '/api/connettori/xero/prova')).json.ok, true);
     const pre = await K.chiama('POST', '/api/connettori/xero/azioni/esporta', { args: { fattura: f.id }, anteprima: true });
     assert.equal(pre.stato, 200, JSON.stringify(pre.json)); assert.deepEqual(pre.json.avvisi, []);
@@ -95,22 +98,28 @@ test('Xero: OAuth con il kit (PKCE, ritorno, token), organizzazione da /connecti
   } finally { await K.chiudi(); await S.chiudi(); }
 });
 
-test('QuickBooks: OAuth con il kit, realm dalle impostazioni, cliente cercato e creato, fattura con righe SalesItemLineDetail e minorversion', async () => {
+test('QuickBooks: OAuth con il kit (Basic), realm dal ritorno (vince sull\'impostazione, che resta facoltativa), cliente cercato e creato, fattura con righe SalesItemLineDetail e minorversion', async () => {
   const K = await kubo(['fatture']); const scambi = [], query = [], clienti = [], fatture = [];
   const S = await finto({
-    'POST /oauth2/v1/tokens/bearer': (p, c) => { scambi.push(c); return { access_token: 'qb-at', refresh_token: 'qb-rt', expires_in: 3600, x_refresh_token_expires_in: 8726400, token_type: 'bearer' }; },
-    'GET /v3/company/:realm/companyinfo/:id': p => ({ CompanyInfo: { CompanyName: 'Sandbox Company', Id: p.id } }),
+    'POST /oauth2/v1/tokens/bearer': (p, c, { intestazioni }) => { scambi.push({ ...c, auth: intestazioni.authorization }); return { access_token: 'qb-at', refresh_token: 'qb-rt', expires_in: 3600, x_refresh_token_expires_in: 8726400, token_type: 'bearer' }; },
+    'GET /v3/company/:realm/companyinfo/:id': p => { assert.equal(p.realm, '9130350000000000'); assert.equal(p.id, p.realm); return { CompanyInfo: { CompanyName: 'Sandbox Company', Id: p.id } }; },
     'GET /v3/company/:realm/query': (p, c, { q, intestazioni }) => { assert.equal(p.realm, '9130350000000000'); assert.equal(q.get('minorversion'), '75'); assert.equal(intestazioni.accept, 'application/json'); query.push(q.get('query')); return { QueryResponse: {}, time: '2026-10-09T10:00:00Z' }; },
     'POST /v3/company/:realm/customer': (p, c) => { clienti.push(c); return { Customer: { Id: '58', DisplayName: c.DisplayName } }; },
     'POST /v3/company/:realm/invoice': (p, c, { q, intestazioni }) => { assert.equal(q.get('minorversion'), '75'); assert.equal(intestazioni.authorization, 'Bearer qb-at'); fatture.push(c); return { Invoice: { Id: `${129 + fatture.length}`, DocNumber: c.DocNumber } }; },
   });
   try {
     const f = await fattura(K, { prezzo: 25, quantita: 2 });
-    await accendi(K, 'quickbooks', { base: S.url, segreti: { client_id: 'qid', client_secret: 'qsec' }, impostazioni: { realm: '9130350000000000', articolo: '7' } });
+    await accendi(K, 'quickbooks', { base: S.url, segreti: { client_id: 'qid', client_secret: 'qsec' }, impostazioni: { articolo: '7' } });
+    // né collegato né incollato: manca il Company ID; incollato (vecchio modo): si va avanti fino al token che manca
+    assert.match((await K.chiama('POST', '/api/connettori/quickbooks/prova')).json.messaggio, /Company ID/);
+    await K.chiama('PUT', '/api/connettori/quickbooks', { impostazioni: { realm: '4620816365000000' } });
+    assert.doesNotMatch(String((await K.chiama('POST', '/api/connettori/quickbooks/prova')).json.messaggio), /Company ID/);
     const ini = (await K.chiama('POST', '/api/connettori/quickbooks/oauth/inizio', { base: K.base })).json, u = new URL(ini.url);
     assert.equal(u.origin + u.pathname, 'https://appcenter.intuit.com/connect/oauth2'); assert.equal(u.searchParams.get('scope'), 'com.intuit.quickbooks.accounting');
     const rit = await fetch(`${K.base}/api/connettori/quickbooks/oauth/ritorno?code=qcode&state=${u.searchParams.get('state')}&realmId=9130350000000000`, { redirect: 'manual' });
-    assert.match(rit.headers.get('location'), /oauth=ok/); assert.equal(scambi[0].grant_type, 'authorization_code'); assert.equal(scambi[0].client_secret, 'qsec');
+    assert.match(rit.headers.get('location'), /oauth=ok/); assert.equal(scambi[0].grant_type, 'authorization_code'); assert.equal(scambi[0].client_secret, undefined);
+    assert.equal(scambi[0].auth, 'Basic ' + Buffer.from('qid:qsec').toString('base64'));
+    // il realmId del ritorno (9130…) vince su quello incollato (4620…): le rotte finte controllano 9130…
     const pr = (await K.chiama('POST', '/api/connettori/quickbooks/prova')).json; assert.equal(pr.ok, true, JSON.stringify(pr));
     const e = await K.chiama('POST', '/api/connettori/quickbooks/azioni/esporta', { args: { fattura: f.id } });
     assert.equal(e.stato, 200, JSON.stringify(e.json)); assert.equal(e.json.id, '130');
