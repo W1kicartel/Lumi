@@ -1,0 +1,26 @@
+/* Il magazzino: stesse variabili di stile.css (bianco e nero, tema chiaro e scuro). */
+.magazzino-barra { padding: 0 28px 8px; overflow-x: auto; }
+.magazzino-schede { display: inline-flex; gap: 4px; background: var(--sopra); padding: 3px; border-radius: 9px; }
+.magazzino-schede a { text-decoration: none; padding: 5px 12px; border-radius: 7px; color: var(--tenue); font-size: 14px; white-space: nowrap; }
+.magazzino-schede a.si { background: var(--pannello); color: var(--testo); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+select.campo.magazzino-sezione { width: auto; }
+.magazzino { max-width: 1100px; }
+.magazzino-cifre { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.magazzino-cifra { background: var(--pannello); border: 1px solid var(--linea); border-radius: var(--raggio); padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; }
+.magazzino-cifra.attenzione { border-left: 3px solid var(--rosso); }
+.magazzino-cifra span { font-size: 12px; color: var(--tenue); text-transform: uppercase; letter-spacing: .05em; }
+.magazzino-cifra b { font-size: 24px; font-weight: 650; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.magazzino-cifra small { color: var(--tenue); font-size: 13px; }
+.magazzino-scheda { background: var(--pannello); border: 1px solid var(--linea); border-radius: var(--raggio); padding: 16px 18px; margin-bottom: 14px; }
+.magazzino-scheda h2 { font-size: 15px; font-weight: 600; margin: 0 0 10px; }
+.magazzino-tabella { overflow-x: auto; }
+.magazzino-tabella .tabella { border: 0; border-radius: 0; }
+.magazzino-tabella .tabella th { cursor: default; }
+.magazzino-tabella td.num, .magazzino-tabella th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.magazzino-avviso { border: 1px solid var(--linea-forte); border-left: 3px solid var(--rosso); background: var(--pannello); border-radius: 8px; padding: 10px 14px; margin: 0 0 12px; font-size: 14px; }
+.magazzino-azioni { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px; }
+.magazzino-filtri { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+.magazzino-filtri input { flex: 1; min-width: 200px; }
+input.campo.magazzino-q { width: 96px; text-align: right; }
+.magazzino-meno { color: var(--rosso); } .magazzino-piu { color: var(--verde); }
+@media (max-width: 640px) { .magazzino-barra { padding: 0 16px 8px; } }
