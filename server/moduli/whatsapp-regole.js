@@ -30,6 +30,8 @@ export function e164(numero, prefisso = '+39') {
   else if (cifre.startsWith('00')) n = cifre.slice(2);
   // già con il prefisso del paese, senza «+» (come il wa_id di Meta): 39 + almeno 9 cifre
   else if (pref && cifre.startsWith(pref) && cifre.length >= pref.length + 9) n = cifre;
+  // fuori dall'Italia (e da San Marino e Vaticano) lo «0» del prefisso nazionale cade: 07911… → +44 7911…
+  else if (cifre.startsWith('0') && !['39', '378', '379'].includes(pref)) n = pref + cifre.slice(1);
   else n = pref + cifre;
   return /^[1-9]\d{7,14}$/.test(n) ? `+${n}` : null;
 }
@@ -95,6 +97,8 @@ export function valoreDa(percorso, contesto, opz = {}) {
   if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return new Intl.DateTimeFormat(lingua, { timeZone: 'UTC', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(v + 'T00:00:00Z'));
   return String(v);
 }
+// Meta rifiuta i parametri con a capo, tabulazioni o più di quattro spazi di fila (errore 132018): si appiattiscono
+export const pulisciValore = v => String(v ?? '').replace(/[\r\n\t]+/g, ' ').replace(/ {2,}/g, ' ').trim();
 // i valori di tutte le variabili di un modello: { valori: [...], mancano: [n…] }
 export function valoriModello(modello, mappa, contesto, opz) {
   const valori = [], mancano = [];

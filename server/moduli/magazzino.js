@@ -95,22 +95,28 @@ export function inventario(k, ctx, id) {
   const righe = db.prepare(`SELECT c.articolo, c.attesa, c.contata, c.costo, ${sel.join(', ')} FROM _magazzino_conte c LEFT JOIN ${S.tabella(i.sezione)} a ON a.id = c.articolo WHERE c.inventario = ? ORDER BY nome`).all(i.id)
     .map(r => ({ articolo: r.articolo, nome: String(r.nome ?? ''), codice: r.codice || '', barcode: r.barcode || '', attesa: r.attesa, contata: r.contata, giacenza: num(r.giacenza), costo: euro(r.costo || 0),
       differenza: r.contata == null ? null : r.contata - r.attesa, valore: r.contata == null ? null : euro(Math.round((r.contata - r.attesa) * (r.costo || 0))) }));
-  const contate = righe.filter(r => r.contata != null);
-  return { ...i, righe, contate: contate.length, differenze: contate.filter(r => r.differenza).length, valoreDifferenze: euro(contate.reduce((s, r) => s + cent(r.valore), 0)) };
+  const contate = righe.filter(r => r.contata != null), senzaCosto = P.statoCampo(ctx, i.sezione, 'costo') === 'nascosto';
+  if (senzaCosto) for (const r of righe) { r.costo = null; r.valore = null; }   // chi non vede il costo non vede nemmeno il valore delle differenze
+  return { ...i, righe, contate: contate.length, differenze: contate.filter(r => r.differenza).length, valoreDifferenze: senzaCosto ? null : euro(contate.reduce((s, r) => s + cent(r.valore), 0)) };
 }
 // le conte: un numero per articolo, oppure +1 (o +piu) per articolo trovato dal codice o dal codice a barre (il lettore)
 export function conta(k, ctx, id, { conte = null, codice = null, piu = 1 } = {}) {
   const { db, S, P } = k, i = testa(db, id);
   if (i.chiuso) throw new Error('Questo inventario è già chiuso');
   P.verifica(ctx, i.sezione, 'modifica');
-  const agg = db.prepare('UPDATE _magazzino_conte SET contata = ?, contato_da = ? WHERE inventario = ? AND articolo = ?');
+  // l'atteso è la giacenza nel momento in cui si conta l'articolo (non all'apertura): una vendita fatta fra l'apertura e la
+  // conta è già fuori dallo scaffale, e non va tolta una seconda volta alla chiusura
+  const giac = `IFNULL((SELECT ${S.colonna('giacenza')} FROM ${S.tabella(i.sezione)} WHERE id = ?), attesa)`;
+  const agg0 = db.prepare(`UPDATE _magazzino_conte SET contata = ?, contato_da = ?, attesa = CASE WHEN ? IS NULL THEN attesa ELSE ${giac} END WHERE inventario = ? AND articolo = ?`);
+  const agg = { run: (q, chi, inv, art) => agg0.run(q, chi, q, art, inv, art) };
   if (codice != null) {
     const def = S.leggi(db, i.sezione), campi = ['barcode', 'codice'].filter(c => def.campi.some(x => x.id === c && !x.archiviato));
     const trovato = campi.map(c => db.prepare(`SELECT id FROM ${S.tabella(i.sezione)} WHERE archiviato = 0 AND ${S.colonna(c)} = ?`).get(String(codice).trim())).find(Boolean);
     if (!trovato) throw new Error(`Nessun articolo con il codice «${codice}»`);
     const r = db.prepare('SELECT contata FROM _magazzino_conte WHERE inventario = ? AND articolo = ?').get(i.id, trovato.id);
     if (!r) throw new Error('Articolo nuovo, non presente quando è iniziato l\'inventario');
-    agg.run(num(r.contata) + num(piu), ctx?.utente?.id ?? null, i.id, trovato.id);
+    if (r.contata == null) agg.run(num(piu), ctx?.utente?.id ?? null, i.id, trovato.id);   // la prima lettura fotografa l'atteso
+    else db.prepare('UPDATE _magazzino_conte SET contata = ?, contato_da = ? WHERE inventario = ? AND articolo = ?').run(num(r.contata) + num(piu), ctx?.utente?.id ?? null, i.id, trovato.id);
     return { articolo: trovato.id, contata: num(r.contata) + num(piu) };
   }
   if (!Array.isArray(conte) || !conte.length) throw new Error('Nessuna conta');
@@ -121,8 +127,8 @@ export function conta(k, ctx, id, { conte = null, codice = null, piu = 1 } = {})
   } });
   return { ok: true, conte: conte.length };
 }
-// chiude: per ogni riga contata la giacenza si corregge della differenza fra contato e atteso (al momento dell'apertura),
-// così le vendite e i carichi fatti mentre si contava restano giusti. Le righe non contate non si toccano.
+// chiude: per ogni riga contata la giacenza si corregge della differenza fra contato e atteso (al momento della conta),
+// così le vendite e i carichi fatti prima e dopo la conta restano giusti. Le righe non contate non si toccano.
 export function chiudi(k, ctx, id) {
   const { db, D, P } = k, i = testa(db, id);
   if (i.chiuso) throw new Error('Questo inventario è già chiuso');

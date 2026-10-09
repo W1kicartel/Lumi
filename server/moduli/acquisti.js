@@ -178,16 +178,17 @@ export function ricevi(k, ctx, ordine, { righe = null, data = oggiIso(), ddt = '
   const perId = new Map((o.righe || []).map(r => [r.id, r]));
   const scelte = righe ? righe.map(x => ({ r: perId.get(String(x.riga)), q: Number(x.quantita) })) : (o.righe || []).map(r => ({ r, q: num(r.quantita) - num(r.ricevuta) }));
   if (scelte.some(x => !x.r)) throw new Error('Riga sconosciuta in questo ordine');
+  if (new Set(scelte.map(x => x.r.id)).size !== scelte.length) throw new Error('La stessa riga compare più volte');
   const vere = scelte.filter(x => x.q !== 0);
   if (!vere.length) throw new Error('Niente da ricevere');
   for (const { r, q } of vere) if (!(q > 0) || q > num(r.quantita) - num(r.ricevuta) + 1e-9) throw new Error(`Quantità non valida per «${titoloDi(r.articolo)}»: ne mancano ${num(r.quantita) - num(r.ricevuta)}`);
   const haCosto = S.leggi(db, imp.articoli).campi.some(c => c.id === 'costo' && c.tipo === 'valuta');
   return transazione(db, () => {
     for (const { r, q } of vere) {
-      const id = idDi(r.articolo), a = D.leggi(db, imp.articoli, id, ctx, { conRighe: false }), g = num(a.giacenza), costo = num(r.costo);
-      const v = { giacenza: g + q };
-      if (haCosto && costo > 0) v.costo = g > 0 && num(a.costo) > 0 ? euro(Math.round((cent(a.costo) * g + cent(costo) * q) / (g + q))) : costo;
-      D.modifica(db, imp.articoli, id, v, ctx);
+      // il costo medio è un calcolo del sistema: si legge e si scrive anche se il ruolo non vede o non modifica il costo
+      const id = idDi(r.articolo), a = D.leggi(db, imp.articoli, id, null, { conRighe: false }), g = num(a.giacenza), costo = num(r.costo);
+      D.modifica(db, imp.articoli, id, { giacenza: g + q }, ctx);
+      if (haCosto && costo > 0) D.modifica(db, imp.articoli, id, { costo: g > 0 && num(a.costo) > 0 ? euro(Math.round((cent(a.costo) * g + cent(costo) * q) / (g + q))) : costo }, null);
       D.modifica(db, imp.righe, r.id, { ricevuta: num(r.ricevuta) + q }, ctx);
       db.prepare('INSERT INTO _acquisti_ricevimenti (ordine, riga, articolo, quantita, costo, data, ddt, utente, quando) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
         .run(o.id, r.id, id, q, cent(costo), data, String(ddt || '').slice(0, 60), ctx?.utente?.id ?? null, new Date().toISOString());
@@ -284,6 +285,17 @@ export default function registra(k) {
   const prova = f => { try { return f(); } catch (e) { leggibile(e); } };
   const lettore = ctx => { serve(ctx); if (!P.puo(ctx, impostazioni(db, meta).ordini, 'leggi') && !P.puoSchema(ctx)) throw new P.ErrorePermesso(); return ctx; };
   const gestore = ctx => { if (!P.puoSchema(serve(ctx))) throw new P.ErrorePermesso('Solo chi può personalizzare prepara gli acquisti'); return ctx; };
+  // «arrivato» a mano: l'automazione carica il resto in magazzino; qui il resto si segna anche come ricevuto, così il
+  // confronto ordinato / ricevuto / fatturato torna. Dopo l'automazione (a giro finito: non dipende dall'ordine degli
+  // ascoltatori) e solo se l'ordine è rimasto davvero «arrivato»
+  k.D.ascolta?.((ev, dbEv) => {
+    if (dbEv !== db || !['crea', 'modifica'].includes(ev.tipo) || ev.dopo?.stato !== 'arrivato' || ev.prima?.stato === 'arrivato') return;
+    const imp = impostazioni(db, meta); if (ev.entita !== imp.ordini || !imp.righe) return;
+    queueMicrotask(() => { try {
+      const o = k.D.leggi(db, imp.ordini, ev.id, null); if (o.stato !== 'arrivato') return;
+      for (const x of o.righe || []) if (num(x.ricevuta) < num(x.quantita)) k.D.modifica(db, imp.righe, x.id, { ricevuta: num(x.quantita) }, null, { interno: true });
+    } catch (e) { console.error('acquisti:', e.message); } });
+  });
   r('GET', '/api/acquisti/impostazioni', ({ ctx }) => {
     lettore(ctx); const imp = impostazioni(db, meta);
     return { ...imp, articoliProposti: imp.articoli || sezioneArticoli(k), pronti: esiste(k.S, db, imp.ordini) && !!imp.articoli && k.S.leggi(db, imp.righe)?.campi.some(c => c.id === 'ricevuta'),

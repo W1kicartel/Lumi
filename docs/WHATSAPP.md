@@ -91,7 +91,8 @@ Kubo lo mostra in ogni conversazione: «Finestra aperta fino alle 15:42» oppure
 
 - **Registro dei consensi** per numero, con due categorie: *servizio* (promemoria, avvisi, fatture) e *promozioni*. Per ogni scelta salva la data, la fonte (modulo in negozio, sito, a voce…), le **parole esatte** mostrate al cliente e chi l'ha registrata. Lo storico non si cancella: una revoca è una riga nuova.
 - **Nessun modello parte senza il consenso** della sua categoria. Il testo libero parte solo dentro la finestra, cioè dopo che il cliente ti ha scritto.
-- **STOP ovunque.** Se il cliente scrive STOP, BASTA, ANNULLA, CANCELLAMI, DISISCRIVIMI o UNSUBSCRIBE, Kubo segna il no per tutte e due le categorie e da quel momento non parte più niente: né a mano, né con le automazioni, né con Lumi. Se il cliente scrive START o RIPRENDI, torna attivo il consenso di servizio. Quello promozionale va chiesto di nuovo.
+- **STOP ovunque.** Se il cliente scrive STOP, BASTA, ANNULLA, CANCELLAMI, DISISCRIVIMI o UNSUBSCRIBE, Kubo segna il no per tutte e due le categorie e da quel momento non parte più niente: né a mano, né con le automazioni, né con Lumi. Se il cliente scrive START o RIPRENDI, torna attivo il consenso di servizio. Quello promozionale va chiesto di nuovo. Dopo uno STOP un «sì» registrato a mano non basta: lo toglie solo il cliente.
+- **Chi vede le chat.** La posta in arrivo segue i permessi della sezione clienti: chi vede solo i clienti creati da lui («solo i propri») vede e scrive solo le loro conversazioni.
 - Quando un messaggio non parte, **Kubo dice perché**: nella risposta, nella scheda di Lumi e nel registro «Messaggi fermati o falliti».
 - **Ore di silenzio** (predefinite 21:00–9:00): niente messaggi promozionali. Quelli automatici aspettano la fine del silenzio. Se vuoi, il silenzio vale anche per i messaggi automatici di servizio.
 - **Limiti:**

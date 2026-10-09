@@ -152,3 +152,17 @@ test('strumenti di Lumi e rotte', async () => {
     assert.ok((await chiama('GET', '/api/lumi/strumenti')).json.strumenti.some(s => s.nome === 'acquisti_ricevi'));
   } finally { srv.close(); }
 });
+
+test('verifica: «arrivato» a mano carica il resto e lo segna ricevuto (anche dopo un ricevimento parziale)', async () => {
+  const { db, k, art } = negozio(); Q.prepara(k);
+  registraAcquisti({ ...k, r: () => {}, serve: x => x, lumi: { strumento: () => {}, istruzioni: () => {} } });
+  const a = art('Gomma', 0, 2, 1), b = art('Righello', 0, 2, 1);
+  const [o] = Q.creaOrdini(k, null, [{ articolo: a.id, quantita: 4 }]); D.modifica(db, 'ordini', o.id, { stato: 'inviato' });
+  D.modifica(db, 'ordini', o.id, { stato: 'arrivato' }); await Promise.resolve();
+  assert.equal(giacenza(db, a.id), 4); assert.equal(Q.confronto(k, null, o.id).ricevuto, 4);
+  const [o2] = Q.creaOrdini(k, null, [{ articolo: b.id, quantita: 10 }]); D.modifica(db, 'ordini', o2.id, { stato: 'inviato' });
+  Q.ricevi(k, null, o2.id, { righe: [{ riga: D.leggi(db, 'ordini', o2.id).righe[0].id, quantita: 4 }] });
+  D.modifica(db, 'ordini', o2.id, { stato: 'arrivato' }); await Promise.resolve();
+  assert.equal(giacenza(db, b.id), 10); assert.equal(Q.confronto(k, null, o2.id).ricevuto, 10);
+  D.modifica(db, 'ordini', o2.id, { stato: 'arrivato', ddt: 'DDT 7' }); await Promise.resolve(); assert.equal(giacenza(db, b.id), 10);
+});

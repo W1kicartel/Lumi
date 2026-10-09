@@ -107,3 +107,32 @@ test('strumenti di Lumi e rotte, con i permessi', async () => {
     assert.equal((await chiama('GET', '/api/magazzino/valore?sezione=articoli')).stato, 403);
   } finally { srv.close(); }
 });
+
+import * as Q from '../server/moduli/acquisti.js';
+test('verifica: vendita fra apertura e conta tolta una volta sola, costo nascosto nell\'inventario, ricevimenti con righe doppie o costo in sola lettura', () => {
+  const { db, k } = negozio();
+  const fo = D.crea(db, 'fornitori', { nome: 'Grossista' });
+  const a = D.crea(db, 'articoli', { codice: 'QUA', nome: 'Quaderno', prezzo: 2, costo: 1, giacenza: 10, soglia: 2, fornitore: fo.id });
+  const b = D.crea(db, 'articoli', { codice: 'PEN', barcode: '8001', nome: 'Penna', prezzo: 2, costo: 1, giacenza: 5, soglia: 2, fornitore: fo.id });
+  const { id } = G.nuovoInventario(k, null, { sezione: 'articoli' });
+  // venduti un quaderno e una penna dopo l'apertura e prima della conta: sullo scaffale sono già 9 e 4
+  const v = D.crea(db, 'vendite', { stato: 'aperta', righe: [{ articolo: a.id, quantita: 1, prezzo: 2 }, { articolo: b.id, quantita: 1, prezzo: 2 }] }); D.modifica(db, 'vendite', v.id, { stato: 'pagata' });
+  G.conta(k, null, id, { conte: [{ articolo: a.id, contata: 9 }] });
+  for (let n = 0; n < 4; n++) G.conta(k, null, id, { codice: '8001' });
+  // il ruolo che non vede il costo non lo vede nemmeno nell'inventario
+  const banco = { utente: { id: 'u1' }, r: { id: 'banco', entita: { '*': { leggi: true, crea: true, modifica: true }, articoli: { leggi: true, crea: true, modifica: true, campi: { costo: 'nascosto' } } } } };
+  const inv = G.inventario(k, banco, id); assert.equal(inv.righe[0].costo, null); assert.equal(inv.valoreDifferenze, null);
+  G.chiudi(k, null, id);
+  assert.equal(D.leggi(db, 'articoli', a.id).giacenza, 9); assert.equal(D.leggi(db, 'articoli', b.id).giacenza, 4);
+  // ricevimento: la stessa riga due volte non carica il doppio
+  Q.prepara(k);
+  const [o] = Q.creaOrdini(k, null, [{ articolo: a.id, quantita: 5 }]); D.modifica(db, 'ordini', o.id, { stato: 'inviato' });
+  const riga = D.leggi(db, 'ordini', o.id).righe[0].id;
+  assert.throws(() => Q.ricevi(k, null, o.id, { righe: [{ riga, quantita: 3 }, { riga, quantita: 3 }] }), /più volte/);
+  assert.equal(D.leggi(db, 'articoli', a.id).giacenza, 9);
+  // chi ha il costo in sola lettura riceve lo stesso (il costo medio lo calcola il sistema)
+  D.modifica(db, 'righe_ordine', riga, { costo: 3 });
+  const mag = { utente: { id: 'u1' }, r: { id: 'magazziniere', entita: { '*': { leggi: true, crea: true, modifica: true }, articoli: { leggi: true, crea: true, modifica: true, campi: { costo: 'lettura' } } } } };
+  Q.ricevi(k, mag, o.id);
+  const dopo = D.leggi(db, 'articoli', a.id); assert.equal(dopo.giacenza, 14); assert.equal(dopo.costo, Math.round((100 * 9 + 300 * 5) / 14) / 100);
+});

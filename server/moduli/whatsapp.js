@@ -119,7 +119,9 @@ export default function registra({ r, prima, db, S, D, P, A, meta, serve, Errore
   // ---------- consensi: lo storico per numero, l'ultimo per categoria vale ----------
   function consenso(numero) {
     const righe = db.prepare('SELECT * FROM _whatsapp_consensi WHERE numero = ? ORDER BY id DESC').all(numero);
-    return { servizio: righe.find(x => x.categoria === 'servizio') || null, marketing: righe.find(x => x.categoria === 'marketing') || null, storia: righe.slice(0, 50) };
+    // lo STOP lo toglie solo il cliente (START, RIPRENDI): conta l'ultima parola scritta da lui, non un «sì» segnato a mano dopo
+    const parola = righe.find(x => /^parola/.test(x.fonte || '')) || null;
+    return { servizio: righe.find(x => x.categoria === 'servizio') || null, marketing: righe.find(x => x.categoria === 'marketing') || null, stop: parola?.stato === 'no' ? parola : null, storia: righe.slice(0, 50) };
   }
   const scriviConsenso = ({ numero, cliente = null, categoria, stato, fonte = null, testo = null, chi = null }) => db.prepare('INSERT INTO _whatsapp_consensi (numero, cliente, categoria, stato, fonte, testo, chi, quando) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
     .run(numero, cliente, categoria, stato, fonte ? String(fonte).slice(0, 200) : null, testo ? String(testo).slice(0, 2000) : null, chi, ora());
@@ -129,7 +131,7 @@ export default function registra({ r, prima, db, S, D, P, A, meta, serve, Errore
   // ---------- le regole prima di ogni invio: null se si può, altrimenti { motivo, p, riprova? } ----------
   function controlla({ numero, categoria, tipo, automatico = false, adesso = Date.now() }) {
     const i = imp(), c = consenso(numero), f = R.finestra(ultimoIn(numero), adesso), quale = R.CONSENSO_DI[categoria] || 'servizio', cs = c[quale];
-    if (c.servizio?.stato === 'no' && /^parola/.test(c.servizio.fonte || '')) return { motivo: 'stop', p: { quando: dataBreve(c.servizio.quando) } };
+    if (c.stop) return { motivo: 'stop', p: { quando: dataBreve(c.stop.quando) } };
     const manca = { motivo: quale === 'marketing' ? 'consenso-marketing' : 'consenso-servizio', p: {} };
     if (tipo === 'testo') { if (!f.aperta) return { motivo: 'finestra-chiusa', p: {} }; if (cs?.stato === 'no') return manca; }
     else if (cs?.stato !== 'si') return manca;
@@ -196,7 +198,7 @@ export default function registra({ r, prima, db, S, D, P, A, meta, serve, Errore
       valori = x.valori; let mancano = x.mancano;
       if (Array.isArray(rich.variabili)) { rich.variabili.forEach((v, n) => { if (v != null && v !== '') valori[n] = String(v); }); mancano = mancano.filter(n => !valori[n - 1]); }
       if (mancano.length) return { numero, cliente: cli?.id || null, modello: mod, no: { motivo: 'variabili', p: { n: mancano.join(', ') } } };
-      testo = R.riempi(mod.corpo, valori);
+      valori = valori.map(R.pulisciValore); testo = R.riempi(mod.corpo, valori);
     } else if (!testo) return { numero, no: { motivo: 'vuoto', p: {} } };
     const mese = new Date(adesso); mese.setUTCDate(1); mese.setUTCHours(0, 0, 0, 0);
     const servizi = db.prepare("SELECT COUNT(*) n FROM _whatsapp_messaggi WHERE verso = 'out' AND categoria = 'servizio' AND quando >= ?").get(mese.toISOString()).n;
@@ -213,36 +215,40 @@ export default function registra({ r, prima, db, S, D, P, A, meta, serve, Errore
       VALUES (?, ?, ?, 'out', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`).run(pl.numero, pl.cliente || null, pl.nomeCliente || null, pl.tipo || 'testo', pl.testo || null, pl.modello?.nome || null,
       pl.categoria || null, stato, motivoNo, pid, stato === 'bloccato' ? 0 : pl.costo || 0, pl.ricetta || null, chiave, chi, ora()).lastInsertRowid;
   }
-  const avvisa = numero => { try { manda?.({ tipo: 'whatsapp', numero, entita: rubrica()?.e }); } catch { /* nessun browser collegato */ } };
+  // l'evento va solo a chi legge la rubrica (senza rubrica, a nessuno: il numero non deve arrivare a tutti)
+  const avvisa = numero => { try { const e = rubrica()?.e; if (e) manda?.({ tipo: 'whatsapp', numero, entita: e }); } catch { /* nessun browser collegato */ } };
 
   // ---------- l'invio vero, attraverso il servizio attivo ----------
   async function esegui(pl, { chi = null, chiave = null } = {}) {
     const pv = prov(), idRiga = scriviUscita(pl, pv.id, { chi, chiave });
+    let doc = null, conIntestazione = false, x;
     try {
-      let doc = null;
       if (pl.documento) { doc = pdfDi(pl.documento.entita, pl.documento.id); if (pv.w.linkPubblico) { const b = pv.w.linkPubblico(pv.k); if (!b) throw errore(409, 'indirizzo'); doc.link = linkDi(doc, b); } }
-      const conIntestazione = !!(doc && pl.modello?.intestazione === 'DOCUMENT');
-      const x = pl.tipo === 'modello'
+      conIntestazione = !!(doc && pl.modello?.intestazione === 'DOCUMENT');
+      x = pl.tipo === 'modello'
         ? await pv.w.modello(pv.k, pl.numero, { nome: pl.modello.nome, lingua: pl.modello.lingua, valori: pl.valori, idRemoto: pl.modello.idRemoto, documento: conIntestazione ? doc : null })
         : await pv.w.testo(pv.k, pl.numero, pl.testo);
       db.prepare("UPDATE _whatsapp_messaggi SET stato = 'inviato', id_remoto = ?, motivo = NULL WHERE id = ?").run(x?.id || null, idRiga);
-      // il PDF come messaggio a parte: solo dentro la finestra (fuori, un file libero non è permesso: serve il modello con l'intestazione)
-      if (doc && !conIntestazione && R.finestra(ultimoIn(pl.numero)).aperta) {
-        const y = await pv.w.documento(pv.k, pl.numero, { ...doc, didascalia: doc.nome });
-        db.prepare(`INSERT INTO _whatsapp_messaggi (numero, cliente, verso, tipo, testo, categoria, stato, id_remoto, provider, costo, ricetta, chi, quando, letto) VALUES (?, ?, 'out', 'documento', ?, 'servizio', 'inviato', ?, ?, 0, ?, ?, ?, 1)`)
-          .run(pl.numero, pl.cliente || null, doc.nome, y?.id || null, pv.id, pl.ricetta || null, chi, ora());
-      }
-      avvisa(pl.numero);
-      return { id: idRiga, idRemoto: x?.id || null, costo: pl.costo };
     } catch (e) {
       db.prepare("UPDATE _whatsapp_messaggi SET stato = 'fallito', motivo = ? WHERE id = ?").run(String(e.message).slice(0, 300), idRiga); avvisa(pl.numero);
       if (e instanceof ErroreHttp) throw e;
       throw errore(502, 'invio-fallito', { dettaglio: String(e.message).slice(0, 200) });
     }
+    // il messaggio è partito: da qui in poi un errore resta sul PDF e non fa rimandare (né ripagare) il messaggio dalla coda
+    // il PDF come messaggio a parte: solo dentro la finestra (fuori, un file libero non è permesso: serve il modello con l'intestazione)
+    if (doc && !conIntestazione && R.finestra(ultimoIn(pl.numero)).aperta) {
+      let y = null, sbaglio = null; try { y = await pv.w.documento(pv.k, pl.numero, { ...doc, didascalia: doc.nome }); } catch (e) { sbaglio = String(e.message).slice(0, 300); }
+      db.prepare(`INSERT INTO _whatsapp_messaggi (numero, cliente, verso, tipo, testo, categoria, stato, motivo, id_remoto, provider, costo, ricetta, chi, quando, letto) VALUES (?, ?, 'out', 'documento', ?, 'servizio', ?, ?, ?, ?, 0, ?, ?, ?, 1)`)
+        .run(pl.numero, pl.cliente || null, doc.nome, sbaglio ? 'fallito' : 'inviato', sbaglio, y?.id || null, pv.id, pl.ricetta || null, chi, ora());
+    }
+    avvisa(pl.numero);
+    return { id: idRiga, idRemoto: x?.id || null, costo: pl.costo };
   }
   // un invio automatico va nella coda dei connettori (tentativi crescenti); al momento giusto si rifanno i controlli
   function accoda(rich, chiave, fra = 0) { const pid = attivoId(); if (!pid) return null; return nucleo().accoda(pid, 'whatsapp:invia', chiave, { rich, chiave }, { fra }); }
   async function lavora(corpo) {
+    // un nuovo tentativo dopo un invio riuscito (un errore dopo, un riavvio a metà) non lo rimanda: una volta sola per chiave
+    if (corpo.chiave && db.prepare("SELECT 1 FROM _whatsapp_messaggi WHERE chiave = ? AND verso = 'out' AND stato IN ('inviato', 'consegnato', 'letto')").get(corpo.chiave)) return 'già';
     const pl = prepara(corpo.rich || {});
     if (pl.no) {
       if (pl.no.riprova && pl.no.riprova > Date.now()) { accoda(corpo.rich, corpo.chiave, pl.no.riprova - Date.now()); return 'rimandato'; }
@@ -422,6 +428,10 @@ export default function registra({ r, prima, db, S, D, P, A, meta, serve, Errore
     return { piano: prepara({ cliente: c.id, modello: { nome: m.nome, lingua: m.lingua }, variabili: args.variabili }), cliente: c, scelto: m };
   }
   const oraLocale = (iso, l) => { try { return new Intl.DateTimeFormat(l, { timeZone: fuso(), hour: '2-digit', minute: '2-digit', weekday: 'short' }).format(new Date(iso)); } catch { return iso; } };
+  // quello che la scheda di conferma ha mostrato: se all'esecuzione il piano è diverso (la finestra si è chiusa o aperta, un
+  // altro modello), non parte niente che l'utente non abbia visto
+  const visti = new Map(), firma = pl => JSON.stringify([pl.numero, pl.tipo, pl.modello?.nome || null, pl.modello?.lingua || null, pl.testo]);
+  const chiaveVista = (ctx, args) => `${ctx?.utente?.id ?? ''}|${JSON.stringify(args)}`;
   const puoScrivere = ctx => { const rb = rubrica(); return !!attivoId() && !!rb && P.puo(ctx, rb.e, 'modifica'); };
   const puoLeggere = ctx => { const rb = rubrica(); return !!rb && P.puo(ctx, rb.e, 'leggi'); };
   lumi?.strumento({
@@ -432,6 +442,8 @@ export default function registra({ r, prima, db, S, D, P, A, meta, serve, Errore
     anteprima: async ({ ctx, args, lingua = 'it' }) => {
       let x; try { x = pianoLumi(ctx, args); } catch (e) { if (e?.extra?._wa) return { errore: testoWa(lingua, e.extra._wa, e.extra._p) }; throw e; }
       const pl = x.piano, no = x.no || pl?.no; if (no) return { errore: motivo(no, lingua) };
+      if (visti.size > 500) visti.delete(visti.keys().next().value);
+      visti.set(chiaveVista(ctx, args), firma(pl));
       const T = k => testoWa(lingua, k);
       return { titolo: T('lumi.titolo'), righe: [[T('lumi.a'), `${nomeDi(x.cliente)} · ${pl.numero}`],
         [T('lumi.finestra'), pl.finestra.aperta ? testoWa(lingua, 'lumi.aperta', { ora: oraLocale(pl.finestra.scade, lingua) }) : T('lumi.chiusa')],
@@ -440,6 +452,8 @@ export default function registra({ r, prima, db, S, D, P, A, meta, serve, Errore
     },
     esegui: async ({ ctx, args }) => {
       const x = pianoLumi(ctx, args), no = x.no || x.piano?.no; if (no) throw errore(409, no.motivo, no.p);
+      const k = chiaveVista(ctx, args), visto = visti.get(k); visti.delete(k);
+      if (visto !== firma(x.piano)) throw errore(409, 'cambiato');
       const r = await esegui(x.piano, { chi: ctx?.utente?.nome || null });
       return { inviato: true, a: nomeDi(x.cliente), numero: x.piano.numero, modello: x.piano.modello?.nome || null, testo: x.piano.testo, costo: r.costo };
     },
@@ -449,7 +463,7 @@ export default function registra({ r, prima, db, S, D, P, A, meta, serve, Errore
     descrizione: 'WhatsApp: senza cliente, le conversazioni con messaggi non letti; con un cliente, gli ultimi messaggi, la finestra di 24 ore e i consensi. Usalo per riassumere una conversazione.',
     schema: { type: 'object', properties: { cliente: { type: 'string', description: 'nome o id del cliente (facoltativo)' } } },
     esegui: async ({ ctx, args }) => {
-      if (!args.cliente) return { non_letti: conversazioni().filter(c => c.nonLetti > 0).map(c => ({ cliente: c.nome, numero: c.numero, non_letti: c.nonLetti, ultimo: c.testo, quando: c.quando })) };
+      if (!args.cliente) return { non_letti: conversazioni(ctx).filter(c => c.nonLetti > 0).map(c => ({ cliente: c.nome, numero: c.numero, non_letti: c.nonLetti, ultimo: c.testo, quando: c.quando })) };
       const c = trovaCliente(args.cliente, ctx), numero = R.e164(c[rubrica().telefono], imp().prefisso); if (!numero) throw errore(409, 'senza-numero');
       const cs = consenso(numero);
       return { cliente: nomeDi(c), numero, finestra: R.finestra(ultimoIn(numero)), consenso: { servizio: cs.servizio?.stato || null, marketing: cs.marketing?.stato || null },
@@ -459,10 +473,14 @@ export default function registra({ r, prima, db, S, D, P, A, meta, serve, Errore
   lumi?.istruzioni('WhatsApp: per scrivere a un cliente usa whatsapp_scrivi (mai inventare un invio); per leggere o riassumere le chat usa whatsapp_leggi. Se manca il consenso o il cliente ha scritto STOP, spiega il motivo e non insistere.');
 
   // ---------- le conversazioni ----------
-  function conversazioni() {
+  // chi vede solo i clienti che ha creato lui («soloPropri») vede solo le loro conversazioni (non quelle dei numeri sconosciuti)
+  const vede = (ctx, numero, cid = clienteDi(numero)) => { const rb = rubrica(); return !rb || !P.soloPropri(ctx, rb.e) || !!(cid && leggiCliente(cid, ctx)); };
+  const vedeONo = (ctx, numero) => { if (!vede(ctx, numero)) throw new P.ErrorePermesso(); return numero; };
+  function conversazioni(ctx = null) {
     const rb = rubrica();
     return db.prepare(`SELECT numero, MAX(id) ultimo, SUM(CASE WHEN verso = 'in' AND letto = 0 THEN 1 ELSE 0 END) nonLetti, MAX(CASE WHEN verso = 'in' THEN quando END) ultimoIn,
-        MAX(cliente) cliente, MAX(CASE WHEN verso = 'in' THEN nome END) profilo FROM _whatsapp_messaggi WHERE stato <> 'bloccato' GROUP BY numero ORDER BY ultimo DESC LIMIT 300`).all().map(x => {
+        MAX(cliente) cliente, MAX(CASE WHEN verso = 'in' THEN nome END) profilo FROM _whatsapp_messaggi WHERE stato <> 'bloccato' GROUP BY numero ORDER BY ultimo DESC LIMIT 300`).all()
+      .filter(x => vede(ctx, x.numero, clienteDi(x.numero) || x.cliente)).map(x => {
       const u = db.prepare('SELECT testo, quando, verso FROM _whatsapp_messaggi WHERE id = ?').get(x.ultimo), cid = clienteDi(x.numero) || x.cliente, c = rb && cid ? leggiCliente(cid) : null;
       return { numero: x.numero, cliente: c?.id || null, nome: nomeDi(c) || x.profilo || x.numero, nonLetti: x.nonLetti, testo: u?.testo || '', quando: u?.quando, verso: u?.verso, finestra: R.finestra(x.ultimoIn) };
     });
@@ -505,15 +523,17 @@ export default function registra({ r, prima, db, S, D, P, A, meta, serve, Errore
     meta.scrivi(db, 'whatsapp.impostazioni', JSON.stringify({ ...salvate, ...x, tariffe: { ...(salvate.tariffe || {}), ...(x.tariffe || {}) } })); indice = null;
     return imp();
   });
-  r('GET', '/api/whatsapp/conversazioni', ({ ctx }) => { leggi(ctx); return conversazioni(); });
-  r('GET', '/api/whatsapp/conversazioni/:numero', ({ ctx, p }) => { leggi(ctx); return conversazione(numeroDa(p.numero)); });
-  r('POST', '/api/whatsapp/conversazioni/:numero/letti', ({ ctx, p }) => { leggi(ctx); const n = numeroDa(p.numero); db.prepare("UPDATE _whatsapp_messaggi SET letto = 1 WHERE numero = ? AND verso = 'in'").run(n); avvisa(n); return { ok: true }; });
+  r('GET', '/api/whatsapp/conversazioni', ({ ctx }) => { leggi(ctx); return conversazioni(ctx); });
+  r('GET', '/api/whatsapp/conversazioni/:numero', ({ ctx, p }) => { leggi(ctx); return conversazione(vedeONo(ctx, numeroDa(p.numero))); });
+  r('POST', '/api/whatsapp/conversazioni/:numero/letti', ({ ctx, p }) => { leggi(ctx); const n = vedeONo(ctx, numeroDa(p.numero)); db.prepare("UPDATE _whatsapp_messaggi SET letto = 1 WHERE numero = ? AND verso = 'in'").run(n); avvisa(n); return { ok: true }; });
   r('GET', '/api/whatsapp/cliente/:id', ({ ctx, p }) => {
     leggi(ctx); const c = leggiCliente(p.id, ctx), rb = rubrica(); if (!c) throw errore(404, 'cliente-sconosciuto', { nome: p.id });
     const numero = R.e164(c[rb.telefono], imp().prefisso); return numero ? conversazione(numero) : { numero: null, messaggi: [], consenso: { storia: [] }, finestra: { aperta: false } };
   });
   r('POST', '/api/whatsapp/invia', async ({ ctx, corpo }) => {
     scrive(ctx);
+    if (corpo.cliente && leggiCliente(corpo.cliente) && !leggiCliente(corpo.cliente, ctx)) throw new P.ErrorePermesso();   // esiste ma non è suo («soloPropri»)
+    if (corpo.numero) vedeONo(ctx, numeroDa(corpo.numero));
     if (corpo.documento) { const def = S.leggi(db, String(corpo.documento.entita || '')); if (!def || !P.puo(ctx, def.id, 'leggi')) throw new P.ErrorePermesso(); D.leggi(db, def.id, String(corpo.documento.id), ctx); }
     const pl = prepara({ numero: corpo.numero, cliente: corpo.cliente, testo: corpo.testo, modello: corpo.modello, variabili: corpo.variabili, documento: corpo.documento || null });
     if (corpo.anteprima) return { ...pl, modello: pl.modello ? { nome: pl.modello.nome, lingua: pl.modello.lingua, categoria: pl.modello.categoria } : null, no: pl.no ? { ...pl.no, messaggio: motivo(pl.no, linguaDi(ctx)) } : null };
@@ -523,6 +543,7 @@ export default function registra({ r, prima, db, S, D, P, A, meta, serve, Errore
   r('POST', '/api/whatsapp/consensi', ({ ctx, corpo }) => {
     scrive(ctx); const c = corpo.cliente ? leggiCliente(corpo.cliente, ctx) : null, numero = numeroDa(corpo.numero || (c && c[rubrica().telefono]) || '');
     if (!['servizio', 'marketing'].includes(corpo.categoria) || !['si', 'no'].includes(corpo.stato)) throw errore(400, 'vuoto');
+    const stop = consenso(numero).stop; if (stop && corpo.stato === 'si') throw errore(409, 'stop', { quando: dataBreve(stop.quando) });
     scriviConsenso({ numero, cliente: c?.id || clienteDi(numero), categoria: corpo.categoria, stato: corpo.stato, fonte: corpo.fonte || 'a voce', testo: corpo.testo || null, chi: ctx.utente.nome });
     return consenso(numero);
   });

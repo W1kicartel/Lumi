@@ -7,6 +7,7 @@
 // di c/c»), EPC (SEPA Core Direct Debit e SEPA Credit Transfer, Customer-to-PSP Implementation Guidelines), ISO 20022 (schemi
 // pain.001.001.03, pain.008.001.02, camt.053.001.02 da iso20022.org). Un'implementazione di riferimento per la Ri.Ba. è il
 // modulo l10n_it_riba di OCA (github.com/OCA/l10n-italy), con cui il tracciato coincide record per record.
+import { randomBytes } from 'node:crypto';
 import { ibanValido } from './documenti-italia.js';
 import { xml, deXml, leggiTabella, numeroIt, dataIt } from './import-formati.js';
 
@@ -84,7 +85,9 @@ export function riba({ az, sia, ricevute, supporto, oggi }) {
 // ---------- SEPA ----------
 const agente = bic => (bic && /^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$/.test(bic) ? `<FinInstnId><BIC>${bic}</BIC></FinInstnId>` : '<FinInstnId><Othr><Id>NOTPROVIDED</Id></Othr></FinInstnId>');
 const quando = d => d.toISOString().slice(0, 19);
-const idMsg = (pref, d) => `${pref}-${d.toISOString().replace(/\D/g, '').slice(0, 14)}`;
+// unico anche per due file nello stesso secondo (la banca rifiuta un MsgId già visto): millisecondi e tre cifre a caso,
+// 30 caratteri (PmtInfId aggiunge «-n»: resta nei 35)
+const idMsg = (pref, d) => `${pref}-${d.toISOString().replace(/\D/g, '').slice(0, 17)}-${randomBytes(2).toString('hex').slice(0, 3).toUpperCase()}`;
 
 // SEPA Direct Debit Core, pain.008.001.02 (EPC130-08 Implementation Guidelines). Un PmtInf per data di incasso.
 // SeqTp: RCUR per tutti i mandati ricorrenti: dal rulebook EPC 2016 (v9.0) il primo incasso non deve più essere FRST.
@@ -96,6 +99,8 @@ export function pain008({ az, incassi, adesso = new Date(), sequenza = 'RCUR' })
   incassi.forEach((x, i) => {
     if (ibanValido(pulisciIban(x.debitore.iban)).errore) errori.push({ chiave: 'iban-debitore', nome: x.debitore.nome, n: i + 1 });
     if (!x.mandato?.id || !x.mandato?.data) errori.push({ chiave: 'mandato', nome: x.debitore.nome, n: i + 1 });
+    // il codice del mandato va alla banca così com'è firmato: se andrebbe ripulito (caratteri fuori dal set SEPA, oltre 35) è un errore, non si cambia
+    else if (testoSepa(x.mandato.id, 35) !== String(x.mandato.id).trim()) errori.push({ chiave: 'mandato-id', nome: x.debitore.nome, n: i + 1 });
     if (!(x.importo > 0)) errori.push({ chiave: 'importo', nome: x.debitore.nome, n: i + 1 });
   });
   if (errori.length) return { errori };
@@ -191,8 +196,9 @@ export function camt053(testo) {
     for (const e of figli(st, 'Ntry')) {
       const sts = testoDi(e, 'Sts') || testoDi(e, 'Sts/Cd');
       if (sts && sts !== 'BOOK') continue;   // solo i movimenti contabilizzati
-      let segno = testoDi(e, 'CdtDbtInd') === 'DBIT' ? -1 : 1;
-      if (testoDi(e, 'RvslInd') === 'true') segno = -segno;
+      // il segno è quello di CdtDbtInd anche per gli storni (RvslInd): ISO 20022 dice che CRDT + storno è un addebito
+      // annullato, cioè soldi che rientrano; i saldi del file tornano solo così
+      const segno = testoDi(e, 'CdtDbtInd') === 'DBIT' ? -1 : 1;
       const tx = cerca(e, 'TxDtls')[0], entrata = segno > 0;
       const parte = tx ? figlio(tx, `RltdPties/${entrata ? 'Dbtr' : 'Cdtr'}`) : null;
       const nome = parte ? testoDi(parte, 'Nm') || testoDi(parte, 'Pty/Nm') : '';

@@ -55,6 +55,7 @@ export default {
   'tesoreria.err-importo': "{nome}: ungültiger Einzugsbetrag.",
   'tesoreria.err-id-creditore': "Die SEPA-Gläubiger-ID fehlt (die Bank vergibt sie): Finanzeinstellungen.",
   'tesoreria.err-iban-debitore': "{nome}: IBAN des Kunden fehlt oder ist falsch.",
+  'tesoreria.err-mandato-id': "{nome}: Die SDD-Mandatsreferenz enthält unzulässige Zeichen oder ist länger als 35: in der Kundenkarte korrigieren (muss dem unterschriebenen Mandat genau entsprechen).",
   'tesoreria.err-mandato': "{nome}: In der Kundenkarte fehlen Mandatsreferenz und -datum für SDD.",
   'tesoreria.err-iban-beneficiario': "{nome}: IBAN des Lieferanten fehlt oder ist falsch.",
   'tesoreria.banca-titolo': "Kontoauszug und Abgleich",

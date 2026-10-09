@@ -88,3 +88,18 @@ test('strumenti di Lumi e rotte', async () => {
     assert.equal((await chiama('PUT', '/api/ricorrenti/impostazioni', { automatico: true })).json.automatico, true);
   } finally { srv.close(); }
 });
+
+test('verifica: il giorno del contratto resta il 31 (31/1 → 28/2 → 31/3), anche fra un giro e l\'altro e negli anni bisestili', () => {
+  assert.deepEqual(C.periodi({ stato: 'attivo', periodicita: 'mensile', prossima: '2026-01-31' }, '2026-04-30').map(p => [p.da, p.a]),
+    [['2026-01-31', '2026-02-27'], ['2026-02-28', '2026-03-30'], ['2026-03-31', '2026-04-29'], ['2026-04-30', '2026-05-30']]);
+  const { db, k, cl } = gestionale();
+  const c = D.crea(db, C.CONTRATTI, { cliente: cl.id, descrizione: 'Canone', importo: 100, periodicita: 'mensile', prossima: '2028-01-31' });
+  const prossima = () => D.leggi(db, C.CONTRATTI, c.id, null, { conRighe: false }).prossima;
+  C.genera(k, null, { oggi: '2028-01-31' }); assert.equal(prossima(), '2028-02-29');
+  C.genera(k, null, { oggi: '2028-02-29' }); assert.equal(prossima(), '2028-03-31');
+  C.genera(k, null, { oggi: '2028-03-31' }); assert.equal(prossima(), '2028-04-30');
+  C.genera(k, null, { oggi: '2028-04-30' }); assert.equal(prossima(), '2028-05-31');
+  assert.deepEqual(C.future(k, null, { da: '2028-05-01', a: '2028-07-31' }).map(x => x.data), ['2028-05-31', '2028-06-30', '2028-07-31']);
+  // cambiata a mano al 15: conta la data nuova
+  D.modifica(db, C.CONTRATTI, c.id, { prossima: '2028-06-15' }); C.genera(k, null, { oggi: '2028-06-15' }); assert.equal(prossima(), '2028-07-15');
+});

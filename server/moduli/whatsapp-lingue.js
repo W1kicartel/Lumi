@@ -3,6 +3,7 @@
 // whatsapp.js), come fa il nucleo dei connettori. test/whatsapp.test.mjs controlla che le lingue abbiano le stesse chiavi.
 export const TESTI = {
   it: {
+    'cambiato': 'Nel frattempo è cambiato qualcosa (la finestra di 24 ore o il modello): rifai l\'anteprima',
     'lumi.titolo': 'Messaggio WhatsApp', 'lumi.a': 'A', 'lumi.finestra': 'Finestra di 24 ore', 'lumi.aperta': 'aperta fino a {ora}', 'lumi.chiusa': 'chiusa: si usa un modello approvato', 'lumi.modello': 'Modello', 'lumi.messaggio': 'Messaggio', 'lumi.costo': 'Costo stimato',
     'nessun-provider': 'WhatsApp non è collegato: accendi un connettore WhatsApp (Meta, Twilio o 360dialog)',
     'un-provider': 'È già acceso {attivo}: spegnilo prima di accendere un altro servizio WhatsApp',
@@ -23,6 +24,7 @@ export const TESTI = {
     'nessun-modello': 'Nessun modello approvato adatto: creane uno o sincronizza i modelli', 'senza-rubrica': 'Non c\'è una sezione clienti con il telefono',
   },
   en: {
+    'cambiato': 'Something changed in the meantime (the 24-hour window or the template): preview it again',
     'lumi.titolo': 'WhatsApp message', 'lumi.a': 'To', 'lumi.finestra': '24-hour window', 'lumi.aperta': 'open until {ora}', 'lumi.chiusa': 'closed: an approved template is used', 'lumi.modello': 'Template', 'lumi.messaggio': 'Message', 'lumi.costo': 'Estimated cost',
     'nessun-provider': 'WhatsApp is not connected: turn on a WhatsApp connector (Meta, Twilio or 360dialog)',
     'un-provider': '{attivo} is already on: turn it off before turning on another WhatsApp service',
@@ -43,6 +45,7 @@ export const TESTI = {
     'nessun-modello': 'No suitable approved template: create one or sync the templates', 'senza-rubrica': 'There is no customer section with a phone field',
   },
   es: {
+    'cambiato': 'Algo ha cambiado mientras tanto (la ventana de 24 horas o la plantilla): vuelve a ver la vista previa',
     'lumi.titolo': 'Mensaje de WhatsApp', 'lumi.a': 'Para', 'lumi.finestra': 'Ventana de 24 horas', 'lumi.aperta': 'abierta hasta {ora}', 'lumi.chiusa': 'cerrada: se usa una plantilla aprobada', 'lumi.modello': 'Plantilla', 'lumi.messaggio': 'Mensaje', 'lumi.costo': 'Coste estimado',
     'nessun-provider': 'WhatsApp no está conectado: activa un conector de WhatsApp (Meta, Twilio o 360dialog)',
     'un-provider': '{attivo} ya está activo: apágalo antes de activar otro servicio de WhatsApp',
@@ -63,6 +66,7 @@ export const TESTI = {
     'nessun-modello': 'Ninguna plantilla aprobada adecuada: crea una o sincroniza las plantillas', 'senza-rubrica': 'No hay una sección de clientes con teléfono',
   },
   fr: {
+    'cambiato': 'Quelque chose a changé entre-temps (la fenêtre de 24 heures ou le modèle) : refais l\'aperçu',
     'lumi.titolo': 'Message WhatsApp', 'lumi.a': 'À', 'lumi.finestra': 'Fenêtre de 24 heures', 'lumi.aperta': 'ouverte jusqu\'à {ora}', 'lumi.chiusa': 'fermée : un modèle approuvé est utilisé', 'lumi.modello': 'Modèle', 'lumi.messaggio': 'Message', 'lumi.costo': 'Coût estimé',
     'nessun-provider': 'WhatsApp n\'est pas connecté : activez un connecteur WhatsApp (Meta, Twilio ou 360dialog)',
     'un-provider': '{attivo} est déjà actif : désactivez-le avant d\'activer un autre service WhatsApp',
@@ -83,6 +87,7 @@ export const TESTI = {
     'nessun-modello': 'Aucun modèle approuvé adapté : créez-en un ou synchronisez les modèles', 'senza-rubrica': 'Aucune section clients avec un téléphone',
   },
   de: {
+    'cambiato': 'Inzwischen hat sich etwas geändert (das 24-Stunden-Fenster oder die Vorlage): Vorschau erneut anzeigen',
     'lumi.titolo': 'WhatsApp-Nachricht', 'lumi.a': 'An', 'lumi.finestra': '24-Stunden-Fenster', 'lumi.aperta': 'offen bis {ora}', 'lumi.chiusa': 'geschlossen: eine genehmigte Vorlage wird verwendet', 'lumi.modello': 'Vorlage', 'lumi.messaggio': 'Nachricht', 'lumi.costo': 'Geschätzte Kosten',
     'nessun-provider': 'WhatsApp ist nicht verbunden: schalte einen WhatsApp-Connector ein (Meta, Twilio oder 360dialog)',
     'un-provider': '{attivo} ist bereits an: schalte ihn aus, bevor du einen anderen WhatsApp-Dienst einschaltest',
@@ -103,6 +108,7 @@ export const TESTI = {
     'nessun-modello': 'Keine passende genehmigte Vorlage: erstelle eine oder synchronisiere die Vorlagen', 'senza-rubrica': 'Es gibt keinen Kundenbereich mit Telefon',
   },
   pt: {
+    'cambiato': 'Algo mudou entretanto (a janela de 24 horas ou o modelo): refaz a pré-visualização',
     'lumi.titolo': 'Mensagem de WhatsApp', 'lumi.a': 'Para', 'lumi.finestra': 'Janela de 24 horas', 'lumi.aperta': 'aberta até {ora}', 'lumi.chiusa': 'fechada: usa-se um modelo aprovado', 'lumi.modello': 'Modelo', 'lumi.messaggio': 'Mensagem', 'lumi.costo': 'Custo estimado',
     'nessun-provider': 'O WhatsApp não está conectado: ative um conector WhatsApp (Meta, Twilio ou 360dialog)',
     'un-provider': '{attivo} já está ativo: desative-o antes de ativar outro serviço WhatsApp',

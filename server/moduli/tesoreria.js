@@ -218,13 +218,23 @@ export function registraPagamenti(k, ctx, chiavi, { data = oggiIso(), importo = 
   });
 }
 // annulla i pagamenti registrati su una scadenza (un errore, un insoluto) e riapre il documento
-export function annullaPagamento(k, ctx, chiave) {
+// (con «movimento»: solo i pagamenti di quel movimento, per il disabbina; il documento si riapre lo stesso)
+export function annullaPagamento(k, ctx, chiave, { movimento = null } = {}) {
   const { db, D } = k; tabelle(db);
   const s = scadenzario(k, ctx).find(x => x.chiave === chiave);
   if (!s) throw new Error(`Scadenza sconosciuta: ${chiave}`);
   k.P.verifica(ctx, s.origine.entita, 'modifica');
   return transazione(db, () => {
-    db.prepare('DELETE FROM _tesoreria_pagamenti WHERE chiave = ?').run(chiave);
+    const filtro = movimento == null ? '' : ' AND movimento = ?', par = movimento == null ? [chiave] : [chiave, String(movimento)];
+    const toccati = db.prepare(`SELECT DISTINCT movimento, distinta FROM _tesoreria_pagamenti WHERE chiave = ?${filtro}`).all(...par);
+    db.prepare(`DELETE FROM _tesoreria_pagamenti WHERE chiave = ?${filtro}`).run(...par);
+    // una distinta senza più incassi torna da incassare (altrimenti la stessa ricevuta si ripresenta in una distinta nuova)
+    for (const d of new Set(toccati.map(x => x.distinta).filter(Boolean))) if (!db.prepare('SELECT 1 FROM _tesoreria_pagamenti WHERE distinta = ?').get(d)) db.prepare('UPDATE _tesoreria_distinte SET incassata = NULL WHERE id = ?').run(d);
+    // un movimento della banca senza più pagamenti dietro torna da abbinare (il disabbina lo fa da sé)
+    if (movimento == null) for (const mv of new Set(toccati.map(x => x.movimento).filter(Boolean))) {
+      const a = db.prepare('SELECT sezione FROM _tesoreria_abbinamenti WHERE movimento = ?').get(mv);
+      if (a && !db.prepare('SELECT 1 FROM _tesoreria_pagamenti WHERE movimento = ?').get(mv)) { db.prepare('DELETE FROM _tesoreria_abbinamenti WHERE movimento = ?').run(mv); ricopia(k, ctx, a.sezione, mv, 'da_abbinare', []); }
+    }
     if (s.rata) D.modifica(db, RATE, s.rata, { pagata: false }, ctx);
     const riga = D.leggi(db, s.origine.entita, s.origine.id, ctx, { conRighe: false });
     if (riga.stato === 'pagata') D.modifica(db, s.origine.entita, s.origine.id, s.verso === 'attiva' ? { stato: riga.inviata_il ? 'inviata' : 'emessa', pagata_il: null } : { stato: 'da_pagare', pagata_il: null }, ctx);
@@ -237,6 +247,10 @@ function anagrafica(k, ctx, entita, id) {
   if (!id) return {};
   try { return k.D.leggi(k.db, entita, id, ctx, { conRighe: false }); } catch { return {}; }
 }
+// l'incasso SDD Core: il file arriva in banca almeno un giorno lavorativo prima, quindi mai oggi o prima, e mai in un
+// giorno di chiusura di TARGET2 (sabato, domenica, 1/1, 1/5, 25 e 26/12; Venerdì santo e Lunedì dell'Angelo li sposta la banca)
+const chiusoTarget = d => { const g = new Date(d + 'T00:00:00Z').getUTCDay(); return g === 0 || g === 6 || ['01-01', '05-01', '12-25', '12-26'].includes(d.slice(5)); };
+export function primoIncasso(d, oggi) { let x = d > oggi ? d : R.piuGiorni(oggi, 1); while (chiusoTarget(x)) x = R.piuGiorni(x, 1); return x; }
 export function creaDistinta(k, ctx, { tipo, chiavi, data = null, adesso = new Date() }) {
   const { db, meta } = k; tabelle(db);
   if (!['riba', 'sdd', 'sct'].includes(tipo)) throw new Error('Tipo di distinta sconosciuto');
@@ -260,11 +274,11 @@ export function creaDistinta(k, ctx, { tipo, chiavi, data = null, adesso = new D
       return { importo: s.residuo, scadenza: s.data < oggi ? oggi : s.data, fattura: { numero: s.numero, data: s.dataDoc },
         debitore: { nome: c.nome || s.controparte, cf: c.piva || c.codice_fiscale || '', via: c.via || (typeof c.indirizzo === 'string' ? c.indirizzo : c.indirizzo?.via) || '', cap: c.cap || '', comune: c.comune || '', provincia: c.provincia || '', iban: c.iban || '' } };
     });
-    f = F.riba({ az, sia: imp.sia, ricevute, supporto: `KUBO${adesso.toISOString().replace(/\D/g, '').slice(2, 14)}`, oggi });
+    f = F.riba({ az, sia: imp.sia, ricevute, supporto: `KUBO${adesso.toISOString().replace(/\D/g, '').slice(2, 14)}${createHash('sha1').update(String(Math.random())).digest('hex').slice(0, 4).toUpperCase()}`, oggi });
   } else if (tipo === 'sdd') {
     f = F.pain008({ az, adesso, sequenza: imp.sequenzaSdd, incassi: scelte.map(s => {
       const c = anagrafica(k, ctx, 'clienti', s.controparteId);
-      return { importo: s.residuo, data: quando || (s.data < oggi ? oggi : s.data), debitore: { nome: c.nome || s.controparte, iban: c.iban || '' }, mandato: { id: c.mandato_sdd, data: c.data_mandato },
+      return { importo: s.residuo, data: primoIncasso(quando || s.data, oggi), debitore: { nome: c.nome || s.controparte, iban: c.iban || '' }, mandato: { id: c.mandato_sdd, data: c.data_mandato },
         e2e: `${s.numero}-${s.n}`.replace(/\//g, '-'), causale: s.descrizione };
     }) });
   } else {
@@ -292,6 +306,8 @@ export function incassaDistinta(k, ctx, id, { data = oggiIso(), movimento = null
   const { db } = k; tabelle(db);
   const d = db.prepare('SELECT * FROM _tesoreria_distinte WHERE id = ?').get(String(id));
   if (!d) throw new Error('Distinta sconosciuta');
+  k.P.verifica(ctx, d.tipo === 'sct' ? RICEVUTE : FATTURE, 'modifica');
+  if (!DATA.test(String(data))) throw new Error('Data non valida');
   const aperte = new Set(scadenzario(k, ctx).filter(s => s.residuo > 0).map(s => s.chiave)), chiavi = JSON.parse(d.chiavi).filter(c => aperte.has(c));
   return transazione(db, () => {
     const r = chiavi.length ? registraPagamenti(k, ctx, chiavi, { data, movimento, distinta: d.id }) : { fatte: [] };
@@ -318,10 +334,13 @@ export function importaEstratto(k, ctx, buf, nome = '') {
   P.verifica(ctx, e, 'crea');
   const letto = F.leggiEstratto(buf, nome), def = S.leggi(db, e), ha = c => def.campi.some(x => x.id === c && !x.archiviato);
   const visti = new Set(ha('id_esterno') ? db.prepare(`SELECT ${S.colonna('id_esterno')} AS v FROM ${S.tabella(e)} WHERE archiviato = 0`).all().map(x => x.v).filter(Boolean) : []);
-  let importati = 0, doppi = 0;
+  let importati = 0, doppi = 0; const volte = new Map();
   transazione(db, () => {
     for (const m of letto.movimenti) {
-      const idEst = m.id_esterno || createHash('sha1').update(`${m.data}|${m.importo}|${m.descrizione}|${m.riferimento}`).digest('hex').slice(0, 20);
+      // due movimenti uguali nello stesso file (due caffè da 1,20 lo stesso giorno) sono due: il secondo prende «-2»;
+      // reimportando lo stesso file i suffissi si ripetono e i doppi si riconoscono lo stesso
+      let idEst = m.id_esterno;
+      if (!idEst) { const h = createHash('sha1').update(`${m.data}|${m.importo}|${m.descrizione}|${m.riferimento}`).digest('hex').slice(0, 20), n = (volte.get(h) || 0) + 1; volte.set(h, n); idEst = n > 1 ? `${h}-${n}` : h; }
       if (visti.has(idEst)) { doppi++; continue; }
       visti.add(idEst);
       const v = { data: m.data, importo: euro(m.importo), descrizione: m.descrizione || m.controparte || '—' };
@@ -361,6 +380,8 @@ export function abbina(k, ctx, movimento, chiavi, { distinta = null } = {}) {
   if (scelte.length !== chiavi.length || !scelte.length) throw new Error('Scadenza sconosciuta');
   const verso = m.importo > 0 ? 'attiva' : 'passiva';
   if (scelte.some(s => s.verso !== verso)) throw new Error(verso === 'attiva' ? 'Un\'entrata si abbina agli incassi dai clienti' : 'Un\'uscita si abbina ai pagamenti ai fornitori');
+  if (distinta) { const d = db.prepare('SELECT chiavi, incassata FROM _tesoreria_distinte WHERE id = ?').get(String(distinta));
+    if (!d || d.incassata || chiavi.some(c => !JSON.parse(d.chiavi).includes(c))) throw new Error('La distinta non corrisponde alle scadenze scelte (o è già incassata)'); }
   const residuo = scelte.reduce((s, x) => s + x.residuo, 0), imp = Math.abs(m.importo);
   if (scelte.length > 1 && imp < residuo) throw new Error('Il movimento non basta a pagare tutte le scadenze scelte: abbinane una alla volta');
   return transazione(db, () => {
@@ -386,12 +407,9 @@ export function disabbina(k, ctx, movimento) {
   if (!a) throw new Error('Il movimento non è abbinato');
   k.P.verifica(ctx, a.sezione, 'modifica');
   return transazione(db, () => {
+    // solo i pagamenti di questo movimento; il documento si riapre (anche se altri pagamenti restano: non è più saldato)
     const chiavi = db.prepare('SELECT DISTINCT chiave FROM _tesoreria_pagamenti WHERE movimento = ?').all(a.movimento).map(x => x.chiave);
-    for (const c of chiavi) {
-      const altri = db.prepare('SELECT COUNT(*) AS n FROM _tesoreria_pagamenti WHERE chiave = ? AND IFNULL(movimento, \'\') <> ?').get(c, a.movimento).n;
-      if (altri) db.prepare('DELETE FROM _tesoreria_pagamenti WHERE chiave = ? AND movimento = ?').run(c, a.movimento);
-      else annullaPagamento(k, ctx, c);
-    }
+    for (const c of chiavi) annullaPagamento(k, ctx, c, { movimento: a.movimento });
     db.prepare('DELETE FROM _tesoreria_abbinamenti WHERE movimento = ?').run(a.movimento);
     ricopia(k, ctx, a.sezione, a.movimento, 'da_abbinare', []);
     return { ok: true };
@@ -469,7 +487,10 @@ export async function previsioneCassa(k, ctx, { passo = 'settimana', periodi = n
 }
 
 // ---------- Lumi ----------
-const chiNumero = (sc, numero, verso) => sc.filter(s => s.residuo > 0 && (!verso || s.verso === verso) && String(s.numero).split('/')[0] === String(numero).split('/')[0]);
+// «12/2026» vuole proprio quella; «12» quella col numero 12 di qualsiasi anno. Più documenti diversi: si chiede la chiave
+const chiNumero = (sc, numero, verso) => { const n = String(numero).trim().toLowerCase(), base = n.split('/')[0];
+  return sc.filter(s => s.residuo > 0 && (!verso || s.verso === verso) && (n.includes('/') ? String(s.numero).trim().toLowerCase() === n : String(s.numero).split('/')[0].trim().toLowerCase() === base)); };
+const piuDocumenti = l => new Set(l.map(s => `${s.origine.entita}:${s.origine.id}`)).size > 1;
 function strumentiLumi(k) {
   const { P } = k;
   const legge = ctx => P.puo(ctx, FATTURE, 'leggi') || P.puo(ctx, RICEVUTE, 'leggi');
@@ -498,6 +519,7 @@ function strumentiLumi(k) {
       anteprima: async ({ ctx, args }) => {
         const sc = scadenzario(k, ctx), l = args.chiave ? sc.filter(s => s.chiave === args.chiave && s.residuo > 0) : chiNumero(sc, args.numero_fattura || '', args.verso);
         if (!l.length) return { errore: 'Non trovo scadenze aperte con questi dati' };
+        if (piuDocumenti(l)) return { errore: 'Più fatture aperte con questo numero: indica la chiave dallo scadenzario' };
         if (l.length > 1 && args.importo) return { errore: 'Più rate aperte: indica la chiave di quella da pagare' };
         const tot = args.importo ? Math.round(args.importo * 100) : l.reduce((s, x) => s + x.residuo, 0);
         return { titolo: l[0].verso === 'attiva' ? 'Registra un incasso' : 'Registra un pagamento', righe: [...l.map(s => [s.descrizione, `${s.controparte} · residuo € ${euro(s.residuo).toFixed(2)}`]),
@@ -506,6 +528,7 @@ function strumentiLumi(k) {
       esegui: async ({ ctx, args }) => {
         const sc = scadenzario(k, ctx), l = args.chiave ? sc.filter(s => s.chiave === args.chiave && s.residuo > 0) : chiNumero(sc, args.numero_fattura || '', args.verso);
         if (!l.length) throw new Error('Non trovo scadenze aperte con questi dati');
+        if (piuDocumenti(l)) throw new Error('Più fatture aperte con questo numero: indica la chiave dallo scadenzario');
         return registraPagamenti(k, ctx, l.map(s => s.chiave), { data: DATA.test(args.data || '') ? args.data : oggiIso(), importo: args.importo ?? null });
       } },
     { nome: 'tesoreria_abbina_movimento', tipo: 'scrivi', permesso: scrive,
@@ -562,7 +585,7 @@ export default function registra(k) {
     if (x.errori) throw new ErroreHttp(422, 'Mancano dei dati per il file della banca', { errori: x.errori });
     return x;
   });
-  r('GET', '/api/tesoreria/distinte', ({ ctx }) => { lettore(ctx); return distinte(db); });
+  r('GET', '/api/tesoreria/distinte', ({ ctx }) => { lettore(ctx); return distinte(db).filter(d => P.puo(ctx, d.tipo === 'sct' ? RICEVUTE : FATTURE, 'leggi')); });
   r('GET', '/api/tesoreria/distinte/:id/file', ({ ctx, p, res }) => {
     lettore(ctx); const d = distinte(db).find(x => x.id === p.id); if (!d) throw new ErroreHttp(404, 'Distinta sconosciuta');
     P.verifica(ctx, d.tipo === 'sct' ? RICEVUTE : FATTURE, 'leggi');
