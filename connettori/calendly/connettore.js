@@ -4,7 +4,7 @@
 // con la chiave di firma, che qui genera Kubo e consegna a Calendly quando registra il webhook (API v2, token personale).
 // Serve un indirizzo pubblico: Calendly deve raggiungere Kubo da Internet.
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { REQ, PERMESSI, ricevi, annulla, webhookDi } from '../_comunica/agenda.js';
+import { REQ, PERMESSI, ricevi, annulla, webhookDi, indirizzoDi, MANCA_INDIRIZZO } from '../_comunica/agenda.js';
 
 export const TOLLERANZA = 180;   // secondi, contro il replay
 export function firmaCalendly(intestazione, grezzo, chiave, ora = Date.now()) {
@@ -45,9 +45,9 @@ export default {
     registra_webhook: {
       nome: 'Registra il webhook su Calendly', descrizione: 'Chiede a Calendly di avvisare Kubo a ogni prenotazione e annullamento', scrive: true,
       proponi: async (a, k) => ({ titolo: 'Webhook di Calendly', righe: [['Indirizzo', webhookDi(k, 'calendly')], ['Eventi', 'invitee.created, invitee.canceled']],
-        avvisi: k.imp.indirizzo ? [] : ['Manca l\'indirizzo pubblico di Kubo nelle impostazioni'] }),
+        avvisi: indirizzoDi(k) ? [] : [MANCA_INDIRIZZO] }),
       async esegui(a, k) {
-        if (!k.imp.indirizzo) throw new Error('Manca l\'indirizzo pubblico di Kubo nelle impostazioni');
+        if (!indirizzoDi(k)) throw new Error(MANCA_INDIRIZZO);
         const me = await k.http.get(`${base(k)}/users/me`, { bearer: k.segreti.token }); if (!me.ok) throw new Error(`Calendly ha risposto ${me.stato}`);
         const r = await k.http.post(`${base(k)}/webhook_subscriptions`, { bearer: k.segreti.token, json: { url: webhookDi(k, 'calendly'), events: ['invitee.created', 'invitee.canceled'],
           organization: me.json.resource.current_organization, user: me.json.resource.uri, scope: 'user', signing_key: k.segreti.firma } });
@@ -64,7 +64,7 @@ export default {
       { cosa: 'Token di accesso personale (Personal Access Token)', dove: 'Calendly → Integrazioni e app → API e webhook → Genera nuovo token', link: 'https://calendly.com/integrations/api_webhooks' },
       { cosa: 'Un indirizzo pubblico di Kubo (dominio o tunnel) raggiungibile da Internet', dove: 'Il tuo dominio con HTTPS, oppure un tunnel (Cloudflare Tunnel)', link: 'https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/' },
     ],
-    passi: ['Su Calendly apri Integrazioni e app → API e webhook e genera un token personale.', 'Incolla il token qui.', 'Scrivi l\'indirizzo pubblico di Kubo (con https).', 'Accendi il connettore: la chiave di firma la crea Kubo.', 'Premi «Registra il webhook su Calendly».', 'Fai una prenotazione di prova: compare tra gli appuntamenti, con il cliente.'],
+    passi: ['Su Calendly apri Integrazioni e app → API e webhook e genera un token personale.', 'Incolla il token qui.', 'Scrivi l\'indirizzo pubblico di Kubo (con https); se l\'hai impostato nella Libreria, puoi lasciarlo vuoto.', 'Accendi il connettore: la chiave di firma la crea Kubo.', 'Premi «Registra il webhook su Calendly».', 'Fai una prenotazione di prova: compare tra gli appuntamenti, con il cliente.'],
     difficolta: 'media', zone: ['mondo'],
     fonti: ['https://developer.calendly.com/api-docs/overview/webhooks/webhook-signatures', 'https://developer.calendly.com/openapi/calendly-api.yaml', 'https://calendly.com/pricing'],
     prova: 'finto', parole: ['calendly', 'prenotazioni', 'prenotazione online', 'booking', 'appuntamenti', 'scheduling', 'webhook'],
@@ -72,7 +72,7 @@ export default {
   testi: {
     en: { nome: 'Calendly', descrizione: 'Calendly bookings become appointments, with the customer.', 'imp.token': 'Personal access token', 'imp.firma': 'Webhook signing key', 'imp.indirizzo': 'Public address of Kubo (e.g. https://kubo.mystudio.com)', 'imp.clienti': 'Create the customer if missing', 'az.registra_webhook': 'Register the webhook on Calendly',
       'cat.costoNota': 'Webhooks need a paid plan: Standard from $10 per user per month (yearly), Teams $16; the Free plan does not have them.',
-      'cat.passi': ['In Calendly open Integrations & apps → API & webhooks and generate a personal token.', 'Paste the token here.', 'Enter Kubo\'s public address (with https).', 'Turn the connector on: Kubo creates the signing key.', 'Press «Register the webhook on Calendly».', 'Make a test booking: it shows up among the appointments, with the customer.'],
+      'cat.passi': ['In Calendly open Integrations & apps → API & webhooks and generate a personal token.', 'Paste the token here.', 'Enter Kubo\'s public address (with https); if you set it in the Library, you can leave it empty.', 'Turn the connector on: Kubo creates the signing key.', 'Press «Register the webhook on Calendly».', 'Make a test booking: it shows up among the appointments, with the customer.'],
       'cat.serve': [{ cosa: 'Personal Access Token', dove: 'Calendly → Integrations & apps → API & webhooks → Generate new token' }, { cosa: 'A public address for Kubo reachable from the Internet', dove: 'Your domain with HTTPS, or a tunnel (Cloudflare Tunnel)' }] },
     es: { nome: 'Calendly', descrizione: 'Las reservas de Calendly se convierten en citas, con el cliente.', 'imp.token': 'Token de acceso personal', 'imp.firma': 'Clave de firma de los webhooks', 'imp.indirizzo': 'Dirección pública de Kubo (p. ej. https://kubo.miestudio.es)', 'imp.clienti': 'Crear el cliente si no existe', 'az.registra_webhook': 'Registrar el webhook en Calendly' },
     fr: { nome: 'Calendly', descrizione: 'Les réservations Calendly deviennent des rendez-vous, avec le client.', 'imp.token': 'Jeton d\'accès personnel', 'imp.firma': 'Clé de signature des webhooks', 'imp.indirizzo': 'Adresse publique de Kubo (ex. https://kubo.moncabinet.fr)', 'imp.clienti': 'Créer le client s\'il n\'existe pas', 'az.registra_webhook': 'Enregistrer le webhook sur Calendly' },

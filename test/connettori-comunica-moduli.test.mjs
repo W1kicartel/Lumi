@@ -269,3 +269,28 @@ test('moduli e prenotazioni: il contratto del catalogo e le traduzioni nelle sei
     for (const l of ['en', 'es', 'fr', 'de', 'pt']) assert.deepEqual(brevi.filter(x => !m.testi[l]?.[x]), [], `${id} ${l}`);
   }
 });
+
+test('indirizzo pubblico di Kubo (Libreria) al posto di quello del connettore: moduli, prenotazioni, compiti; senza nessuno dei due, un errore chiaro', async () => {
+  const { webhookDi } = await import('../connettori/_comunica/agenda.js'), { linkDi } = await import('../connettori/_comunica/compiti.js');
+  const fk = (imp, pubblico = '') => ({ imp, pubblico, entita: s => s });
+  assert.equal(webhookDi(fk({ indirizzo: 'https://mio.example/' }, 'https://kubo.esempio.it'), 'tally'), 'https://mio.example/api/connettori/tally/in');   // il suo vince
+  assert.equal(webhookDi(fk({}, 'https://kubo.esempio.it'), 'tally'), 'https://kubo.esempio.it/api/connettori/tally/in');
+  assert.throws(() => webhookDi(fk({}), 'tally', true), /Libreria/);
+  assert.equal(linkDi(fk({}, 'https://kubo.esempio.it'), 'attivita', { id: 7 }), 'https://kubo.esempio.it/#/e/attivita/7'); assert.equal(linkDi(fk({}), 'attivita', { id: 7 }), null);
+  const K = await kubo(['studio']);
+  try {
+    await accendi(K, 'typeform', {});
+    const no = await K.chiama('POST', '/api/connettori/typeform/azioni/indirizzo_webhook', { args: {} }); assert.equal(no.stato, 502); assert.match(no.json.errore, /Libreria/);
+    await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: 'https://kubo.esempio.it' });
+    for (const id of ['typeform', 'tally', 'google-ads-lead', 'cal-com']) {
+      await accendi(K, id, {}); const r = await K.chiama('POST', `/api/connettori/${id}/azioni/indirizzo_webhook`, { args: {} });
+      assert.equal(r.json.indirizzo, `https://kubo.esempio.it/api/connettori/${id}/in`, `${id}: ${JSON.stringify(r.json)}`);
+    }
+    await accendi(K, 'jotform', {});
+    assert.equal((await K.chiama('POST', '/api/connettori/jotform/azioni/indirizzo_webhook', { args: {} })).json.indirizzo, `https://kubo.esempio.it/api/connettori/jotform/in/${K.nucleo.segreto('jotform', 'codice')}`);
+    await accendi(K, 'simplybook', { impostazioni: { azienda: 'centrobelle', utente: 'admin' } });
+    assert.equal((await K.chiama('POST', '/api/connettori/simplybook/azioni/indirizzo_callback', { args: {} })).json.indirizzo, `https://kubo.esempio.it/api/connettori/simplybook/in/${K.nucleo.segreto('simplybook', 'codice')}`);
+    await accendi(K, 'calendly', { segreti: { token: 'pat_prova' } });
+    assert.deepEqual((await K.chiama('POST', '/api/connettori/calendly/azioni/registra_webhook', { args: {}, anteprima: true })).json.avvisi, []);
+  } finally { await K.chiudi(); }
+});

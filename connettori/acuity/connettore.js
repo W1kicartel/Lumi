@@ -4,7 +4,7 @@
 //   «X-Acuity-Signature: <base64 HMAC-SHA256 del corpo con la chiave API>»; l'appuntamento si rilegge da
 //   GET /api/v1/appointments/{id} (Basic user id + chiave API).
 // - Senza indirizzo pubblico: un giro ogni 15 minuti legge gli appuntamenti dei prossimi 60 giorni e quelli annullati.
-import { REQ, PERMESSI, ricevi, annulla, conta, webhookDi } from '../_comunica/agenda.js';
+import { REQ, PERMESSI, ricevi, annulla, conta, webhookDi, indirizzoDi, MANCA_INDIRIZZO } from '../_comunica/agenda.js';
 const api = k => `${k.base || 'https://acuityscheduling.com'}/api/v1`;
 const chiedi = (k, percorso, opz = {}) => k.http[opz.json ? 'post' : 'get'](`${api(k)}${percorso}`, { basic: [k.imp.utente, k.segreti.chiave], ...opz });
 const no = (r, cosa) => new Error(`Acuity ha risposto ${r.stato} a ${cosa}${r.json?.message ? ': ' + r.json.message : ''}`);
@@ -52,9 +52,9 @@ export default {
   azioni: {
     registra_webhook: {
       nome: 'Registra il webhook su Acuity', descrizione: 'Chiede ad Acuity di avvisare Kubo a ogni prenotazione, spostamento e annullamento', scrive: true,
-      proponi: async (a, k) => ({ titolo: 'Webhook di Acuity', righe: [['Indirizzo', webhookDi(k, 'acuity')], ['Eventi', EVENTI.join(', ')]], avvisi: k.imp.indirizzo ? [] : ['Manca l\'indirizzo pubblico di Kubo nelle impostazioni'] }),
+      proponi: async (a, k) => ({ titolo: 'Webhook di Acuity', righe: [['Indirizzo', webhookDi(k, 'acuity')], ['Eventi', EVENTI.join(', ')]], avvisi: indirizzoDi(k) ? [] : [MANCA_INDIRIZZO] }),
       async esegui(a, k) {
-        if (!k.imp.indirizzo) throw new Error('Manca l\'indirizzo pubblico di Kubo nelle impostazioni');
+        if (!indirizzoDi(k)) throw new Error(MANCA_INDIRIZZO);
         const fatti = [];
         for (const event of EVENTI) { const r = await chiedi(k, '/webhooks', { json: { event, target: webhookDi(k, 'acuity') } }); if (!r.ok) throw no(r, `il webhook ${event}`); fatti.push(r.json?.id); }
         return { webhook: fatti };
@@ -73,7 +73,7 @@ export default {
       { cosa: 'User ID e chiave API', dove: 'Acuity → Integrazioni → API → Visualizza credenziali (in fondo alla pagina)', link: 'https://secure.acuityscheduling.com/app.php?action=settings&key=api' },
       { cosa: 'Per avere gli avvisi subito: un indirizzo pubblico di Kubo con HTTPS', dove: 'Il tuo dominio con HTTPS, oppure un tunnel (Cloudflare Tunnel)', link: 'https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/' },
     ],
-    passi: ['Su Acuity apri Integrazioni → API e premi «Visualizza credenziali».', 'Incolla qui User ID e chiave API, poi premi «Prova la connessione».', 'Premi «Leggi le prenotazioni adesso»: arrivano quelle dei prossimi 60 giorni, poi ogni 15 minuti.', 'Se Kubo ha un indirizzo pubblico, scrivilo e premi «Registra il webhook su Acuity»: le prenotazioni arrivano in pochi secondi.', 'Fai una prenotazione di prova: compare tra gli appuntamenti, con il cliente.'],
+    passi: ['Su Acuity apri Integrazioni → API e premi «Visualizza credenziali».', 'Incolla qui User ID e chiave API, poi premi «Prova la connessione».', 'Premi «Leggi le prenotazioni adesso»: arrivano quelle dei prossimi 60 giorni, poi ogni 15 minuti.', 'Se Kubo ha un indirizzo pubblico, scrivilo (se l\'hai impostato nella Libreria, puoi lasciarlo vuoto) e premi «Registra il webhook su Acuity»: le prenotazioni arrivano in pochi secondi.', 'Fai una prenotazione di prova: compare tra gli appuntamenti, con il cliente.'],
     difficolta: 'facile', zone: ['mondo'],
     fonti: ['https://developers.acuityscheduling.com/docs/webhooks', 'https://developers.acuityscheduling.com/reference/get-appointments-id', 'https://developers.acuityscheduling.com/reference/post-webhooks', 'https://developers.acuityscheduling.com/docs/quick-start', 'https://acuityscheduling.com/signup.php'],
     prova: 'finto', parole: ['acuity', 'acuity scheduling', 'squarespace', 'prenotazioni', 'prenotazione online', 'booking', 'appuntamenti', 'scheduling'],
@@ -82,7 +82,7 @@ export default {
     en: { nome: 'Acuity Scheduling', descrizione: 'Acuity Scheduling bookings become appointments, with the customer.', 'imp.utente': 'User ID', 'imp.chiave': 'API key', 'imp.indirizzo': 'Public address of Kubo (e.g. https://kubo.mystudio.com)', 'imp.clienti': 'Create the customer if missing', 'az.registra_webhook': 'Register the webhook on Acuity', 'az.leggi_appuntamenti': 'Read the bookings now', 'giro.appuntamenti': 'Appointments of the next 60 days',
       'cat.costoNota': 'API and webhooks need the Premium plan: $49 a month billed yearly ($61 month to month); Starter ($16) and Standard ($27) have no API.',
       'cat.serve': [{ cosa: 'User ID and API key', dove: 'Acuity → Integrations → API → View credentials (at the bottom of the page)' }, { cosa: 'To get bookings instantly: a public HTTPS address for Kubo', dove: 'Your domain with HTTPS, or a tunnel (Cloudflare Tunnel)' }],
-      'cat.passi': ['In Acuity open Integrations → API and press «View credentials».', 'Paste the User ID and API key here, then press «Test connection».', 'Press «Read the bookings now»: those of the next 60 days arrive, then every 15 minutes.', 'If Kubo has a public address, enter it and press «Register the webhook on Acuity»: bookings arrive within seconds.', 'Make a test booking: it shows up among the appointments, with the customer.'] },
+      'cat.passi': ['In Acuity open Integrations → API and press «View credentials».', 'Paste the User ID and API key here, then press «Test connection».', 'Press «Read the bookings now»: those of the next 60 days arrive, then every 15 minutes.', 'If Kubo has a public address, enter it (if you set it in the Library, you can leave it empty) and press «Register the webhook on Acuity»: bookings arrive within seconds.', 'Make a test booking: it shows up among the appointments, with the customer.'] },
     es: { nome: 'Acuity Scheduling', descrizione: 'Las reservas de Acuity Scheduling se convierten en citas, con el cliente.', 'imp.utente': 'User ID', 'imp.chiave': 'Clave API', 'imp.indirizzo': 'Dirección pública de Kubo (p. ej. https://kubo.miestudio.es)', 'imp.clienti': 'Crear el cliente si no existe', 'az.registra_webhook': 'Registrar el webhook en Acuity', 'az.leggi_appuntamenti': 'Leer las reservas ahora', 'giro.appuntamenti': 'Citas de los próximos 60 días' },
     fr: { nome: 'Acuity Scheduling', descrizione: 'Les réservations Acuity Scheduling deviennent des rendez-vous, avec le client.', 'imp.utente': 'User ID', 'imp.chiave': 'Clé API', 'imp.indirizzo': 'Adresse publique de Kubo (ex. https://kubo.moncabinet.fr)', 'imp.clienti': 'Créer le client s\'il n\'existe pas', 'az.registra_webhook': 'Enregistrer le webhook sur Acuity', 'az.leggi_appuntamenti': 'Lire les réservations maintenant', 'giro.appuntamenti': 'Rendez-vous des 60 prochains jours' },
     de: { nome: 'Acuity Scheduling', descrizione: 'Acuity-Scheduling-Buchungen werden zu Terminen, mit dem Kunden.', 'imp.utente': 'User ID', 'imp.chiave': 'API-Schlüssel', 'imp.indirizzo': 'Öffentliche Adresse von Kubo (z. B. https://kubo.meinestudio.de)', 'imp.clienti': 'Kunden anlegen, falls er fehlt', 'az.registra_webhook': 'Webhook bei Acuity registrieren', 'az.leggi_appuntamenti': 'Buchungen jetzt lesen', 'giro.appuntamenti': 'Termine der nächsten 60 Tage' },

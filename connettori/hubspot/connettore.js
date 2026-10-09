@@ -58,7 +58,7 @@ export function firmaV3(segreto, metodo, uri, corpo, ts) { return createHmac('sh
 function verifica({ req, grezzo, segreto, k }) {
   const ts = Number(req.headers['x-hubspot-request-timestamp']), firma = String(req.headers['x-hubspot-signature-v3'] || '');
   if (!ts || !firma || Math.abs(Date.now() - ts) > 3e5) return false;
-  const base = String(k.imp.pubblico || `https://${req.headers['x-forwarded-host'] || req.headers.host}`).replace(/\/+$/, '');
+  const base = String(k.imp.pubblico || k.pubblico || `https://${req.headers['x-forwarded-host'] || req.headers.host}`).replace(/\/+$/, '');
   const uri = base + String(req.url).replace(/%(3A|2F|3F|40|21|24|27|28|29|2A|2C|3B)/gi, m => DECODIFICA[m.toUpperCase()]);
   const a = Buffer.from(firmaV3(segreto, req.method, uri, grezzo.toString('utf8'), req.headers['x-hubspot-request-timestamp'])), b = Buffer.from(firma);
   return a.length === b.length && timingSafeEqual(a, b);
@@ -69,7 +69,7 @@ export default {
   impostazioni: [
     { id: 'token', nome: 'Access token della Private App (pat-…)', segreto: true, schema: /^pat-[a-z0-9]+-[0-9a-f-]{20,}$/i },
     { id: 'firma', nome: 'Client secret della Private App (solo per il webhook)', segreto: true, obbligatorio: false },
-    { id: 'pubblico', nome: 'Indirizzo pubblico di Kubo (solo per il webhook, es. https://kubo.bottega.it)', tipo: 'url' },
+    { id: 'pubblico', nome: 'Indirizzo pubblico di Kubo (solo per il webhook, es. https://kubo.bottega.it)', tipo: 'url', obbligatorio: false },
   ],
   richiede: { clienti: { nome: {}, email: { tipo: ['email'] }, telefono: { tipo: ['telefono', 'testo'], facoltativo: true }, piva: { tipo: ['testo'], facoltativo: true }, indirizzo: { tipo: ['indirizzo', 'testo'], facoltativo: true } } },
   permessi: { clienti: { leggi: true, crea: true, modifica: true } },
@@ -109,7 +109,7 @@ export default {
       'Copia l\'access token (pat-…) e incollalo qui; premi «Prova la connessione».',
       'Premi «Manda tutti i clienti a HubSpot»: i clienti con email diventano contatti, quelli con P.IVA anche aziende.',
       'Da lì ogni cliente cambiato in Kubo va subito a HubSpot, e ogni 15 minuti i contatti cambiati in HubSpot arrivano in Kubo.',
-      'Facoltativo, se Kubo ha un indirizzo pubblico: nella Private App aggiungi il webhook verso <indirizzo>/api/connettori/hubspot/in con gli eventi dei contatti, e incolla qui il client secret.',
+      'Facoltativo, se Kubo ha un indirizzo pubblico: nella Private App aggiungi il webhook verso <indirizzo>/api/connettori/hubspot/in con gli eventi dei contatti, e incolla qui il client secret. Se hai impostato l\'indirizzo pubblico di Kubo nella Libreria, puoi lasciarlo vuoto qui.',
     ],
     difficolta: 'media', zone: ['mondo'],
     fonti: ['https://developers.hubspot.com/docs/guides/api/crm/objects/contacts', 'https://developers.hubspot.com/docs/guides/api/crm/search', 'https://developers.hubspot.com/docs/guides/apps/private-apps/overview', 'https://developers.hubspot.com/docs/api/webhooks/validating-requests', 'https://www.hubspot.com/pricing/crm'],
@@ -119,7 +119,7 @@ export default {
     en: { nome: 'HubSpot', descrizione: 'Kubo customers and HubSpot contacts in line both ways; VAT-registered businesses as companies.', 'imp.token': 'Private App access token (pat-…)', 'imp.firma': 'Private App client secret (webhook only)', 'imp.pubblico': 'Public address of Kubo (webhook only, e.g. https://kubo.shop.com)', 'az.invia_tutti': 'Send all customers to HubSpot', 'giro.contatti': 'Contacts changed in HubSpot',
       'cat.costoNota': 'Free HubSpot CRM (Free tools) with up to 1,000,000 contacts and API access through Private Apps; Starter Customer Platform from €9 per seat per month (billed annually).',
       'cat.serve': [{ cosa: 'A Private App access token with scopes crm.objects.contacts.read, crm.objects.contacts.write, crm.objects.companies.write', dove: 'HubSpot → Settings (gear) → Integrations → Private Apps → Create a private app → Scopes → Create → Show token' }, { cosa: 'Webhook only: the Private App client secret and a public address for Kubo', dove: 'Private App → Webhooks (target URL) and Auth tab → Client secret' }],
-      'cat.passi': ['In HubSpot open Settings → Integrations → Private Apps and create a «Kubo» app.', 'Under Scopes tick crm.objects.contacts.read, crm.objects.contacts.write and crm.objects.companies.write, then create the app.', 'Copy the access token (pat-…) and paste it here; press «Test connection».', 'Press «Send all customers to HubSpot»: customers with an email become contacts, those with a VAT number also companies.', 'From then on every customer changed in Kubo goes to HubSpot right away, and every 15 minutes contacts changed in HubSpot come into Kubo.', 'Optional, if Kubo has a public address: add the webhook <address>/api/connettori/hubspot/in with contact events in the Private App, and paste the client secret here.'] },
+      'cat.passi': ['In HubSpot open Settings → Integrations → Private Apps and create a «Kubo» app.', 'Under Scopes tick crm.objects.contacts.read, crm.objects.contacts.write and crm.objects.companies.write, then create the app.', 'Copy the access token (pat-…) and paste it here; press «Test connection».', 'Press «Send all customers to HubSpot»: customers with an email become contacts, those with a VAT number also companies.', 'From then on every customer changed in Kubo goes to HubSpot right away, and every 15 minutes contacts changed in HubSpot come into Kubo.', 'Optional, if Kubo has a public address: add the webhook <address>/api/connettori/hubspot/in with contact events in the Private App, and paste the client secret here. If you set Kubo\'s public address in the Library, you can leave it empty here.'] },
     es: { nome: 'HubSpot', descrizione: 'Clientes de Kubo y contactos de HubSpot alineados en ambos sentidos; las empresas con NIF como company.', 'imp.token': 'Access token de la Private App (pat-…)', 'imp.firma': 'Client secret de la Private App (solo para el webhook)', 'imp.pubblico': 'Dirección pública de Kubo (solo para el webhook)', 'az.invia_tutti': 'Enviar todos los clientes a HubSpot', 'giro.contatti': 'Contactos modificados en HubSpot' },
     fr: { nome: 'HubSpot', descrizione: 'Clients de Kubo et contacts HubSpot alignés dans les deux sens ; les entreprises avec n° de TVA comme company.', 'imp.token': 'Access token de la Private App (pat-…)', 'imp.firma': 'Client secret de la Private App (webhook uniquement)', 'imp.pubblico': 'Adresse publique de Kubo (webhook uniquement)', 'az.invia_tutti': 'Envoyer tous les clients à HubSpot', 'giro.contatti': 'Contacts modifiés dans HubSpot' },
     de: { nome: 'HubSpot', descrizione: 'Kubo-Kunden und HubSpot-Kontakte in beide Richtungen abgeglichen; Firmen mit USt-IdNr. als Company.', 'imp.token': 'Access Token der Private App (pat-…)', 'imp.firma': 'Client Secret der Private App (nur für den Webhook)', 'imp.pubblico': 'Öffentliche Adresse von Kubo (nur für den Webhook)', 'az.invia_tutti': 'Alle Kunden an HubSpot senden', 'giro.contatti': 'In HubSpot geänderte Kontakte' },

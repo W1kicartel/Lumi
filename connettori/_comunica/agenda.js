@@ -73,7 +73,10 @@ export function annulla(k, remoto) {
   if (k.valore(r, SEM, 'stato') === 'annullato') return 'uguale';
   k.dati.modifica(SEM, rid, { stato: 'annullato' }); return 'annullato';
 }
-// l'indirizzo pubblico del webhook, da mostrare al titolare
-export const webhookDi = (k, id) => `${String(k.imp.indirizzo || '').replace(/\/+$/, '')}/api/connettori/${id}/in`;
+// l'indirizzo pubblico di Kubo: quello scritto nel connettore o, se è vuoto, quello unico della Libreria (k.pubblico)
+export const indirizzoDi = k => String(k.imp.indirizzo || k.pubblico || '').trim().replace(/\/+$/, '');
+export const MANCA_INDIRIZZO = 'Manca l\'indirizzo pubblico di Kubo: impostalo nella Libreria (o nelle impostazioni del connettore)';
+// l'indirizzo del webhook, da mostrare al titolare; «serve»: senza indirizzo pubblico è un errore chiaro
+export const webhookDi = (k, id, serve = false) => { const b = indirizzoDi(k); if (!b && serve) throw new Error(MANCA_INDIRIZZO); return `${b}/api/connettori/${id}/in`; };
 // i conti di un giro di sincronizzazione
 export const conta = (conti, x) => { conti[x === 'creato' ? 'creati' : x === 'spostato' ? 'spostati' : /^ignorato/.test(x) ? 'saltati' : 'uguali']++; };
