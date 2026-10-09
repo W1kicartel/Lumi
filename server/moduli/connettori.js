@@ -359,7 +359,17 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
       }
     }
   }
-  const battito = setInterval(() => { pianificatore().then(lavora).catch(e => console.error('connettori', e)); }, 30000); battito.unref?.();
+  // una volta al giorno: via le consegne finite da più di 30 giorni e gli eventi visti da più di 90 (l'idempotenza non serve oltre)
+  let potato = 0;
+  function pota(adesso = Date.now()) {
+    potato = adesso; const g = n => new Date(adesso - n * 864e5).toISOString();
+    return { coda: db.prepare("DELETE FROM _connettori_coda WHERE stato = 'fatto' AND COALESCE(aggiornato, creato) < ?").run(g(30)).changes,
+      eventi: db.prepare('DELETE FROM _connettori_eventi WHERE quando < ?').run(g(90)).changes };
+  }
+  const battito = setInterval(() => {
+    if (Date.now() - potato > 864e5) { try { pota(); } catch (e) { console.error('connettori pota', e); } }
+    pianificatore().then(lavora).catch(e => console.error('connettori', e));
+  }, 30000); battito.unref?.();
 
   // ---------- OAuth 2: codice con PKCE, device code, client credentials; rinnovo dei token ----------
   // Opzioni del manifesto: basic (client_secret_basic), corpo: 'json' (token e device in JSON), pkce: false, redirect(k)
@@ -400,13 +410,24 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
   // ---------- strumenti di Lumi (contratto k.lumi.strumento, se c'è) ----------
   // le azioni che cambiano con le impostazioni (le ricette) si registrano di nuovo a ogni salvataggio: il permesso guarda
   // l'azione com'è adesso, e una ricetta tolta non si usa più
+  // Il nome di uno strumento dipende solo dalla coppia (connettore, azione): «connettore_<id>_<azione>», con il «-» dell'id
+  // scritto «__» (così la copia «http-crm» + «link» non diventa «http» + «crm_link»). Se l'azione ha caratteri da cambiare,
+  // comincia con «_» o il nome passa 64 caratteri, il nome si accorcia e prende 8 cifre dell'impronta della coppia.
+  const nomiLumi = new Map();
+  function nomeLumi(id, azione) {
+    const coppia = `${id}\0${azione}`, pulita = String(azione).replace(/[^a-zA-Z0-9_]/g, '_'), base = `connettore_${id.replace(/-/g, '__')}_${pulita}`;
+    const impronta = n => createHash('sha256').update(coppia).digest('hex').slice(0, n);
+    let nome = base.length <= 64 && pulita === String(azione) && !pulita.startsWith('_') ? base : `${base.slice(0, 55)}_${impronta(8)}`;
+    if (nomiLumi.has(nome) && nomiLumi.get(nome) !== coppia) nome = `${base.slice(0, 47)}_${impronta(16)}`;   // non succede: ma mai sopra un altro
+    nomiLumi.set(nome, coppia); return nome;
+  }
   function registraLumi(id) {
     const c = tutti.get(id); if (!c?.man || c.rotto) return;
     for (const [nome, a] of Object.entries(azioniDi(id))) {
       if (!a.lumi) continue;
       const ora = () => azioniDi(id)[nome];
       try {
-        lumi?.strumento?.({ nome: `connettore_${id}_${nome}`.replace(/[^a-zA-Z0-9_]/g, '_').slice(0, 64), descrizione: `${c.man.nome}: ${a.descrizione || a.nome}`, schema: schemaArgs(a), tipo: a.scrive ? 'scrivi' : 'leggi',
+        lumi?.strumento?.({ nome: nomeLumi(id, nome), descrizione: `${c.man.nome}: ${a.descrizione || a.nome}`, schema: schemaArgs(a), tipo: a.scrive ? 'scrivi' : 'leggi',
           permesso: ctx => { const x = ora(); return !!x && attivo(id) && (x.su ? P.puo(ctx, entitaDi(id, x.su), x.scrive ? 'modifica' : 'leggi') : ctx?.r?.id === 'titolare'); },
           esegui: ({ ctx, args }) => azione(id, nome, args, ctx), anteprima: ({ ctx, args }) => azione(id, nome, args, ctx, { anteprima: true }) });
       } catch (e) { console.error('connettori lumi', id, nome, e.message); }
@@ -428,7 +449,7 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
       const v = args[n]; if (def.facoltativo && (v == null || v === '')) { x[n] = undefined; continue; }
       x[n] = def.tipo === 'relazione' ? D.leggi(db, entitaDi(id, def.entita), String(v?.id ?? v ?? ''), ctx) : v;
     }
-    if (anteprima) return a.proponi ? a.proponi(x, k) : { titolo: a.nome, righe: [], avvisi: [] };
+    if (anteprima) return a.proponi ? a.proponi(x, k, { ctx }) : { titolo: a.nome, righe: [], avvisi: [] };
     const t0 = Date.now();
     try { const r = await a.esegui(x, k, { ctx }); annota(id, 'azione', 'ok', nome, { chi: ctx?.utente?.nome }, Date.now() - t0); return r; }
     catch (e) {
@@ -550,8 +571,11 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
     if (corpo.attivo === true) await man.attiva?.(kPer(p.id));
     return scheda(p.id, linguaDi(req, ctx), true);
   });
+  // i codici che un servizio mette in fondo all'indirizzo (o che Kubo genera): se li sceglie il titolare, almeno 16 caratteri
+  const minimo = (man, def) => Math.max(def.minimo || 0, def.segreto && (def.generato || (man.entrata?.firma?.segreto === def.id && (man.entrata.firma.tipo === 'token' || man.entrata.firma.nelPercorso))) ? 16 : 0);
   function convalida(id, def, v) {
     if (v == null || v === '') return null;
+    const min = minimo(conn(id).man, def); if (min && String(v).trim().length < min) throw errore(400, 'codice-corto', { nome: def.nome, minimo: min });
     if (def.tipo === 'numero') { const n = Number(v); if (!Number.isFinite(n)) throw errore(400, 'valore-non-valido', { nome: def.nome }); return n; }
     if (def.tipo === 'si_no') return !!v;
     // «ricette» (o un altro elenco strutturato): il manifesto le controlla e le ripulisce con controlla(valore) → valore pulito
@@ -712,7 +736,7 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
   });
 
   // per i test e per gli altri moduli (es. una scheda che vuole sapere se Stripe è attivo)
-  const istanza = { pronti, attivo, k: kPer, gira, lavora, pianificatore, accoda, segreto, annota, tutti: () => tutti, ctxServizio,
+  const istanza = { pronti, attivo, k: kPer, gira, lavora, pianificatore, accoda, segreto, annota, tutti: () => tutti, ctxServizio, pota, nomeLumi,
     perProva: (id, { base } = {}) => { const imp = impDi(id); imp._base = base; scriviRiga(id, { impostazioni: JSON.stringify(imp) }); kCache.delete(id); } };
   istanze.set(db, istanza);
   return istanza;

@@ -135,3 +135,53 @@ test('indirizzo pubblico unico (k.pubblico), input facoltativi negli strumenti d
     assert.equal((await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: 'https://altro.example' })).stato, 403);
   } finally { await K.chiudi(); }
 });
+
+test('sicurezza: nomi degli strumenti senza collisioni, URL dei ponti mascherati, accesso solo sul sito base, codici corti, CR/LF, pulizia', async () => {
+  const S = await finto({ 'POST /v1/link': () => ({ ok: 1 }), 'POST /altro/hook': () => ({ ok: 1 }), 'POST /hooks/catch/123/abc': () => ({ ok: 1 }) });
+  const K = await kuboCon({}, ['negozio']);
+  const accendiQui = async (id, imp, segreti = {}) => { K.n.perProva(id, {}); const r = await K.chiama('PUT', `/api/connettori/${id}`, { interni: true, impostazioni: imp, segreti, attivo: true }); assert.equal(r.stato, 200, JSON.stringify(r.json)); return r.json; };
+  try {
+    const cl = (await K.chiama('POST', '/api/dati/clienti', { nome: 'Rossi' })).json;
+    // http con la ricetta «crm_link», la copia http-crm con la ricetta «link»: due strumenti, ognuno al suo connettore
+    await accendiQui('http', { base: `${S.url}/v1`, accesso: 'bearer', ricette: [{ id: 'crm_link', nome: 'Link', tipo: 'azione', sezione: 'clienti', metodo: 'POST', percorso: '/link' },
+      { id: 'fuori', nome: 'Fuori', tipo: 'azione', sezione: 'clienti', metodo: 'POST', percorso: `${S.url.replace('127.0.0.1', 'localhost')}/altro/hook` }] }, { chiave: 'tok-segreto' });
+    assert.equal((await K.chiama('POST', '/api/connettori/http/copie', { nome: 'crm' })).stato, 200);
+    await accendiQui('http-crm', { base: `${S.url}/v1`, ricette: [{ id: 'link', nome: 'Link copia', tipo: 'azione', sezione: 'clienti', metodo: 'POST', percorso: '/link' }] });
+    const nomi = (await K.chiama('GET', '/api/lumi/strumenti')).json.strumenti.map(x => x.nome);
+    assert.ok(nomi.includes('connettore_http_crm_link') && nomi.includes('connettore_http__crm_link'), nomi.filter(n => /http/.test(n)).join());
+    assert.equal((await K.chiama('POST', '/api/lumi/strumenti/connettore_http__crm_link/anteprima', { args: { riga: cl.id } })).json.titolo, 'Link copia');
+    assert.equal((await K.chiama('POST', '/api/lumi/strumenti/connettore_http_crm_link/anteprima', { args: { riga: cl.id } })).json.titolo, 'Link');
+    // deterministici e mai oltre 64 caratteri
+    assert.equal(K.n.nomeLumi('http-crm', 'link'), 'connettore_http__crm_link');
+    const lungo = K.n.nomeLumi('connettore-con-un-nome-davvero-lungo', 'azione_con_un_nome_altrettanto_lungo');
+    assert.ok(lungo.length <= 64 && /_[0-9a-f]{8}$/.test(lungo)); assert.equal(K.n.nomeLumi('connettore-con-un-nome-davvero-lungo', 'azione_con_un_nome_altrettanto_lungo'), lungo);
+    assert.notEqual(K.n.nomeLumi('http', 'a-b'), K.n.nomeLumi('http', 'a_b'));
+    // l'accesso (Bearer) va solo al sito base: la ricetta con un indirizzo completo altrove parte senza, finché il titolare non lo dice
+    const chiama = async () => { await K.chiama('POST', '/api/connettori/http/azioni/fuori', { args: { riga: cl.id } }); return S.chiamate.at(-1); };
+    assert.equal((await chiama()).intestazioni.authorization, undefined);
+    await K.chiama('POST', '/api/connettori/http/azioni/crm_link', { args: { riga: cl.id } }); assert.equal(S.chiamate.at(-1).intestazioni.authorization, 'Bearer tok-segreto');
+    const imp = (await K.chiama('GET', '/api/connettori/http')).json.impostazioni.find(i => i.id === 'ricette').valore;
+    await K.chiama('PUT', '/api/connettori/http', { impostazioni: { ricette: imp.map(r => (r.id === 'fuori' ? { ...r, conAccesso: true } : r)) } });
+    assert.equal((await chiama()).intestazioni.authorization, 'Bearer tok-segreto');
+    // CR/LF nelle intestazioni in più: rifiutate al salvataggio
+    assert.equal((await K.chiama('PUT', '/api/connettori/http', { impostazioni: { intestazioni: { 'X-Prova': 'a\r\nX-Altro: b' } } })).stato, 400);
+    assert.equal((await K.chiama('PUT', '/api/connettori/http', { impostazioni: { intestazioni: { 'X-Prova': 'una riga' } } })).stato, 200);
+    // codici in fondo all'indirizzo scelti dal titolare: almeno 16 caratteri
+    const corto = await K.chiama('PUT', '/api/connettori/http', { segreti: { codice: 'corto' } }); assert.equal(corto.stato, 400); assert.match(corto.json.errore, /16/);
+    assert.equal((await K.chiama('PUT', '/api/connettori/http', { segreti: { codice: 'un-codice-abbastanza-lungo' } })).stato, 200);
+    // un ponte (Zapier): l'indirizzo dell'hook lo vede solo il titolare
+    await accendiQui('zapier', { ricette: [{ id: 'zap', nome: 'Zap', tipo: 'azione', sezione: 'clienti', metodo: 'POST', percorso: `${S.url}/hooks/catch/123/abc` }] });
+    const tit = (await K.chiama('POST', '/api/connettori/zapier/azioni/zap', { args: { riga: cl.id }, anteprima: true })).json;
+    assert.match(tit.righe[1][1], /\/hooks\/catch\/123\/abc$/);
+    await K.chiama('POST', '/api/utenti', { nome: 'C', email: 'c@esempio.it', password: 'password-lunga', ruolo: 'collaboratore' });
+    K.esci(); await K.chiama('POST', '/api/accedi', { email: 'c@esempio.it', password: 'password-lunga' });
+    const col = await K.chiama('POST', '/api/connettori/zapier/azioni/zap', { args: { riga: cl.id }, anteprima: true });
+    assert.equal(col.stato, 200, JSON.stringify(col.json)); assert.equal(col.json.righe[1][1], `${S.url}/…`); assert.ok(!JSON.stringify(col.json).includes('/hooks/catch'));
+    // pulizia: consegne finite da più di 30 giorni, eventi da più di 90
+    const vecchio = new Date(Date.now() - 40 * 864e5).toISOString(), antico = new Date(Date.now() - 100 * 864e5).toISOString(), ora = new Date().toISOString();
+    for (const [stato, quando] of [['fatto', vecchio], ['fatto', ora], ['fallito', vecchio]]) K.db.prepare("INSERT INTO _connettori_coda (connettore, tipo, corpo, stato, prossimo, creato, aggiornato) VALUES ('http', 'x', '{}', ?, 0, ?, ?)").run(stato, quando, quando);
+    for (const [c, quando] of [['a', antico], ['b', vecchio]]) K.db.prepare("INSERT INTO _connettori_eventi (connettore, chiave, quando) VALUES ('http', ?, ?)").run(c, quando);
+    assert.deepEqual(K.n.pota(), { coda: 1, eventi: 1 });
+    assert.equal(K.db.prepare("SELECT COUNT(*) n FROM _connettori_coda WHERE connettore = 'http' AND tipo = 'x'").get().n, 2);
+  } finally { await K.chiudi(); await S.chiudi(); }
+});
