@@ -79,7 +79,7 @@ export function segnaSpedizione(k, venditaId, { corriere = '', tracking = '', st
 
 // i testi comuni dei campi facoltativi delle spedizioni
 export const RICHIEDE_SPEDIZIONI = {
-  vendite: { cliente: { tipo: 'relazione' }, note: { tipo: 'testo_lungo', facoltativo: true }, tracking: { tipo: 'testo', facoltativo: true }, spedizione: { tipo: ['testo', 'scelta', 'stato'], facoltativo: true } },
+  vendite: { cliente: { tipo: 'relazione' }, note: { tipo: 'testo_lungo', facoltativo: true }, tracking: { tipo: 'testo', facoltativo: true }, spedizione: { tipo: 'testo', facoltativo: true } },
   clienti: { nome: { tipo: 'testo' }, email: { tipo: 'email', facoltativo: true }, telefono: { tipo: 'telefono', facoltativo: true }, indirizzo: { tipo: ['indirizzo', 'testo', 'testo_lungo'], facoltativo: true },
     via: { tipo: 'testo', facoltativo: true }, cap: { tipo: 'testo', facoltativo: true }, comune: { tipo: 'testo', facoltativo: true }, provincia: { tipo: 'testo', facoltativo: true } },
 };
@@ -89,3 +89,16 @@ export const RICHIEDE_NEGOZI = {
   clienti: { nome: { tipo: 'testo', facoltativo: true }, email: { tipo: 'email', facoltativo: true }, telefono: { tipo: 'telefono', facoltativo: true } },
 };
 export const PERMESSI_NEGOZI = { articoli: { leggi: true, crea: true, modifica: true }, vendite: { leggi: true, crea: true }, clienti: { leggi: true, crea: true } };
+
+// «dov'è il pacco di Rossi?»: la vendita per id o numero, oppure l'ultima vendita del cliente che ha una spedizione
+// di questo connettore. → { vendita, remoto }
+export function venditaDiChi(k, chi) {
+  try { const v = venditaDa(k, chi); return { vendita: v, remoto: k.sincro.remoto('vendite', v.id) }; } catch (e) { if (!String(chi ?? '').trim()) throw e; }
+  const clienti = k.dati.elenca('clienti', { cerca: String(chi).trim(), perPagina: 20 }).righe;
+  const cand = [];
+  for (const c of clienti) for (const v of k.dati.elenca('vendite', { filtri: [{ campo: 'cliente', op: '=', valore: c.id }], perPagina: 200 }).righe) {
+    const remoto = k.sincro.remoto('vendite', v.id); if (remoto) cand.push({ vendita: v, remoto });
+  }
+  if (!cand.length) throw new Error(`Nessuna spedizione trovata per «${chi}»`);
+  return cand.sort((a, b) => String(b.vendita.creato).localeCompare(String(a.vendita.creato)))[0];
+}
