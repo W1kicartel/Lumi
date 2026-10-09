@@ -185,3 +185,11 @@ test('sicurezza: nomi degli strumenti senza collisioni, URL dei ponti mascherati
     assert.equal(K.db.prepare("SELECT COUNT(*) n FROM _connettori_coda WHERE connettore = 'http' AND tipo = 'x'").get().n, 2);
   } finally { await K.chiudi(); await S.chiudi(); }
 });
+
+test('pagina: i permessi «*» sono «tutte le sezioni»', async () => {
+  const K = await kuboCon({ tutto: `export default { id: 'tutto', nome: 'Tutto', permessi: { '*': { leggi: true } } };` });
+  try {
+    const p = (await K.chiama('GET', '/api/connettori/tutto')).json.permessi;
+    assert.deepEqual(p, [{ entita: '*', tutte: true, leggi: true }]);
+  } finally { await K.chiudi(); }
+});

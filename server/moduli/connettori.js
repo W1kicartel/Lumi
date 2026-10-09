@@ -475,7 +475,7 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
       mancano: [...(man.impostazioni || []).filter(i => i.obbligatorio !== false && i.segreto && !i.generato && !salvati.has(i.id)).map(i => tr(man, l, `imp.${i.id}`, i.nome)), ...mancanti(id)] };
     if (!completa) return base;
     return { ...base, interni: !!x?.interni,
-      permessi: Object.entries(permessiDi(id)).map(([sem, p]) => ({ entita: S.leggi(db, entitaDi(id, sem))?.nome || sem, ...p })),
+      permessi: Object.entries(permessiDi(id)).map(([sem, p]) => ({ entita: sem === '*' ? '*' : S.leggi(db, entitaDi(id, sem))?.nome || sem, ...(sem === '*' ? { tutte: true } : {}), ...p })),
       impostazioni: (man.impostazioni || []).map(i => ({ id: i.id, nome: tr(man, l, `imp.${i.id}`, i.nome), aiuto: tr(man, l, `aiuto.${i.id}`, i.aiuto) || null, tipo: i.tipo || 'testo', segreto: !!i.segreto,
         opzioni: i.opzioni || null, ...(i.tipo === 'ricette' ? { assoluti: !!i.assoluti } : {}), ...(i.segreto ? { salvato: salvati.has(i.id), ...(i.generato ? { valore: segreto(id, i.id), generato: true } : {}) } : { valore: imp[i.id] ?? i.predefinito ?? null }) })),
       // «nelPercorso»: il codice generato va in fondo all'indirizzo anche con una verifica su misura (le ricette in entrata)
