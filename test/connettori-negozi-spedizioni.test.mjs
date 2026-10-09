@@ -101,3 +101,28 @@ test('Packlink PRO: bozza dalla vendita con Authorization, evento col codice seg
     assert.equal(d.json.stato, 'In viaggio', JSON.stringify(d.json)); assert.match(d.json.ultimo, /In consegna Parma/);
   } finally { await K.chiudi(); await S.chiudi(); }
 });
+
+test('DHL: spedizione Express con Basic e conto, tracking unificato con DHL-API-Key sulla vendita, giro delle aperte', async () => {
+  const K = await kubo(), spedizioni = []; let codice = 'transit';
+  const S = await finto({
+    'POST /mydhlapi/test/shipments': (p, c, { intestazioni }) => { spedizioni.push({ c, auth: intestazioni.authorization }); return { shipmentTrackingNumber: '1234567890', trackingUrl: 'https://track.example/1234567890', documents: [{ typeCode: 'label', imageFormat: 'PDF', content: 'JVBERi0x' }] }; },
+    'GET /track/shipments': (p, c, { q, intestazioni }) => (intestazioni['dhl-api-key'] !== 'dk' ? { stato: 401, corpo: {} } : q.get('trackingNumber') === '00340434292135100186' ? { stato: 404, corpo: { detail: 'No shipment' } }
+      : { shipments: [{ id: q.get('trackingNumber'), status: { statusCode: codice, status: codice === 'delivered' ? 'DELIVERED' : 'TRANSIT', description: codice === 'delivered' ? 'Consegnato' : 'In transito', location: { address: { addressLocality: 'Milano' } } } }] }),
+  });
+  try {
+    await accendi(K, 'dhl', { base: S.url, segreti: { chiave_tracking: 'dk', utente: 'u-dhl', password: 'p-dhl' }, impostazioni: { conto: '123456789', ambiente: 'prova', mittente_nome: 'Bottega', mittente_via: 'Via Torino 5', mittente_cap: '20123', mittente_comune: 'Milano' } });
+    assert.equal((await K.chiama('POST', '/api/connettori/dhl/prova')).json.ok, true);
+    const v = await venditaConCliente(K, { nome: 'Irene Costa', indirizzo: 'Via Cavour 21, 00184 Roma (RM)' });
+    const r = await K.chiama('POST', '/api/connettori/dhl/azioni/spedisci', { args: { vendita: v.numero } });
+    assert.equal(r.json.tracking, '1234567890', JSON.stringify(r.json)); assert.equal(r.json.etichetta, 'data:application/pdf;base64,JVBERi0x');
+    const x = spedizioni[0]; assert.equal(x.auth, 'Basic ' + Buffer.from('u-dhl:p-dhl').toString('base64'));
+    assert.deepEqual(x.c.accounts, [{ typeCode: 'shipper', number: '123456789' }]); assert.equal(x.c.productCode, 'N');
+    assert.deepEqual(x.c.customerDetails.receiverDetails.postalAddress, { postalCode: '00184', cityName: 'Roma', countryCode: 'IT', addressLine1: 'Via Cavour 21', provinceCode: 'RM' });
+    const d = await K.chiama('POST', '/api/connettori/dhl/azioni/dove', { args: { chi: 'Costa' } });
+    assert.equal(d.json.stato, 'In transito', JSON.stringify(d.json)); assert.equal(d.json.dove, 'Milano');
+    codice = 'delivered';
+    assert.deepEqual((await K.chiama('POST', '/api/connettori/dhl/giri/stati')).json.risultato, { lette: 1, consegnate: 1 });
+    assert.match((await K.chiama('GET', `/api/dati/vendite/${v.id}`)).json.note, /Spedizione DHL 1234567890: Consegnato/);
+    assert.deepEqual((await K.chiama('POST', '/api/connettori/dhl/giri/stati')).json.risultato, { lette: 0, consegnate: 0 });
+  } finally { await K.chiudi(); await S.chiudi(); }
+});
