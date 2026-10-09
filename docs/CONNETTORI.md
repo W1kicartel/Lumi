@@ -189,7 +189,7 @@ await manda(K, '/api/connettori/prenota/in', corpo, { 'X-Prenota-Firma': firmaHm
 
 | Voce | Cosa fa |
 |---|---|
-| `impostazioni` | `{ id, nome, tipo: 'testo'\|'url'\|'numero'\|'si_no'\|'scelta', opzioni, predefinito, schema: /regex/, segreto, generato, obbligatorio, minimo }`. `generato: true` vale per un codice creato da Kubo all'accensione (il codice segreto del feed o del callback): solo il titolare lo vede, per copiarlo. Se il titolare lo cambia, o sceglie lui il codice di un webhook con `firma.tipo: 'token'` o `nelPercorso`, servono almeno 16 caratteri (`minimo` alza la soglia per un segreto qualsiasi). Un `url` passa dal controllo SSRF. Un indirizzo pubblico di Kubo chiesto dal connettore ricade su `k.pubblico` quando è vuoto. |
+| `impostazioni` | `{ id, nome, tipo: 'testo'\|'url'\|'numero'\|'si_no'\|'scelta', opzioni, predefinito, schema: /regex/, segreto, generato, obbligatorio, minimo }`. `generato: true` vale per un codice creato da Kubo all'accensione (il codice segreto del feed o del callback): solo il titolare lo vede, per copiarlo; se una versione nuova del connettore ne aggiunge uno, Kubo lo crea al riavvio anche per i connettori già accesi. Se il titolare lo cambia, o sceglie lui il codice di un webhook con `firma.tipo: 'token'` o `nelPercorso`, servono almeno 16 caratteri (`minimo` alza la soglia per un segreto qualsiasi). Un `url` passa dal controllo SSRF. Un indirizzo pubblico di Kubo chiesto dal connettore ricade su `k.pubblico` quando è vuoto. |
 | `richiede` | `{ <sezione>: { <campo>: { tipo, alias, facoltativo } } }`: la pagina propone l'abbinamento e avvisa se un campo manca. Una sezione con tutti i campi facoltativi è facoltativa anche lei. |
 | `permessi` | il ruolo dell'identità `servizio:<id>`: un utente spento che non entra mai. Le righe figlie (per esempio le righe di una vendita) seguono il padre. |
 | `entrata` | il webhook. `firma.tipo` è uno di questi: `stripe`, `hmac` (`intestazione`, `formato` base64 o hex), `token` (un codice segreto in fondo all'indirizzo: `/in/<codice>`), `nessuna` (si rilegge l'evento dall'API, come per SumUp), oppure `verifica: ({ req, grezzo, segreto, k, nome, q }) => bool` (`nome` è quello che segue `/in/`, `q` la query; con `nelPercorso: true` la pagina mostra l'indirizzo con il codice generato in fondo). `idempotenza(ev, req, { k, q })` dà la chiave dell'evento. `gestisci(ev, k, { req, nome, q })`. Il nucleo pone un limite di 1 MB e di 120 richieste al minuto per indirizzo. I corpi JSON, form-urlencoded e multipart/form-data si leggono da soli (multipart: i campi in UTF-8, i file solo descritti in `_file: [{ campo, nome, tipo, dimensione }]`). Su misura: `verificaGet(q, k, { req, nome })` risponde a `GET /in[/<codice>]` (la sfida di Meta con `sfidaMeta(q, token)` di `connettori-rete.js`, il controllo di Mailchimp; con il codice nell'indirizzo il codice si controlla prima), `risposta` (oggetto o `({ esito, ev, k, req, q, doppione }) => …`) sostituisce il JSON di risposta (il TwiML vuoto di Twilio, il `validationToken` di Microsoft Graph), `rispostaFirma` lo stato e il corpo su una firma sbagliata. Le tre danno `{ stato?, testo? \| json?, tipo? }`. |
@@ -212,6 +212,7 @@ await manda(K, '/api/connettori/prenota/in', corpo, { 'X-Prenota-Firma': firmaHm
 |---|---|
 | `k.imp`, `k.segreti`, `k.base` | le impostazioni, i segreti decifrati (solo sul server) e l'indirizzo del servizio |
 | `k.pubblico` | l'indirizzo pubblico di Kubo (`https://kubo.bottega.it`, senza barra finale) o `''`: vedi «L'indirizzo pubblico di Kubo» |
+| `k.db`, `k.S`, `k.D`, `k.P`, `k.meta`, `k.ctx` | per chi chiama un modulo di Kubo con l'identità del connettore (i connettori bancari chiedono le proposte alla tesoreria) |
 | `k.dati` | `leggi`, `elenca`, `crea`, `modifica`, `trova(sezione, campo, valore)` con i nomi del connettore, tradotti negli id dello schema, con l'identità di servizio e l'origine |
 | `k.valore(riga, sezione, campo)` | un valore della riga letto con il nome del connettore |
 | `k.http` | `get`, `post`, `put`, `patch`, `delete` (`json`, `form`, `testo`, `bearer`, `basic`, `intestazioni`) e `pagine(url, { totale })`. Restituisce `{ stato, ok, intestazioni, testo, json }`. Riprova su 429 e 5xx, e non va mai verso la rete interna senza il consenso del titolare. |
@@ -325,7 +326,9 @@ Webhook e ritorni OAuth vogliono un indirizzo che il servizio raggiunga da inter
 lo scrive in fondo alla Libreria («Indirizzo pubblico di Kubo», `GET`/`PUT /api/connettori/impostazioni { pubblico }`), o
 lo dà la variabile `KUBO_PUBBLICO`. I connettori lo leggono in `k.pubblico`; quelli che chiedono un loro indirizzo
 (`indirizzo`, `pubblico`) lo usano quando il loro è vuoto, e la pagina di ogni connettore mostra l'indirizzo completo del
-webhook costruito da lì (senza, quello del browser).
+webhook costruito da lì (senza, quello del browser). Gli attrezzi comuni: `pubblicoDi(k, campo)` in `connettori/_soldi/comuni.js`
+(i pagamenti: solo https) e `indirizzoDi(k)` in `connettori/_comunica/agenda.js` (moduli e agende, con l'errore chiaro se
+mancano tutti e due). Anche «Collega il conto» di Enable Banking e Revolut Business, lasciato vuoto, usa questo indirizzo.
 
 ## Movimenti di banca
 
