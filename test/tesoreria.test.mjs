@@ -295,8 +295,11 @@ test('strumenti di Lumi: registrati, letture, anteprima e scrittura', async () =
   await prendi('tesoreria_segna_pagata').esegui({ ctx: null, args: { numero_fattura: numero, verso: 'attiva', data: '2026-10-02' } });
   assert.equal(D.leggi(db, 'fatture', f.id).stato, 'pagata');
   assert.deepEqual((await prendi('tesoreria_termini').esegui({ args: { termini: '30/60 DFFM', data: '2026-01-15', importo: 100 } })).rate.map(r => r.data), ['2026-02-28', '2026-03-31']);
-  const ctxBanco = { utente: { id: 'x' }, r: { id: 'banco', permessi: { entita: { clienti: { leggi: true } } } } };
-  assert.equal(prendi('tesoreria_segna_pagata').permesso(ctxBanco), P.puo(ctxBanco, 'fatture', 'modifica') || P.puo(ctxBanco, 'fatture_ricevute', 'modifica'));
+  // il ruolo come lo legge permessi.js (r.entita): vede i clienti, non modifica le fatture → niente strumento di scrittura
+  const ctxBanco = { utente: { id: 'x' }, r: { id: 'banco', entita: { clienti: { leggi: true } } } };
+  assert.equal(prendi('tesoreria_segna_pagata').permesso(ctxBanco), false); assert.equal(prendi('tesoreria_scadenzario').permesso(ctxBanco), false);
+  const ctxCassa = { utente: { id: 'y' }, r: { id: 'cassa', entita: { fatture: { leggi: true, modifica: true } } } };
+  assert.equal(prendi('tesoreria_segna_pagata').permesso(ctxCassa), true);
 });
 
 test('API: prepara, impostazioni, scadenze, estratto, banca, distinta da scaricare, permessi', async () => {
@@ -354,6 +357,12 @@ test('API: prepara, impostazioni, scadenze, estratto, banca, distinta da scarica
     biscotto = ''; assert.equal((await chiama('POST', '/api/accedi', { email: 'b@prova.it', password: 'password-lunga-1' })).stato, 200);
     assert.equal((await chiama('GET', '/api/tesoreria/scadenze')).stato, 403);
     assert.equal((await chiama('PUT', '/api/tesoreria/impostazioni', { sia: 'ZZZZZ' })).stato, 403);
+    // chi vede solo le fatture passive non vede le distinte Ri.Ba./SDD dei clienti
+    biscotto = titolare;
+    assert.equal((await chiama('PUT', '/api/ruoli/passive', { nome: 'Passive', entita: { fatture_ricevute: { leggi: true } } })).stato, 200);
+    assert.equal((await chiama('POST', '/api/utenti', { nome: 'Passive', email: 'p@prova.it', password: 'password-lunga-3', ruolo: 'passive' })).stato, 200);
+    biscotto = ''; assert.equal((await chiama('POST', '/api/accedi', { email: 'p@prova.it', password: 'password-lunga-3' })).stato, 200);
+    const viste = await chiama('GET', '/api/tesoreria/distinte'); assert.equal(viste.stato, 200); assert.deepEqual(viste.json.filter(d => d.tipo !== 'sct'), []);
   } finally { srv.close(); }
 });
 
@@ -391,4 +400,12 @@ test('verifica: disabbina riapre la fattura e la distinta, movimenti uguali nell
     assert.match((await s.anteprima({ ctx: null, args: { numero_fattura: '12' } })).errore || '', /Più fatture/);
     await s.esegui({ ctx: null, args: { numero_fattura: '12/2026' } });
     assert.equal(D.leggi(db, 'fatture', f26.id).stato, 'pagata'); assert.equal(D.leggi(db, 'fatture', f25.id).stato, 'emessa'); }
+});
+
+test('verifica: termini scritti all\'uso comune, meno in fondo agli importi', async () => {
+  for (const [scritto, atteso] of [['30 gg fine mese', '30 DFFM'], ['RB 60 DFFM', '60 DFFM'], ['Ri.Ba. 30/60 gg dffm', '30/60 DFFM'], ['60 gg data fattura', '60 DF'], ['Bonifico 30 gg DF', '30 DF'], ['60 dffm al 10', '60 DFFM+10']])
+    assert.equal(R.leggiTermini(scritto)?.testo, atteso, scritto);
+  assert.equal(R.leggiTermini('boh'), null);
+  const { numeroIt } = await import('../server/moduli/import-formati.js');
+  assert.equal(numeroIt('1.234,56-'), -1234.56); assert.equal(numeroIt('−12,50'), -12.5); assert.equal(numeroIt('-1.234,56'), -1234.56); assert.equal(numeroIt('(5,00)'), -5);
 });

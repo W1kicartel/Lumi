@@ -17,7 +17,10 @@ export const piuMesi = (s, n) => {
 // TeamSystem; gli altri sono giorni di calendario. Con FM si va alla fine di quel mese: 30 DFFM dal 15/01 = 28/02.
 export const TERMINI_COMUNI = ['RD', '30 DF', '60 DF', '30 DFFM', '60 DFFM', '90 DFFM', '120 DFFM', '30/60 DFFM', '30/60/90 DFFM', '60/90/120 DFFM', '30 DFFM+10', '60 DFFM+10'];
 export function leggiTermini(s) {
-  const t = String(s || '').toUpperCase().replace(/\s+/g, ' ').trim();
+  // come si scrivono davvero: «Ri.Ba. 30/60 gg fine mese», «Bonifico 30 gg data fattura», «60 dffm al 10» (senza questo
+  // sarebbero illeggibili e la scadenza cadrebbe sulla data della fattura, con solleciti per fatture non ancora scadute)
+  const t = String(s || '').toUpperCase().replace(/\s+/g, ' ').trim().replace(/^(RI\.?\s?BA\.?|RIBA|RB|BONIFICO( BANCARIO)?|BB|RID|SDD|MAV)\s+(?=\d)/, '')
+    .replace(/FINE\s*MESE/g, 'FM').replace(/DATA\s*FATTURA/g, 'DF').replace(/\s+AL\s+(\d{1,2})$/, ' +$1');
   if (!t || /^(RD|R\.?D\.?|VISTA|A VISTA|RIMESSA DIRETTA|0)$/.test(t)) return { giorni: [0], fineMese: false, giornoFisso: null, testo: 'RD' };
   const m = t.match(/^(\d{1,3}(?:\s*[/\-,]\s*\d{1,3}){0,11})\s*(?:GG\.?\s*)?(D\.?F\.?)?\s*(F\.?M\.?)?\s*(?:\+\s*(\d{1,2}))?$/);
   if (!m) return null;

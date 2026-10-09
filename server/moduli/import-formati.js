@@ -219,6 +219,8 @@ export function numeroIt(x) {
   if (typeof x === 'boolean' || x == null) return NaN;
   let t = String(x).trim().replace(/[\s '€]|eur(o)?/gi, '').replace(/%$/, ''), neg = false;
   if (/^\(.*\)$/.test(t)) { neg = true; t = t.slice(1, -1); }
+  t = t.replace(/\u2212/g, '-');   // il «−» tipografico
+  if (/^[^-+].*-$/.test(t)) { neg = !neg; t = t.slice(0, -1); }   // «1.234,56-»: il meno in fondo degli estratti conto
   if (!t) return NaN;
   const v = t.lastIndexOf(','), p = t.lastIndexOf('.');
   if (v >= 0 && p >= 0) t = v > p ? t.replace(/\./g, '').replace(',', '.') : t.replace(/,/g, '');

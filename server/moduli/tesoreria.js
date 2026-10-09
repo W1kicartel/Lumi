@@ -581,7 +581,7 @@ export default function registra(k) {
     if (x.errori) throw new ErroreHttp(422, 'Mancano dei dati per il file della banca', { errori: x.errori });
     return x;
   });
-  r('GET', '/api/tesoreria/distinte', ({ ctx }) => { lettore(ctx); return distinte(db); });
+  r('GET', '/api/tesoreria/distinte', ({ ctx }) => { lettore(ctx); return distinte(db).filter(d => P.puo(ctx, d.tipo === 'sct' ? RICEVUTE : FATTURE, 'leggi')); });
   r('GET', '/api/tesoreria/distinte/:id/file', ({ ctx, p, res }) => {
     lettore(ctx); const d = distinte(db).find(x => x.id === p.id); if (!d) throw new ErroreHttp(404, 'Distinta sconosciuta');
     P.verifica(ctx, d.tipo === 'sct' ? RICEVUTE : FATTURE, 'leggi');
