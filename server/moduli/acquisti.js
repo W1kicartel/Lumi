@@ -285,6 +285,17 @@ export default function registra(k) {
   const prova = f => { try { return f(); } catch (e) { leggibile(e); } };
   const lettore = ctx => { serve(ctx); if (!P.puo(ctx, impostazioni(db, meta).ordini, 'leggi') && !P.puoSchema(ctx)) throw new P.ErrorePermesso(); return ctx; };
   const gestore = ctx => { if (!P.puoSchema(serve(ctx))) throw new P.ErrorePermesso('Solo chi può personalizzare prepara gli acquisti'); return ctx; };
+  // «arrivato» a mano: l'automazione carica il resto in magazzino; qui il resto si segna anche come ricevuto, così il
+  // confronto ordinato / ricevuto / fatturato torna. Dopo l'automazione (a giro finito: non dipende dall'ordine degli
+  // ascoltatori) e solo se l'ordine è rimasto davvero «arrivato»
+  k.D.ascolta?.((ev, dbEv) => {
+    if (dbEv !== db || !['crea', 'modifica'].includes(ev.tipo) || ev.dopo?.stato !== 'arrivato' || ev.prima?.stato === 'arrivato') return;
+    const imp = impostazioni(db, meta); if (ev.entita !== imp.ordini || !imp.righe) return;
+    queueMicrotask(() => { try {
+      const o = k.D.leggi(db, imp.ordini, ev.id, null); if (o.stato !== 'arrivato') return;
+      for (const x of o.righe || []) if (num(x.ricevuta) < num(x.quantita)) k.D.modifica(db, imp.righe, x.id, { ricevuta: num(x.quantita) }, null, { interno: true });
+    } catch (e) { console.error('acquisti:', e.message); } });
+  });
   r('GET', '/api/acquisti/impostazioni', ({ ctx }) => {
     lettore(ctx); const imp = impostazioni(db, meta);
     return { ...imp, articoliProposti: imp.articoli || sezioneArticoli(k), pronti: esiste(k.S, db, imp.ordini) && !!imp.articoli && k.S.leggi(db, imp.righe)?.campi.some(c => c.id === 'ricevuta'),
