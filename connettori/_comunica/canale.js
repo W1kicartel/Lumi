@@ -9,15 +9,17 @@ const AZ = {
 };
 
 // def: { id, nome, descrizione, corpo: testo => json, ok: risposta => bool, catalogo, testi: { en: { nome, descrizione, … } } }
+// oppure, per un servizio che non è un webhook a indirizzo segreto: { impostazioni, scrivi: async (k, testo) => … }
 export function canale(def) {
   async function scrivi(k, testo) {
+    if (def.scrivi) return def.scrivi(k, String(testo).slice(0, 3500));
     const r = await k.http.post(k.segreti.url, { json: def.corpo(String(testo).slice(0, 3500)) });
     if (!(def.ok ? def.ok(r) : r.ok)) throw new Error(`${def.nome} ha risposto ${r.stato}${r.testo ? `: ${r.testo.slice(0, 120)}` : ''}`);
     return { inviato: true };
   }
   return {
     id: def.id, nome: def.nome, versione: 1, icona: 'messaggio', descrizione: def.descrizione,
-    impostazioni: [{ id: 'url', nome: 'Indirizzo del webhook', segreto: true, tipo: 'url' }, ...impostazioniAvvisi()],
+    impostazioni: [...(def.impostazioni || [{ id: 'url', nome: 'Indirizzo del webhook', segreto: true, tipo: 'url' }]), ...impostazioniAvvisi()],
     permessi: { clienti: { leggi: true }, vendite: { leggi: true }, appuntamenti: { leggi: true }, prenotazioni: { leggi: true }, articoli: { leggi: true } },
     attiva: async k => segnaAcceso(k),
     prova: async k => { await scrivi(k, PROVA[lingua(k)] || PROVA.it); return { ok: true }; },
