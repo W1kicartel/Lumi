@@ -7,7 +7,7 @@ import { kubo } from './connettori-finto.mjs';
 
 const CARTELLA = new URL('../connettori/', import.meta.url);
 const CATEGORIE = ['pagamenti', 'cassa', 'fatturazione', 'contabilita', 'banche', 'dati-aziende', 'firma'];
-const ATTESI = ['satispay', 'paypal', 'nexi-xpay', 'mollie', 'square', 'gocardless', 'vies', 'openapi-imprese', 'fatture-in-cloud', 'aruba-fe', 'acube', 'invoicetronic', 'enable-banking', 'qonto', 'revolut-business', 'yousign', 'docusign', 'wise', 'epson-rt', 'scalapay', 'xero', 'quickbooks', 'bce-cambi', 'stripe-terminal'];
+const ATTESI = ['satispay', 'paypal', 'nexi-xpay', 'mollie', 'square', 'gocardless', 'vies', 'openapi-imprese', 'fatture-in-cloud', 'aruba-fe', 'acube', 'invoicetronic', 'enable-banking', 'qonto', 'revolut-business', 'yousign', 'docusign', 'wise', 'epson-rt', 'scalapay', 'xero', 'quickbooks', 'bce-cambi', 'stripe-terminal', 'klarna', 'axerve', 'fattura24', 'reviso'];
 const LINGUE = ['en', 'es', 'fr', 'de', 'pt'];
 const https = s => typeof s === 'string' && /^https:\/\/[^\s]+$/.test(s);
 
