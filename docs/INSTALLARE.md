@@ -4,7 +4,7 @@ Tre strade, dalla più semplice. I dati sono sempre un unico file SQLite (`kubo.
 
 ## 1. L'app per il computer (consigliata)
 
-Per chi non vuole sentir parlare di server. Si scarica l'installatore dalla pagina delle versioni ([github.com/W1kicartel/kubo/releases](https://github.com/W1kicartel/kubo/releases)):
+Per chi non vuole sentir parlare di server. Si scarica l'installatore dalla pagina delle versioni ([github.com/W1kicartel/Lumi/releases](https://github.com/W1kicartel/Lumi/releases)):
 **Kubo-x.y.z-mac.dmg**, **Kubo-x.y.z-windows.exe** oppure **Kubo-x.y.z-linux.AppImage** / **.deb**.
 
 Al primo avvio l'app chiede come usare quel computer:
@@ -31,7 +31,7 @@ Telefoni e tablet non hanno bisogno dell'app: inquadrano il codice QR in **Colle
 Basta Node 22.5 o più nuovo ([nodejs.org](https://nodejs.org)). Non c'è niente da installare con npm.
 
 ```bash
-git clone https://github.com/W1kicartel/kubo.git && cd kubo
+git clone https://github.com/W1kicartel/Lumi.git && cd Lumi
 npm start                        # solo da questo computer: http://localhost:4380
 npm start -- --rete              # anche dagli altri PC e telefoni della rete locale
 npm start -- --dati /percorso/dati --porta 8080

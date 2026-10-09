@@ -49,7 +49,7 @@ npm run dist:win     # dist/Kubo-x.y.z-windows.exe (NSIS, senza diritti di ammin
 npm run dist:linux   # dist/Kubo-x.y.z-linux.AppImage e .deb
 ```
 
-`dist:*` disegna prima l'icona (`npm run icona`). Sul Mac, prima di `dist:mac`, compila la voce locale con `bash voce-mac/compila.sh`: `desktop/bin/kubo-voce` (solo arm64) entra nel pacchetto in `Resources/kubo/bin`, e `x64ArchFiles` lo lascia com'è nell'app universale. Se manca, l'app si costruisce lo stesso, senza voce locale. Il microfono ha la sua frase in `NSMicrophoneUsageDescription`. Nell'app per Windows e Linux sherpa-onnx non c'è ancora: lì Lumi ascolta con Deepgram o con la voce del browser ([LUMI.md](LUMI.md#la-voce)). Gli installatori vanno pubblicati come «release» su GitHub (W1kicartel/kubo).
+`dist:*` disegna prima l'icona (`npm run icona`). Sul Mac, prima di `dist:mac`, compila la voce locale con `bash voce-mac/compila.sh`: `desktop/bin/kubo-voce` (solo arm64) entra nel pacchetto in `Resources/kubo/bin`, e `x64ArchFiles` lo lascia com'è nell'app universale. Se manca, l'app si costruisce lo stesso, senza voce locale. Il microfono ha la sua frase in `NSMicrophoneUsageDescription`. Nell'app per Windows e Linux sherpa-onnx non c'è ancora: lì Lumi ascolta con Deepgram o con la voce del browser ([LUMI.md](LUMI.md#la-voce)). Gli installatori vanno pubblicati come «release» su GitHub (W1kicartel/Lumi).
 
 Prima di distribuirli bisogna firmarli:
 
@@ -111,7 +111,7 @@ Niente si perde: per tornare a prima del ripristino basta ripristinare la copia 
 
 ## Versioni nuove
 
-Il controllo è spento finché il titolare non lo accende. Una volta al giorno legge l'ultima release pubblicata di `W1kicartel/kubo` (`api.github.com/repos/W1kicartel/kubo/releases/latest`):
+Il controllo è spento finché il titolare non lo accende. Una volta al giorno legge l'ultima release pubblicata di `W1kicartel/Lumi` (`api.github.com/repos/W1kicartel/Lumi/releases/latest`):
 
 - la richiesta non porta dati dell'azienda;
 - si confronta il numero con la versione di `package.json`, saltando bozze e pre-release;

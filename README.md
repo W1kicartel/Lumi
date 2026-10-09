@@ -14,8 +14,8 @@ Gratis, licenza MIT, zero dipendenze obbligatorie: basta Node ≥ 22.5.
 ## Provalo in due minuti
 
 ```bash
-git clone https://github.com/W1kicartel/kubo
-cd kubo
+git clone https://github.com/W1kicartel/Lumi
+cd Lumi
 npm start          # http://localhost:4380 · i dati in ./dati/kubo.db
 ```
 

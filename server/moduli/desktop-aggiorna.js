@@ -1,12 +1,12 @@
 // Le versioni nuove: un controllo facoltativo (lo accende il titolare) dell'ultima versione pubblicata su GitHub
-// (W1kicartel/kubo). Kubo avvisa e basta: non scarica e non installa mai niente da solo. Si manda solo la richiesta
+// (W1kicartel/Lumi). Kubo avvisa e basta: non scarica e non installa mai niente da solo. Si manda solo la richiesta
 // della pagina pubblica delle versioni, nessun dato dell'azienda. KUBO_AGGIORNAMENTI_URL cambia l'indirizzo (i test usano
 // un finto server locale).
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export const URL_VERSIONI = 'https://api.github.com/repos/W1kicartel/kubo/releases/latest';
+export const URL_VERSIONI = 'https://api.github.com/repos/W1kicartel/Lumi/releases/latest';
 export const VERSIONE = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'package.json'), 'utf8')).version;
 
 // «v0.2.0», «0.10.1-beta.1» → confronto numerico; una pre-release viene prima della versione finale
@@ -26,7 +26,7 @@ export async function ultimaVersione({ url = process.env.KUBO_AGGIORNAMENTI_URL 
   if (!j || typeof j.tag_name !== 'string' || j.draft || j.prerelease) throw new Error('Risposta inattesa');
   // il collegamento si mostra al titolare: solo pagine https di GitHub (o del finto server dei test, in http locale)
   const pagina = String(j.html_url || ''), sicura = /^https:\/\/github\.com\//.test(pagina) || /^http:\/\/(127\.0\.0\.1|localhost)[:/]/.test(pagina);
-  return { versione: j.tag_name.replace(/^v/i, ''), nome: String(j.name || j.tag_name).slice(0, 120), url: sicura ? pagina : 'https://github.com/W1kicartel/kubo/releases',
+  return { versione: j.tag_name.replace(/^v/i, ''), nome: String(j.name || j.tag_name).slice(0, 120), url: sicura ? pagina : 'https://github.com/W1kicartel/Lumi/releases',
     note: String(j.body || '').slice(0, 4000), data: j.published_at || null };
 }
 

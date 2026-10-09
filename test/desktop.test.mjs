@@ -232,13 +232,13 @@ test('carica un backup da fuori: a pezzi, controllato, poi ripristinabile; un fi
 test('aggiornamenti: confronto delle versioni e controllo con un finto server, senza mai installare', async () => {
   assert.equal(confronta('v0.2.0', '0.1.9'), 1); assert.equal(confronta('0.10.0', '0.9.9'), 1); assert.equal(confronta('1.0.0', '1.0.0'), 0);
   assert.equal(confronta('1.0.0-beta.1', '1.0.0'), -1); assert.equal(confronta('0.1.0', '0.1.1'), -1);
-  let risposta = { tag_name: 'v0.3.0', name: 'Kubo 0.3', html_url: 'https://github.com/W1kicartel/kubo/releases/tag/v0.3.0', body: 'Novità', draft: false, prerelease: false }, stato = 200, chieste = 0;
+  let risposta = { tag_name: 'v0.3.0', name: 'Kubo 0.3', html_url: 'https://github.com/W1kicartel/Lumi/releases/tag/v0.3.0', body: 'Novità', draft: false, prerelease: false }, stato = 200, chieste = 0;
   const finto = createServer((req, res) => { chieste++; assert.match(req.headers['user-agent'], /^Kubo\//); res.writeHead(stato, { 'Content-Type': 'application/json' }).end(JSON.stringify(risposta)); });
   await new Promise(r => finto.listen(0, '127.0.0.1', r)); const url = `http://127.0.0.1:${finto.address().port}/latest`;
   try {
     const x = await controlla('0.1.0', { url }); assert.equal(x.nuova, true); assert.equal(x.ultima.versione, '0.3.0'); assert.equal(x.ultima.url, risposta.html_url);
     assert.equal((await controlla('0.3.0', { url })).nuova, false);
-    risposta = { ...risposta, html_url: 'javascript:alert(1)' }; assert.equal((await controlla('0.1.0', { url })).ultima.url, 'https://github.com/W1kicartel/kubo/releases');
+    risposta = { ...risposta, html_url: 'javascript:alert(1)' }; assert.equal((await controlla('0.1.0', { url })).ultima.url, 'https://github.com/W1kicartel/Lumi/releases');
     stato = 500; await assert.rejects(controlla('0.1.0', { url }), /500/);
     // dal server: il titolare lo accende, il controllo passa dal finto server, l'esito resta salvato
     stato = 200; process.env.KUBO_AGGIORNAMENTI_URL = url;
