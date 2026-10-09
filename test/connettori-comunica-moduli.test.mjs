@@ -97,6 +97,25 @@ test('Tally: Tally-Signature base64 giusta e sbagliata; scelte dagli id ai testi
   } finally { await K.chiudi(); }
 });
 
+test('Tally senza webhook: giro con la chiave API (Bearer, startDate), domande per id, data e ora → appuntamento', async () => {
+  const K = await kubo(['studio']);
+  const S = await finto({
+    'GET /forms/:id/submissions': (p, c, { q }) => ({ page: 1, limit: 500, hasMore: false, questions: [{ id: 'q1', type: 'INPUT_TEXT', title: 'Nome' }, { id: 'q2', type: 'INPUT_EMAIL', title: 'Email' },
+      { id: 'q3', type: 'INPUT_DATE', title: 'Giorno' }, { id: 'q4', type: 'INPUT_TIME', title: 'Ora' }, { id: 'q5', type: 'MULTIPLE_CHOICE', title: 'Trattamento' }],
+      submissions: q.get('startDate') >= '2026-10-09T09:00:00.000Z' ? [] : [{ id: 'sub_1', formId: 'wMq8kE', isCompleted: true, submittedAt: '2026-10-09T09:00:00.000Z', responses: [
+        { questionId: 'q1', answer: 'Davide Conti', formattedAnswer: 'Davide Conti' }, { questionId: 'q2', answer: 'davide.conti@esempio.it', formattedAnswer: 'davide.conti@esempio.it' },
+        { questionId: 'q3', answer: '2026-10-28', formattedAnswer: 'October 28, 2026' }, { questionId: 'q4', answer: '11:15', formattedAnswer: '11:15' }, { questionId: 'q5', answer: ['Massaggio'], formattedAnswer: 'Massaggio' }] }] }),
+  });
+  try {
+    await accendi(K, 'tally', { base: S.url, segreti: { chiave: 'tly-prova' }, impostazioni: { moduli: 'wMq8kE' } });
+    const g = (await K.chiama('POST', '/api/connettori/tally/giri/risposte')).json; assert.equal(g.esito, 'ok', JSON.stringify(g)); assert.deepEqual(g.risultato, { creati: 1, presenti: 0 });
+    const x = S.chiamate[0]; assert.equal(x.intestazioni.authorization, 'Bearer tly-prova'); assert.equal(x.q.filter, 'completed'); assert.match(x.q.startDate, /^\d{4}-\d{2}-\d{2}T/);
+    const [c] = await righe(K, 'clienti'); assert.equal(c.nome, 'Davide Conti'); assert.match(c.note, /Trattamento: Massaggio/);
+    const [a] = await righe(K, 'appuntamenti'); assert.equal(a.quando, '2026-10-28T10:15:00.000Z');
+    assert.deepEqual((await K.chiama('POST', '/api/connettori/tally/azioni/leggi_risposte', { args: {} })).json, { creati: 0, presenti: 0 });
+  } finally { await K.chiudi(); await S.chiudi(); }
+});
+
 test('Jotform: codice in fondo all\'indirizzo; multipart con rawRequest → cliente + appuntamento; con la chiave API si rilegge; giro con filter created_at', async () => {
   const K = await kubo(['studio']);
   const risposta = (id, email, creato, tel = '(333) 444-5555') => ({ id, form_id: '242761234567890', created_at: creato, status: 'ACTIVE', answers: {

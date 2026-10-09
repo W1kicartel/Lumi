@@ -68,7 +68,7 @@ export default {
   },
   catalogo: {
     categoria: 'prenotazioni', sito: 'https://acuityscheduling.com', costo: 'abbonamento',
-    costoNota: 'API e webhook servono il piano Powerhouse: circa 49 $ al mese con pagamento annuale (61 $ mese per mese); Emerging (16 $) e Growing (27 $) non li hanno. Prova gratis di 7 giorni.',
+    costoNota: 'API e webhook servono il piano Premium: 49 $ al mese con pagamento annuale (61 $ mese per mese); Starter (16 $) e Standard (27 $) non hanno l\'API.',
     serve: [
       { cosa: 'User ID e chiave API', dove: 'Acuity → Integrazioni → API → Visualizza credenziali (in fondo alla pagina)', link: 'https://secure.acuityscheduling.com/app.php?action=settings&key=api' },
       { cosa: 'Per avere gli avvisi subito: un indirizzo pubblico di Kubo con HTTPS', dove: 'Il tuo dominio con HTTPS, oppure un tunnel (Cloudflare Tunnel)', link: 'https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/' },
@@ -80,7 +80,7 @@ export default {
   },
   testi: {
     en: { nome: 'Acuity Scheduling', descrizione: 'Acuity Scheduling bookings become appointments, with the customer.', 'imp.utente': 'User ID', 'imp.chiave': 'API key', 'imp.indirizzo': 'Public address of Kubo (e.g. https://kubo.mystudio.com)', 'imp.clienti': 'Create the customer if missing', 'az.registra_webhook': 'Register the webhook on Acuity', 'az.leggi_appuntamenti': 'Read the bookings now', 'giro.appuntamenti': 'Appointments of the next 60 days',
-      'cat.costoNota': 'API and webhooks need the Powerhouse plan: about $49 a month billed yearly ($61 month to month); Emerging ($16) and Growing ($27) do not have them. 7-day free trial.',
+      'cat.costoNota': 'API and webhooks need the Premium plan: $49 a month billed yearly ($61 month to month); Starter ($16) and Standard ($27) have no API.',
       'cat.serve': [{ cosa: 'User ID and API key', dove: 'Acuity → Integrations → API → View credentials (at the bottom of the page)' }, { cosa: 'To get bookings instantly: a public HTTPS address for Kubo', dove: 'Your domain with HTTPS, or a tunnel (Cloudflare Tunnel)' }],
       'cat.passi': ['In Acuity open Integrations → API and press «View credentials».', 'Paste the User ID and API key here, then press «Test connection».', 'Press «Read the bookings now»: those of the next 60 days arrive, then every 15 minutes.', 'If Kubo has a public address, enter it and press «Register the webhook on Acuity»: bookings arrive within seconds.', 'Make a test booking: it shows up among the appointments, with the customer.'] },
     es: { nome: 'Acuity Scheduling', descrizione: 'Las reservas de Acuity Scheduling se convierten en citas, con el cliente.', 'imp.utente': 'User ID', 'imp.chiave': 'Clave API', 'imp.indirizzo': 'Dirección pública de Kubo (p. ej. https://kubo.miestudio.es)', 'imp.clienti': 'Crear el cliente si no existe', 'az.registra_webhook': 'Registrar el webhook en Acuity', 'az.leggi_appuntamenti': 'Leer las reservas ahora', 'giro.appuntamenti': 'Citas de los próximos 60 días' },
