@@ -17,17 +17,6 @@ const chiedi = async (k, percorso) => {
   return r.json?.content;
 };
 
-// il corpo multipart/form-data come testo → { campo: valore } (i file si saltano)
-export function leggiMultipart(testo, tipo = '') {
-  const b = /boundary="?([^";]+)"?/i.exec(tipo)?.[1]; if (!b || typeof testo !== 'string') return {};
-  const out = {};
-  for (const parte of testo.split(`--${b}`)) {
-    const i = parte.indexOf('\r\n\r\n'); if (i < 0) continue;
-    const testa = parte.slice(0, i), nome = /name="([^"]*)"/i.exec(testa)?.[1];
-    if (nome && !/filename=/i.test(testa)) out[nome] = parte.slice(i + 4).replace(/\r\n$/, '');
-  }
-  return out;
-}
 const ora24 = (h, m, ampm) => { let x = Number(h) % 12; if (!/am|pm/i.test(ampm || '')) x = Number(h); else if (/pm/i.test(ampm)) x += 12; return `${String(x).padStart(2, '0')}:${String(m || 0).padStart(2, '0')}`; };
 const fusoDi = (s, k) => /([A-Za-z]+\/[A-Za-z_]+(?:\/[A-Za-z_]+)?)/.exec(String(s || ''))?.[1] || k.fuso();
 // una data di Jotform ({ year, month, day, hour, min, ampm } o { date: '2026-10-20 10:00', timezone }) → { tipo, valore }
@@ -89,7 +78,8 @@ async function giro(k) {
   if (conti.creati) k.avvisa(`${conti.creati} nuovi contatti dai moduli di Jotform`);
   return conti;
 }
-const corpo = (ev, req) => (typeof ev === 'string' ? leggiMultipart(ev, req?.headers?.['content-type']) : ev || {});
+// il multipart/form-data lo legge il nucleo (connettori-rete.js leggiMultipart): qui arriva { campo: valore }
+const corpo = ev => (ev && typeof ev === 'object' ? ev : {});
 
 export default {
   id: 'jotform', nome: 'Jotform', versione: 1, icona: 'persona',

@@ -22,7 +22,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createHash, createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 import { nuovoId, transazione } from '../db.js';
 import { controllaUrl } from './sicurezza-rete.js';
-import { client, firmaStripe, firmaHmac, stessoSegreto } from './connettori-rete.js';
+import { client, firmaStripe, firmaHmac, stessoSegreto, leggiMultipart } from './connettori-rete.js';
 import { ATTESE } from './import-api.js';
 import { mezzanotte, giornoDi, piuGiorni, FUSO } from './agenda-aggregati.js';
 import { TESTI, testo } from './connettori-lingue.js';
@@ -434,7 +434,7 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
       impostazioni: (man.impostazioni || []).map(i => ({ id: i.id, nome: tr(man, l, `imp.${i.id}`, i.nome), aiuto: tr(man, l, `aiuto.${i.id}`, i.aiuto) || null, tipo: i.tipo || 'testo', segreto: !!i.segreto,
         opzioni: i.opzioni || null, ...(i.tipo === 'ricette' ? { assoluti: !!i.assoluti } : {}), ...(i.segreto ? { salvato: salvati.has(i.id), ...(i.generato ? { valore: segreto(id, i.id), generato: true } : {}) } : { valore: imp[i.id] ?? i.predefinito ?? null }) })),
       // «nelPercorso»: il codice generato va in fondo all'indirizzo anche con una verifica su misura (le ricette in entrata)
-      webhook: man.entrata ? { percorso: `/api/connettori/${id}/in`, firma: man.entrata.firma?.tipo || 'nessuna', nelPercorso: man.entrata.firma?.tipo === 'token' || !!man.entrata.firma?.nelPercorso } : null,
+      webhook: man.entrata ? { percorso: `/api/connettori/${id}/in`, firma: man.entrata.firma?.tipo || 'nessuna', nelPercorso: man.entrata.firma?.tipo === 'token' || !!man.entrata.firma?.nelPercorso, verificaGet: typeof man.entrata.verificaGet === 'function' } : null,
       oauth: man.oauth && (typeof man.oauth.usato !== 'function' || man.oauth.usato(impPiene(id))) ? { tipo: man.oauth.tipo || 'codice', collegato: !!tok?.access_token, scade: tok?.scade || null, rinnovo: !!tok?.refresh_token } : null,
       pubbliche: Object.keys(man.pubbliche || {}),
       giri: Object.entries(man.pianificati || {}).map(([g, d]) => ({ id: g, nome: tr(man, l, `giro.${g}`, d.nome || g), ogni: d.ogni || null, alle: d.alle || null,
@@ -603,13 +603,24 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
 
   // ---------- webhook in entrata: pubblico, corpo grezzo, firma, idempotenza, 1 MB, 120 al minuto per indirizzo ----------
   const frequenza = new Map();
-  async function entrata({ req, p, q, grezzo, ip }) {
-    await pronti;
-    if (!attivo(p.id)) throw errore(404, 'spento');
-    const { man } = conn(p.id), en = man.entrata; if (!en) throw errore(404, 'spento');
+  function limita(ip) {
     const ora = Date.now(), l = (frequenza.get(ip) || []).filter(t => ora - t < 6e4); l.push(ora); frequenza.set(ip, l);
     if (frequenza.size > 5000) for (const [i, x] of frequenza) if (ora - x.at(-1) >= 6e4) frequenza.delete(i);   // gli indirizzi fermi da un minuto non restano in memoria
     if (l.length > 120) throw errore(429, 'troppe');
+  }
+  // una risposta su misura del manifesto: { stato?, testo? | json?, tipo? } (TwiML vuoto, «Hello API Event Received», un challenge)
+  function rispondi(res, x) {
+    const stato = Number.isInteger(x?.stato) && x.stato >= 200 && x.stato < 600 ? x.stato : 200, json = x?.json !== undefined;
+    const corpo = (json ? JSON.stringify(x.json) : String(x?.testo ?? '')).slice(0, 65536);
+    const tipo = /^[\w.+-]+\/[\w.+-]+(\s*;\s*charset=[\w-]+)?$/i.test(String(x?.tipo || '')) ? x.tipo : json ? 'application/json; charset=utf-8' : 'text/plain; charset=utf-8';
+    res.writeHead(stato, { 'Content-Type': tipo, 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Content-Length': Buffer.byteLength(corpo) }).end(corpo);
+  }
+  const suMisura = (v, arg) => (typeof v === 'function' ? v(arg) : v);
+  async function entrata({ req, res, p, q, grezzo, ip }) {
+    await pronti;
+    if (!attivo(p.id)) throw errore(404, 'spento');
+    const { man } = conn(p.id), en = man.entrata; if (!en) throw errore(404, 'spento');
+    limita(ip);
     const b = grezzo || Buffer.alloc(0); if (b.length > 1e6) throw errore(413, 'troppo-grande');
     const k = kPer(p.id), f = en.firma || { tipo: 'nessuna' }, s = f.segreto ? segreto(p.id, f.segreto) : null;
     if (f.segreto && !s) throw errore(503, 'non-configurato');
@@ -617,22 +628,43 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
       : f.tipo === 'hmac' ? firmaHmac(req.headers[f.intestazione], b, s, f.formato || 'base64')
       : f.tipo === 'token' ? !!p.nome && stessoSegreto(p.nome, s)
       : f.tipo === 'nessuna' ? true : typeof f.verifica === 'function' ? !!(await f.verifica({ req, grezzo: b, segreto: s, k, nome: p.nome ?? null, q })) : false;
-    if (!ok) { annota(p.id, 'entrata', 'errore', 'firma'); throw errore(401, 'firma'); }
+    if (!ok) {
+      annota(p.id, 'entrata', 'errore', 'firma');
+      // lo stato che il servizio si aspetta su una firma sbagliata (es. 403 invece di 401), sempre senza dettagli
+      if (en.rispostaFirma) return rispondi(res, { testo: '', ...suMisura(en.rispostaFirma, { k, req, q }) });
+      throw errore(401, 'firma');
+    }
     const t = b.toString('utf8'), tipoC = req.headers['content-type'] || '';
-    let ev; try { ev = /json/i.test(tipoC) || /^\s*[[{]/.test(t) ? JSON.parse(t || '{}') : /x-www-form-urlencoded/i.test(tipoC) ? Object.fromEntries(new URLSearchParams(t)) : t; }
+    let ev; try { ev = /multipart\/form-data/i.test(tipoC) ? leggiMultipart(b, tipoC) ?? {} : /json/i.test(tipoC) || /^\s*[[{]/.test(t) ? JSON.parse(t || '{}') : /x-www-form-urlencoded/i.test(tipoC) ? Object.fromEntries(new URLSearchParams(t)) : t; }
     catch { throw errore(400, 'corpo'); }
     const chiaveE = en.idempotenza ? String(en.idempotenza(ev, req, { k, q }) ?? '') : '';
-    if (chiaveE && db.prepare('SELECT 1 FROM _connettori_eventi WHERE connettore = ? AND chiave = ?').get(p.id, chiaveE)) return { ok: true, doppione: true };
+    const fine = (out, esito) => (en.risposta ? rispondi(res, suMisura(en.risposta, { esito, ev, k, req, q, doppione: !!out.doppione }) || {}) : out);
+    if (chiaveE && db.prepare('SELECT 1 FROM _connettori_eventi WHERE connettore = ? AND chiave = ?').get(p.id, chiaveE)) return fine({ ok: true, doppione: true }, 'doppione');
     const t0 = Date.now(); let esito;
     try { esito = await en.gestisci(ev, k, { req, nome: p.nome ?? null, q }); }
     catch (e) { annota(p.id, 'entrata', 'errore', chiaveE || 'evento', String(e.message).slice(0, 500), Date.now() - t0); throw tradotto(e); }
     // un evento ignorato non si segna: se il servizio lo rimanda quando è cambiato qualcosa (SumUp «richiama»), si rilegge
     if (chiaveE && !/^ignorato/.test(String(esito))) db.prepare('INSERT OR IGNORE INTO _connettori_eventi (connettore, chiave, quando) VALUES (?, ?, ?)').run(p.id, chiaveE, new Date().toISOString());
     annota(p.id, 'entrata', /^(ignorato|doppione)/.test(String(esito)) ? 'ignorato' : 'ok', chiaveE || 'evento', esito, Date.now() - t0);
-    return { ok: true, esito: typeof esito === 'string' ? esito : undefined };
+    return fine({ ok: true, esito: typeof esito === 'string' ? esito : undefined }, esito);
+  }
+  // GET sullo stesso indirizzo: le verifiche dei servizi (Meta hub.challenge, Mailchimp, …) con entrata.verificaGet(q, k, { req, nome })
+  // → { stato?, testo? | json?, tipo? }. Con il codice nell'indirizzo, anche la verifica deve averlo giusto.
+  async function verificaGet({ req, res, p, q, ip }) {
+    await pronti;
+    if (!attivo(p.id)) throw errore(404, 'spento');
+    const en = conn(p.id).man.entrata; if (typeof en?.verificaGet !== 'function') throw errore(404, 'spento');
+    limita(ip);
+    const f = en.firma || {}, k = kPer(p.id);
+    if (f.segreto && (f.tipo === 'token' || f.nelPercorso)) { const s = segreto(p.id, f.segreto); if (!s || !p.nome || !stessoSegreto(p.nome, s)) { annota(p.id, 'entrata', 'errore', 'verifica'); throw errore(401, 'firma'); } }
+    const x = await en.verificaGet(q, k, { req, nome: p.nome ?? null });
+    annota(p.id, 'entrata', x && (x.stato ?? 200) < 300 ? 'ok' : 'errore', 'verifica');
+    return rispondi(res, x || { stato: 404 });
   }
   r('POST', '/api/connettori/:id/in', entrata, { pubblica: true, grezzo: true });
   r('POST', '/api/connettori/:id/in/:nome', entrata, { pubblica: true, grezzo: true });
+  r('GET', '/api/connettori/:id/in', verificaGet, { pubblica: true });
+  r('GET', '/api/connettori/:id/in/:nome', verificaGet, { pubblica: true });
   r('GET', '/api/connettori/:id/pub/:nome', async ({ p, q, req, res }) => {
     await pronti; if (!attivo(p.id)) throw errore(404, 'spento');
     const f = conn(p.id).man.pubbliche?.[p.nome]; if (!f) throw errore(404, 'spento');

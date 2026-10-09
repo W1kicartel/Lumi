@@ -4,7 +4,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { finto, kubo, accendi, manda, firmaHmacDi } from './connettori-finto.mjs';
 import { isoLocale, leggiRisposte } from '../connettori/_comunica/moduli.js';
-import { leggiMultipart, risposteGrezze } from '../connettori/jotform/connettore.js';
+import { risposteGrezze } from '../connettori/jotform/connettore.js';
+import { leggiMultipart } from '../server/moduli/connettori-rete.js';
 import { stanza } from '../connettori/jitsi/connettore.js';
 import { coda } from './connettori-comunica-coda.mjs';
 
