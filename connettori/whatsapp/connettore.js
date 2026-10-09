@@ -25,6 +25,8 @@ export default {
     const r = await chiama(k, 'get', `${k.imp.numero_id}?fields=display_phone_number,verified_name,quality_rating`);
     return r.ok ? { ok: true, messaggio: `${r.json?.verified_name || ''} · ${r.json?.display_phone_number || ''} · ${r.json?.quality_rating || ''}` } : { ok: false, messaggio: C.errore(r) };
   },
+  // all'accensione l'app si iscrive agli eventi dell'account WhatsApp (POST /<WABA>/subscribed_apps): senza, i webhook non arrivano
+  attiva: async k => { try { const r = await chiama(k, 'post', `${k.imp.waba_id}/subscribed_apps`); if (!r.ok) k.avvisa(C.errore(r)); } catch (e) { k.avvisa(String(e.message).slice(0, 200)); } },
   // POST /api/connettori/whatsapp/in: X-Hub-Signature-256 = «sha256=» + HMAC-SHA256 esadecimale del corpo grezzo con la chiave dell'app
   entrata: {
     firma: { tipo: 'hmac', intestazione: 'x-hub-signature-256', segreto: 'segreto_app', formato: 'hex' },

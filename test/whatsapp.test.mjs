@@ -30,6 +30,7 @@ const fintoMeta = () => finto({
   'POST /v24.0/1065403522/media': () => ({ id: 'media-1' }),
   'GET /v24.0/1022901293/message_templates': () => ({ data: MODELLI }),
   'POST /v24.0/1022901293/message_templates': (p, c) => ({ id: '99', status: 'PENDING', category: c.category }),
+  'POST /v24.0/1022901293/subscribed_apps': () => ({ success: true }),
 });
 async function conMeta(modelli = ['studio']) {
   const K = await kubo(modelli), S = await fintoMeta();
@@ -77,6 +78,7 @@ test('Meta: verifica GET del webhook, firma X-Hub-Signature-256, messaggio in ar
   try {
     const c = await cliente(K, 'Mario Rossi', '333 123 4567');
     const tok = K.nucleo.segreto('whatsapp', 'verifica'); assert.ok(tok && tok.length > 20);
+    assert.equal(S.chiamate.find(x => x.percorso === '/v24.0/1022901293/subscribed_apps')?.intestazioni.authorization, 'Bearer EAAtoken');   // iscritta all'accensione
     const no = await fetch(`${K.base}/api/connettori/whatsapp/in?hub.mode=subscribe&hub.verify_token=sbagliato&hub.challenge=123`); assert.equal(no.status, 403);
     const si = await fetch(`${K.base}/api/connettori/whatsapp/in?hub.mode=subscribe&hub.verify_token=${encodeURIComponent(tok)}&hub.challenge=1158201444`);
     assert.equal(si.status, 200); assert.equal(await si.text(), '1158201444');
