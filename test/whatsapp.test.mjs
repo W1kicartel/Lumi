@@ -356,3 +356,48 @@ test('preventivo con PDF: la ricetta sul motore manda il modello con il document
     assert.ok(!(await K.chiama('GET', '/api/lumi/strumenti')).json.strumenti.some(x => x.nome === 'whatsapp_scrivi'));
   } finally { await K.chiudi(); await S.chiudi(); }
 });
+
+test('verifica: STOP non si scavalca con un «sì» a mano, un PDF fallito non fa rimandare il messaggio, «solo i propri» non vede le chat degli altri', async () => {
+  const S = await finto({
+    'GET /v24.0/1065403522': () => ({ verified_name: 'Bottega', display_phone_number: '+39 02 0000000', quality_rating: 'GREEN' }),
+    'POST /v24.0/1065403522/messages': () => ({ messaging_product: 'whatsapp', messages: [{ id: `wamid.out${Math.random().toString(36).slice(2, 8)}` }] }),
+    'POST /v24.0/1065403522/media': () => ({ stato: 500, corpo: { error: { message: 'media giù' } } }),
+    'GET /v24.0/1022901293/message_templates': () => ({ data: MODELLI }),
+    'POST /v24.0/1022901293/subscribed_apps': () => ({ success: true }),
+  });
+  const K = await kubo(['professionista']);
+  try {
+    await accendi(K, 'whatsapp', { base: S.url, segreti: { token: 'EAAtoken', segreto_app: 'app-segreta' }, impostazioni: { numero_id: '1065403522', waba_id: '1022901293' } });
+    const W = istanzeWa.get(K.db), a = await cliente(K, 'Anna Bianchi', '3470001111'), m = await cliente(K, 'Mario Rossi', '3331234567');
+    await K.chiama('POST', '/api/whatsapp/modelli/sincronizza');
+    // 1. STOP: il «sì» segnato a mano dopo non lo toglie (né dalla rotta, né scritto direttamente); START sì
+    await K.chiama('POST', '/api/whatsapp/consensi', { cliente: a.id, categoria: 'servizio', stato: 'si', fonte: 'a voce' });
+    const stop = entrata('393470001111', 'Stop.'); await manda(K, '/api/connettori/whatsapp/in', stop, { 'X-Hub-Signature-256': firmaMeta('app-segreta', stop) });
+    const r = await K.chiama('POST', '/api/whatsapp/consensi', { cliente: a.id, categoria: 'servizio', stato: 'si', fonte: 'a voce' }); assert.equal(r.stato, 409); assert.equal(r.json.motivo, 'stop');
+    W.scriviConsenso({ numero: '+393470001111', categoria: 'servizio', stato: 'si', fonte: 'modulo', chi: 'x' });
+    assert.equal((await K.chiama('POST', '/api/whatsapp/invia', { cliente: a.id, modello: { nome: 'ordine_pronto' } })).json.motivo, 'stop');
+    assert.equal((await K.chiama('POST', '/api/whatsapp/invia', { cliente: a.id, testo: 'ciao' })).json.motivo, 'stop');
+    const start = entrata('393470001111', 'START'); await manda(K, '/api/connettori/whatsapp/in', start, { 'X-Hub-Signature-256': firmaMeta('app-segreta', start) });
+    assert.equal((await K.chiama('POST', '/api/whatsapp/invia', { cliente: a.id, modello: { nome: 'ordine_pronto' }, anteprima: true })).json.no, null);
+    // 2. il testo parte, il PDF a parte no: il messaggio resta inviato e un nuovo tentativo della coda non lo rimanda
+    const ciao = entrata('393331234567', 'mi mandate il preventivo?'); await manda(K, '/api/connettori/whatsapp/in', ciao, { 'X-Hub-Signature-256': firmaMeta('app-segreta', ciao) });
+    const prev = (await K.chiama('POST', '/api/dati/preventivi', { data: '2026-10-09', cliente: m.id, oggetto: 'Sito', voci: [{ descrizione: 'Progetto', quantita: 1, prezzo: 800 }] })).json;
+    const testi = () => S.chiamate.filter(x => x.percorso === '/v24.0/1065403522/messages' && x.corpo?.text?.body === 'Ecco il preventivo').length;
+    const lavoro = { rich: { cliente: m.id, testo: 'Ecco il preventivo', documento: { entita: 'preventivi', id: prev.id }, automatico: true }, chiave: 'prova:prev' };
+    assert.equal(await W.lavora(lavoro), 'inviato'); assert.equal(testi(), 1);
+    assert.equal(K.db.prepare("SELECT stato FROM _whatsapp_messaggi WHERE chiave = 'prova:prev'").get().stato, 'inviato');
+    assert.equal(K.db.prepare("SELECT stato FROM _whatsapp_messaggi WHERE tipo = 'documento' ORDER BY id DESC").get().stato, 'fallito');
+    assert.equal(await W.lavora(lavoro), 'già'); assert.equal(testi(), 1);
+    // 3. un ruolo che vede solo i clienti creati da lui non vede le conversazioni degli altri
+    await K.chiama('PUT', '/api/ruoli/propri', { nome: 'Propri', entita: { '*': { leggi: true, crea: true, modifica: true, soloPropri: true } } });
+    await K.chiama('POST', '/api/utenti', { nome: 'Piero', email: 'p@prova.it', password: 'password-piero', ruolo: 'propri' });
+    await K.chiama('POST', '/api/esci'); await K.chiama('POST', '/api/accedi', { email: 'p@prova.it', password: 'password-piero' });
+    const suo = await cliente(K, 'Luca Neri', '3201234567');
+    const luca = entrata('393201234567', 'buongiorno'); await manda(K, '/api/connettori/whatsapp/in', luca, { 'X-Hub-Signature-256': firmaMeta('app-segreta', luca) });
+    assert.deepEqual((await K.chiama('GET', '/api/whatsapp/conversazioni')).json.map(c => c.cliente), [suo.id]);
+    assert.equal((await K.chiama('GET', `/api/whatsapp/conversazioni/${encodeURIComponent('+393331234567')}`)).stato, 403);
+    assert.equal((await K.chiama('GET', `/api/whatsapp/conversazioni/${encodeURIComponent('+393201234567')}`)).stato, 200);
+    assert.equal((await K.chiama('POST', '/api/whatsapp/invia', { cliente: m.id, testo: 'ciao' })).stato, 403);
+    assert.equal((await K.chiama('POST', '/api/whatsapp/invia', { numero: '+393331234567', testo: 'ciao' })).stato, 403);
+  } finally { await K.chiudi(); await S.chiudi(); }
+});
