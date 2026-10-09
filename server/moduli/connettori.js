@@ -221,7 +221,7 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
     // un valore della riga letto con il nome del connettore: k.valore(riga, 'vendite', 'totale')
     const valore = (r, sem, campo) => r?.[campoDi(id, sem, campo) || campo];
     const k = {
-      id, man, db, S, D, P, ctx, dati, valore, fuso: () => FUSO,
+      id, man, db, S, D, P, meta, ctx, dati, valore, fuso: () => FUSO,
       get imp() { return impPiene(id); },
       get segreti() { return Object.fromEntries((man.impostazioni || []).filter(i => i.segreto).map(i => [i.id, segreto(id, i.id)])); },
       get base() { return impDi(id)._base || man.base || ''; },

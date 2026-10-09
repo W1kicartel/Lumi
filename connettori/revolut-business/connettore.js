@@ -6,7 +6,7 @@
 // e resta in memoria; il codice di rinnovo è un segreto cifrato. GET /transactions dà al massimo 1000 movimenti per volta,
 // dal più recente: la pagina dopo si chiede con «to» = created_at dell'ultimo.
 import { createSign, randomBytes, timingSafeEqual } from 'node:crypto';
-import { registraMovimenti, RICHIEDE_BANCA, PERMESSI_BANCA, AZIONI_BANCA, TESTI_BANCA } from '../_soldi/banca.js';
+import { registraMovimenti, RICHIEDE_BANCA, PERMESSI_BANCA } from '../_soldi/banca.js';
 import { giorno } from '../_soldi/comuni.js';
 
 const PROD = 'https://b2b.revolut.com/api/1.0', SANDBOX = 'https://sandbox-b2b.revolut.com/api/1.0', PAGINA = 1000;
@@ -57,7 +57,6 @@ export default {
   permessi: PERMESSI_BANCA,
   prova: async k => { const r = await k.http.get(`${base(k)}/accounts`, { bearer: await token(k) }); return { ok: r.ok, messaggio: r.ok ? null : `HTTP ${r.stato}` }; },
   azioni: {
-    ...AZIONI_BANCA,
     // senza «su»: solo il titolare
     collega: {
       nome: 'Collega il conto', descrizione: 'Apre il consenso su Revolut Business',
@@ -127,7 +126,7 @@ export default {
       'Copia il Client ID che Revolut ti dà.',
       'In Kubo incolla Client ID e chiave privata (privatecert.pem) e accendi il connettore.',
       'Premi «Collega il conto» e autorizza Kubo su Revolut: da lì Kubo rinnova l\'accesso da solo.',
-      'Se vuoi tenere i movimenti in Kubo, crea una sezione «Movimenti» con i campi data, importo, descrizione, controparte, conto e fattura; senza, Kubo tiene solo le proposte di abbinamento.',
+      'Prima di accendere, in Tesoreria premi «Prepara»: i movimenti entrano in «Movimenti di banca» e si abbinano alle fatture in Tesoreria › Banca (anche da Lumi).',
     ],
     difficolta: 'difficile',
     zone: ['IT', 'UE', 'mondo'],
@@ -136,7 +135,7 @@ export default {
     parole: ['revolut', 'revolut business', 'banca', 'conto aziendale', 'movimenti', 'riconciliazione', 'bonifici', 'bank', 'business account', 'transactions', 'reconciliation'],
   },
   testi: {
-    en: { ...TESTI_BANCA.en, descrizione: 'Your Revolut Business transactions flow into Kubo and get matched to invoices to collect and to pay.',
+    en: { descrizione: 'Your Revolut Business transactions flow into Kubo and get matched to invoices to collect and to pay.',
       'imp.client_id': 'API certificate Client ID', 'imp.chiave_privata': 'Certificate private key (privatecert.pem)', 'imp.ambiente': 'Environment', 'imp.rinnovo': 'Refresh token (filled in by «Connect the account»)',
       'az.collega': 'Connect the account', 'az.conti': 'Revolut accounts', 'giro.movimenti': 'Transactions',
       'cat.costoNota': 'The Business API costs nothing extra: it comes with the Revolut Business plans, which have a monthly fee depending on the plan (there is also a basic plan with no fee). Current prices at revolut.com/it-IT/business/business-account-plans.',
@@ -148,18 +147,18 @@ export default {
         'Copy the Client ID Revolut gives you.',
         'In Kubo paste the Client ID and the private key (privatecert.pem) and switch the connector on.',
         'Press «Connect the account» and authorise Kubo on Revolut: from then on Kubo renews access by itself.',
-        'To keep the transactions in Kubo, create a «Movimenti» section with the fields data, importo, descrizione, controparte, conto and fattura; without it Kubo keeps only the matching suggestions.',
+        'Before switching it on, press «Prepare» in Treasury: transactions land in «Bank transactions» and are matched to invoices in Treasury › Bank (Lumi can do it too).',
       ] },
-    es: { ...TESTI_BANCA.es, descrizione: 'Los movimientos de Revolut Business entran en Kubo y se concilian con las facturas por cobrar y por pagar.',
+    es: { descrizione: 'Los movimientos de Revolut Business entran en Kubo y se concilian con las facturas por cobrar y por pagar.',
       'imp.client_id': 'Client ID del certificado API', 'imp.chiave_privata': 'Clave privada del certificado (privatecert.pem)', 'imp.ambiente': 'Entorno', 'imp.rinnovo': 'Token de renovación (se rellena con «Conectar la cuenta»)',
       'az.collega': 'Conectar la cuenta', 'az.conti': 'Cuentas Revolut', 'giro.movimenti': 'Movimientos' },
-    fr: { ...TESTI_BANCA.fr, descrizione: 'Les opérations Revolut Business arrivent dans Kubo et sont rapprochées des factures à encaisser et à payer.',
+    fr: { descrizione: 'Les opérations Revolut Business arrivent dans Kubo et sont rapprochées des factures à encaisser et à payer.',
       'imp.client_id': 'Client ID du certificat API', 'imp.chiave_privata': 'Clé privée du certificat (privatecert.pem)', 'imp.ambiente': 'Environnement', 'imp.rinnovo': 'Jeton de renouvellement (rempli par «Connecter le compte»)',
       'az.collega': 'Connecter le compte', 'az.conti': 'Comptes Revolut', 'giro.movimenti': 'Opérations' },
-    de: { ...TESTI_BANCA.de, descrizione: 'Die Umsätze von Revolut Business kommen in Kubo an und werden offenen Ein- und Ausgangsrechnungen zugeordnet.',
+    de: { descrizione: 'Die Umsätze von Revolut Business kommen in Kubo an und werden offenen Ein- und Ausgangsrechnungen zugeordnet.',
       'imp.client_id': 'Client-ID des API-Zertifikats', 'imp.chiave_privata': 'Privater Schlüssel des Zertifikats (privatecert.pem)', 'imp.ambiente': 'Umgebung', 'imp.rinnovo': 'Refresh-Token (wird mit «Konto verbinden» ausgefüllt)',
       'az.collega': 'Konto verbinden', 'az.conti': 'Revolut-Konten', 'giro.movimenti': 'Umsätze' },
-    pt: { ...TESTI_BANCA.pt, descrizione: 'Os movimentos do Revolut Business entram no Kubo e são conciliados com as faturas a receber e a pagar.',
+    pt: { descrizione: 'Os movimentos do Revolut Business entram no Kubo e são conciliados com as faturas a receber e a pagar.',
       'imp.client_id': 'Client ID do certificado da API', 'imp.chiave_privata': 'Chave privada do certificado (privatecert.pem)', 'imp.ambiente': 'Ambiente', 'imp.rinnovo': 'Token de renovação (preenchido por «Conectar a conta»)',
       'az.collega': 'Conectar a conta', 'az.conti': 'Contas Revolut', 'giro.movimenti': 'Movimentos' },
   },

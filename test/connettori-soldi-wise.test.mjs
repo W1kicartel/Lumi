@@ -1,5 +1,5 @@
-// Wise Business contro un finto servizio: SCA con il one-time token firmato, estratto del saldo in euro → movimenti →
-// proposta di riconciliazione → fattura pagata. Nessuna chiamata vera.
+// Wise Business contro un finto servizio: SCA con il one-time token firmato, estratto del saldo in euro → movimenti della
+// tesoreria → proposta della tesoreria → fattura pagata. Nessuna chiamata vera.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createVerify, randomBytes } from 'node:crypto';
@@ -8,13 +8,13 @@ import { finto, kubo, accendi } from './connettori-finto.mjs';
 const AZ = { ragione_sociale: 'Bottega Prova srl', piva: '12345678903', codice_fiscale: '12345678903', regime: 'RF01', via: 'Via dei Mille 10', cap: '20121', comune: 'Milano', provincia: 'MI', email: 'info@bottega.example', iban: 'IT60X0542811101000000123456', aliquota: 22 };
 async function fattura(K, prezzo = 100) {
   assert.equal((await K.chiama('PUT', '/api/documenti/azienda', AZ)).stato, 200);
-  await K.chiama('POST', '/api/documenti/prepara');
+  await K.chiama('POST', '/api/documenti/prepara'); await K.chiama('POST', '/api/tesoreria/prepara');
   const cl = (await K.chiama('POST', '/api/dati/clienti', { nome: 'Rossi srl', piva: '00743110157', via: 'Corso Italia 5', cap: '10121', comune: 'Torino', provincia: 'TO', codice_destinatario: 'ABC1234' })).json;
   const f = (await K.chiama('POST', '/api/dati/fatture', { cliente: cl.id, data: '2026-09-01', righe: [{ descrizione: 'Riparazione', quantita: 1, prezzo, aliquota: 22 }] })).json;
   return (await K.chiama('PATCH', `/api/dati/fatture/${f.id}`, { stato: 'emessa' })).json;
 }
 
-test('Wise: SCA firmata con la chiave creata da Kubo, estratto in euro → movimenti → proposta → riconcilia → fattura pagata', async () => {
+test('Wise: SCA firmata con la chiave creata da Kubo, estratto in euro → movimenti della tesoreria → abbinamento → fattura pagata', async () => {
   const K = await kubo(['fatture']); let pubblica = null, ott = null, firmate = 0, numero = '';
   const S = await finto({
     'GET /v2/profiles': (p, c, { intestazioni }) => { assert.equal(intestazioni.authorization, 'Bearer wise-tok'); return [{ id: 101, type: 'PERSONAL' }, { id: 202, type: 'BUSINESS' }]; },
@@ -40,9 +40,10 @@ test('Wise: SCA firmata con la chiave creata da Kubo, estratto in euro → movim
     assert.match(pubblica, /BEGIN PUBLIC KEY/); assert.ok(!JSON.stringify((await K.chiama('GET', '/api/connettori/wise')).json).includes('PRIVATE KEY'));
     const g = await K.chiama('POST', '/api/connettori/wise/giri/movimenti');
     assert.equal(g.json.esito, 'ok', JSON.stringify(g.json)); assert.deepEqual(g.json.risultato, { saldi: 1, nuovi: 2, proposte: 1 }); assert.equal(firmate, 1);
-    const pr = (await K.chiama('POST', '/api/connettori/wise/azioni/proposte', { args: {} })).json.proposte;
-    assert.equal(pr.length, 1); assert.equal(pr[0].fattura, f.id); assert.match(pr[0].motivo, /numero nella causale/);
-    const r = await K.chiama('POST', '/api/connettori/wise/azioni/riconcilia', { args: { movimento: 'TRANSFER-111' } });
+    // l'abbinamento lo propone e lo fa la tesoreria (l'unico motore)
+    const m = (await K.chiama('GET', '/api/tesoreria/banca')).json.daAbbinare.find(x => x.proposte.length);
+    assert.equal(m.proposte[0].chiavi[0], `f:${f.id}:1`); assert.match(m.descrizione, new RegExp(`Saldo fattura ${numero}`));
+    const r = await K.chiama('POST', '/api/tesoreria/abbina', { movimento: m.id, chiavi: m.proposte[0].chiavi });
     assert.equal(r.stato, 200, JSON.stringify(r.json));
     const dopo = (await K.chiama('GET', `/api/dati/fatture/${f.id}`)).json; assert.equal(dopo.stato, 'pagata'); assert.equal(dopo.pagata_il, '2026-09-20');
     assert.deepEqual((await K.chiama('POST', '/api/connettori/wise/giri/movimenti')).json.risultato, { saldi: 1, nuovi: 0, proposte: 0 });   // niente doppioni

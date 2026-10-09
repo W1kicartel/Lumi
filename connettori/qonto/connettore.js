@@ -2,7 +2,7 @@
 // Accesso con la chiave API dell'organizzazione: «Authorization: <login>:<chiave segreta>», senza Base64 e senza «Bearer»
 // (https://docs.qonto.com/get-started/business-api/authentication/api-key). GET /v2/organization dà i conti (bank_accounts),
 // GET /v2/transactions?bank_account_id=…&settled_at_from=…&status[]=completed&page=N le operazioni contabilizzate, a pagine (meta.next_page).
-import { registraMovimenti, RICHIEDE_BANCA, PERMESSI_BANCA, AZIONI_BANCA, TESTI_BANCA } from '../_soldi/banca.js';
+import { registraMovimenti, RICHIEDE_BANCA, PERMESSI_BANCA } from '../_soldi/banca.js';
 import { giorno } from '../_soldi/comuni.js';
 
 const accesso = k => ({ Authorization: `${String(k.imp.login || '').trim()}:${k.segreti.chiave}` });
@@ -29,7 +29,6 @@ export default {
   permessi: PERMESSI_BANCA,
   prova: async k => { const r = await k.http.get(`${k.base}/v2/organization`, { intestazioni: accesso(k) }); return { ok: r.ok, messaggio: r.ok ? null : `HTTP ${r.stato}` }; },
   azioni: {
-    ...AZIONI_BANCA,
     conti: { nome: 'Conti Qonto', descrizione: 'Elenca i conti dell\'organizzazione', esegui: async (_, k) => ({ conti: (await conti(k)).map(c => ({ nome: c.name, iban: c.iban, saldo: c.balance, valuta: c.currency })) }) },
   },
   pianificati: {
@@ -66,7 +65,7 @@ export default {
       'Apri Impostazioni › Integrazioni e partner › Chiave API e premi «Genera».',
       'Copia il login (es. bottega-1234) e la chiave segreta.',
       'In Kubo incolla login e chiave e accendi il connettore: i movimenti arrivano ogni due ore, o subito con «Sincronizza ora».',
-      'Se vuoi tenere i movimenti in Kubo, crea una sezione «Movimenti» con i campi data, importo, descrizione, controparte, conto e fattura; senza, Kubo tiene solo le proposte di abbinamento.',
+      'Prima di accendere, in Tesoreria premi «Prepara»: i movimenti entrano in «Movimenti di banca» e si abbinano alle fatture in Tesoreria › Banca (anche da Lumi).',
     ],
     difficolta: 'facile',
     zone: ['IT', 'UE'],
@@ -75,7 +74,7 @@ export default {
     parole: ['qonto', 'banca', 'conto aziendale', 'movimenti', 'riconciliazione', 'bonifici', 'bank', 'business account', 'transactions', 'reconciliation'],
   },
   testi: {
-    en: { ...TESTI_BANCA.en, descrizione: 'Your Qonto account transactions flow into Kubo and get matched to invoices to collect and to pay.',
+    en: { descrizione: 'Your Qonto account transactions flow into Kubo and get matched to invoices to collect and to pay.',
       'imp.login': 'Organization login (e.g. bottega-1234)', 'imp.chiave': 'API secret key', 'az.conti': 'Qonto accounts', 'giro.movimenti': 'Transactions',
       'cat.costoNota': 'The API comes with the Qonto account at no extra cost; the account has a monthly fee depending on the plan (current prices at qonto.com/it/pricing).',
       'cat.serve': [{ cosa: 'The organization login and the API secret key', dove: 'Qonto app › Settings › Integrations & partnerships › API key' }],
@@ -84,15 +83,15 @@ export default {
         'Open Settings › Integrations & partnerships › API key and press «Generate».',
         'Copy the login (e.g. bottega-1234) and the secret key.',
         'In Kubo paste login and key and switch the connector on: transactions arrive every two hours, or right away with «Sync now».',
-        'To keep the transactions in Kubo, create a «Movimenti» section with the fields data, importo, descrizione, controparte, conto and fattura; without it Kubo keeps only the matching suggestions.',
+        'Before switching it on, press «Prepare» in Treasury: transactions land in «Bank transactions» and are matched to invoices in Treasury › Bank (Lumi can do it too).',
       ] },
-    es: { ...TESTI_BANCA.es, descrizione: 'Los movimientos de tu cuenta Qonto entran en Kubo y se concilian con las facturas por cobrar y por pagar.',
+    es: { descrizione: 'Los movimientos de tu cuenta Qonto entran en Kubo y se concilian con las facturas por cobrar y por pagar.',
       'imp.login': 'Login de la organización (p. ej. bottega-1234)', 'imp.chiave': 'Clave secreta de la API', 'az.conti': 'Cuentas Qonto', 'giro.movimenti': 'Movimientos' },
-    fr: { ...TESTI_BANCA.fr, descrizione: 'Les opérations de ton compte Qonto arrivent dans Kubo et sont rapprochées des factures à encaisser et à payer.',
+    fr: { descrizione: 'Les opérations de ton compte Qonto arrivent dans Kubo et sont rapprochées des factures à encaisser et à payer.',
       'imp.login': 'Identifiant de l\'organisation (ex. bottega-1234)', 'imp.chiave': 'Clé secrète API', 'az.conti': 'Comptes Qonto', 'giro.movimenti': 'Opérations' },
-    de: { ...TESTI_BANCA.de, descrizione: 'Die Umsätze deines Qonto-Kontos kommen in Kubo an und werden offenen Ein- und Ausgangsrechnungen zugeordnet.',
+    de: { descrizione: 'Die Umsätze deines Qonto-Kontos kommen in Kubo an und werden offenen Ein- und Ausgangsrechnungen zugeordnet.',
       'imp.login': 'Login der Organisation (z. B. bottega-1234)', 'imp.chiave': 'Geheimer API-Schlüssel', 'az.conti': 'Qonto-Konten', 'giro.movimenti': 'Umsätze' },
-    pt: { ...TESTI_BANCA.pt, descrizione: 'Os movimentos da sua conta Qonto entram no Kubo e são conciliados com as faturas a receber e a pagar.',
+    pt: { descrizione: 'Os movimentos da sua conta Qonto entram no Kubo e são conciliados com as faturas a receber e a pagar.',
       'imp.login': 'Login da organização (ex.: bottega-1234)', 'imp.chiave': 'Chave secreta da API', 'az.conti': 'Contas Qonto', 'giro.movimenti': 'Movimentos' },
   },
 };
