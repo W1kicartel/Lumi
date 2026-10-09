@@ -5,6 +5,7 @@
 // permessi limitati, webhook in entrata con firma, client HTTP con protezione SSRF, coda con tentativi, giri pianificati,
 // mappature verso lo schema, OAuth 2, registro, strumenti di Lumi. Rotte (tutte del titolare, tranne quelle pubbliche):
 //   GET  /api/connettori                     catalogo: installati e disponibili, con lo stato
+//   GET  /api/connettori/catalogo            la libreria: ?q=&categoria=&costo=&difficolta=&zona= → { voci, categorie, totale }
 //   GET  /api/connettori/:id                 la pagina del connettore: impostazioni, segreti (solo «c'è»), mappe, giri, registro
 //   PUT  /api/connettori/:id                 { attivo?, somma?, impostazioni?, segreti?: { nome: valore | null }, interni?, mappe? }
 //   POST /api/connettori/:id/prova           «prova la connessione»
@@ -25,6 +26,8 @@ import { client, firmaStripe, firmaHmac, stessoSegreto } from './connettori-rete
 import { ATTESE } from './import-api.js';
 import { mezzanotte, giornoDi, piuGiorni, FUSO } from './agenda-aggregati.js';
 import { TESTI, testo } from './connettori-lingue.js';
+import { vistaCatalogo, testoRicerca } from './connettori-catalogo.js';
+import { filtra, conta } from '../../web/libreria.js';
 
 export const CARTELLA_UFFICIALI = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'connettori');
 const somma = f => createHash('sha256').update(readFileSync(f)).digest('hex');
@@ -112,6 +115,11 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
   const attivo = id => { const c = tutti.get(id), x = riga(id); return !!(c?.man && !c.rotto && x?.attivo && (c.origine === 'ufficiale' || x.somma === c.somma)); };
   const leggiJson = (s, d = {}) => { try { return JSON.parse(s || '') ?? d; } catch { return d; } };
   const impDi = id => leggiJson(riga(id)?.impostazioni);
+  // le impostazioni con i predefiniti: quelle che vedono i pezzi del manifesto che dipendono dalla configurazione
+  const impPiene = id => { const x = impDi(id); for (const i of tutti.get(id)?.man?.impostazioni || []) if (!i.segreto && x[i.id] == null && i.predefinito != null) x[i.id] = i.predefinito; return x; };
+  // «azioni» e «permessi» possono essere funzioni delle impostazioni (le ricette del connettore HTTP): una funzione rotta vale «niente»
+  const perImp = (id, nome) => { const v = tutti.get(id)?.man?.[nome]; if (typeof v !== 'function') return v || {}; try { return v(impPiene(id)) || {}; } catch { return {}; } };
+  const azioniDi = id => perImp(id, 'azioni'), permessiDi = id => perImp(id, 'permessi');
   const scriviRiga = (id, campi) => {
     if (!riga(id)) db.prepare('INSERT INTO _connettori (id, aggiornato) VALUES (?, ?)').run(id, new Date().toISOString());
     for (const [k, v] of Object.entries(campi)) db.prepare(`UPDATE _connettori SET ${k} = ?, aggiornato = ? WHERE id = ?`).run(v, new Date().toISOString(), id);
@@ -149,7 +157,7 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
     if (!db.prepare('SELECT 1 FROM _utenti WHERE id = ?').get(uid))
       db.prepare("INSERT INTO _utenti (id, nome, email, hash, ruolo, attivo, creato) VALUES (?, ?, ?, '!', ?, 0, ?)").run(uid, man.nome, `${id}@connettori.kubo.invalid`, uid, new Date().toISOString());
     const entita = {};
-    for (const [sem, p] of Object.entries(man.permessi || {})) {
+    for (const [sem, p] of Object.entries(permessiDi(id))) {
       const e = entitaDi(id, sem), regola = { leggi: !!p.leggi, crea: !!p.crea, modifica: !!p.modifica, elimina: !!p.elimina }; entita[e] = regola;
       // le righe figlie (righe di una vendita) seguono il padre: chi crea una vendita crea anche le sue righe
       for (const c of S.leggi(db, e)?.campi || []) if (c.tipo === 'righe' && !c.archiviato) entita[c.entita] = { ...regola, modifica: regola.modifica || regola.crea };
@@ -205,7 +213,7 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
     const valore = (r, sem, campo) => r?.[campoDi(id, sem, campo) || campo];
     const k = {
       id, man, db, S, D, P, ctx, dati, valore, fuso: () => FUSO,
-      get imp() { const x = impDi(id); for (const i of man.impostazioni || []) if (!i.segreto && x[i.id] == null && i.predefinito != null) x[i.id] = i.predefinito; return x; },
+      get imp() { return impPiene(id); },
       get segreti() { return Object.fromEntries((man.impostazioni || []).filter(i => i.segreto).map(i => [i.id, segreto(id, i.id)])); },
       get base() { return impDi(id)._base || man.base || ''; },
       interni: () => process.env.KUBO_CONNETTORI_INTERNI === '1' || !!riga(id)?.interni,
@@ -284,9 +292,12 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
   }
   // le modifiche ai campi dichiarati in «uscita» vanno in coda, ma non quelle che arrivano dal connettore stesso
   D.ascolta((ev, dbEv) => {
-    if (dbEv !== db || !['crea', 'modifica'].includes(ev.tipo)) return;
+    if (dbEv !== db || !['crea', 'modifica', 'elimina', 'ripristina'].includes(ev.tipo)) return;
     for (const [id, c] of tutti) {
-      if (c.rotto || !c.man?.uscita || origine === id || !attivo(id)) continue;
+      if (c.rotto || !c.man || origine === id || !attivo(id)) continue;
+      // «eventi(ev, k)»: ogni crea/modifica/elimina/ripristina che non viene dal connettore stesso (le ricette in uscita)
+      if (typeof c.man.eventi === 'function') { try { c.man.eventi(ev, kPer(id)); } catch (e) { annota(id, 'uscita', 'errore', 'eventi', String(e.message).slice(0, 300)); } }
+      if (!c.man.uscita || !['crea', 'modifica'].includes(ev.tipo)) continue;
       for (const [sem, u] of Object.entries(c.man.uscita)) {
         if (entitaDi(id, sem) !== ev.entita) continue;
         const campi = (u.campi || []).map(x => campoDi(id, sem, x)).filter(Boolean);
@@ -342,7 +353,7 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
     let t = tokenSalvato(id);
     if (t?.access_token && (!t.scade || t.scade - Date.now() > 60000)) return t.access_token;
     if (!rinnovi.has(id)) rinnovi.set(id, (async () => {
-      if (o.tipo === 'client') return chiediToken(id, { grant_type: 'client_credentials', scope: o.scope || undefined });
+      if (o.tipo === 'client') return chiediToken(id, { grant_type: 'client_credentials', scope: urlDi(o.scope, kPer(id)) || undefined });
       if (t?.refresh_token) return chiediToken(id, { grant_type: 'refresh_token', refresh_token: t.refresh_token });
       throw errore(409, 'oauth-scollegato');
     })().finally(() => rinnovi.delete(id)));
@@ -351,19 +362,28 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
   }
 
   // ---------- strumenti di Lumi (contratto k.lumi.strumento, se c'è) ----------
-  for (const [id, c] of tutti) for (const [nome, a] of Object.entries(c.man?.azioni || {})) {
-    if (!a.lumi) continue;
-    lumi?.strumento?.({ nome: `connettore_${id}_${nome}`.replace(/-/g, '_'), descrizione: `${c.man.nome}: ${a.descrizione || a.nome}`, schema: schemaArgs(a), tipo: a.scrive ? 'scrivi' : 'leggi',
-      permesso: ctx => attivo(id) && (a.su ? P.puo(ctx, entitaDi(id, a.su), a.scrive ? 'modifica' : 'leggi') : ctx?.r?.id === 'titolare'),
-      esegui: ({ ctx, args }) => azione(id, nome, args, ctx), anteprima: ({ ctx, args }) => azione(id, nome, args, ctx, { anteprima: true }) });
+  // le azioni che cambiano con le impostazioni (le ricette) si registrano di nuovo a ogni salvataggio: il permesso guarda
+  // l'azione com'è adesso, e una ricetta tolta non si usa più
+  function registraLumi(id) {
+    const c = tutti.get(id); if (!c?.man || c.rotto) return;
+    for (const [nome, a] of Object.entries(azioniDi(id))) {
+      if (!a.lumi) continue;
+      const ora = () => azioniDi(id)[nome];
+      try {
+        lumi?.strumento?.({ nome: `connettore_${id}_${nome}`.replace(/[^a-zA-Z0-9_]/g, '_').slice(0, 64), descrizione: `${c.man.nome}: ${a.descrizione || a.nome}`, schema: schemaArgs(a), tipo: a.scrive ? 'scrivi' : 'leggi',
+          permesso: ctx => { const x = ora(); return !!x && attivo(id) && (x.su ? P.puo(ctx, entitaDi(id, x.su), x.scrive ? 'modifica' : 'leggi') : ctx?.r?.id === 'titolare'); },
+          esegui: ({ ctx, args }) => azione(id, nome, args, ctx), anteprima: ({ ctx, args }) => azione(id, nome, args, ctx, { anteprima: true }) });
+      } catch (e) { console.error('connettori lumi', id, nome, e.message); }
+    }
   }
+  for (const id of tutti.keys()) registraLumi(id);
   function schemaArgs(a) {
     return { type: 'object', properties: Object.fromEntries(Object.entries(a.input || {}).map(([k, x]) => [k, { type: x.tipo === 'numero' ? 'number' : 'string', description: x.nome || k }])), required: Object.keys(a.input || {}) };
   }
   // un'azione chiesta da una persona (o da Lumi per lei): le righe si leggono con i SUOI permessi, il servizio fa il resto
   async function azione(id, nome, args = {}, ctx, { anteprima = false } = {}) {
     if (!attivo(id)) throw errore(404, 'spento');
-    const a = conn(id).man.azioni?.[nome]; if (!a) throw errore(404, 'azione-sconosciuta');
+    const a = azioniDi(id)[nome]; if (!a) throw errore(404, 'azione-sconosciuta');
     if (a.su && !P.puo(ctx, entitaDi(id, a.su), a.scrive ? 'modifica' : 'leggi')) throw new P.ErrorePermesso();
     if (!a.su && ctx?.r?.id !== 'titolare') throw new P.ErrorePermesso();   // un'azione che non dichiara la sezione: solo il titolare
     const k = kPer(id), x = {};
@@ -388,19 +408,20 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
     if (c.inattesa) return { id, nome: id, descrizione: '', origine: c.origine, somma: c.somma, attivo: false, acceso: !!x?.attivo, cambiato: !!x?.attivo, daApprovare: true, mancano: [], permessi: [] };
     const { man } = c, salvati = segretiSalvati(id), imp = impDi(id), tok = tokenSalvato(id);
     const base = { id, nome: tr(man, l, 'nome', man.nome), descrizione: tr(man, l, 'descrizione', man.descrizione), icona: man.icona || 'cartella', versione: man.versione || 1, origine: c.origine,
-      somma: c.somma, attivo: attivo(id), acceso: !!x?.attivo, cambiato: c.origine === 'locale' && !!x?.attivo && x.somma !== c.somma,
+      somma: c.somma, attivo: attivo(id), acceso: !!x?.attivo, cambiato: c.origine === 'locale' && !!x?.attivo && x.somma !== c.somma, catalogo: vistaCatalogo(man, l, completa),
       mancano: [...(man.impostazioni || []).filter(i => i.obbligatorio !== false && i.segreto && !i.generato && !salvati.has(i.id)).map(i => tr(man, l, `imp.${i.id}`, i.nome)), ...mancanti(id)] };
     if (!completa) return base;
     return { ...base, interni: !!x?.interni,
-      permessi: Object.entries(man.permessi || {}).map(([sem, p]) => ({ entita: S.leggi(db, entitaDi(id, sem))?.nome || sem, ...p })),
+      permessi: Object.entries(permessiDi(id)).map(([sem, p]) => ({ entita: S.leggi(db, entitaDi(id, sem))?.nome || sem, ...p })),
       impostazioni: (man.impostazioni || []).map(i => ({ id: i.id, nome: tr(man, l, `imp.${i.id}`, i.nome), aiuto: tr(man, l, `aiuto.${i.id}`, i.aiuto) || null, tipo: i.tipo || 'testo', segreto: !!i.segreto,
         opzioni: i.opzioni || null, ...(i.segreto ? { salvato: salvati.has(i.id), ...(i.generato ? { valore: segreto(id, i.id), generato: true } : {}) } : { valore: imp[i.id] ?? i.predefinito ?? null }) })),
-      webhook: man.entrata ? { percorso: `/api/connettori/${id}/in`, firma: man.entrata.firma?.tipo || 'nessuna' } : null,
-      oauth: man.oauth ? { tipo: man.oauth.tipo || 'codice', collegato: !!tok?.access_token, scade: tok?.scade || null, rinnovo: !!tok?.refresh_token } : null,
+      // «nelPercorso»: il codice generato va in fondo all'indirizzo anche con una verifica su misura (le ricette in entrata)
+      webhook: man.entrata ? { percorso: `/api/connettori/${id}/in`, firma: man.entrata.firma?.tipo || 'nessuna', nelPercorso: man.entrata.firma?.tipo === 'token' || !!man.entrata.firma?.nelPercorso } : null,
+      oauth: man.oauth && (typeof man.oauth.usato !== 'function' || man.oauth.usato(impPiene(id))) ? { tipo: man.oauth.tipo || 'codice', collegato: !!tok?.access_token, scade: tok?.scade || null, rinnovo: !!tok?.refresh_token } : null,
       pubbliche: Object.keys(man.pubbliche || {}),
       giri: Object.entries(man.pianificati || {}).map(([g, d]) => ({ id: g, nome: tr(man, l, `giro.${g}`, d.nome || g), ogni: d.ogni || null, alle: d.alle || null,
         ...(db.prepare('SELECT ultimo, prossimo, esito, durata FROM _connettori_giri WHERE connettore = ? AND giro = ?').get(id, g) || {}) })),
-      azioni: Object.entries(man.azioni || {}).map(([a, d]) => ({ id: a, nome: tr(man, l, `az.${a}`, d.nome), su: d.su ? entitaDi(id, d.su) : null, scrive: !!d.scrive, lumi: !!d.lumi })),
+      azioni: Object.entries(azioniDi(id)).map(([a, d]) => ({ id: a, nome: tr(man, l, `az.${a}`, d.nome), su: d.su ? entitaDi(id, d.su) : null, scrive: !!d.scrive, lumi: !!d.lumi })),
       mappe: statoMappe(id),
       coda: Object.fromEntries(db.prepare("SELECT stato, COUNT(*) n FROM _connettori_coda WHERE connettore = ? AND stato <> 'fatto' GROUP BY stato").all(id).map(z => [z.stato, z.n])),
       registro: db.prepare('SELECT quando, verso, esito, titolo, dettagli, durata FROM _connettori_registro WHERE connettore = ? ORDER BY id DESC LIMIT 60').all(id) };
@@ -409,9 +430,19 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
   // ---------- rotte di gestione: solo il titolare, solo dall'interfaccia (non con un token) ----------
   const titolare = ctx => { if (serve(ctx).r.id !== 'titolare' || ctx.viaToken) throw errore(403, 'solo-titolare'); return ctx; };
   r('GET', '/api/connettori', async ({ ctx, req }) => { titolare(ctx); await pronti; return [...tutti.keys()].sort().map(id => scheda(id, linguaDi(req, ctx))); });
+  // la libreria: tutto il catalogo in una risposta (le carte non chiedono altro), con i filtri e i conti per categoria.
+  // I conti guardano gli altri filtri ma non la categoria, così i bottoni dicono quante voci troveresti scegliendola.
+  // Il titolare la sfoglia anche con un token (sola lettura: accendere e configurare restano dall'interfaccia).
+  r('GET', '/api/connettori/catalogo', async ({ ctx, req, q }) => {
+    if (serve(ctx).r.id !== 'titolare') throw errore(403, 'solo-titolare'); await pronti;
+    const l = linguaDi(req, ctx), f = Object.fromEntries(['q', 'categoria', 'costo', 'difficolta', 'zona'].map(x => [x, String(q.get(x) || '').slice(0, 200)]));
+    const voci = [...tutti.keys()].map(id => ({ ...scheda(id, l), cerca: testoRicerca(tutti.get(id)?.man, id, l) })).sort((a, b) => String(a.nome || a.id).localeCompare(String(b.nome || b.id), l));
+    const senzaCategoria = filtra(voci, { ...f, categoria: '' });
+    return { voci: filtra(senzaCategoria, { categoria: f.categoria }), categorie: conta(senzaCategoria), totale: voci.length };
+  });
   r('GET', '/api/connettori/azioni', async ({ ctx, req }) => {
     serve(ctx); await pronti; const l = linguaDi(req, ctx), out = [];
-    for (const [id, c] of tutti) if (attivo(id)) for (const [a, d] of Object.entries(c.man.azioni || {}))
+    for (const [id, c] of tutti) if (attivo(id)) for (const [a, d] of Object.entries(azioniDi(id)))
       if (d.su && P.puo(ctx, entitaDi(id, d.su), d.scrive ? 'modifica' : 'leggi')) out.push({ connettore: id, nomeConnettore: c.man.nome, azione: a, nome: tr(c.man, l, `az.${a}`, d.nome), su: entitaDi(id, d.su), scrive: !!d.scrive, input: Object.keys(d.input || {}) });
     return out;
   });
@@ -460,7 +491,7 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
       }
       if (corpo.attivo === false) scriviRiga(p.id, { attivo: 0 });
     });
-    kCache.delete(p.id);
+    kCache.delete(p.id); registraLumi(p.id);
     if (corpo.attivo != null) annota(p.id, 'sistema', 'ok', corpo.attivo ? 'acceso' : 'spento', { chi: ctx.utente.nome });
     if (corpo.attivo === true) await man.attiva?.(kPer(p.id));
     return scheda(p.id, linguaDi(req, ctx), true);
@@ -469,6 +500,13 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
     if (v == null || v === '') return null;
     if (def.tipo === 'numero') { const n = Number(v); if (!Number.isFinite(n)) throw errore(400, 'valore-non-valido', { nome: def.nome }); return n; }
     if (def.tipo === 'si_no') return !!v;
+    // «ricette» (o un altro elenco strutturato): il manifesto le controlla e le ripulisce con controlla(valore) → valore pulito
+    if (def.tipo === 'ricette' || def.tipo === 'json') {
+      let x = v; if (typeof x === 'string') { try { x = JSON.parse(x); } catch { throw errore(400, 'valore-non-valido', { nome: def.nome }); } }
+      if (JSON.stringify(x).length > 200000) throw errore(400, 'valore-non-valido', { nome: def.nome });
+      if (typeof def.controlla === 'function') { try { x = def.controlla(x, { interni: process.env.KUBO_CONNETTORI_INTERNI === '1' || !!riga(id)?.interni, S, db }); } catch (e) { throw new ErroreHttp(400, String(e.message).slice(0, 300)); } }
+      return x;
+    }
     const t = String(v).trim().slice(0, 4000);
     if (def.tipo === 'scelta' && !(def.opzioni || []).some(o => (o.id ?? o) === t)) throw errore(400, 'valore-non-valido', { nome: def.nome });
     if (def.tipo === 'url') { const no = controllaUrl(t, { interni: process.env.KUBO_CONNETTORI_INTERNI === '1' || !!riga(id)?.interni }); if (no) throw errore(400, 'indirizzo-non-valido', { nome: def.nome }); }
@@ -525,7 +563,7 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
 
   // ---------- webhook in entrata: pubblico, corpo grezzo, firma, idempotenza, 1 MB, 120 al minuto per indirizzo ----------
   const frequenza = new Map();
-  async function entrata({ req, p, grezzo, ip }) {
+  async function entrata({ req, p, q, grezzo, ip }) {
     await pronti;
     if (!attivo(p.id)) throw errore(404, 'spento');
     const { man } = conn(p.id), en = man.entrata; if (!en) throw errore(404, 'spento');
@@ -538,15 +576,15 @@ export default function registra({ r, db, S, D, P, U, meta, serve, ErroreHttp, m
     const ok = f.tipo === 'stripe' ? firmaStripe(req.headers[f.intestazione || 'stripe-signature'], b, s)
       : f.tipo === 'hmac' ? firmaHmac(req.headers[f.intestazione], b, s, f.formato || 'base64')
       : f.tipo === 'token' ? !!p.nome && stessoSegreto(p.nome, s)
-      : f.tipo === 'nessuna' ? true : typeof f.verifica === 'function' ? !!(await f.verifica({ req, grezzo: b, segreto: s, k })) : false;
+      : f.tipo === 'nessuna' ? true : typeof f.verifica === 'function' ? !!(await f.verifica({ req, grezzo: b, segreto: s, k, nome: p.nome ?? null, q })) : false;
     if (!ok) { annota(p.id, 'entrata', 'errore', 'firma'); throw errore(401, 'firma'); }
     const t = b.toString('utf8'), tipoC = req.headers['content-type'] || '';
     let ev; try { ev = /json/i.test(tipoC) || /^\s*[[{]/.test(t) ? JSON.parse(t || '{}') : /x-www-form-urlencoded/i.test(tipoC) ? Object.fromEntries(new URLSearchParams(t)) : t; }
     catch { throw errore(400, 'corpo'); }
-    const chiaveE = en.idempotenza ? String(en.idempotenza(ev, req) ?? '') : '';
+    const chiaveE = en.idempotenza ? String(en.idempotenza(ev, req, { k, q }) ?? '') : '';
     if (chiaveE && db.prepare('SELECT 1 FROM _connettori_eventi WHERE connettore = ? AND chiave = ?').get(p.id, chiaveE)) return { ok: true, doppione: true };
     const t0 = Date.now(); let esito;
-    try { esito = await en.gestisci(ev, k, { req }); }
+    try { esito = await en.gestisci(ev, k, { req, nome: p.nome ?? null, q }); }
     catch (e) { annota(p.id, 'entrata', 'errore', chiaveE || 'evento', String(e.message).slice(0, 500), Date.now() - t0); throw e; }
     // un evento ignorato non si segna: se il servizio lo rimanda quando è cambiato qualcosa (SumUp «richiama»), si rilegge
     if (chiaveE && !/^ignorato/.test(String(esito))) db.prepare('INSERT OR IGNORE INTO _connettori_eventi (connettore, chiave, quando) VALUES (?, ?, ?)').run(p.id, chiaveE, new Date().toISOString());
