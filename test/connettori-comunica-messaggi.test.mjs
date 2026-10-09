@@ -38,6 +38,13 @@ test('Telegram: il titolare si collega con il codice, il cliente con il suo link
     assert.match(link.url, new RegExp(`^https://t\\.me/bottega_bot\\?start=${cl.id}-[\\w-]{12}$`)); assert.equal(link.collegato, false);
     assert.equal((await K.chiama('PUT', '/api/connettori/telegram', { impostazioni: { ricezione: 'webhook', pubblico: 'https://kubo.bottega.example' }, attivo: true })).stato, 200);
     assert.ok(S.chiamate.some(c => c.percorso.endsWith('/setWebhook') && c.corpo.secret_token === sw));
+    // senza il suo indirizzo: quello di Kubo nella Libreria; senza nessuno dei due, un avviso chiaro
+    await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: 'https://kubo.libreria.it' });
+    await K.chiama('PUT', '/api/connettori/telegram', { impostazioni: { pubblico: null }, attivo: true });
+    assert.equal(S.chiamate.filter(c => c.percorso.endsWith('/setWebhook')).at(-1).corpo.url, 'https://kubo.libreria.it/api/connettori/telegram/in');
+    await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: '' }); await K.chiama('PUT', '/api/connettori/telegram', { attivo: true });
+    assert.ok((await K.chiama('GET', '/api/connettori/telegram')).json.registro.some(x => /manca l'indirizzo pubblico di Kubo/.test(x.titolo)));
+    await K.chiama('PUT', '/api/connettori/telegram', { impostazioni: { pubblico: 'https://kubo.bottega.example' }, attivo: true });
     const start = JSON.stringify({ update_id: 20, message: { chat: { id: 222 }, from: { first_name: 'Anna' }, text: `/start ${link.url.split('start=')[1]}` } });
     assert.equal((await manda(K, '/api/connettori/telegram/in', start, { 'X-Telegram-Bot-Api-Secret-Token': 'sbagliato' })).stato, 401);
     assert.equal((await manda(K, '/api/connettori/telegram/in', start)).stato, 401);
@@ -113,5 +120,33 @@ test('Slack, Teams e Discord: prova, scorte basse una volta (e di nuovo dopo il 
     await K.chiama('PUT', '/api/connettori/discord', { segreti: { url: `${S.url}/discord/api/webhooks/2/no` } });
     const no = await K.chiama('POST', '/api/connettori/discord/azioni/scrivi', { args: { testo: 'x' } });
     assert.equal(no.stato, 502); assert.match(no.json.errore, /Discord ha risposto 404/);
+  } finally { await K.chiudi(); await S.chiudi(); }
+});
+
+test('WhatsApp con Twilio: TwiML vuoto in text/xml ai messaggi in arrivo, l\'indirizzo pubblico di Kubo al posto del suo', async () => {
+  const { firmaTwilio } = await import('../connettori/twilio-whatsapp/connettore.js');
+  const K = await kubo(['professionista']);
+  const S = await finto({ 'POST /2010-04-01/Accounts/:sid/Messages.json': () => ({ sid: 'SM1', status: 'queued' }) });
+  try {
+    await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: K.base });
+    await accendi(K, 'twilio-whatsapp', { base: S.url, segreti: { token: 'auth-token-prova' }, impostazioni: { sid: 'AC' + 'a'.repeat(32), mittente: '+14155238886' } });
+    const campi = { MessageSid: 'SM900', From: 'whatsapp:+393401112222', To: 'whatsapp:+14155238886', Body: 'Ciao', NumMedia: '0', SmsStatus: 'received' };
+    const url = `${K.base}/api/connettori/twilio-whatsapp/in`, invia = firma => fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Twilio-Signature': firma }, body: new URLSearchParams(campi).toString() });
+    assert.equal((await invia('sbagliata')).status, 401);
+    const ok = await invia(firmaTwilio('auth-token-prova', url, campi));
+    assert.equal(ok.status, 200); assert.match(ok.headers.get('content-type'), /^text\/xml/); assert.equal(await ok.text(), '<?xml version="1.0" encoding="UTF-8"?><Response/>');
+    const tw = (await import('../connettori/twilio-whatsapp/connettore.js')).default;
+    assert.equal(tw.impostazioni.find(i => i.id === 'indirizzo').obbligatorio, false); assert.equal(tw.whatsapp.linkPubblico(K.nucleo.k('twilio-whatsapp')), K.base);
+  } finally { await K.chiudi(); await S.chiudi(); }
+});
+
+test('WhatsApp con 360dialog: il webhook si registra con l\'indirizzo pubblico di Kubo se il suo è vuoto', async () => {
+  const K = await kubo(['studio']);
+  const S = await finto({ 'POST /v1/configs/webhook': () => ({ url: 'ok' }) });
+  try {
+    await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: 'https://kubo.esempio.it' });
+    await accendi(K, 'dialog360', { base: S.url, segreti: { chiave: 'chiave-360' } });
+    const reg = S.chiamate.find(x => x.percorso === '/v1/configs/webhook');
+    assert.equal(reg?.corpo.url, `https://kubo.esempio.it/api/connettori/dialog360/in/${K.nucleo.segreto('dialog360', 'codice')}`);
   } finally { await K.chiudi(); await S.chiudi(); }
 });

@@ -84,16 +84,26 @@ test('Twilio: vettore ufficiale della firma, SMS con lo StatusCallback, stato de
     // lo stato della consegna, firmato sull'indirizzo pubblico
     const p = { MessageSid: 'SM' + '1'.repeat(32), MessageStatus: 'undelivered', To: '+393477654321', ErrorCode: '30003', AccountSid: SID }, corpo = new URLSearchParams(p).toString(), H = { 'Content-Type': 'application/x-www-form-urlencoded' };
     assert.equal((await manda(K, '/api/connettori/twilio/in', corpo, { ...H, 'X-Twilio-Signature': firmaTwilio(TOK, 'https://altro.example/api/connettori/twilio/in', p) })).stato, 401);
-    const ok = await manda(K, '/api/connettori/twilio/in', corpo, { ...H, 'X-Twilio-Signature': firmaTwilio(TOK, `${PUB}/api/connettori/twilio/in`, p) });
-    assert.equal(ok.json.esito, 'non consegnato: +393477654321', JSON.stringify(ok.json));
+    // la risposta è TwiML vuoto in text/xml (niente avviso 12300 su Twilio)
+    const twiml = (corpo, h) => fetch(`${K.base}/api/connettori/twilio/in`, { method: 'POST', headers: h, body: corpo }).then(async r => ({ stato: r.status, tipo: r.headers.get('content-type'), testo: await r.text() }));
+    const ok = await twiml(corpo, { ...H, 'X-Twilio-Signature': firmaTwilio(TOK, `${PUB}/api/connettori/twilio/in`, p) });
+    assert.equal(ok.stato, 200); assert.match(ok.tipo, /^text\/xml/); assert.equal(ok.testo, '<?xml version="1.0" encoding="UTF-8"?><Response/>');
     assert.ok((await K.chiama('GET', '/api/connettori/twilio')).json.registro.some(x => /non è stato consegnato \(errore 30003\)/.test(x.titolo)));
     // un SMS in arrivo da un cliente (numero scritto all'italiana nella scheda)
     const q = { MessageSid: 'SM' + '2'.repeat(32), SmsStatus: 'received', From: '+393477654321', To: '+15005550006', Body: 'Passo alle 18' }, cq = new URLSearchParams(q).toString();
     await K.chiama('PATCH', `/api/dati/clienti/${cl.id}`, { telefono: '3477654321' });
-    assert.equal((await manda(K, '/api/connettori/twilio/in', cq, { ...H, 'X-Twilio-Signature': firmaTwilio(TOK, `${PUB}/api/connettori/twilio/in`, q) })).json.esito, 'SMS ricevuto da Marco Verdi');
+    const sms = await twiml(cq, { ...H, 'X-Twilio-Signature': firmaTwilio(TOK, `${PUB}/api/connettori/twilio/in`, q) });
+    assert.equal(sms.stato, 200); assert.equal(sms.testo, '<?xml version="1.0" encoding="UTF-8"?><Response/>');
+    assert.ok((await K.chiama('GET', '/api/connettori/twilio')).json.registro.some(x => /SMS da Marco Verdi: Passo alle 18/.test(x.titolo)));
     // senza indirizzo pubblico la firma non si può verificare: 401
     await K.chiama('PUT', '/api/connettori/twilio', { impostazioni: { pubblico: null } });
     assert.equal((await manda(K, '/api/connettori/twilio/in', cq, { ...H, 'X-Twilio-Signature': firmaTwilio(TOK, `${PUB}/api/connettori/twilio/in`, q) })).stato, 401);
+    // l'indirizzo pubblico di Kubo nella Libreria basta: firma verificata e StatusCallback di nuovo negli SMS
+    await K.chiama('PUT', '/api/connettori/impostazioni', { pubblico: PUB });
+    const q2 = { ...q, MessageSid: 'SM' + '3'.repeat(32) }, cq2 = new URLSearchParams(q2).toString();
+    assert.equal((await twiml(cq2, { ...H, 'X-Twilio-Signature': firmaTwilio(TOK, `${PUB}/api/connettori/twilio/in`, q2) })).stato, 200);
+    await K.chiama('POST', '/api/connettori/twilio/azioni/manda_sms', { args: { cliente: cl.id, testo: 'Di nuovo' } });
+    assert.equal(S.chiamate.filter(x => x.metodo === 'POST').at(-1).corpo.StatusCallback, `${PUB}/api/connettori/twilio/in`);
   } finally { await K.chiudi(); await S.chiudi(); }
 });
 
