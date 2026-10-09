@@ -6,7 +6,7 @@ serve, e il nucleo (`server/moduli/connettori.js`) fa il resto:
 
 - custodisce i segreti, cifrati;
 - genera la pagina delle impostazioni;
-- riceve i webhook e ne verifica la firma;
+- riceve i webhook, ne verifica la firma e risponde alle verifiche dei servizi;
 - chiama il servizio senza aprire la rete interna;
 - mette in coda e riprova;
 - fa girare i giri pianificati;
@@ -16,7 +16,9 @@ serve, e il nucleo (`server/moduli/connettori.js`) fa il resto:
 - dà gli strumenti a Lumi;
 - mostra il connettore nella **Libreria delle integrazioni**, con la guida per accenderlo.
 
-Gli ufficiali sono in [CATALOGO.md](CATALOGO.md), generato da `npm run catalogo`. Per chi smanetta ci sono tre attrezzi
+Gli ufficiali, con la guida e il costo di ognuno, sono in [CATALOGO.md](CATALOGO.md): lo scrive `npm run catalogo` dai
+manifesti, e `npm run catalogo -- --controlla` fallisce se un blocco «catalogo» non va o se CATALOGO.md è rimasto
+indietro rispetto ai manifesti. Per chi smanetta ci sono tre attrezzi
 che non chiedono di scrivere codice:
 
 - il connettore **HTTP / API REST**, per un servizio qualunque;
@@ -187,15 +189,15 @@ await manda(K, '/api/connettori/prenota/in', corpo, { 'X-Prenota-Firma': firmaHm
 
 | Voce | Cosa fa |
 |---|---|
-| `impostazioni` | `{ id, nome, tipo: 'testo'\|'url'\|'numero'\|'si_no'\|'scelta', opzioni, predefinito, schema: /regex/, segreto, generato, obbligatorio }`. `generato: true` vale per un codice creato da Kubo all'accensione (il codice segreto del feed o del callback): solo il titolare lo vede, per copiarlo. Un `url` passa dal controllo SSRF. |
+| `impostazioni` | `{ id, nome, tipo: 'testo'\|'url'\|'numero'\|'si_no'\|'scelta', opzioni, predefinito, schema: /regex/, segreto, generato, obbligatorio, minimo }`. `generato: true` vale per un codice creato da Kubo all'accensione (il codice segreto del feed o del callback): solo il titolare lo vede, per copiarlo. Se il titolare lo cambia, o sceglie lui il codice di un webhook con `firma.tipo: 'token'` o `nelPercorso`, servono almeno 16 caratteri (`minimo` alza la soglia per un segreto qualsiasi). Un `url` passa dal controllo SSRF. Un indirizzo pubblico di Kubo chiesto dal connettore ricade su `k.pubblico` quando è vuoto. |
 | `richiede` | `{ <sezione>: { <campo>: { tipo, alias, facoltativo } } }`: la pagina propone l'abbinamento e avvisa se un campo manca. Una sezione con tutti i campi facoltativi è facoltativa anche lei. |
 | `permessi` | il ruolo dell'identità `servizio:<id>`: un utente spento che non entra mai. Le righe figlie (per esempio le righe di una vendita) seguono il padre. |
-| `entrata` | il webhook. `firma.tipo` è uno di questi: `stripe`, `hmac` (`intestazione`, `formato` base64 o hex), `token` (un codice segreto in fondo all'indirizzo: `/in/<codice>`), `nessuna` (si rilegge l'evento dall'API, come per SumUp), oppure `verifica: ({ req, grezzo, segreto, k, nome, q }) => bool` (`nome` è quello che segue `/in/`, `q` la query; con `nelPercorso: true` la pagina mostra l'indirizzo con il codice generato in fondo). `idempotenza(ev, req, { k, q })` dà la chiave dell'evento. `gestisci(ev, k, { req, nome, q })`. Il nucleo pone un limite di 1 MB e di 120 richieste al minuto per indirizzo. I corpi JSON e form-urlencoded si leggono da soli. |
-| `azioni` | `{ nome, su, input, scrive, lumi, proponi, esegui }`. Le righe in `input` si leggono con i permessi di chi chiede; il servizio fa il resto. |
+| `entrata` | il webhook. `firma.tipo` è uno di questi: `stripe`, `hmac` (`intestazione`, `formato` base64 o hex), `token` (un codice segreto in fondo all'indirizzo: `/in/<codice>`), `nessuna` (si rilegge l'evento dall'API, come per SumUp), oppure `verifica: ({ req, grezzo, segreto, k, nome, q }) => bool` (`nome` è quello che segue `/in/`, `q` la query; con `nelPercorso: true` la pagina mostra l'indirizzo con il codice generato in fondo). `idempotenza(ev, req, { k, q })` dà la chiave dell'evento. `gestisci(ev, k, { req, nome, q })`. Il nucleo pone un limite di 1 MB e di 120 richieste al minuto per indirizzo. I corpi JSON, form-urlencoded e multipart/form-data si leggono da soli (multipart: i campi in UTF-8, i file solo descritti in `_file: [{ campo, nome, tipo, dimensione }]`). Su misura: `verificaGet(q, k, { req, nome })` risponde a `GET /in[/<codice>]` (la sfida di Meta con `sfidaMeta(q, token)` di `connettori-rete.js`, il controllo di Mailchimp; con il codice nell'indirizzo il codice si controlla prima), `risposta` (oggetto o `({ esito, ev, k, req, q, doppione }) => …`) sostituisce il JSON di risposta (il TwiML vuoto di Twilio, il `validationToken` di Microsoft Graph), `rispostaFirma` lo stato e il corpo su una firma sbagliata. Le tre danno `{ stato?, testo? \| json?, tipo? }`. |
+| `azioni` | `{ nome, su, input, scrive, lumi, proponi, esegui }`. Le righe in `input` si leggono con i permessi di chi chiede; il servizio fa il resto. Un input con `facoltativo: true` non è obbligatorio nello schema dello strumento di Lumi e, se manca, arriva `undefined`. `proponi(x, k, { ctx })` sa chi guarda l'anteprima (per mascherare quello che solo il titolare deve vedere). |
 | `pianificati` | `{ <giro>: { ogni: '15m' \| alle: '03:00', giro: async k => risultato } }`. Ogni giro ha un lucchetto. Dopo uno spegnimento si recupera un solo giro. «Sincronizza ora» è nella pagina. |
 | `mappe` | `{ <nome>: { entita, id, chiave: [campoKubo, campoRemoto], campi: [{ kubo, remoto, da, comanda: 'kubo' }] } }` per `k.sincro.daRemoto(nome, oggetti)`. |
 | `uscita` | `{ <sezione>: { campi, unisci: 'ultimo', quando, invia: async (riga, k) => … } }`: le modifiche fatte in Kubo vanno in coda. Quello che arriva dal connettore stesso non torna indietro (anti-eco). |
-| `oauth` | `{ tipo: 'codice'\|'client', autorizza, token, dispositivo, scope, extra }`. Con il codice si usa PKCE S256 e uno `state` che vale una volta per 10 minuti. `client` serve per i client credentials (Shopify); `token` e `scope` possono essere funzioni di `k`, e `usato: imp => bool` nasconde il collegamento quando l'autenticazione scelta non è OAuth. `dispositivo` serve per il device code (un'app desktop senza indirizzo pubblico). I token si rinnovano da soli. |
+| `oauth` | `{ tipo: 'codice'\|'client', autorizza, token, dispositivo, scope, extra }`. Con il codice si usa PKCE S256 e uno `state` che vale una volta per 10 minuti. `client` serve per i client credentials (Shopify); `token` e `scope` possono essere funzioni di `k`, e `usato: imp => bool` nasconde il collegamento quando l'autenticazione scelta non è OAuth. `dispositivo` serve per il device code (un'app desktop senza indirizzo pubblico): la pagina ha il bottone «Collega con un codice», mostra codice e indirizzo e controlla da sola; la risposta può stare dentro `data`. I token si rinnovano da soli. Opzioni: `basic: true` (client_secret_basic: id e segreto in `Authorization: Basic`, non nel corpo: Xero, QuickBooks, DocuSign, eBay), `corpo: 'json'` (token e device code in JSON: Fatture in Cloud), `pkce: false` (chi rifiuta PKCE), `conserva: ['realmId', 'hostname', 'api_domain']` (valori del ritorno o della risposta del token, in `k.oauth.extra()`; quelli del ritorno ci sono già quando si calcola l'indirizzo del token), `redirect: k => …` (un redirect_uri su misura, come il RuName di eBay: vale per l'autorizzazione e per lo scambio del codice). La pagina mostra l'indirizzo di ritorno da registrare nel servizio. |
 | `pubbliche` | uscite GET in sola lettura (`/api/connettori/<id>/pub/<nome>`), come il feed .ics. Si proteggono da sole, per esempio con il codice generato. |
 | `testi` | le traduzioni: `{ en: { nome, descrizione, 'imp.<id>', 'aiuto.<id>', 'az.<id>', 'giro.<id>', 'cat.costoNota', 'cat.passi', 'cat.serve' } }`. Senza traduzione resta l'italiano (per il catalogo: lingua → en → it). |
 | `catalogo` | la carta e la guida nella Libreria: vedi «Il blocco catalogo». Obbligatorio per i connettori ufficiali. |
@@ -209,12 +211,13 @@ await manda(K, '/api/connettori/prenota/in', corpo, { 'X-Prenota-Firma': firmaHm
 | Strumento | Cosa fa |
 |---|---|
 | `k.imp`, `k.segreti`, `k.base` | le impostazioni, i segreti decifrati (solo sul server) e l'indirizzo del servizio |
+| `k.pubblico` | l'indirizzo pubblico di Kubo (`https://kubo.bottega.it`, senza barra finale) o `''`: vedi «L'indirizzo pubblico di Kubo» |
 | `k.dati` | `leggi`, `elenca`, `crea`, `modifica`, `trova(sezione, campo, valore)` con i nomi del connettore, tradotti negli id dello schema, con l'identità di servizio e l'origine |
 | `k.valore(riga, sezione, campo)` | un valore della riga letto con il nome del connettore |
 | `k.http` | `get`, `post`, `put`, `patch`, `delete` (`json`, `form`, `testo`, `bearer`, `basic`, `intestazioni`) e `pagine(url, { totale })`. Restituisce `{ stato, ok, intestazioni, testo, json }`. Riprova su 429 e 5xx, e non va mai verso la rete interna senza il consenso del titolare. |
-| `k.sincro` | `daRemoto`, `remoto(sezione, riga)`, `locale(sezione, idRemoto)`, `collega` |
+| `k.sincro` | `daRemoto`, `remoto(sezione, riga)`, `locale(sezione, idRemoto)`, `collega(sezione, riga, idRemoto)`, `scollega(sezione, { riga } \| { remoto } \| {})` (dimentica i legami: mai `_connettori_mappa` a mano) |
 | `k.accoda(tipo, chiave, corpo, { unisci })` | lavori in coda (`lavori: { <tipo>: async (corpo, k) => … }` nel manifesto) con i tentativi di `import-api.js` |
-| `k.oauth.token()`, `k.oauth.collegato()` | l'accesso OAuth: il token valido (rinnovato se serve) e se l'account è collegato |
+| `k.oauth.token()`, `k.oauth.collegato()`, `k.oauth.extra()` | l'accesso OAuth: il token valido (rinnovato se serve), se l'account è collegato e i valori di `oauth.conserva` |
 | `k.stato.leggi`, `k.stato.scrivi` | un piccolo stato persistente (cursori, «già ricordate») |
 | `k.avvisa(testo)`, `k.annota(...)` | un avviso al registro e ai browser collegati, e una voce del registro |
 | `k.interni()` | se il titolare ha permesso la rete interna (per i protocolli non HTTP, come SMTP) |
@@ -251,8 +254,13 @@ connettore con `copie: true` nel manifesto (HTTP e webhook). Una ricetta ha `id`
 | Tipo | Cosa fa | Campi |
 |---|---|---|
 | `uscita` | su crea / modifica / elimina / ripristina di una riga della sezione mette in coda una richiesta. La coda è quella del nucleo, con i tentativi crescenti. | `eventi`, `metodo`, `percorso`, `corpo` |
-| `azione` | un bottone nella scheda della sezione e uno strumento di Lumi (`connettore_http_<id>`). Con `scrive` (predefinito) prima c'è l'anteprima: metodo, indirizzo con la chiave mascherata, corpo. Se la risposta ha un `url` https, si mostra da copiare. | `metodo`, `percorso`, `corpo`, `scrive` |
+| `azione` | un bottone nella scheda della sezione e uno strumento di Lumi (`connettore_http_<id>`; per la copia `http-crm`, `connettore_http__crm_<id>`). Con `scrive` (predefinito) prima c'è l'anteprima: metodo, indirizzo con la chiave mascherata, corpo. Un indirizzo completo (i ponti) lo vede intero solo il titolare. Se la risposta ha un `url` https, si mostra da copiare. | `metodo`, `percorso`, `corpo`, `scrive`, `conAccesso` |
 | `entrata` | `POST /api/connettori/http/in/<codice>[?ricetta=<id>]`: i campi del JSON diventano campi della sezione. | `modo`, `chiave`, `campi`, `elenco`, `idEvento` |
+
+**Accesso e indirizzi completi.** La chiave, il token o il Basic del connettore HTTP vanno solo all'indirizzo base. Una
+ricetta con un indirizzo completo su un altro sito parte senza, a meno che il titolare spunti «Manda la chiave o il token
+anche se l'indirizzo è su un altro sito» (`conAccesso: true` nella ricetta). Le intestazioni in più non accettano a capo
+(CR/LF): si rifiutano al salvataggio.
 
 **Segnaposto.** Nel percorso e nel corpo si scrive `{campo}`:
 - il campo è l'id o il nome (`{email}`, `{Ragione sociale}`);
@@ -311,6 +319,22 @@ di ricette, con l'indirizzo completo che dà la piattaforma: non c'è un indiriz
 Le guide passo per passo di ogni piattaforma sono nel loro blocco `catalogo`: si leggono nella Libreria e in
 [CATALOGO.md](CATALOGO.md).
 
+## L'indirizzo pubblico di Kubo
+
+Webhook e ritorni OAuth vogliono un indirizzo che il servizio raggiunga da internet. È uno per tutta l'azienda: il titolare
+lo scrive in fondo alla Libreria («Indirizzo pubblico di Kubo», `GET`/`PUT /api/connettori/impostazioni { pubblico }`), o
+lo dà la variabile `KUBO_PUBBLICO`. I connettori lo leggono in `k.pubblico`; quelli che chiedono un loro indirizzo
+(`indirizzo`, `pubblico`) lo usano quando il loro è vuoto, e la pagina di ogni connettore mostra l'indirizzo completo del
+webhook costruito da lì (senza, quello del browser).
+
+## Movimenti di banca
+
+I connettori bancari (Enable Banking, Qonto, Revolut Business, Wise: `connettori/_soldi/banca.js`) scrivono nella sezione
+`movimenti_banca` della tesoreria, con i suoi campi (`data`, `importo` + entrata / − uscita, `descrizione`, `controparte`,
+`iban`, `riferimento`, `conto`, `fonte: openbanking`, `id_esterno` = l'id della banca, niente doppioni). Abbinare i
+movimenti alle fatture lo fa solo la tesoreria (pagina Banca, strumento `tesoreria_abbina_movimento`): vedi
+[TESORERIA.md](TESORERIA.md). Un nuovo connettore bancario usa `registraMovimenti(k, movimenti)` e `RICHIEDE_BANCA`.
+
 ## OpenAPI 3.1
 
 `GET /api/openapi-3.1.json` descrive le API di Kubo come le vede chi chiede. Si apre con la sessione o con
@@ -333,7 +357,9 @@ Si importa in Postman, Insomnia, n8n (nodo HTTP Request), nelle app personalizza
 
 - **Segreti.** Sono cifrati con AES-256-GCM, legati al connettore e al nome (dati associati). La chiave sta in `<dati>/connettori-chiave` con permessi 600. Il backup contiene solo il cifrato: per ripristinare i segreti su un altro computer va copiata anche la chiave. I segreti non tornano mai al browser (la pagina riceve solo «salvato») né a Lumi.
 - **Solo il titolare** accende, spegne e configura, e solo dall'interfaccia: con un token API non si può. Prima dell'accensione la pagina mostra cosa potrà fare il connettore.
-- **Webhook.** Le rotte `/in` sono pubbliche, ma senza firma valida rispondono 401; un connettore spento risponde 404.
+- **Webhook.** Le rotte `/in` sono pubbliche, ma senza firma valida rispondono 401 (o lo stato di `rispostaFirma`); un connettore spento risponde 404. Il GET risponde solo con `verificaGet`, e con il codice giusto se il codice sta nell'indirizzo. I codici in fondo all'indirizzo scelti dal titolare hanno almeno 16 caratteri.
+- **Pulizia.** Una volta al giorno si tolgono le consegne finite da più di 30 giorni (`_connettori_coda`) e gli eventi già visti da più di 90 (`_connettori_eventi`); il registro tiene 90 giorni.
+- **Ponti e chiavi.** Gli indirizzi degli hook (Zapier, Make, n8n) valgono come segreti: nelle anteprime chi non è titolare vede solo il sito. La chiave del connettore HTTP non va mai a un altro sito senza `conAccesso`. Niente CR/LF nelle intestazioni.
 - **SSRF.** `k.http` controlla l'indirizzo vero a cui si collega, anche contro il DNS rebinding. La rete interna si apre per un solo connettore, con la spunta nella sua pagina.
 - **Identità di servizio.** Ogni scrittura risulta fatta da «Stripe», «WooCommerce»… con i soli permessi dichiarati.
 - **Anti-eco.** L'origine della scrittura in corso è `origineAttuale()`: una modifica arrivata da un servizio non riparte verso lo stesso servizio.
@@ -350,6 +376,9 @@ Un connettore è codice che gira con i permessi del server: installa solo quelli
 ## Strumenti di Lumi
 
 Le azioni con `lumi: true` si registrano con il contratto comune `k.lumi?.strumento({ nome: 'connettore_<id>_<azione>', descrizione, schema, tipo, permesso, esegui, anteprima })`.
+Il nome dipende solo dalla coppia connettore-azione, così due coppie non si rubano mai lo strumento: il `-` dell'id diventa
+`__` (`connettore_google__contatti_crea`); se l'azione ha caratteri da cambiare o il nome passa i 64 caratteri, si accorcia
+e prende 8 cifre esadecimali dell'impronta della coppia. Gli input `facoltativo` non sono in `required`.
 Con `scrive: true` lo strumento è di tipo «scrivi»: Lumi mostra l'anteprima (`proponi`) con Conferma e Annulla. Se il modulo di Lumi non offre ancora `k.lumi`, non succede niente.
 
 ## Fonti delle regole dei servizi
@@ -360,6 +389,7 @@ Con `scrive: true` lo strumento è di tipo «scrivi»: Lumi mostra l'anteprima (
 - [Shopify, client credentials](https://shopify.dev/docs/apps/build/authentication-authorization/access-tokens/client-credentials-grant).
 - [Shopify, inventorySetQuantities](https://shopify.dev/changelog/finalizing-compare-and-swap-redesign-for-inventory-set-quantities): dalla versione 2026-04 servono `changeFromQuantity` e `@idempotent`.
 - [Openapi SDI](https://console.openapi.com/apis/sdi/documentation): `POST /invoices`, gli eventi del callback e gli ambienti `sdi.openapi.it` e `test.sdi.openapi.it`.
-- RFC 5545 (iCalendar), RFC 5321 (SMTP), RFC 7636 (PKCE), RFC 8628 (device code).
+- RFC 5545 (iCalendar), RFC 5321 (SMTP), RFC 7636 (PKCE), RFC 8628 (device code), RFC 6749 §2.3.1 (client_secret_basic).
+- Verifiche dei webhook: [Meta, hub.challenge](https://developers.facebook.com/docs/graph-api/webhooks/getting-started), [Microsoft Graph, validationToken](https://learn.microsoft.com/en-us/graph/change-notifications-delivery-webhooks), [Mailchimp, webhook](https://mailchimp.com/developer/marketing/guides/sync-audience-data-webhooks/), [Twilio, TwiML vuoto](https://www.twilio.com/docs/messaging/twiml).
 - [OpenAPI 3.1](https://spec.openapis.org/oas/v3.1.0), RFC 9110 (HTTP), RFC 2104 (HMAC), RFC 6749 §4.4 (client credentials).
 - Le piattaforme: [Zapier, Catch Hook](https://help.zapier.com/hc/en-us/articles/8496288690317-Trigger-Zaps-from-webhooks), [Make, webhook](https://www.make.com/en/help/tools/webhooks), [n8n, Webhook](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/), [Pipedream, trigger](https://pipedream.com/docs/workflows/building-workflows/triggers/).
