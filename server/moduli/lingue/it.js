@@ -2,6 +2,16 @@
 // {parametri}. server/moduli/lingue.js li riconosce e li riscrive nella lingua dell'utente con la stessa chiave.
 // I parametri con «_» davanti sono messaggi anche loro (si traducono a loro volta). Le altre lingue: stesse chiavi.
 export default {
+  // magazzino.js
+  'mag-sezione': "Sezione senza giacenza",
+  'mag-aperto': "C'è già un inventario aperto per questa sezione: chiudilo prima",
+  'mag-sconosciuto': "Inventario sconosciuto",
+  'mag-chiuso': "Questo inventario è già chiuso",
+  'mag-codice': "Nessun articolo con il codice «{codice}»",
+  'mag-nuovo': "Articolo nuovo, non presente quando è iniziato l'inventario",
+  'mag-nessuna-conta': "Nessuna conta",
+  'mag-quantita': "Quantità contata non valida",
+  'mag-non-presente': "Articolo non presente in questo inventario",
   // acquisti.js
   'acq-scorta': "La scorta obiettivo va da 1 a 12 volte la soglia",
   'acq-sezione': "Sezione non valida: {sezione}",

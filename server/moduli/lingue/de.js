@@ -1,5 +1,15 @@
 // Servermeldungen auf Deutsch (gleiche Schlüssel wie it.js).
 export default {
+  // magazzino.js
+  'mag-sezione': "Bereich ohne Lagerbestand",
+  'mag-aperto': "Für diesen Bereich ist schon eine Inventur offen: Schließe sie zuerst ab",
+  'mag-sconosciuto': "Unbekannte Inventur",
+  'mag-chiuso': "Diese Inventur ist bereits abgeschlossen",
+  'mag-codice': "Kein Artikel mit dem Code „{codice}“",
+  'mag-nuovo': "Neuer Artikel, beim Start der Inventur nicht vorhanden",
+  'mag-nessuna-conta': "Keine Zählung",
+  'mag-quantita': "Ungültige gezählte Menge",
+  'mag-non-presente': "Artikel nicht in dieser Inventur",
   // acquisti.js
   'acq-scorta': "Der Zielbestand liegt zwischen dem 1- und 12-Fachen der Schwelle",
   'acq-sezione': "Ungültiger Bereich: {sezione}",

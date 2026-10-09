@@ -1,5 +1,15 @@
 // Server messages in English (same keys as it.js).
 export default {
+  // magazzino.js
+  'mag-sezione': "Section without stock levels",
+  'mag-aperto': "There's already an open stocktake for this section: close it first",
+  'mag-sconosciuto': "Unknown stocktake",
+  'mag-chiuso': "This stocktake is already closed",
+  'mag-codice': "No item with code «{codice}»",
+  'mag-nuovo': "New item, not there when the stocktake started",
+  'mag-nessuna-conta': "No counts",
+  'mag-quantita': "Invalid counted quantity",
+  'mag-non-presente': "Item not in this stocktake",
   // acquisti.js
   'acq-scorta': "The target stock goes from 1 to 12 times the threshold",
   'acq-sezione': "Invalid section: {sezione}",

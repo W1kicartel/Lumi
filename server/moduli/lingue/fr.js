@@ -1,5 +1,15 @@
 // Messages du serveur en français (mêmes clés que it.js).
 export default {
+  // magazzino.js
+  'mag-sezione': "Section sans stock",
+  'mag-aperto': "Il y a déjà un inventaire ouvert pour cette section : clôturez-le d'abord",
+  'mag-sconosciuto': "Inventaire inconnu",
+  'mag-chiuso': "Cet inventaire est déjà clôturé",
+  'mag-codice': "Aucun article avec le code « {codice} »",
+  'mag-nuovo': "Article nouveau, absent au début de l'inventaire",
+  'mag-nessuna-conta': "Aucun comptage",
+  'mag-quantita': "Quantité comptée non valide",
+  'mag-non-presente': "Article absent de cet inventaire",
   // acquisti.js
   'acq-scorta': "Le stock cible va de 1 à 12 fois le seuil",
   'acq-sezione': "Section non valide : {sezione}",

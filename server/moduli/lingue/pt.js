@@ -1,5 +1,15 @@
 // Mensagens do servidor em português do Brasil (mesmas chaves de it.js).
 export default {
+  // magazzino.js
+  'mag-sezione': "Seção sem estoque",
+  'mag-aperto': "Já existe um inventário aberto para esta seção: feche-o antes",
+  'mag-sconosciuto': "Inventário desconhecido",
+  'mag-chiuso': "Este inventário já está fechado",
+  'mag-codice': "Nenhum artigo com o código «{codice}»",
+  'mag-nuovo': "Artigo novo, não existia quando o inventário começou",
+  'mag-nessuna-conta': "Nenhuma contagem",
+  'mag-quantita': "Quantidade contada inválida",
+  'mag-non-presente': "Artigo não presente neste inventário",
   // acquisti.js
   'acq-scorta': "O estoque alvo vai de 1 a 12 vezes o limite",
   'acq-sezione': "Seção inválida: {sezione}",
