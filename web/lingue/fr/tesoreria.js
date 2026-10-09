@@ -113,6 +113,7 @@ export default {
   'tesoreria.voce-incasso': "Encaissement",
   'tesoreria.voce-pagamento': "Paiement",
   'tesoreria.voce-previsione': "Prévision",
+  'tesoreria.voce-contratto': "Contrat récurrent",
   'tesoreria.voce-tasse': "Impôts",
   'tesoreria.ritardo-medio': { one: "le client paie en moyenne {n} jour en retard", other: "le client paie en moyenne {n} jours en retard" },
   'tesoreria.niente-voci': "Rien de prévu sur la période.",

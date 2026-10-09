@@ -1,5 +1,7 @@
 // Server messages in English (same keys as it.js).
 export default {
+  // ricorrenti.js
+  'ric-modello': "Recurring contracts need the «Invoices and e-invoicing» template",
   // magazzino.js
   'mag-sezione': "Section without stock levels",
   'mag-aperto': "There's already an open stocktake for this section: close it first",

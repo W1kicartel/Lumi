@@ -2,6 +2,8 @@
 // {parametri}. server/moduli/lingue.js li riconosce e li riscrive nella lingua dell'utente con la stessa chiave.
 // I parametri con «_» davanti sono messaggi anche loro (si traducono a loro volta). Le altre lingue: stesse chiavi.
 export default {
+  // ricorrenti.js
+  'ric-modello': "Per i contratti ricorrenti serve il modello «Fatture e fattura elettronica»",
   // magazzino.js
   'mag-sezione': "Sezione senza giacenza",
   'mag-aperto': "C'è già un inventario aperto per questa sezione: chiudilo prima",

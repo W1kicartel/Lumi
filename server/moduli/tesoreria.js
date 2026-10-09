@@ -449,6 +449,9 @@ export async function previsioneCassa(k, ctx, { passo = 'settimana', periodi = n
     if (!p.data || !p.importo) continue;
     for (const d of R.ripeti(p.data, p.ripeti, p.fino_al && p.fino_al < fine ? p.fino_al : fine)) if (d >= oggi) voci.push({ data: d, importo: (p.tipo === 'entrata' ? 1 : -1) * cent(p.importo), tipo: 'previsione', descrizione: p.descrizione });
   }
+  // le fatture future dei contratti ricorrenti (modulo ricorrenti): l'incasso alla data della fattura, IVA compresa
+  try { const ric = await import('./ricorrenti.js'); for (const v of ric.future(k, ctx, { da: oggi, a: fine })) voci.push({ data: v.data, importo: cent(v.importo), tipo: 'contratto', descrizione: v.descrizione }); }
+  catch { /* senza contratti ricorrenti niente */ }
   // le tasse: i versamenti F24 del modulo fisco (se c'è e se chi chiede vede le fatture)
   if (P.puo(ctx, FATTURE, 'leggi') && esiste(S, db, FATTURE)) {
     try {

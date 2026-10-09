@@ -1,5 +1,7 @@
 // Servermeldungen auf Deutsch (gleiche Schlüssel wie it.js).
 export default {
+  // ricorrenti.js
+  'ric-modello': "Wiederkehrende Verträge brauchen die Vorlage „Rechnungen und E-Rechnung“",
   // magazzino.js
   'mag-sezione': "Bereich ohne Lagerbestand",
   'mag-aperto': "Für diesen Bereich ist schon eine Inventur offen: Schließe sie zuerst ab",

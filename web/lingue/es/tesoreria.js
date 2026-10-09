@@ -113,6 +113,7 @@ export default {
   'tesoreria.voce-incasso': "Cobro",
   'tesoreria.voce-pagamento': "Pago",
   'tesoreria.voce-previsione': "Previsión",
+  'tesoreria.voce-contratto': "Contrato recurrente",
   'tesoreria.voce-tasse': "Impuestos",
   'tesoreria.ritardo-medio': { one: "el cliente paga de media {n} día tarde", other: "el cliente paga de media {n} días tarde" },
   'tesoreria.niente-voci': "Nada a la vista en el periodo.",

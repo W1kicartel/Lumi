@@ -1,5 +1,7 @@
 // Messages du serveur en français (mêmes clés que it.js).
 export default {
+  // ricorrenti.js
+  'ric-modello': "Les contrats récurrents ont besoin du modèle « Factures et facture électronique »",
   // magazzino.js
   'mag-sezione': "Section sans stock",
   'mag-aperto': "Il y a déjà un inventaire ouvert pour cette section : clôturez-le d'abord",

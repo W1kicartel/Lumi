@@ -113,6 +113,7 @@ export default {
   'tesoreria.voce-incasso': "Collection",
   'tesoreria.voce-pagamento': "Payment",
   'tesoreria.voce-previsione': "Forecast",
+  'tesoreria.voce-contratto': "Recurring contract",
   'tesoreria.voce-tasse': "Taxes",
   'tesoreria.ritardo-medio': { one: "the customer pays {n} day late on average", other: "the customer pays {n} days late on average" },
   'tesoreria.niente-voci': "Nothing coming up in this period.",

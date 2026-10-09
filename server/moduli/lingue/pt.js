@@ -1,5 +1,7 @@
 // Mensagens do servidor em português do Brasil (mesmas chaves de it.js).
 export default {
+  // ricorrenti.js
+  'ric-modello': "Os contratos recorrentes precisam do modelo «Faturas e nota fiscal eletrônica»",
   // magazzino.js
   'mag-sezione': "Seção sem estoque",
   'mag-aperto': "Já existe um inventário aberto para esta seção: feche-o antes",

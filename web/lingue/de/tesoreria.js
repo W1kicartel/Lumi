@@ -113,6 +113,7 @@ export default {
   'tesoreria.voce-incasso': "Zahlungseingang",
   'tesoreria.voce-pagamento': "Zahlung",
   'tesoreria.voce-previsione': "Planwert",
+  'tesoreria.voce-contratto': "Wiederkehrender Vertrag",
   'tesoreria.voce-tasse': "Steuern",
   'tesoreria.ritardo-medio': { one: "der Kunde zahlt im Schnitt {n} Tag zu spät", other: "der Kunde zahlt im Schnitt {n} Tage zu spät" },
   'tesoreria.niente-voci': "Nichts in Sicht in diesem Zeitraum.",
