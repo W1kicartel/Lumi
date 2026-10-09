@@ -20,7 +20,7 @@ import { sistema } from '../server/moduli/lumi/nucleo.js';
 import { ricampiona, unisci } from '../web/lumi/voce.js';
 
 attiva();
-delete process.env.ANTHROPIC_API_KEY; delete process.env.DEEPGRAM_API_KEY; delete process.env.LUMI_LUMI_LIMITE; delete process.env.LUMI_VOCE;
+delete process.env.ANTHROPIC_API_KEY; delete process.env.DEEPGRAM_API_KEY; delete process.env.LUMI_DOMANDE_MINUTO; delete process.env.LUMI_VOCE;
 const RADICE = join(dirname(fileURLToPath(import.meta.url)), '..');
 const dir = mkdtempSync(join(tmpdir(), 'lumi-voce-prova-')), temp = join(dir, 'temp'), FINTO = join(dir, 'finto-voce'), REGISTRO = join(dir, 'registro.txt');
 

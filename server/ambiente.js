@@ -6,12 +6,14 @@
 import { existsSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
 
-// KUBO_X → LUMI_X, senza mai coprire un LUMI_X già scritto. Torna i nomi vecchi usati (per un avviso all'avvio).
+// KUBO_X → LUMI_X (KUBO_LUMI_LIMITE → LUMI_DOMANDE_MINUTO), senza mai coprire un LUMI_* già scritto. Torna i nomi vecchi
+// usati (per un avviso all'avvio).
+const RINOMINATE = { KUBO_LUMI_LIMITE: 'LUMI_DOMANDE_MINUTO' };
 export function variabiliVecchie(env = process.env) {
   const usate = [];
   for (const k of Object.keys(env)) {
     if (!k.startsWith('KUBO_')) continue;
-    const nuovo = 'LUMI_' + k.slice(5);
+    const nuovo = RINOMINATE[k] || 'LUMI_' + k.slice(5);
     if (env[nuovo] === undefined) { env[nuovo] = env[k]; usate.push(k); }
   }
   return usate;

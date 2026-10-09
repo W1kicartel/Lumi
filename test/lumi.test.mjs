@@ -15,7 +15,7 @@ import { strumentiAnthropic } from '../server/moduli/lumi/nucleo.js';
 import { strumenti } from '../web/moduli/lumi/strumenti.js';
 
 attiva();
-delete process.env.ANTHROPIC_API_KEY; delete process.env.DEEPGRAM_API_KEY; delete process.env.LUMI_LUMI_LIMITE;
+delete process.env.ANTHROPIC_API_KEY; delete process.env.DEEPGRAM_API_KEY; delete process.env.LUMI_DOMANDE_MINUTO;
 const CHIAVE = 'sk-ant-prova-0123456789abcdef';
 
 // ---------- il finto Claude: registra le richieste e risponde con un flusso SSE come quello vero ----------

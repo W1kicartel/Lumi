@@ -41,7 +41,7 @@ export default function registra({ r, db, S, D, P, A, meta, serve, ErroreHttp })
   }
   const chiave = () => chiaveSalvata() || (process.env.ANTHROPIC_API_KEY || '').trim();
   const acceso = () => meta.leggi(db, 'lumi.attivo') !== '0';
-  const limite = () => Number(meta.leggi(db, 'lumi.limite') || process.env.LUMI_LUMI_LIMITE || 20);
+  const limite = () => Number(meta.leggi(db, 'lumi.limite') || process.env.LUMI_DOMANDE_MINUTO || 20);
   const titolare = ctx => { if (serve(ctx).r.id !== 'titolare') throw new P.ErrorePermesso('Solo il titolare cambia le impostazioni di Lumi'); return ctx; };
   // la voce locale: il motore si sceglie una volta, all'avvio (lumi-voce sul Mac con chip Apple, sherpa-onnx altrove, o niente)
   const cartellaDati = () => { const l = db.location?.(); return l ? dirname(l) : null; };

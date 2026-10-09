@@ -22,7 +22,7 @@ import { cfValido } from '../server/moduli/documenti-italia.js';
 import { strumenti, istruzioni } from '../web/moduli/lumi/strumenti.js';
 
 attiva();
-delete process.env.ANTHROPIC_API_KEY; delete process.env.DEEPGRAM_API_KEY; delete process.env.LUMI_LUMI_LIMITE;
+delete process.env.ANTHROPIC_API_KEY; delete process.env.DEEPGRAM_API_KEY; delete process.env.LUMI_DOMANDE_MINUTO;
 const CHIAVE = 'sk-ant-prova-0123456789abcdef';
 const QUI = dirname(fileURLToPath(import.meta.url)), XSD = join(QUI, 'documenti', 'xsd', 'fatturapa-locale.xsd');
 

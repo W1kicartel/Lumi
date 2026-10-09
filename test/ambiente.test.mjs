@@ -15,6 +15,7 @@ test('variabili: KUBO_* vale come LUMI_* solo se il LUMI_* manca, e si dice qual
   assert.equal(env.ALTRO, 'x');
   assert.deepEqual(variabiliVecchie(env), []);   // la seconda volta non c'è più niente da copiare
   assert.deepEqual(variabiliVecchie({ LUMI_RETE: '1' }), []);
+  const e2 = { KUBO_LUMI_LIMITE: '5' }; variabiliVecchie(e2); assert.equal(e2.LUMI_DOMANDE_MINUTO, '5');   // l'unico nome che cambia anche dopo il prefisso
 });
 
 test('database: lumi.db di solito; il kubo.db di prima si rinomina se è chiuso, si usa com\'è se forse è aperto', () => {
