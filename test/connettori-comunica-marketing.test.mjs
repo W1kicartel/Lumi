@@ -165,3 +165,32 @@ test('HubSpot: cliente → contatto (batch/upsert per email) e azienda con P.IVA
     assert.equal((await manda(K, '/api/connettori/hubspot/in', corpo, { 'X-HubSpot-Signature-v3': firmaV3('segreto-app', 'POST', 'https://kubo.esempio.it/api/connettori/hubspot/in', corpo, vecchio), 'X-HubSpot-Request-Timestamp': vecchio })).stato, 401);
   } finally { await K.chiudi(); await S.chiudi(); }
 });
+
+test('Meta Lead Ads: il giro legge i lead nuovi dei moduli e crea i clienti (provenienza, nota), niente doppioni, webhook firmato', async () => {
+  const K = await kubo(['professionista']);
+  const lead = (id, nome, email, extra = {}) => ({ id, created_time: '2026-10-08T10:00:00+0000', form_id: '1234567890', campaign_name: 'Autunno 2026', ad_name: 'Video 1', platform: 'ig',
+    field_data: [{ name: 'full_name', values: [nome] }, { name: 'email', values: [email] }, { name: 'phone_number', values: ['+39333000000' + id.slice(-1)] }, ...Object.entries(extra).map(([n, v]) => ({ name: n, values: [v] }))] });
+  const S = await finto({
+    'GET /v25.0/:id/leads': (p, c, { q }) => ({ data: JSON.parse(q.get('filtering'))[0].value > 1800000000 ? [] : [lead('L1', 'Paola Ferri', 'paola@esempio.it', { quale_servizio: 'Consulenza' }), lead('L2', 'Mario Già', 'mario@esempio.it')] }),
+    'GET /v25.0/:id': p => (p.id === '1234567890' ? { name: 'Richiesta preventivo', leads_count: 2 } : lead(p.id, 'Teo Nuovo', 'teo@esempio.it')),
+  });
+  try {
+    await K.chiama('POST', '/api/dati/clienti', { nome: 'Mario Già', email: 'mario@esempio.it' });
+    await accendi(K, 'meta-lead', { base: S.url, segreti: { token: 'EAAfinto', segreto_app: 'app-secret' }, impostazioni: { moduli: '1234567890' } });
+    assert.equal((await K.chiama('POST', '/api/connettori/meta-lead/prova')).json.messaggio, 'Richiesta preventivo (2 lead)');
+    const g = (await K.chiama('POST', '/api/connettori/meta-lead/giri/lead')).json;
+    assert.equal(g.esito, 'ok', JSON.stringify(g)); assert.deepEqual(g.risultato, { creati: 1, presenti: 1 });
+    const chiamata = S.chiamate.find(c => c.percorso.endsWith('/leads'));
+    assert.equal(chiamata.intestazioni.authorization, 'Bearer EAAfinto'); assert.equal(JSON.parse(chiamata.q.filtering)[0].field, 'time_created'); assert.match(chiamata.q.fields, /field_data/);
+    const tutti = (await K.chiama('GET', '/api/dati/clienti?perPagina=100')).json.righe, paola = tutti.find(r => r.email === 'paola@esempio.it');
+    assert.equal(tutti.length, 2); assert.equal(paola.nome, 'Paola Ferri'); assert.equal(paola.telefono, '+393330000001'); assert.equal(paola.provenienza, 'social');
+    assert.match(paola.note, /Instagram.*«Richiesta preventivo».*«Autunno 2026»/); assert.match(paola.note, /quale servizio: Consulenza/);
+    assert.deepEqual((await K.chiama('POST', '/api/connettori/meta-lead/giri/lead')).json.risultato, { creati: 0, presenti: 2 });   // gli stessi lead: niente doppioni
+    // il webhook: firma dell'App Secret → il lead si rilegge dall'API; senza firma giusta → 401
+    const corpo = JSON.stringify({ object: 'page', entry: [{ id: '99', time: 1, changes: [{ field: 'leadgen', value: { leadgen_id: 'L3', form_id: '1234567890', page_id: '99' } }] }] });
+    assert.equal((await manda(K, '/api/connettori/meta-lead/in', corpo, { 'X-Hub-Signature-256': 'sha256=' + firmaHmacDi('altro', corpo, 'hex') })).stato, 401);
+    const ok = await manda(K, '/api/connettori/meta-lead/in', corpo, { 'X-Hub-Signature-256': 'sha256=' + firmaHmacDi('app-secret', corpo, 'hex') });
+    assert.equal(ok.stato, 200, JSON.stringify(ok.json)); assert.equal(ok.json.esito, 'creato');
+    assert.ok((await K.chiama('GET', '/api/dati/clienti?perPagina=100')).json.righe.some(r => r.email === 'teo@esempio.it'));
+  } finally { await K.chiudi(); await S.chiudi(); }
+});
