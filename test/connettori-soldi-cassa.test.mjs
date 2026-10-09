@@ -53,3 +53,31 @@ test('Epson RT: il registratore risponde con un errore → nessun collegamento, 
     assert.equal((await K.chiama('POST', '/api/connettori/epson-rt/azioni/scontrino', { args: { vendita: v.id } })).json.scontrino, '0042-0007');
   } finally { await K.chiudi(); await S.chiudi(); }
 });
+
+test('Stripe Terminal: PaymentIntent card_present con la vendita → lettore; lettore occupato annulla l\'intent; il giro rilegge → pagata', async () => {
+  const K = await kubo(); let stato = 'requires_payment_method', occupato = true, intent = null, annullati = 0;
+  const S = await finto({
+    'GET /v1/terminal/readers/:id': p => ({ id: p.id, status: 'online', label: 'Cassa 1' }),
+    'POST /v1/payment_intents': (p, c, { intestazioni }) => { assert.equal(intestazioni.authorization, 'Bearer sk_test_term'); intent = c; return { id: 'pi_t1', status: 'requires_payment_method' }; },
+    'POST /v1/payment_intents/:id/cancel': () => { annullati++; return { id: 'pi_t1', status: 'canceled' }; },
+    'POST /v1/terminal/readers/:id/process_payment_intent': (p, c) => occupato ? { stato: 409, corpo: { error: { code: 'terminal_reader_busy', message: 'Reader is busy' } } } : { id: p.id, action: { status: 'in_progress', process_payment_intent: { payment_intent: c.payment_intent } } },
+    'GET /v1/payment_intents/:id': p => ({ id: p.id, status: stato, amount: 6000, amount_received: stato === 'succeeded' ? 6000 : 0, currency: 'eur', metadata: { vendita: intent['metadata[vendita]'] }, created: 1791000000 }),
+  });
+  try {
+    const a = (await K.chiama('POST', '/api/dati/articoli', { nome: 'Vaso', codice: 'V1', prezzo: 30, giacenza: 5 })).json;
+    const v = (await K.chiama('POST', '/api/dati/vendite', { righe: [{ articolo: a.id, quantita: 2, prezzo: 30 }] })).json;
+    await accendi(K, 'stripe-terminal', { base: S.url, segreti: { chiave: 'sk_test_term' }, impostazioni: { lettore: 'tmr_Prova123' } });
+    assert.equal((await K.chiama('POST', '/api/connettori/stripe-terminal/prova')).json.messaggio, 'Cassa 1');
+    const no = await K.chiama('POST', '/api/connettori/stripe-terminal/azioni/incassa', { args: { vendita: v.id } });
+    assert.equal(no.stato, 502); assert.match(JSON.stringify(no.json), /busy/); assert.equal(annullati, 1);
+    occupato = false;
+    const r = await K.chiama('POST', '/api/connettori/stripe-terminal/azioni/incassa', { args: { vendita: v.id } });
+    assert.equal(r.stato, 200, JSON.stringify(r.json)); assert.equal(r.json.pagamento, 'pi_t1');
+    assert.equal(intent.amount, '6000'); assert.equal(intent['payment_method_types[0]'], 'card_present'); assert.equal(intent['metadata[vendita]'], v.id);
+    assert.deepEqual((await K.chiama('POST', '/api/connettori/stripe-terminal/giri/controlla')).json.risultato, { controllati: 1, pagati: 0 });
+    stato = 'succeeded';
+    assert.deepEqual((await K.chiama('POST', '/api/connettori/stripe-terminal/giri/controlla')).json.risultato, { controllati: 1, pagati: 1 });
+    const dopo = (await K.chiama('GET', `/api/dati/vendite/${v.id}`)).json; assert.equal(dopo.stato, 'pagata'); assert.equal(dopo.pagamento, 'carta');
+    assert.deepEqual((await K.chiama('POST', '/api/connettori/stripe-terminal/giri/controlla')).json.risultato, { controllati: 0, pagati: 0 });
+  } finally { await K.chiudi(); await S.chiudi(); }
+});
