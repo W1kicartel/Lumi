@@ -32,7 +32,7 @@ const DATA = /^\d{4}-\d{2}-\d{2}$/;
 // Le colonne che servono alla riconciliazione: data, importo (+ entrata, − uscita), descrizione; facoltative controparte, iban,
 // riferimento, id_esterno (per non importare due volte). Lo stato dell'abbinamento lo tiene la tesoreria (_tesoreria_abbinamenti)
 // e, se ci sono, lo ricopia nei campi «stato» e «abbinato» della sezione.
-export const SEZIONE_MOVIMENTI = { id: MOVIMENTI, nome: 'Movimenti di banca', icona: 'banca', titolo: 'descrizione', campi: [
+export const SEZIONE_MOVIMENTI = { id: MOVIMENTI, nome: 'Movimenti di banca', icona: 'cassa', titolo: 'descrizione', campi: [
   { id: 'data', nome: 'Data', tipo: 'data', obbligatorio: true },
   { id: 'valuta_il', nome: 'Data valuta', tipo: 'data' },
   { id: 'importo', nome: 'Importo', tipo: 'valuta', obbligatorio: true },
@@ -47,7 +47,7 @@ export const SEZIONE_MOVIMENTI = { id: MOVIMENTI, nome: 'Movimenti di banca', ic
     transizioni: { da_abbinare: ['abbinato', 'ignorato'], abbinato: ['da_abbinare'], ignorato: ['da_abbinare'] } },
   { id: 'abbinato', nome: 'Abbinato a', tipo: 'testo' },
   { id: 'note', nome: 'Note', tipo: 'testo_lungo' }] };
-export const SEZIONE_PREVISIONI = { id: PREVISIONI, nome: 'Previsioni di cassa', icona: 'grafico', titolo: 'descrizione', campi: [
+export const SEZIONE_PREVISIONI = { id: PREVISIONI, nome: 'Previsioni di cassa', icona: 'calendario', titolo: 'descrizione', campi: [
   { id: 'descrizione', nome: 'Descrizione', tipo: 'testo', obbligatorio: true },
   { id: 'tipo', nome: 'Tipo', tipo: 'scelta', predefinito: 'uscita', opzioni: [{ id: 'entrata', nome: 'Entrata', colore: 'verde' }, { id: 'uscita', nome: 'Uscita', colore: 'rosso' }] },
   { id: 'importo', nome: 'Importo', tipo: 'valuta', obbligatorio: true },
@@ -93,15 +93,15 @@ export function impostazioni(db, meta) {
 export function salvaImpostazioni(db, meta, corpo = {}) {
   let s = {}; try { s = JSON.parse(meta.leggi(db, 'tesoreria.impostazioni') || '{}'); } catch { s = {}; }
   s = { ...PREDEFINITE, ...s };
-  const no = c => { throw new Error(`Impostazione della tesoreria non valida: ${c}`); };
+  const sbagliata = c => { throw new Error(`Impostazione della tesoreria non valida: ${c}`); };
   for (const c of Object.keys(PREDEFINITE)) if (c in corpo) s[c] = corpo[c];
-  s.sia = String(s.sia || '').trim().toUpperCase(); if (s.sia && !/^[A-Z0-9]{5}$/.test(s.sia)) no('sia');
-  s.bic = String(s.bic || '').replace(/\s/g, '').toUpperCase(); if (s.bic && !/^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$/.test(s.bic)) no('bic');
-  s.idCreditore = String(s.idCreditore || '').replace(/\s/g, '').toUpperCase(); if (s.idCreditore && !F.idCreditoreValido(s.idCreditore)) no('idCreditore');
-  if (s.saldo != null && s.saldo !== '') { s.saldo = Math.round(Number(String(s.saldo).replace(',', '.')) * 100) / 100; if (!Number.isFinite(s.saldo)) no('saldo'); } else s.saldo = null;
-  if (s.saldoData && !DATA.test(s.saldoData)) no('saldoData');
-  if (!/^[a-z0-9_]{1,64}$/.test(String(s.sezioneMovimenti || ''))) no('sezioneMovimenti');
-  if (!['RCUR', 'FRST', 'OOFF'].includes(s.sequenzaSdd)) no('sequenzaSdd');
+  s.sia = String(s.sia || '').trim().toUpperCase(); if (s.sia && !/^[A-Z0-9]{5}$/.test(s.sia)) sbagliata('sia');
+  s.bic = String(s.bic || '').replace(/\s/g, '').toUpperCase(); if (s.bic && !/^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$/.test(s.bic)) sbagliata('bic');
+  s.idCreditore = String(s.idCreditore || '').replace(/\s/g, '').toUpperCase(); if (s.idCreditore && !F.idCreditoreValido(s.idCreditore)) sbagliata('idCreditore');
+  if (s.saldo != null && s.saldo !== '') { s.saldo = Math.round(Number(String(s.saldo).replace(',', '.')) * 100) / 100; if (!Number.isFinite(s.saldo)) sbagliata('saldo'); } else s.saldo = null;
+  if (s.saldoData && !DATA.test(s.saldoData)) sbagliata('saldoData');
+  if (!/^[a-z0-9_]{1,64}$/.test(String(s.sezioneMovimenti || ''))) sbagliata('sezioneMovimenti');
+  if (!['RCUR', 'FRST', 'OOFF'].includes(s.sequenzaSdd)) sbagliata('sequenzaSdd');
   s.ritardoClienti = !!s.ritardoClienti;
   meta.scrivi(db, 'tesoreria.impostazioni', JSON.stringify(s));
   return impostazioni(db, meta);

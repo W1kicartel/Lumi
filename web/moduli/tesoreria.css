@@ -1,0 +1,73 @@
+/* La tesoreria: stesse variabili di stile.css (bianco e nero, tema chiaro e scuro). */
+.tesoreria-barra { padding: 0 28px 8px; overflow-x: auto; }
+.tesoreria-schede { display: inline-flex; gap: 4px; background: var(--sopra); padding: 3px; border-radius: 9px; }
+.tesoreria-schede a { text-decoration: none; padding: 5px 12px; border-radius: 7px; color: var(--tenue); font-size: 14px; white-space: nowrap; }
+.tesoreria-schede a.si { background: var(--pannello); color: var(--testo); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.tesoreria { max-width: 1100px; }
+.tesoreria-cifre { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.tesoreria-cifra { background: var(--pannello); border: 1px solid var(--linea); border-radius: var(--raggio); padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.tesoreria-cifra.attenzione { border-left: 3px solid var(--rosso); }
+.tesoreria-cifra span { font-size: 12px; color: var(--tenue); text-transform: uppercase; letter-spacing: .05em; }
+.tesoreria-cifra b { font-size: 24px; font-weight: 650; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.tesoreria-cifra small { color: var(--tenue); font-size: 13px; }
+.tesoreria-scheda { background: var(--pannello); border: 1px solid var(--linea); border-radius: var(--raggio); padding: 16px 18px; margin-bottom: 14px; }
+.tesoreria-scheda h2 { font-size: 15px; font-weight: 600; margin: 0 0 10px; letter-spacing: -.01em; }
+.tesoreria-tabella { overflow-x: auto; }
+.tesoreria-tabella .tabella { border: 0; border-radius: 0; }
+.tesoreria-tabella .tabella th { cursor: default; }
+.tesoreria-tabella td.num, .tesoreria-tabella th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tesoreria-avviso { border: 1px solid var(--linea-forte); border-left: 3px solid var(--accento); background: var(--pannello); border-radius: 8px; padding: 10px 14px; margin: 0 0 12px; font-size: 14px; }
+.tesoreria-avviso.forte { border-left-color: var(--rosso); }
+.tesoreria-filtri { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
+.tesoreria-filtri input[type=search] { flex: 1; min-width: 180px; }
+.tesoreria-interruttore { display: inline-flex; background: var(--sopra); padding: 3px; border-radius: 9px; gap: 2px; }
+.tesoreria-interruttore button { border: 0; background: none; padding: 5px 12px; border-radius: 7px; color: var(--tenue); font: inherit; font-size: 14px; cursor: pointer; }
+.tesoreria-interruttore button.si { background: var(--pannello); color: var(--testo); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.tesoreria-spunta { display: inline-flex; gap: 6px; align-items: center; font-size: 14px; cursor: pointer; }
+.tesoreria-segno { display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 99px; background: var(--sopra); color: var(--tenue); white-space: nowrap; }
+.tesoreria-segno.ok { color: var(--verde); } .tesoreria-segno.rosso { color: var(--rosso); } .tesoreria-segno.giallo { color: var(--giallo); } .tesoreria-segno.blu { color: var(--accento); }
+.tesoreria-azioni { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; }
+.tesoreria-azioni > span { font-variant-numeric: tabular-nums; margin-right: auto; }
+.tesoreria-riga-azioni { display: inline-flex; gap: 4px; white-space: nowrap; }
+.tesoreria-zona { border: 1.5px dashed var(--linea-forte); border-radius: var(--raggio); padding: 22px; text-align: center; display: flex; flex-direction: column; gap: 4px; cursor: pointer; margin-bottom: 14px; transition: border-color .2s, background .2s; }
+.tesoreria-zona span { color: var(--tenue); font-size: 13px; }
+.tesoreria-zona.sopra, .tesoreria-zona:hover { border-color: var(--accento); background: var(--sopra); }
+.tesoreria-mov { border-top: 1px solid var(--linea); padding: 12px 0; }
+.tesoreria-mov:first-of-type { border-top: 0; }
+.tesoreria-mov-testa { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+.tesoreria-mov-testa time { color: var(--tenue); font-variant-numeric: tabular-nums; }
+.tesoreria-mov-testa b { font-variant-numeric: tabular-nums; }
+.tesoreria-spazio { flex: 1; }
+.entrata { color: var(--verde); } .uscita { color: var(--rosso); }
+.tesoreria-mov-descr { margin: 4px 0 8px; font-size: 13px; color: var(--tenue); overflow-wrap: anywhere; }
+.tesoreria-proposte { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.tesoreria-proposte li { display: grid; grid-template-columns: 54px 1fr auto auto auto; gap: 10px; align-items: center; font-size: 14px; }
+.tesoreria-proposte small { color: var(--tenue); }
+.tesoreria-proposte b { font-variant-numeric: tabular-nums; }
+.tesoreria-punti { height: 6px; background: var(--sopra); border-radius: 99px; overflow: hidden; }
+.tesoreria-punti i { display: block; height: 100%; background: var(--accento); border-radius: 99px; }
+.tesoreria-mano { display: flex; gap: 8px; margin-top: 8px; }
+.tesoreria-mano select { flex: 1; min-width: 0; }
+.tesoreria-grafico { width: 100%; height: auto; display: block; }
+.tesoreria-grafico .asse { stroke: var(--linea-forte); stroke-width: 1; }
+.tesoreria-grafico .entrate { fill: var(--verde); opacity: .75; }
+.tesoreria-grafico .uscite { fill: var(--rosso); opacity: .7; }
+.tesoreria-grafico polyline.saldo { fill: none; stroke: var(--testo); stroke-width: 2; stroke-linejoin: round; }
+.tesoreria-grafico circle.saldo { fill: var(--pannello); stroke: var(--testo); stroke-width: 2; }
+.tesoreria-grafico circle.saldo.rosso { stroke: var(--rosso); }
+.tesoreria-legenda { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; color: var(--tenue); margin-left: auto; }
+.tesoreria-legenda i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-left: 8px; }
+.tesoreria-legenda i.entrate { background: var(--verde); } .tesoreria-legenda i.uscite { background: var(--rosso); } .tesoreria-legenda i.saldo { background: var(--testo); height: 2px; }
+.tesoreria-elenco { list-style: none; margin: 8px 0; padding: 0; }
+.tesoreria-elenco li { display: grid; grid-template-columns: 110px 1fr auto; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--linea); font-size: 14px; }
+.tesoreria-elenco time { color: var(--tenue); font-variant-numeric: tabular-nums; }
+.tesoreria-lettera { width: 100%; font-family: inherit; font-size: 13px; line-height: 1.5; resize: vertical; }
+.tesoreria-modulo { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px 16px; }
+.tesoreria-campo { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--tenue); }
+.tesoreria-modulo .tesoreria-spunta, .tesoreria-modulo .tesoreria-azioni { grid-column: 1 / -1; }
+.tesoreria .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+@media (max-width: 640px) {
+  .tesoreria-barra { padding: 0 16px 8px; }
+  .tesoreria-proposte li { grid-template-columns: 40px 1fr auto; }
+  .tesoreria-proposte li small { display: none; }
+}
