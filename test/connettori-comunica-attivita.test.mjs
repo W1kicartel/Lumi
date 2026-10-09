@@ -125,13 +125,13 @@ test('Pipedrive: cliente con P.IVA → organizzazione + persona, poi PATCH; giro
     assert.deepEqual(g2.risultato, { creati: 0, aggiornati: 0, uguali: 1 });
     assert.equal(S.chiamate.filter(c => c.metodo === 'GET' && c.percorso === '/api/v2/persons').at(-1).q.updated_since, '2026-10-01T10:00:00Z');
     // un preventivo diventa una trattativa
-    const prev = (await K.chiama('POST', '/api/dati/preventivi', { cliente: cli.id, oggetto: 'Sito nuovo' })).json;
+    const prev = (await K.chiama('POST', '/api/dati/preventivi', { cliente: cli.id, oggetto: 'Sito nuovo', valido_fino: '2026-11-30' })).json;
     const ant = (await K.chiama('POST', '/api/connettori/pipedrive/azioni/crea_trattativa', { args: { preventivo: prev.id }, anteprima: true })).json;
     assert.match(ant.righe[0][1], /Sito nuovo/); assert.deepEqual(ant.avvisi, []);
     const a = (await K.chiama('POST', '/api/connettori/pipedrive/azioni/crea_trattativa', { args: { preventivo: prev.id } })).json;
     assert.deepEqual(a, { ok: true, id: 900, aggiornata: false, link: 'https://bottega.pipedrive.com/deal/900' });
     const d = S.chiamate.find(c => c.percorso === '/api/v2/deals').corpo;
-    assert.match(d.title, /^Preventivo .* · Sito nuovo$/); assert.equal(d.currency, 'EUR'); assert.equal(d.person_id, 101); assert.equal(d.org_id, 77); assert.equal(typeof d.value, 'number');
+    assert.match(d.title, /^Preventivo .* · Sito nuovo$/); assert.equal(d.currency, 'EUR'); assert.equal(d.person_id, 101); assert.equal(d.org_id, 77); assert.equal(typeof d.value, 'number'); assert.equal(d.expected_close_date, '2026-11-30');
   } finally { await K.chiudi(); await S.chiudi(); }
 });
 

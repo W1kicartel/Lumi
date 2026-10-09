@@ -57,7 +57,8 @@ async function ricevi(k) {
 // i dati della trattativa dal preventivo
 function trattativa(k, p) {
   const v = c => k.valore(p, 'preventivi', c), num = v('numero'), ogg = v('oggetto');
-  return { title: [num != null ? `Preventivo ${num}` : 'Preventivo', ogg].filter(Boolean).join(' · ').slice(0, 255), value: Number(v('totale') || 0), currency: 'EUR' };
+  const chiusura = /^\d{4}-\d{2}-\d{2}/.test(String(v('valido_fino') || '')) ? String(v('valido_fino')).slice(0, 10) : null;   // la validità del preventivo come chiusura prevista
+  return { title: [num != null ? `Preventivo ${num}` : 'Preventivo', ogg].filter(Boolean).join(' · ').slice(0, 255), value: Number(v('totale') || 0), currency: 'EUR', ...(chiusura ? { expected_close_date: chiusura } : {}) };
 }
 export default {
   id: 'pipedrive', nome: 'Pipedrive', versione: 1, icona: 'utenti',
