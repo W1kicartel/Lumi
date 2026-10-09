@@ -173,3 +173,41 @@ test('WebDAV: Basic, MKCOL delle cartelle mancanti dopo un 409, PROPFIND per la 
     assert.notEqual(e.stato, 200); assert.match(e.json.errore, /password per app/);
   } finally { await K.chiudi(); await S.chiudi(); }
 });
+
+test('Un\'altra sezione con righe (preventivi abbinati a «documenti»): solo la stampa in Kubo/Preventivi/<anno>', async () => {
+  const K = await kubo(['professionista']), caricati = [];
+  const S = await finto({ 'POST /2/files/upload': (p, c, { intestazioni }) => { caricati.push({ ...JSON.parse(intestazioni['dropbox-api-arg']), corpo: c }); return { id: 'id:1' }; } });
+  try {
+    await accendi(K, 'dropbox', { base: S.url, segreti: { client_id: 'app' } });
+    assert.equal((await K.chiama('PUT', '/api/connettori/dropbox', { mappe: { entita: { documenti: 'preventivi' } } })).stato, 200);
+    collega(K, 'dropbox');
+    const cl = (await K.chiama('POST', '/api/dati/clienti', { nome: 'Studio Verdi' })).json;
+    const pv = (await K.chiama('POST', '/api/dati/preventivi', { cliente: cl.id, data: '2025-11-20', oggetto: 'Sito nuovo', voci: [{ descrizione: 'Progetto', quantita: 1, prezzo: 800 }] })).json;
+    assert.ok(pv.id, JSON.stringify(pv));
+    const ant = (await K.chiama('POST', '/api/connettori/dropbox/azioni/salva_altro', { args: { documento: pv.id }, anteprima: true })).json;
+    assert.deepEqual(ant.righe[1], ['Cartella', 'Kubo/Preventivi/2025']);
+    const r = await K.chiama('POST', '/api/connettori/dropbox/azioni/salva_altro', { args: { documento: pv.id } });
+    assert.equal(r.stato, 200, JSON.stringify(r.json)); assert.equal(caricati.length, 1);
+    assert.match(caricati[0].path, /^\/Kubo\/Preventivi\/2025\/.+\.html$/); assert.match(caricati[0].corpo, /Sito nuovo|Progetto/);
+  } finally { await K.chiudi(); await S.chiudi(); }
+});
+
+test('Google Drive: un backup oltre 5 MB passa dal caricamento resumable (Location + PUT), poi la rotazione', async () => {
+  const K = await kubo(['negozio']), voci = [{ id: 'c1', name: 'Kubo', parent: 'root', cartella: true }, { id: 'c2', name: 'Backup', parent: 'c1', cartella: true },
+    { id: 'v1', name: 'kubo-2026-01-01-02-30-00.db', parent: 'c2' }, { id: 'v2', name: 'kubo-2026-01-02-02-30-00.db', parent: 'c2' }], tolti = [];
+  const S = await finto({
+    'GET /drive/v3/files': (p, c, { q }) => { const x = q.get('q'), n = /name = '([^']*)'/.exec(x)?.[1], pa = /'([^']+)' in parents/.exec(x)?.[1];
+      return { files: voci.filter(v => v.parent === pa && (!n || v.name === n) && (!/mimeType = 'application\/vnd.google-apps.folder'/.test(x) || v.cartella) && (!/mimeType != /.test(x) || !v.cartella)).map(v => ({ id: v.id, name: v.name })) }; },
+    'POST /upload/drive/v3/files': (p, c, { q, intestazioni }) => { assert.equal(q.get('uploadType'), 'resumable'); assert.ok(Number(intestazioni['x-upload-content-length']) > 5 * 1048576);
+      voci.push({ id: 'nuovo', name: c.name, parent: c.parents[0] }); return { stato: 200, intestazioni: { Location: `${S.url}/sessione/nuovo` }, corpo: '' }; },
+    'PUT /sessione/:id': (p, c) => { voci.find(v => v.id === p.id).corpo = c; return { id: p.id }; },
+    'DELETE /drive/v3/files/:id': p => { tolti.push(p.id); return { stato: 204, corpo: '' }; },
+  });
+  try {
+    await accendi(K, 'google-drive', { base: S.url, segreti: { client_id: 'c', client_secret: 's' }, impostazioni: { tieni: 2 } }); collega(K, 'google-drive');
+    K.db.exec('CREATE TABLE zavorra (b BLOB); INSERT INTO zavorra VALUES (randomblob(6000000))');
+    const g = (await K.chiama('POST', '/api/connettori/google-drive/giri/backup')).json; assert.equal(g.esito, 'ok', JSON.stringify(g));
+    assert.ok(g.risultato.byte > 6e6); assert.ok(voci.find(v => v.id === 'nuovo').corpo.startsWith('SQLite format 3'));
+    assert.deepEqual(tolti, ['v1']);
+  } finally { await K.chiudi(); await S.chiudi(); }
+});
